@@ -415,10 +415,44 @@ async function getLoanById(loanId) {
   };
 }
 
+/**
+ * SECTION 12: CREATE REPEAT LOAN
+ * Preserves lending lifecycle tree: #001 -> #002 -> #003 -> #004
+ */
+async function createRepeatLoan({ customerId, requestedAmount = 15000, notes, userId }) {
+  const [customer] = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
+  if (customer.length === 0) throw new Error('Customer not found.');
+
+  // Find previous completed loan to link parent_loan_id
+  const [lastCompleted] = await query(
+    `SELECT * FROM loans WHERE customer_id = ? AND status = 'COMPLETED' ORDER BY id DESC LIMIT 1`,
+    [customerId]
+  );
+  if (lastCompleted.length === 0) {
+    throw new Error('Customer has no previous completed loans to initiate a repeat loan.');
+  }
+
+  const parentLoanId = lastCompleted[0].id;
+  const productId = lastCompleted[0].product_id;
+
+  // Use createLoanApplication with parentLoanId
+  return await createLoanApplication(
+    {
+      customerId,
+      productId,
+      principalAmount: requestedAmount,
+      notes: notes || `Repeat loan following completed loan ${lastCompleted[0].loan_number}`,
+    },
+    userId
+  );
+}
+
 module.exports = {
   createLoanApplication,
+  createRepeatLoan,
   approveLoan,
   disburseLoan,
   getLoans,
   getLoanById,
 };
+

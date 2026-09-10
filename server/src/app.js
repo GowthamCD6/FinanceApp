@@ -2,7 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 
+const path = require('path');
+
 const authRoutes = require('./modules/auth/auth.routes');
+const organizationRoutes = require('./modules/organizations/organization.routes');
 const customerRoutes = require('./modules/customers/customer.routes');
 const loanRoutes = require('./modules/loans/loan.routes');
 const paymentRoutes = require('./modules/payments/payment.routes');
@@ -17,6 +20,11 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
+// Static web portal assets
+const publicDirectory = path.join(__dirname, '../public');
+app.use(express.static(publicDirectory));
+app.use('/portal', express.static(publicDirectory));
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
@@ -28,6 +36,7 @@ app.get('/health', (req, res) => {
 
 // Mount modular routes
 app.use('/api/auth', authRoutes);
+app.use('/api/organizations', organizationRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/payments', paymentRoutes);

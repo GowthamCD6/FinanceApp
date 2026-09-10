@@ -82,11 +82,33 @@ async function getProducts(req, res) {
   }
 }
 
+async function createRepeatLoan(req, res) {
+  try {
+    const { customerId, requestedAmount, notes } = req.body;
+    const result = await loanService.createRepeatLoan({
+      customerId: customerId || req.params.customerId,
+      requestedAmount: parseFloat(requestedAmount || '15000'),
+      notes,
+      userId: req.user.id,
+    });
+    return res.status(201).json({
+      success: true,
+      message: 'Repeat loan created successfully with parent loan linkage.',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Create repeat loan error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   createLoan,
+  createRepeatLoan,
   approveLoan,
   disburseLoan,
   getLoans,
   getLoanById,
   getProducts,
 };
+

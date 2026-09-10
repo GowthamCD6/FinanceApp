@@ -57,6 +57,12 @@ async function login(req, res) {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
+    let customerInfo = null;
+    if (roleNames.includes('USER')) {
+      const [custRows] = await query(`SELECT id, customer_code, full_name, customer_type FROM customers WHERE user_id = ? LIMIT 1`, [user.id]);
+      if (custRows.length > 0) customerInfo = custRows[0];
+    }
+
     return res.json({
       success: true,
       data: {
@@ -68,9 +74,11 @@ async function login(req, res) {
           phone: user.phone,
           roles: roleNames,
           permissions: permissionNames,
+          customer: customerInfo,
         },
       },
     });
+
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({ success: false, message: 'Server error during authentication.' });

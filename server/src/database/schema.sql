@@ -59,12 +59,16 @@ CREATE TABLE IF NOT EXISTS customers (
     shop_name VARCHAR(200),
     status ENUM('ACTIVE', 'INACTIVE', 'BLOCKED', 'UNDER_REVIEW') NOT NULL DEFAULT 'ACTIVE',
     registration_date DATE NOT NULL,
+    user_id BIGINT UNSIGNED NULL,
     created_by BIGINT UNSIGNED NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_customers_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_customers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_customer_phone (phone),
+    INDEX idx_customer_user_id (user_id),
     INDEX idx_customer_type (customer_type),
+
     INDEX idx_customer_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

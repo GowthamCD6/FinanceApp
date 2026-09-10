@@ -39,8 +39,51 @@ async function getCustomerById(req, res) {
   }
 }
 
+async function getCustomerLifecycle(req, res) {
+  try {
+    const lifecycle = await customerService.getCustomerLifecycle(req.params.id);
+    return res.json({ success: true, data: lifecycle });
+  } catch (error) {
+    console.error('Get customer lifecycle error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function getCustomerMeDashboard(req, res) {
+  try {
+    const dashboard = await customerService.getCustomerMeDashboard(req.user.id);
+    return res.json({ success: true, data: dashboard });
+  } catch (error) {
+    console.error('Customer portal error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function updateCustomerStatus(req, res) {
+  try {
+    const { status, reason } = req.body;
+    const result = await customerService.updateCustomerStatus(
+      req.params.id,
+      status,
+      reason,
+      req.user?.id
+    );
+    return res.json({
+      success: true,
+      message: `Customer status updated to ${status}`,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Update customer status error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   createCustomer,
   getCustomers,
   getCustomerById,
+  getCustomerLifecycle,
+  getCustomerMeDashboard,
+  updateCustomerStatus,
 };

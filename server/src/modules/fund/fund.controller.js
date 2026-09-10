@@ -32,6 +32,32 @@ async function addCapital(req, res) {
   }
 }
 
+async function recordExpense(req, res) {
+  try {
+    const { category, amount, description, accountName } = req.body;
+    if (!category || !amount || !description) {
+      return res.status(400).json({ success: false, message: 'category, amount, and description are required.' });
+    }
+
+    const result = await fundService.recordExpense({
+      category,
+      amount: parseFloat(amount),
+      description,
+      accountName: accountName || 'Cash',
+      userId: req.user.id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `Expense of ₹${amount} recorded. Available Cash ↓, Expenses ↑, Net Profit ↓.`,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Record expense error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 async function getAccounts(req, res) {
   try {
     const accounts = await query(`SELECT * FROM fund_accounts WHERE status = 'ACTIVE'`);
@@ -54,6 +80,7 @@ async function getCirculationTrail(req, res) {
 module.exports = {
   getSummary,
   addCapital,
+  recordExpense,
   getAccounts,
   getCirculationTrail,
 };
