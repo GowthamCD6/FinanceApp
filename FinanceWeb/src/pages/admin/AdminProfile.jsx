@@ -58,7 +58,7 @@ export const AdminProfile = () => {
       setProfile({ ...updated });
       updateProfile({ name: editForm.name, email: editForm.email, phone: editForm.phone });
       setEditModal(false);
-      setToastMsg('Profile details successfully updated!');
+      setToastMsg('Admin Profile credentials updated successfully!');
       setTimeout(() => setToastMsg(null), 3000);
     } finally {
       setSaving(false);
@@ -67,140 +67,162 @@ export const AdminProfile = () => {
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
 
-  if (loading || !profile) return <div className="page-loading">Loading Profile...</div>;
+  if (loading || !profile) return <div className="page-loading">Loading Admin Profile...</div>;
 
   return (
-    <div className="profile-page">
+    <div className="admin-profile-page">
       {/* Header */}
       <div className="page-header">
         <div>
-          <div className="welcome-tag">OFFICER CREDENTIALS</div>
-          <h1 className="page-title">Admin Profile & Field Credentials</h1>
+          <div className="welcome-tag">STAFF CREDENTIALS & SECURITY</div>
+          <h1 className="page-title">Admin Profile & Operations</h1>
           <p className="page-subtitle">
-            Operating credentials, assigned route territory, and field compliance record.
+            Officer credentials, assigned territory route node, shift recovery performance, and security settings.
           </p>
         </div>
 
-        <button className="btn btn-primary" onClick={() => setEditModal(true)}>
-          <Edit3 size={16} />
-          <span>Edit Profile</span>
-        </button>
+        <div className="header-actions">
+          <button className="btn btn-primary" onClick={() => setEditModal(true)}>
+            <Edit3 size={16} />
+            <span>Edit Profile</span>
+          </button>
+          <button className="btn btn-secondary" onClick={logout}>
+            <LogOut size={16} />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
+      {/* Toast */}
       {toastMsg && (
-        <div className="feedback-toast">
+        <div className="feedback-banner">
           <CheckCircle2 size={16} color="var(--emerald)" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* Hero Officer Profile Card */}
-      <div className="card profile-hero-card">
-        <div className="hero-profile-top">
-          <div className="avatar-big">
-            {profile.name.charAt(0)}
+      {/* Profile Banner Card */}
+      <div className="card" style={{ marginBottom: '1.5rem', background: '#FFFFFF' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <div
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: 'var(--radius-lg)',
+                background: 'var(--primary-gradient)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem',
+                fontWeight: 800,
+                boxShadow: '0 4px 16px rgba(79, 70, 229, 0.35)',
+              }}
+            >
+              {profile.name ? profile.name.charAt(0) : 'A'}
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <h2 style={{ fontSize: '1.4rem', margin: 0 }}>{profile.name}</h2>
+                <span className="badge badge-primary">{profile.role_title}</span>
+              </div>
+              <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                Staff ID: <strong>{profile.employee_id}</strong> • {profile.department}
+              </p>
+            </div>
           </div>
 
-          <div className="hero-details">
-            <div className="role-badge-row">
-              <span className="role-tag-pill">{profile.role_tag}</span>
-              <span className="status-pill active-pill">
-                <span className="dot" /> ACTIVE STATUS
-              </span>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ background: '#F8FAFC', padding: '0.65rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid #E2E8F0', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Shift Recovery</span>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--emerald)' }}>{formatCurrency(profile.today_collections)}</div>
             </div>
-            <h2 className="hero-name">{profile.name}</h2>
-            <div className="hero-org">
-              <Building size={14} color="var(--primary)" />
-              <span>{profile.organization} • {profile.branch}</span>
-            </div>
-          </div>
-        </div>
 
-        {/* 4 Stats Highlights Strip */}
-        <div className="stats-strip">
-          <div className="strip-col">
-            <span className="strip-lbl">Today's Collections</span>
-            <span className="strip-val green">{formatCurrency(profile.today_collections)}</span>
-          </div>
-          <div className="strip-col">
-            <span className="strip-lbl">Lifetime Recoveries</span>
-            <span className="strip-val">{formatCurrency(profile.lifetime_collections)}</span>
-          </div>
-          <div className="strip-col">
-            <span className="strip-lbl">Assigned Borrowers</span>
-            <span className="strip-val purple">{profile.active_borrowers_assigned} Clients</span>
-          </div>
-          <div className="strip-col">
-            <span className="strip-lbl">Audit Score</span>
-            <span className="strip-val">{profile.compliance_score}% Verified</span>
+            <div style={{ background: '#F8FAFC', padding: '0.65rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid #E2E8F0', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Total Recovered</span>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>{formatCurrency(profile.lifetime_collections)}</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Two Columns: Field Identification & Operational Permissions */}
-      <div className="profile-grid">
-        {/* Left: Contact & Territory Card */}
+      {/* Grid: Details & Permissions */}
+      <div className="grid-2">
+        {/* Officer Information */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
               <User size={18} color="var(--primary)" />
-              Field Officer Credentials
+              Officer Credentials
             </h3>
-            <span className="badge badge-secondary">{profile.employee_id}</span>
           </div>
 
-          <div className="credentials-list">
-            <div className="cred-row">
-              <span className="cred-lbl"><Phone size={14} /> Mobile Phone:</span>
-              <span className="cred-val">{profile.phone}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.86rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.6rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Mobile Phone:</span>
+              <strong>{profile.phone}</strong>
             </div>
-            <div className="cred-row">
-              <span className="cred-lbl"><Mail size={14} /> Official Email:</span>
-              <span className="cred-val">{profile.email}</span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.6rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Official Email:</span>
+              <strong>{profile.email}</strong>
             </div>
-            <div className="cred-row">
-              <span className="cred-lbl"><MapPin size={14} /> Assigned Field Route:</span>
-              <span className="cred-val">{profile.assigned_route}</span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.6rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Branch Node:</span>
+              <strong>{profile.branch}</strong>
             </div>
-            <div className="cred-row">
-              <span className="cred-lbl"><Building size={14} /> Operating Branch:</span>
-              <span className="cred-val">{profile.branch}</span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.6rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Assigned Route:</span>
+              <strong style={{ color: 'var(--primary)' }}>{profile.assigned_route}</strong>
             </div>
-            <div className="cred-row">
-              <span className="cred-lbl"><Calendar size={14} /> Commission Date:</span>
-              <span className="cred-val">{profile.joined_date}</span>
-            </div>
-            <div className="cred-row">
-              <span className="cred-lbl"><ShieldCheck size={14} /> Security Level:</span>
-              <span className="cred-val" style={{ color: 'var(--emerald)' }}>Branch Operations (Level 2)</span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Member Since:</span>
+              <strong>{profile.joined_date}</strong>
             </div>
           </div>
         </div>
 
-        {/* Right: Delegated Privileges & System Scope */}
+        {/* Security & Access Rights */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
-              <Award size={18} color="var(--emerald)" />
-              Operational Privileges & Scope
+              <ShieldCheck size={18} color="var(--emerald)" />
+              Security & Field Permissions
             </h3>
-            <span className="badge badge-emerald">Enforced</span>
+            <span className="badge badge-emerald">Verified Active</span>
           </div>
 
-          <div className="permissions-list">
-            {profile.permissions?.map((perm, idx) => (
-              <div key={idx} className="perm-item">
-                <CheckCircle2 size={16} color="var(--emerald)" />
-                <span>{perm}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {[
+              { label: 'CUSTOMER_ONBOARD', desc: 'Authorized to enroll weekly borrowers & daily shopkeepers' },
+              { label: 'LOAN_DISBURSAL_REQUEST', desc: 'Issue 10-week and 25-day rapid credit facilities' },
+              { label: 'PAYMENT_COLLECTION_RECEIPT', desc: 'Record Cash/UPI collections and issue verified vouchers' },
+              { label: 'FIELD_ROUTE_AUDIT', desc: 'Inspect borrower credit history and repayment discipline' },
+            ].map((p) => (
+              <div
+                key={p.label}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem',
+                  padding: '0.65rem 0.85rem',
+                  background: '#F8FAFC',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid #E2E8F0',
+                }}
+              >
+                <CheckCircle2 size={16} color="var(--emerald)" style={{ flexShrink: 0 }} />
+                <div>
+                  <strong style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{p.label}</strong>
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{p.desc}</span>
+                </div>
               </div>
             ))}
-          </div>
-
-          <div className="logout-box">
-            <button className="btn btn-danger" onClick={logout} style={{ width: '100%' }}>
-              <LogOut size={16} />
-              <span>Log Out of Session</span>
-            </button>
           </div>
         </div>
       </div>
@@ -209,21 +231,13 @@ export const AdminProfile = () => {
       <Modal
         isOpen={editModal}
         onClose={() => setEditModal(false)}
-        title="Edit Admin Profile"
-        subtitle="Update officer contact details and assigned field route"
+        title="Edit Admin Officer Details"
+        subtitle="Update officer contact credentials and assigned field route."
         maxWidth="500px"
-        footer={
-          <>
-            <button className="btn btn-secondary" onClick={() => setEditModal(false)}>Cancel</button>
-            <button className="btn btn-emerald" onClick={handleEditSubmit} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Profile Changes'}
-            </button>
-          </>
-        }
       >
         <form onSubmit={handleEditSubmit}>
           <div className="form-group">
-            <label className="form-label">Full Name</label>
+            <label className="form-label">Full Legal Name *</label>
             <input
               type="text"
               className="form-input"
@@ -234,18 +248,19 @@ export const AdminProfile = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Phone Number</label>
+            <label className="form-label">Mobile Phone Number *</label>
             <input
               type="tel"
               className="form-input"
               value={editForm.phone}
               onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
               required
+              maxLength={10}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Official Email</label>
+            <label className="form-label">Official Email Address</label>
             <input
               type="email"
               className="form-input"
@@ -262,218 +277,28 @@ export const AdminProfile = () => {
               className="form-input"
               value={editForm.assigned_route}
               onChange={(e) => setEditForm({ ...editForm, assigned_route: e.target.value })}
-              required
+              placeholder="e.g. Triplicane Bazaar & Saidapet Route"
             />
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setEditModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </form>
       </Modal>
-
-      <style>{`
-        .profile-page {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .feedback-toast {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(16, 185, 129, 0.15);
-          border: 1px solid rgba(16, 185, 129, 0.35);
-          color: #6ee7b7;
-          padding: 0.65rem 1rem;
-          border-radius: var(--radius-md);
-          font-weight: 600;
-          font-size: 0.85rem;
-        }
-
-        .profile-hero-card {
-          background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%);
-          border: 1px solid rgba(99, 102, 241, 0.3);
-          padding: 1.75rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .hero-profile-top {
-          display: flex;
-          align-items: center;
-          gap: 1.5rem;
-          flex-wrap: wrap;
-        }
-
-        .avatar-big {
-          width: 72px;
-          height: 72px;
-          border-radius: 50%;
-          background: var(--primary-gradient);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: var(--font-display);
-          font-weight: 800;
-          font-size: 2rem;
-          color: white;
-          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
-        }
-
-        .hero-details {
-          display: flex;
-          flex-direction: column;
-          gap: 0.35rem;
-        }
-
-        .role-badge-row {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-        }
-
-        .role-tag-pill {
-          font-size: 0.7rem;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          background: rgba(99, 102, 241, 0.2);
-          color: #a5b4fc;
-          padding: 0.2rem 0.55rem;
-          border-radius: var(--radius-sm);
-        }
-
-        .status-pill {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          font-size: 0.7rem;
-          font-weight: 700;
-          padding: 0.2rem 0.55rem;
-          border-radius: var(--radius-sm);
-        }
-
-        .active-pill {
-          background: rgba(16, 185, 129, 0.15);
-          color: #6ee7b7;
-        }
-
-        .status-pill .dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--emerald);
-        }
-
-        .hero-name {
-          font-size: 1.65rem;
-          font-weight: 800;
-          letter-spacing: -0.02em;
-        }
-
-        .hero-org {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          font-size: 0.85rem;
-          color: var(--text-secondary);
-        }
-
-        .stats-strip {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          background: rgba(0, 0, 0, 0.25);
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-md);
-          padding: 0.85rem 1rem;
-        }
-
-        @media (max-width: 800px) {
-          .stats-strip {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-          }
-        }
-
-        .strip-col {
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-        }
-
-        .strip-lbl {
-          font-size: 0.72rem;
-          color: var(--text-muted);
-          text-transform: uppercase;
-        }
-
-        .strip-val {
-          font-family: var(--font-display);
-          font-weight: 800;
-          font-size: 1.2rem;
-          color: var(--text-primary);
-        }
-
-        .strip-val.green { color: var(--emerald); }
-        .strip-val.purple { color: #c4b5fd; }
-
-        .profile-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-        }
-
-        @media (max-width: 900px) {
-          .profile-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .credentials-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.85rem;
-        }
-
-        .cred-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 0.85rem;
-          padding-bottom: 0.5rem;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
-
-        .cred-lbl {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          color: var(--text-secondary);
-        }
-
-        .cred-val {
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .permissions-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .perm-item {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          font-size: 0.85rem;
-          color: var(--text-primary);
-        }
-
-        .logout-box {
-          border-top: 1px solid var(--border-color);
-          padding-top: 1rem;
-        }
-      `}</style>
     </div>
   );
 };

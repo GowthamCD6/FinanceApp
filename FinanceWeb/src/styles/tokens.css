@@ -1,70 +1,90 @@
 :root {
-  /* Color Palette - Premium Dark Fintech */
-  --bg-primary: #090D16;
-  --bg-secondary: #0F172A;
-  --bg-card: rgba(15, 23, 42, 0.75);
-  --bg-card-hover: rgba(30, 41, 59, 0.7);
-  --bg-glass: rgba(255, 255, 255, 0.03);
-  --bg-input: rgba(15, 23, 42, 0.9);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(99, 102, 241, 0.5);
-  --border-glow: 0 0 15px rgba(99, 102, 241, 0.25);
+  /* ==========================================================================
+     COLOR SYSTEM - Ultra-Crisp Professional White Fintech Theme (Light Mode)
+     ========================================================================== */
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #F1F5F9;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FFFFFF;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F8FAFC;
+  --bg-glass: rgba(255, 255, 255, 0.88);
+  --bg-input: #FFFFFF;
+  --bg-input-focus: #FFFFFF;
 
-  /* Primary Brand - Electric Indigo */
-  --primary: #6366F1;
-  --primary-hover: #4F46E5;
-  --primary-light: rgba(99, 102, 241, 0.15);
-  --primary-gradient: linear-gradient(135deg, #6366F1 0%, #4338CA 100%);
+  /* Borders & Dividers */
+  --border-subtle: #F1F5F9;
+  --border-color: #E2E8F0;
+  --border-hover: #CBD5E1;
+  --border-focus: #4F46E5;
+  --border-highlight: #E2E8F0;
 
-  /* Financial Accents */
-  --emerald: #10B981;
-  --emerald-hover: #059669;
-  --emerald-light: rgba(16, 185, 129, 0.15);
-  --emerald-gradient: linear-gradient(135deg, #10B981 0%, #047857 100%);
+  /* Primary Brand Accent (Royal Indigo) */
+  --primary: #4F46E5;
+  --primary-hover: #4338CA;
+  --primary-active: #3730A3;
+  --primary-light: rgba(79, 70, 229, 0.08);
+  --primary-gradient: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  --primary-glow: 0 4px 14px rgba(79, 70, 229, 0.25);
 
-  --amber: #F59E0B;
-  --amber-light: rgba(245, 158, 11, 0.15);
+  /* Emerald (Positive / Collections / Growth) */
+  --emerald: #059669;
+  --emerald-hover: #047857;
+  --emerald-light: rgba(5, 150, 105, 0.08);
+  --emerald-gradient: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  --emerald-glow: 0 4px 14px rgba(5, 150, 105, 0.2);
 
-  --rose: #EF4444;
-  --rose-light: rgba(239, 68, 68, 0.15);
+  /* Amber (Warning / Overdue / Pending) */
+  --amber: #D97706;
+  --amber-hover: #B45309;
+  --amber-light: rgba(217, 119, 6, 0.08);
+  --amber-gradient: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
 
-  --cyan: #06B6D4;
-  --cyan-light: rgba(6, 182, 212, 0.15);
+  /* Rose / Crimson (Alert / Defaulter / Critical) */
+  --rose: #E11D48;
+  --rose-hover: #BE123C;
+  --rose-light: rgba(225, 29, 72, 0.08);
+  --rose-gradient: linear-gradient(135deg, #F43F5E 0%, #E11D48 100%);
 
-  --purple: #8B5CF6;
-  --purple-light: rgba(139, 92, 246, 0.15);
+  /* Cyan & Purple Secondary Accents */
+  --cyan: #0891B2;
+  --cyan-light: rgba(8, 145, 178, 0.08);
+  --purple: #7C3AED;
+  --purple-light: rgba(124, 58, 237, 0.08);
 
-  /* Text Colors */
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
+  /* Text & Content Hierarchy */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
   --text-muted: #64748B;
-  --text-inverse: #090D16;
+  --text-disabled: #94A3B8;
+  --text-inverse: #FFFFFF;
 
   /* Typography */
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  /* Elevations & Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.25);
-  --shadow-emerald: 0 0 24px rgba(16, 185, 129, 0.2);
+  /* Elevations & Soft Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.07), 0 2px 6px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.1), 0 4px 12px -4px rgba(15, 23, 42, 0.05);
+  --shadow-glow: 0 0 20px rgba(79, 70, 229, 0.12);
+  --shadow-emerald: 0 0 20px rgba(5, 150, 105, 0.12);
 
   /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
   --radius-full: 9999px;
 
   /* Transitions */
-  --transition-fast: 0.15s ease;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Layout */
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 80px;
+  /* Layout Dimensions */
+  --sidebar-width: 270px;
   --navbar-height: 70px;
 }

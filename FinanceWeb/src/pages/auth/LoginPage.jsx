@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Landmark, ArrowRight, Lock, Mail, CheckCircle2, UserCheck } from 'lucide-react';
+import { Landmark, ArrowRight, Lock, Mail, CheckCircle2, ShieldCheck, UserCheck } from 'lucide-react';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const { login, loading } = useAuth();
 
-  const [identifier, setIdentifier] = useState('ops@fundlending.com');
+  const [identifier, setIdentifier] = useState('admin@fundlending.com');
   const [password, setPassword] = useState('Admin@123');
   const [error, setError] = useState('');
 
-  const handleLogin = async (e) => {
-    if (e) e.preventDefault();
+  const handleLogin = async (customId, customPass) => {
     setError('');
+    const idToUse = customId || identifier;
+    const passToUse = customPass || password;
     try {
-      await login(identifier, password);
+      await login(idToUse, passToUse);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
@@ -29,20 +30,39 @@ export const LoginPage = () => {
           <div className="brand-logo-large">
             <Landmark size={32} color="#ffffff" />
           </div>
-          <h1 className="login-title">Finance<span style={{ color: '#818cf8' }}>Web</span></h1>
-          <p className="login-subtitle">Admin Operations & Field Collection Portal</p>
+          <h1 className="login-title">Finance<span style={{ color: 'var(--primary)' }}>Web</span></h1>
+          <p className="login-subtitle">Multi-Tenant Organization Governance & Operations Hub</p>
         </div>
 
-        {/* 1-Click Fast Admin Sign-in */}
-        <div className="instant-access-box" onClick={() => handleLogin()}>
-          <div className="instant-icon">
-            <UserCheck size={20} color="var(--emerald)" />
+        {/* 1-Click Fast Access Buttons */}
+        <div className="instant-grid">
+          <div
+            className="instant-access-box superadmin"
+            onClick={() => handleLogin('admin@fundlending.com', 'Admin@123')}
+          >
+            <div className="instant-icon superadmin">
+              <ShieldCheck size={18} color="#4F46E5" />
+            </div>
+            <div className="instant-text">
+              <span className="instant-title">SuperAdmin Access</span>
+              <span className="instant-desc">Multi-Org Governance & Registry</span>
+            </div>
+            <ArrowRight size={15} color="#4F46E5" />
           </div>
-          <div className="instant-text">
-            <span className="instant-title">1-Click Admin Access</span>
-            <span className="instant-desc">Sign in as Admin Field Manager</span>
+
+          <div
+            className="instant-access-box admin"
+            onClick={() => handleLogin('ops@fundlending.com', 'Admin@123')}
+          >
+            <div className="instant-icon admin">
+              <UserCheck size={18} color="var(--emerald)" />
+            </div>
+            <div className="instant-text">
+              <span className="instant-title">Branch Admin</span>
+              <span className="instant-desc">Field Operations & Collections</span>
+            </div>
+            <ArrowRight size={15} color="var(--emerald)" />
           </div>
-          <ArrowRight size={16} color="var(--emerald)" />
         </div>
 
         <div className="divider">
@@ -51,7 +71,7 @@ export const LoginPage = () => {
 
         {error && <div className="login-error">{error}</div>}
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
           <div className="form-group">
             <label className="form-label">Email or Phone Number</label>
             <div className="input-with-icon">
@@ -61,7 +81,7 @@ export const LoginPage = () => {
                 className="form-input has-icon"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="ops@fundlending.com"
+                placeholder="admin@fundlending.com"
                 required
               />
             </div>
@@ -76,7 +96,7 @@ export const LoginPage = () => {
                 className="form-input has-icon"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Admin@123"
+                placeholder="••••••••"
                 required
               />
             </div>
@@ -88,14 +108,14 @@ export const LoginPage = () => {
             style={{ width: '100%', marginTop: '0.75rem' }}
             disabled={loading}
           >
-            {loading ? 'Authenticating...' : 'Sign In as Admin'}
+            {loading ? 'Authenticating...' : 'Sign In to Command Center'}
             <ArrowRight size={18} />
           </button>
         </form>
 
         <div className="security-note">
           <CheckCircle2 size={13} color="var(--emerald)" />
-          <span>Branch Level 2 • Verified Route Officer Terminal</span>
+          <span>Enterprise End-to-End Encrypted Financial Portal</span>
         </div>
       </div>
 
@@ -106,21 +126,19 @@ export const LoginPage = () => {
           align-items: center;
           justify-content: center;
           padding: 1.5rem;
-          background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 50%),
-                      radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent 50%),
-                      #090D16;
+          background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 50%),
+                      radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.06), transparent 50%),
+                      #F8FAFC;
         }
 
         .login-card {
           width: 100%;
-          max-width: 440px;
+          max-width: 460px;
           padding: 2.25rem 2rem;
-          background: rgba(15, 23, 42, 0.9);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: #FFFFFF;
+          border: 1px solid var(--border-color);
           border-radius: var(--radius-xl);
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+          box-shadow: var(--shadow-lg);
         }
 
         .login-brand {
@@ -137,13 +155,14 @@ export const LoginPage = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+          box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
         }
 
         .login-title {
           font-size: 1.85rem;
           font-weight: 800;
           letter-spacing: -0.03em;
+          color: var(--text-primary);
         }
 
         .login-subtitle {
@@ -152,35 +171,54 @@ export const LoginPage = () => {
           margin-top: 0.35rem;
         }
 
+        .instant-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.6rem;
+          margin-bottom: 1.25rem;
+        }
+
         .instant-access-box {
           display: flex;
           align-items: center;
           gap: 0.85rem;
-          padding: 0.85rem 1rem;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.3);
+          padding: 0.75rem 1rem;
           border-radius: var(--radius-md);
           cursor: pointer;
           transition: all var(--transition-fast);
-          margin-bottom: 1.25rem;
         }
 
-        .instant-access-box:hover {
-          background: rgba(16, 185, 129, 0.18);
-          border-color: var(--emerald);
+        .instant-access-box.superadmin {
+          background: #EEF2FF;
+          border: 1px solid #C7D2FE;
+        }
+        .instant-access-box.superadmin:hover {
+          background: #E0E7FF;
+          border-color: #A5B4FC;
+          transform: translateY(-1px);
+        }
+
+        .instant-access-box.admin {
+          background: #ECFDF5;
+          border: 1px solid #A7F3D0;
+        }
+        .instant-access-box.admin:hover {
+          background: #D1FAE5;
+          border-color: #6EE7B7;
           transform: translateY(-1px);
         }
 
         .instant-icon {
-          width: 36px;
-          height: 36px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
-          background: rgba(16, 185, 129, 0.2);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
+        .instant-icon.superadmin { background: #FFFFFF; }
+        .instant-icon.admin { background: #FFFFFF; }
 
         .instant-text {
           display: flex;
@@ -190,13 +228,13 @@ export const LoginPage = () => {
 
         .instant-title {
           font-weight: 700;
-          font-size: 0.9rem;
+          font-size: 0.88rem;
           color: var(--text-primary);
         }
 
         .instant-desc {
-          font-size: 0.72rem;
-          color: #a7f3d0;
+          font-size: 0.7rem;
+          color: var(--text-secondary);
         }
 
         .divider {
@@ -216,29 +254,13 @@ export const LoginPage = () => {
           padding: 0 0.75rem;
           font-size: 0.75rem;
           color: var(--text-muted);
-        }
-
-        .input-with-icon {
-          position: relative;
-        }
-
-        .input-icon {
-          position: absolute;
-          left: 0.85rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: var(--text-muted);
-          pointer-events: none;
-        }
-
-        .form-input.has-icon {
-          padding-left: 2.3rem;
+          background: #FFFFFF;
         }
 
         .login-error {
-          background: rgba(239, 68, 68, 0.15);
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          color: #fca5a5;
+          background: #FFF1F2;
+          border: 1px solid #FECDD3;
+          color: #E11D48;
           padding: 0.65rem 0.85rem;
           border-radius: var(--radius-md);
           font-size: 0.8rem;

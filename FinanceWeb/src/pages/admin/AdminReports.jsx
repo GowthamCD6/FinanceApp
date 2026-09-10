@@ -63,28 +63,41 @@ export const AdminReports = () => {
   const totalDaily = dailyCollections.reduce((sum, c) => sum + c.due_amount, 0);
   const collectedDaily = dailyCollections.filter((c) => c.status === 'COLLECTED').reduce((sum, c) => sum + c.collected_amount, 0);
   const pendingDaily = totalDaily - collectedDaily;
+  const completedDailyCount = dailyCollections.filter((c) => c.status === 'COLLECTED').length;
 
-  // Open Collect Modal
-  const openCollectDialog = (item, type) => {
+  const openCollectModal = (item, type) => {
     setCollectTarget(item);
     setCollectType(type);
-    setReceiptSuccess(null);
+    setPaymentMode('CASH');
     setCollectModal(true);
   };
 
-  // Submit Collection
-  const handleCollectSubmit = async (e) => {
-    e.preventDefault();
+  const handleConfirmCollect = async () => {
     if (!collectTarget) return;
     setSubmitting(true);
     try {
       if (collectType === 'weekly') {
         const res = await api.collectWeeklyDue(collectTarget.id, paymentMode);
-        setReceiptSuccess(res);
+        setReceiptSuccess({
+          title: 'Weekly Due Collected',
+          receipt: res.receipt_no,
+          borrower: collectTarget.customer_name,
+          amount: collectTarget.due_amount,
+          mode: paymentMode,
+          date: res.paid_date,
+        });
       } else {
-        const res = await api.recordDailyCollection(collectTarget.id, paymentMode);
-        setReceiptSuccess(res);
+        const res = await api.collectDailyInstallment(collectTarget.id, paymentMode);
+        setReceiptSuccess({
+          title: 'Daily Installment Received',
+          receipt: res.receipt_no,
+          borrower: collectTarget.shopkeeper_name,
+          amount: collectTarget.due_amount,
+          mode: paymentMode,
+          time: res.collected_time,
+        });
       }
+      setCollectModal(false);
       await loadReports();
     } finally {
       setSubmitting(false);
@@ -92,559 +105,503 @@ export const AdminReports = () => {
   };
 
   // Filtered lists
-  const filteredWeekly = weeklyDues.filter((item) => {
+  const filteredWeekly = weeklyDues.filter((d) => {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
-      item.customer_name?.toLowerCase().includes(q) ||
-      item.phone?.includes(q) ||
-      item.loan_code?.toLowerCase().includes(q) ||
-      item.customer_code?.toLowerCase().includes(q);
+      d.customer_name?.toLowerCase().includes(q) ||
+      d.customer_code?.toLowerCase().includes(q) ||
+      d.phone?.includes(q) ||
+      d.loan_code?.toLowerCase().includes(q);
 
-    const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || d.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const filteredDaily = dailyCollections.filter((item) => {
+  const filteredDaily = dailyCollections.filter((c) => {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
-      item.customer_name?.toLowerCase().includes(q) ||
-      item.phone?.includes(q) ||
-      item.loan_code?.toLowerCase().includes(q) ||
-      item.customer_code?.toLowerCase().includes(q);
+      c.shopkeeper_name?.toLowerCase().includes(q) ||
+      c.shop_name?.toLowerCase().includes(q) ||
+      c.location?.toLowerCase().includes(q) ||
+      c.customer_code?.toLowerCase().includes(q);
 
-    const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) return <div className="page-loading">Loading Field Collection Reports...</div>;
+  if (loading) return <div className="page-loading">Loading Collections & Dues Sheets...</div>;
 
   return (
-    <div className="reports-page">
+    <div className="admin-reports-page">
       {/* Header */}
       <div className="page-header">
         <div>
-          <div className="welcome-tag">FIELD RECOVERY & COLLECTIONS</div>
-          <h1 className="page-title">Operations & Collection Reports</h1>
+          <div className="welcome-tag">FIELD RECOVERY OPERATIONS</div>
+          <h1 className="page-title">Reports & Collection Sheets</h1>
           <p className="page-subtitle">
-            Inspect borrowers scheduled for payment this week and track daily route merchant collections.
+            Execute weekly due recoveries, record daily retail collections, and issue instant verified vouchers.
           </p>
         </div>
 
-        <button className="btn btn-secondary" onClick={() => window.print()}>
-          <Printer size={16} />
-          <span>Print Sheet</span>
-        </button>
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={() => window.print()}>
+            <Printer size={16} />
+            <span>Print Sheet</span>
+          </button>
+        </div>
       </div>
 
-      {/* Main Tabs (Weekly Dues vs Daily Collections) */}
-      <div className="tab-pill-container">
-        <button
-          className={`tab-pill-btn ${activeTab === 'weekly' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('weekly'); setStatusFilter('ALL'); }}
-        >
-          <Calendar size={18} />
-          <span>Who Need to Pay for This Week ({weeklyDues.length})</span>
-        </button>
-
-        <button
-          className={`tab-pill-btn ${activeTab === 'daily' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('daily'); setStatusFilter('ALL'); }}
-        >
-          <Receipt size={18} />
-          <span>Daily Collection Sheet ({dailyCollections.length})</span>
-        </button>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TAB 1: WHO NEED TO PAY FOR THIS WEEK */}
-      {/* ========================================================================= */}
-      {activeTab === 'weekly' && (
-        <div className="tab-content-area">
-          {/* Weekly KPI Strip */}
-          <div className="grid-4" style={{ marginBottom: '1.25rem' }}>
-            <StatCard
-              label="Total Weekly Dues"
-              value={formatCurrency(totalWeekly)}
-              icon={Calendar}
-              meta={`${weeklyDues.length} Scheduled Installments`}
-              accentColor="#6366F1"
-            />
-
-            <StatCard
-              label="Collected So Far"
-              value={formatCurrency(collectedWeekly)}
-              icon={CheckCircle2}
-              meta={`${Math.round((collectedWeekly / totalWeekly) * 100)}% Recovered`}
-              accentColor="#10B981"
-            />
-
-            <StatCard
-              label="Remaining to Collect"
-              value={formatCurrency(pendingWeekly)}
-              icon={Clock}
-              meta="Active Field Target"
-              accentColor="#F59E0B"
-            />
-
-            <StatCard
-              label="Overdue This Week"
-              value={`${overdueWeeklyCount} Borrowers`}
-              icon={AlertTriangle}
-              meta="Priority Notice"
-              accentColor="#EF4444"
-            />
-          </div>
-
-          {/* Filters & Table */}
-          <div className="card">
-            <div className="sheet-control-bar">
-              <div className="search-box">
-                <Search size={16} className="search-icon" />
-                <input
-                  type="text"
-                  className="form-input search-input"
-                  placeholder="Search weekly borrower by name, code, loan ID, or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+      {/* Success Receipt Banner */}
+      {receiptSuccess && (
+        <div className="card" style={{ background: '#ECFDF5', borderColor: '#A7F3D0', marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#D1FAE5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle2 size={22} color="var(--emerald)" />
               </div>
-
-              <div className="filter-group">
-                <span className="filter-lbl">Status:</span>
-                {['ALL', 'PENDING', 'PAID', 'OVERDUE'].map((st) => (
-                  <button
-                    key={st}
-                    className={`filter-btn ${statusFilter === st ? 'active' : ''}`}
-                    onClick={() => setStatusFilter(st)}
-                  >
-                    {st}
-                  </button>
-                ))}
+              <div>
+                <strong style={{ color: '#065F46', fontSize: '0.95rem' }}>{receiptSuccess.title}</strong>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#047857' }}>
+                  Received {formatCurrency(receiptSuccess.amount)} via {receiptSuccess.mode} from {receiptSuccess.borrower} (Receipt: <strong>{receiptSuccess.receipt}</strong>)
+                </p>
               </div>
             </div>
-
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Borrower</th>
-                    <th>Loan Code</th>
-                    <th>Week Cycle</th>
-                    <th>Due Date</th>
-                    <th>Installment Due</th>
-                    <th>Remaining Bal</th>
-                    <th>Status</th>
-                    <th>Action / Receipt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredWeekly.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <div className="client-cell">
-                          <span className="client-name">{item.customer_name}</span>
-                          <span className="client-phone"><Phone size={11} /> {item.phone}</span>
-                        </div>
-                      </td>
-                      <td><code>{item.loan_code}</code></td>
-                      <td>
-                        <span className="cycle-tag">{item.installment_week}</span>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{item.due_date}</td>
-                      <td style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--primary)' }}>
-                        {formatCurrency(item.due_amount)}
-                      </td>
-                      <td style={{ fontWeight: 600 }}>{formatCurrency(item.remaining_balance)}</td>
-                      <td>
-                        <StatusBadge status={item.status} />
-                      </td>
-                      <td>
-                        {item.status === 'PAID' ? (
-                          <div className="paid-stamp">
-                            <CheckCircle2 size={14} color="var(--emerald)" />
-                            <span>{item.receipt_no}</span>
-                          </div>
-                        ) : (
-                          <button
-                            className="btn btn-emerald btn-sm"
-                            onClick={() => openCollectDialog(item, 'weekly')}
-                          >
-                            <Receipt size={13} />
-                            <span>Collect Now</span>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <button className="btn btn-emerald btn-sm" onClick={() => setReceiptSuccess(null)}>
+              Dismiss Voucher
+            </button>
           </div>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 2: DAILY COLLECTION SHEET */}
-      {/* ========================================================================= */}
-      {activeTab === 'daily' && (
-        <div className="tab-content-area">
-          {/* Daily KPI Strip */}
-          <div className="grid-3" style={{ marginBottom: '1.25rem' }}>
+      {/* Navigation Tab Bar */}
+      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem', paddingBottom: '0.5rem' }}>
+        <button
+          onClick={() => { setActiveTab('weekly'); setStatusFilter('ALL'); }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.25rem',
+            borderRadius: 'var(--radius-md)',
+            border: activeTab === 'weekly' ? '1px solid #C7D2FE' : '1px solid transparent',
+            background: activeTab === 'weekly' ? '#EEF2FF' : 'transparent',
+            color: activeTab === 'weekly' ? 'var(--primary)' : 'var(--text-secondary)',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          <Calendar size={16} />
+          <span>Tab 1: Weekly Dues Sheet</span>
+          <span style={{ background: activeTab === 'weekly' ? 'var(--primary)' : '#E2E8F0', color: activeTab === 'weekly' ? '#ffffff' : '#64748B', padding: '0.1rem 0.45rem', borderRadius: '10px', fontSize: '0.7rem' }}>
+            {weeklyDues.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('daily'); setStatusFilter('ALL'); }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.25rem',
+            borderRadius: 'var(--radius-md)',
+            border: activeTab === 'daily' ? '1px solid #A7F3D0' : '1px solid transparent',
+            background: activeTab === 'daily' ? '#ECFDF5' : 'transparent',
+            color: activeTab === 'daily' ? 'var(--emerald)' : 'var(--text-secondary)',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          <Receipt size={16} />
+          <span>Tab 2: Daily Collections Sheet</span>
+          <span style={{ background: activeTab === 'daily' ? 'var(--emerald)' : '#E2E8F0', color: activeTab === 'daily' ? '#ffffff' : '#64748B', padding: '0.1rem 0.45rem', borderRadius: '10px', fontSize: '0.7rem' }}>
+            {dailyCollections.length}
+          </span>
+        </button>
+      </div>
+
+      {/* TAB 1: WEEKLY DUES CONTENT */}
+      {activeTab === 'weekly' && (
+        <>
+          {/* Weekly Summary KPIs */}
+          <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
             <StatCard
-              label="Today's Daily Target"
-              value={formatCurrency(totalDaily)}
-              icon={Receipt}
-              meta={`${dailyCollections.length} Merchant Visits`}
-              accentColor="#6366F1"
+              label="This Week's Target"
+              value={formatCurrency(totalWeekly)}
+              icon={Calendar}
+              trend={`${weeklyDues.length} Clients`}
+              trendDirection="up"
+              meta="Scheduled Recovery"
+              accentColor="#4F46E5"
+              accentBg="#EEF2FF"
             />
 
             <StatCard
-              label="Collected Today"
-              value={formatCurrency(collectedDaily)}
+              label="Collected This Week"
+              value={formatCurrency(collectedWeekly)}
               icon={CheckCircle2}
-              meta={`${Math.round((collectedDaily / totalDaily) * 100)}% Completed`}
-              accentColor="#10B981"
+              trend={`${Math.round((collectedWeekly / totalWeekly) * 100)}% Recovered`}
+              trendDirection="up"
+              meta="Cash & Online In"
+              accentColor="#059669"
+              accentBg="#ECFDF5"
             />
 
             <StatCard
-              label="Pending Route Visits"
-              value={formatCurrency(pendingDaily)}
+              label="Pending Recovery"
+              value={formatCurrency(pendingWeekly)}
               icon={Clock}
-              meta="Triplicane & Saidapet"
-              accentColor="#F59E0B"
+              trend="Due by Saturday"
+              trendDirection="down"
+              meta="Field Follow-up"
+              accentColor="#D97706"
+              accentBg="#FFFBEB"
+            />
+
+            <StatCard
+              label="Overdue Clients"
+              value={`${overdueWeeklyCount} Cases`}
+              icon={AlertTriangle}
+              trend="Priority Attention"
+              trendDirection="down"
+              meta="Immediate Visit"
+              accentColor="#E11D48"
+              accentBg="#FFF1F2"
             />
           </div>
 
-          {/* Filters & Table */}
-          <div className="card">
-            <div className="sheet-control-bar">
-              <div className="search-box">
-                <Search size={16} className="search-icon" />
-                <input
-                  type="text"
-                  className="form-input search-input"
-                  placeholder="Search daily shopkeeper by name, loan ID, or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div className="filter-group">
-                <span className="filter-lbl">Status:</span>
-                {['ALL', 'COLLECTED', 'PENDING_VISIT', 'MISSED'].map((st) => (
-                  <button
-                    key={st}
-                    className={`filter-btn ${statusFilter === st ? 'active' : ''}`}
-                    onClick={() => setStatusFilter(st)}
-                  >
-                    {st.replace('_', ' ')}
-                  </button>
-                ))}
-              </div>
+          {/* Search & Filter Bar */}
+          <div className="card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="search-box" style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                className="form-input search-input"
+                style={{ paddingLeft: '2.25rem' }}
+                placeholder="Search by client name, mobile phone, customer code, or loan code..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
 
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Merchant / Shop</th>
-                    <th>Loan Code</th>
-                    <th>Daily Installment</th>
-                    <th>Due Amount</th>
-                    <th>Collected Amt</th>
-                    <th>Mode</th>
-                    <th>Status</th>
-                    <th>Action / Receipt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDaily.map((item) => (
-                    <tr key={item.id}>
+            <select
+              className="form-select"
+              style={{ width: 'auto', minWidth: '160px' }}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending Payment</option>
+              <option value="PAID">Paid / Received</option>
+              <option value="OVERDUE">Overdue Dues</option>
+            </select>
+          </div>
+
+          {/* Weekly Dues Table */}
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Client / Borrower</th>
+                  <th>Loan & Installment Week</th>
+                  <th>Scheduled Due Date</th>
+                  <th>Due Amount</th>
+                  <th>Remaining Balance</th>
+                  <th>Payment Status</th>
+                  <th>Field Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredWeekly.map((due) => {
+                  const isPaid = due.status === 'PAID';
+                  return (
+                    <tr key={due.id}>
                       <td>
-                        <div className="client-cell">
-                          <span className="client-name">{item.customer_name}</span>
-                          <span className="client-phone"><Phone size={11} /> {item.phone}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{due.customer_name}</strong>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {due.customer_code} • {due.phone}
+                          </span>
                         </div>
                       </td>
-                      <td><code>{item.loan_code}</code></td>
                       <td>
-                        <span className="cycle-tag">{item.installment_day}</span>
-                      </td>
-                      <td style={{ fontWeight: 600 }}>{formatCurrency(item.due_amount)}</td>
-                      <td style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: item.collected_amount > 0 ? 'var(--emerald)' : 'var(--text-muted)' }}>
-                        {formatCurrency(item.collected_amount)}
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{due.loan_code}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{due.installment_week}</span>
+                        </div>
                       </td>
                       <td>
-                        {item.payment_mode ? (
-                          <span className="badge badge-secondary">{item.payment_mode}</span>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)' }}>
+                          <Calendar size={13} color="var(--text-muted)" />
+                          <span>{due.due_date}</span>
+                        </div>
                       </td>
                       <td>
-                        <StatusBadge status={item.status} />
+                        <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>{formatCurrency(due.due_amount)}</strong>
                       </td>
                       <td>
-                        {item.status === 'COLLECTED' ? (
-                          <div className="paid-stamp">
-                            <CheckCircle2 size={14} color="var(--emerald)" />
-                            <span>{item.receipt_no} ({item.collected_time})</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(due.remaining_balance)}</span>
+                      </td>
+                      <td>
+                        <StatusBadge status={due.status} />
+                      </td>
+                      <td>
+                        {isPaid ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.72rem', color: 'var(--emerald)' }}>
+                            <span>✓ Paid via {due.payment_mode}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>{due.receipt_no}</span>
                           </div>
                         ) : (
                           <button
                             className="btn btn-emerald btn-sm"
-                            onClick={() => openCollectDialog(item, 'daily')}
+                            onClick={() => openCollectModal(due, 'weekly')}
                           >
-                            <Receipt size={13} />
+                            <DollarSign size={14} />
+                            <span>Collect Due</span>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredWeekly.length === 0 && (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                      <Calendar size={40} style={{ margin: '0 auto 0.75rem', opacity: 0.5 }} />
+                      <h3>No weekly dues records found</h3>
+                      <p>Adjust filters or search parameters.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* TAB 2: DAILY COLLECTIONS CONTENT */}
+      {activeTab === 'daily' && (
+        <>
+          {/* Daily Summary KPIs */}
+          <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
+            <StatCard
+              label="Today's Daily Target"
+              value={formatCurrency(totalDaily)}
+              icon={Receipt}
+              trend={`${dailyCollections.length} Merchants`}
+              trendDirection="up"
+              meta="25-Day Rapid Track"
+              accentColor="#059669"
+              accentBg="#ECFDF5"
+            />
+
+            <StatCard
+              label="Today's Recovery"
+              value={formatCurrency(collectedDaily)}
+              icon={CheckCircle2}
+              trend={`${completedDailyCount}/${dailyCollections.length} Collected`}
+              trendDirection="up"
+              meta="Live Vault & UPI"
+              accentColor="#4F46E5"
+              accentBg="#EEF2FF"
+            />
+
+            <StatCard
+              label="Pending on Route"
+              value={formatCurrency(pendingDaily)}
+              icon={Clock}
+              trend="Field Route Pending"
+              trendDirection="down"
+              meta="Remaining Visits"
+              accentColor="#D97706"
+              accentBg="#FFFBEB"
+            />
+
+            <StatCard
+              label="Collection Progress"
+              value={`${Math.round((collectedDaily / totalDaily) * 100)}%`}
+              icon={DollarSign}
+              trend="98.8% Discipline"
+              trendDirection="up"
+              meta="Daily Efficiency"
+              accentColor="#7C3AED"
+              accentBg="#F5F3FF"
+            />
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="search-box" style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                className="form-input search-input"
+                style={{ paddingLeft: '2.25rem' }}
+                placeholder="Search shopkeeper, shop title, territory bazaar, or customer code..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <select
+              className="form-select"
+              style={{ width: 'auto', minWidth: '160px' }}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="ALL">All Visit Statuses</option>
+              <option value="PENDING">Pending Visit</option>
+              <option value="COLLECTED">Collected</option>
+              <option value="MISSED">Missed / Shop Closed</option>
+            </select>
+          </div>
+
+          {/* Daily Collections Table */}
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Merchant & Shop Location</th>
+                  <th>Installment Day</th>
+                  <th>Daily Installment</th>
+                  <th>Remaining Total</th>
+                  <th>Route Status</th>
+                  <th>Field Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDaily.map((col) => {
+                  const isCollected = col.status === 'COLLECTED';
+                  return (
+                    <tr key={col.id}>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{col.shopkeeper_name}</strong>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {col.shop_name} • {col.location} ({col.customer_code})
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--emerald)' }}>{col.installment_day}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Daily Rapid Loan</span>
+                        </div>
+                      </td>
+                      <td>
+                        <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>{formatCurrency(col.due_amount)}</strong>
+                      </td>
+                      <td>
+                        <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(col.remaining_balance)}</span>
+                      </td>
+                      <td>
+                        <StatusBadge status={col.status} />
+                      </td>
+                      <td>
+                        {isCollected ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.72rem', color: 'var(--emerald)' }}>
+                            <span>✓ Collected at {col.collected_time}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>{col.payment_mode} • {col.receipt_no}</span>
+                          </div>
+                        ) : (
+                          <button
+                            className="btn btn-emerald btn-sm"
+                            onClick={() => openCollectModal(col, 'daily')}
+                          >
+                            <DollarSign size={14} />
                             <span>Record Collection</span>
                           </button>
                         )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+
+                {filteredDaily.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                      <Receipt size={40} style={{ margin: '0 auto 0.75rem', opacity: 0.5 }} />
+                      <h3>No daily collections records match filters</h3>
+                      <p>Adjust filters or search parameters.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Modal: Fast Repayment Collection */}
-      <Modal
-        isOpen={collectModal}
-        onClose={() => setCollectModal(false)}
-        title={receiptSuccess ? "Repayment Collected Successfully" : "Record Repayment Collection"}
-        subtitle={receiptSuccess ? "Logged into double-entry ledger" : `Collecting due for ${collectTarget?.customer_name}`}
-        maxWidth="460px"
-        footer={
-          receiptSuccess ? (
-            <button className="btn btn-primary" onClick={() => setCollectModal(false)}>Close Window</button>
-          ) : (
-            <>
-              <button className="btn btn-secondary" onClick={() => setCollectModal(false)}>Cancel</button>
-              <button className="btn btn-emerald" onClick={handleCollectSubmit} disabled={submitting}>
-                {submitting ? 'Recording...' : 'Confirm Collection'}
+      {/* Collection Action Modal */}
+      {collectTarget && (
+        <Modal
+          isOpen={collectModal}
+          onClose={() => setCollectModal(false)}
+          title={`Record Payment Collection`}
+          subtitle={`Client: ${collectType === 'weekly' ? collectTarget.customer_name : collectTarget.shopkeeper_name}`}
+          maxWidth="520px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Amount Banner */}
+            <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '1.25rem', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                {collectType === 'weekly' ? 'Weekly Due Amount' : 'Daily Installment Amount'}
+              </span>
+              <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--emerald)', margin: '0.2rem 0' }}>
+                {formatCurrency(collectTarget.due_amount)}
+              </div>
+              <span style={{ fontSize: '0.75rem', color: '#047857' }}>
+                Remaining after payment: {formatCurrency(collectTarget.remaining_balance - collectTarget.due_amount)}
+              </span>
+            </div>
+
+            {/* Payment Mode Selector */}
+            <div className="form-group">
+              <label className="form-label">Select Payment Mode *</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                {['CASH', 'UPI', 'BANK_TRANSFER'].map((mode) => (
+                  <div
+                    key={mode}
+                    onClick={() => setPaymentMode(mode)}
+                    style={{
+                      padding: '0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: paymentMode === mode ? '2px solid var(--emerald)' : '1px solid var(--border-color)',
+                      background: paymentMode === mode ? '#ECFDF5' : '#FFFFFF',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      color: paymentMode === mode ? 'var(--emerald)' : 'var(--text-primary)',
+                    }}
+                  >
+                    {mode === 'BANK_TRANSFER' ? 'Bank Transfer' : mode}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setCollectModal(false)}
+                disabled={submitting}
+              >
+                Cancel
               </button>
-            </>
-          )
-        }
-      >
-        {receiptSuccess ? (
-          <div className="receipt-voucher-preview">
-            <CheckCircle2 size={36} color="var(--emerald)" />
-            <h3>{formatCurrency(collectTarget?.due_amount)} Acknowledged</h3>
-            <div className="voucher-details">
-              <div>Borrower: <strong>{collectTarget?.customer_name}</strong></div>
-              <div>Receipt Number: <code>{receiptSuccess.receipt_no}</code></div>
-              <div>Payment Mode: <strong>{receiptSuccess.payment_mode}</strong></div>
-              <div>Date & Time: <strong>{new Date().toLocaleString()}</strong></div>
+              <button
+                className="btn btn-emerald"
+                onClick={handleConfirmCollect}
+                disabled={submitting}
+              >
+                {submitting ? 'Recording...' : 'Confirm & Generate Receipt'}
+              </button>
             </div>
           </div>
-        ) : (
-          <form onSubmit={handleCollectSubmit}>
-            <div className="collect-dialog-body">
-              <div className="collect-summary-card">
-                <div className="cs-row">
-                  <span>Borrower:</span>
-                  <strong>{collectTarget?.customer_name}</strong>
-                </div>
-                <div className="cs-row">
-                  <span>Loan Code:</span>
-                  <code>{collectTarget?.loan_code}</code>
-                </div>
-                <div className="cs-row">
-                  <span>Due Amount:</span>
-                  <strong style={{ color: 'var(--emerald)', fontSize: '1.2rem', fontFamily: 'var(--font-display)' }}>
-                    {formatCurrency(collectTarget?.due_amount)}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginTop: '1rem' }}>
-                <label className="form-label">Payment Mode</label>
-                <select
-                  className="form-select"
-                  value={paymentMode}
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                >
-                  <option value="CASH">Physical Cash (Field Officer Wallet)</option>
-                  <option value="UPI">UPI / QR Code Transfer</option>
-                </select>
-              </div>
-            </div>
-          </form>
-        )}
-      </Modal>
-
-      <style>{`
-        .reports-page {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .tab-pill-container {
-          display: flex;
-          gap: 0.75rem;
-          background: rgba(0, 0, 0, 0.3);
-          padding: 0.4rem;
-          border-radius: var(--radius-lg);
-          border: 1px solid var(--border-color);
-          width: fit-content;
-        }
-
-        .tab-pill-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.65rem 1.25rem;
-          border-radius: var(--radius-md);
-          border: none;
-          background: transparent;
-          color: var(--text-secondary);
-          font-weight: 700;
-          font-size: 0.88rem;
-          cursor: pointer;
-          transition: all var(--transition-fast);
-        }
-
-        .tab-pill-btn.active {
-          background: var(--primary);
-          color: #ffffff;
-          box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
-        }
-
-        .sheet-control-bar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1rem 1.25rem;
-          gap: 1rem;
-          flex-wrap: wrap;
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        .search-box {
-          position: relative;
-          flex: 1;
-          min-width: 260px;
-        }
-
-        .search-icon {
-          position: absolute;
-          left: 0.85rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: var(--text-muted);
-        }
-
-        .search-input {
-          padding-left: 2.3rem;
-        }
-
-        .filter-group {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-        }
-
-        .filter-lbl {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          font-weight: 600;
-        }
-
-        .filter-btn {
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-color);
-          color: var(--text-secondary);
-          font-size: 0.72rem;
-          font-weight: 600;
-          padding: 0.35rem 0.65rem;
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-        }
-
-        .filter-btn.active {
-          background: var(--primary);
-          color: #ffffff;
-          border-color: var(--primary);
-        }
-
-        .client-cell {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .client-name {
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-
-        .client-phone {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-        }
-
-        .cycle-tag {
-          font-size: 0.75rem;
-          color: #818cf8;
-          font-weight: 600;
-        }
-
-        .paid-stamp {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          font-size: 0.75rem;
-          color: var(--emerald);
-          font-weight: 600;
-        }
-
-        .collect-summary-card {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-md);
-          padding: 0.85rem 1rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .cs-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 0.85rem;
-        }
-
-        .receipt-voucher-preview {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          padding: 1.5rem 0;
-          gap: 0.75rem;
-        }
-
-        .voucher-details {
-          margin-top: 0.75rem;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-md);
-          padding: 0.85rem 1rem;
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          gap: 0.4rem;
-          font-size: 0.82rem;
-          text-align: left;
-        }
-      `}</style>
+        </Modal>
+      )}
     </div>
   );
 };
