@@ -16,8 +16,8 @@ import AdminProfile from '../pages/admin/pages/Profile/Profile';
 import AddUserModal from '../pages/admin/modal/adduser/AddUserModal';
 import ManageUsersModal from '../pages/admin/modal/manageuser/ManageUsersModal';
 
-// Auth Screen
-import LoginScreen from '../pages/auth/LoginScreen';
+// Fronter Auth Screen
+import Login from '../pages/Fronter/login/Login';
 
 const AppNavigation = () => {
   const {
@@ -46,12 +46,12 @@ const AppNavigation = () => {
     setActiveModal(null);
   };
 
-  // If not signed in, show LoginScreen
+  // If not signed in, show Login
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <LoginScreen />
+        <Login />
       </SafeAreaView>
     );
   }

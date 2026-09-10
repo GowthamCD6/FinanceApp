@@ -37,6 +37,8 @@ export const Icon = ({ name, size = 18, color = '#2563EB', style }) => {
       );
     }
 
+    case 'account-outline':
+    case 'account':
     case 'customers':
     case 'users':
     case 'user': {
@@ -49,19 +51,48 @@ export const Icon = ({ name, size = 18, color = '#2563EB', style }) => {
       );
     }
 
+    case 'account-plus': {
+      const headSize = s * 0.32;
+      return (
+        <View style={[{ width: s, height: s, justifyContent: 'center' }, style]}>
+          <View style={{ alignItems: 'flex-start', paddingLeft: 1 }}>
+            <View style={{ width: headSize, height: headSize, borderRadius: headSize / 2, borderWidth: 1.5, borderColor: color }} />
+            <View style={{ width: s * 0.65, height: s * 0.3, borderTopLeftRadius: s * 0.3, borderTopRightRadius: s * 0.3, borderWidth: 1.5, borderBottomWidth: 0, borderColor: color, marginTop: 1 }} />
+          </View>
+          <View style={{ position: 'absolute', right: 0, top: s * 0.25, alignItems: 'center', justifyContent: 'center', width: s * 0.4, height: s * 0.4 }}>
+            <View style={{ width: s * 0.35, height: 1.6, backgroundColor: color, borderRadius: 1 }} />
+            <View style={{ height: s * 0.35, width: 1.6, backgroundColor: color, borderRadius: 1, position: 'absolute' }} />
+          </View>
+        </View>
+      );
+    }
+
+    case 'calendar-blank-outline':
+    case 'calendar': {
+      return (
+        <View style={[{ width: s, height: s, borderWidth: 1.6, borderColor: color, borderRadius: 3, paddingHorizontal: 2, paddingTop: 4, justifyContent: 'space-between' }, style]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', position: 'absolute', top: -3, left: 2, right: 2 }}>
+            <View style={{ width: 2, height: 4, backgroundColor: color, borderRadius: 1 }} />
+            <View style={{ width: 2, height: 4, backgroundColor: color, borderRadius: 1 }} />
+          </View>
+          <View style={{ width: '100%', height: 1.4, backgroundColor: color }} />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 4, height: 4, borderRadius: 1, backgroundColor: color }} />
+          </View>
+        </View>
+      );
+    }
+
     case 'fund':
     case 'bank': {
       return (
         <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'space-between' }, style]}>
-          {/* Triangular Roof */}
           <View style={{ width: s * 0.9, height: 2, backgroundColor: color, borderRadius: 1 }} />
-          {/* Pillars */}
           <View style={{ flexDirection: 'row', width: s * 0.75, justifyContent: 'space-between', height: s * 0.5 }}>
             <View style={{ width: 2, height: '100%', backgroundColor: color }} />
             <View style={{ width: 2, height: '100%', backgroundColor: color }} />
             <View style={{ width: 2, height: '100%', backgroundColor: color }} />
           </View>
-          {/* Base */}
           <View style={{ width: s, height: 2.2, backgroundColor: color, borderRadius: 1 }} />
         </View>
       );
@@ -124,6 +155,22 @@ export const Icon = ({ name, size = 18, color = '#2563EB', style }) => {
       );
     }
 
+    case 'chevron-down': {
+      return (
+        <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }, style]}>
+          <View style={{ width: s * 0.45, height: s * 0.45, borderBottomWidth: 2, borderRightWidth: 2, borderColor: color, transform: [{ rotate: '45deg' }], marginTop: -s * 0.15 }} />
+        </View>
+      );
+    }
+
+    case 'chevron-up': {
+      return (
+        <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }, style]}>
+          <View style={{ width: s * 0.45, height: s * 0.45, borderTopWidth: 2, borderLeftWidth: 2, borderColor: color, transform: [{ rotate: '45deg' }], marginTop: s * 0.15 }} />
+        </View>
+      );
+    }
+
     case 'arrow-right': {
       return (
         <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }, style]}>
@@ -133,6 +180,7 @@ export const Icon = ({ name, size = 18, color = '#2563EB', style }) => {
       );
     }
 
+    case 'back':
     case 'arrow-left': {
       return (
         <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }, style]}>
@@ -149,6 +197,7 @@ export const Icon = ({ name, size = 18, color = '#2563EB', style }) => {
       );
     }
 
+    case 'shield-account':
     case 'shield':
     case 'admin': {
       return (
@@ -167,6 +216,7 @@ export const Icon = ({ name, size = 18, color = '#2563EB', style }) => {
       );
     }
 
+    case 'phone-outline':
     case 'phone': {
       return (
         <View style={[{ width: s * 0.65, height: s, borderWidth: 1.6, borderColor: color, borderRadius: 4, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 }, style]}>
@@ -176,8 +226,18 @@ export const Icon = ({ name, size = 18, color = '#2563EB', style }) => {
       );
     }
 
+    case 'briefcase': {
+      return (
+        <View style={[{ width: s, height: s * 0.75, borderWidth: 1.6, borderColor: color, borderRadius: 2, justifyContent: 'flex-start', alignItems: 'center' }, style]}>
+          <View style={{ width: s * 0.4, height: 2, borderWidth: 1, borderColor: color, borderBottomWidth: 0, position: 'absolute', top: -3 }} />
+          <View style={{ width: '100%', height: 1.4, backgroundColor: color, marginTop: 4 }} />
+        </View>
+      );
+    }
+
     case 'shop':
-    case 'store': {
+    case 'store':
+    case 'building': {
       return (
         <View style={[{ width: s, height: s * 0.8, borderWidth: 1.6, borderColor: color, borderRadius: 2, overflow: 'hidden' }, style]}>
           <View style={{ height: '35%', backgroundColor: color }} />
