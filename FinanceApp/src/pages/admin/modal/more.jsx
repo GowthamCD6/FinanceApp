@@ -1,76 +1,23 @@
 import React from 'react';
-import { Modal, View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
-import Icon from '../common/Icon';
+import {
+  Modal,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Platform,
+} from 'react-native';
+import Icon from '../../../components/common/Icon';
 
-export const ActionMoreModal = ({
+export const MoreModal = ({
   visible,
   onClose,
-  currentRole = 'SUPER_ADMIN',
   onAction,
 }) => {
   if (!visible) return null;
 
-  const superAdminActions = [
-    {
-      id: 'add_organization',
-      title: 'Register Organisation',
-      description: 'Provision new tenant branch or company',
-      icon: 'fund',
-      iconBg: '#EFF6FF',
-      iconColor: '#2563EB',
-    },
-    {
-      id: 'manage_users',
-      title: 'Manage Users & Status',
-      description: 'Audit user accounts, KYC, and statuses',
-      icon: 'customers',
-      iconBg: '#FFFBEB',
-      iconColor: '#D97706',
-    },
-    {
-      id: 'add_user',
-      title: 'Add User / Staff',
-      description: 'Onboard new borrower, merchant, or staff',
-      icon: 'plus',
-      iconBg: '#F0FDF4',
-      iconColor: '#059669',
-    },
-    {
-      id: 'disburse_loan',
-      title: 'Disburse New Loan',
-      description: 'Originate Weekly (10 wk) or Daily (25 d) loan',
-      icon: 'loans',
-      iconBg: '#EFF6FF',
-      iconColor: '#2563EB',
-    },
-    {
-      id: 'add_capital',
-      title: 'Inject Capital Equity',
-      description: 'Deposit funds into Cash Vault, Bank, or UPI pool',
-      icon: 'fund',
-      iconBg: '#ECFDF5',
-      iconColor: '#059669',
-    },
-    {
-      id: 'add_expense',
-      title: 'Record Daily Expense',
-      description: 'Log transport, fuel, or office operational expense',
-      icon: 'receipt',
-      iconBg: '#FEF2F2',
-      iconColor: '#DC2626',
-    },
-  ];
-
   const adminActions = [
     {
-      id: 'manage_users',
-      title: 'Manage Users & Status',
-      description: 'Audit user accounts, KYC, and statuses',
-      icon: 'customers',
-      iconBg: '#FFFBEB',
-      iconColor: '#D97706',
-    },
-    {
       id: 'add_user',
       title: 'Add User / Staff',
       description: 'Onboard new borrower, merchant, or staff',
@@ -79,61 +26,14 @@ export const ActionMoreModal = ({
       iconColor: '#059669',
     },
     {
-      id: 'disburse_loan',
-      title: 'Disburse New Loan',
-      description: 'Originate Weekly (10 wk) or Daily (25 d) loan',
-      icon: 'loans',
-      iconBg: '#EFF6FF',
-      iconColor: '#2563EB',
-    },
-    {
-      id: 'collect_payment',
-      title: 'Collect Installment',
-      description: '1-tap field recovery & instant receipt generation',
-      icon: 'collections',
-      iconBg: '#ECFDF5',
-      iconColor: '#059669',
-    },
-    {
-      id: 'day_end_settlement',
-      title: 'Day-End Cash Handover',
-      description: 'Reconcile field bag and transfer cash to vault',
-      icon: 'lock',
-      iconBg: '#F0FDF4',
-      iconColor: '#059669',
-    },
-  ];
-
-  const userActions = [
-    {
-      id: 'pay_due',
-      title: 'Pay Next Installment',
-      description: 'Instant self-payment via UPI (GPay/PhonePe)',
-      icon: 'check',
-      iconBg: '#EFF6FF',
-      iconColor: '#2563EB',
-    },
-    {
-      id: 'view_schedule',
-      title: 'Repayment Schedule',
-      description: 'Check upcoming dues and installment timeline',
-      icon: 'calendar',
+      id: 'manage_users',
+      title: 'Manage Users & Status',
+      description: 'Audit user accounts, KYC, and statuses',
+      icon: 'customers',
       iconBg: '#FFFBEB',
       iconColor: '#D97706',
     },
-    {
-      id: 'view_receipts',
-      title: 'Payment Receipts',
-      description: 'View verified vouchers and download statements',
-      icon: 'receipt',
-      iconBg: '#ECFDF5',
-      iconColor: '#059669',
-    },
   ];
-
-  const actions = 
-    currentRole === 'SUPER_ADMIN' ? superAdminActions :
-    currentRole === 'ADMIN' ? adminActions : userActions;
 
   const handleItemPress = (actionId) => {
     onClose();
@@ -147,14 +47,14 @@ export const ActionMoreModal = ({
       visible={visible}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
-        style={styles.overlay} 
-        activeOpacity={1} 
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
         onPress={onClose}
       >
-        <TouchableOpacity 
-          style={styles.container} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.container}
+          activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
         >
           {/* Handle bar */}
@@ -163,12 +63,12 @@ export const ActionMoreModal = ({
           {/* Sheet Header */}
           <View style={styles.header}>
             <Text style={styles.sheetTitle}>Quick Operations</Text>
-            <Text style={styles.sheetSubtitle}>Fast actions for {currentRole.replace('_', ' ')}</Text>
+            <Text style={styles.sheetSubtitle}>Fast actions for Admin Operations</Text>
           </View>
 
           {/* Menu List */}
           <View style={styles.menuList}>
-            {actions.map((item) => (
+            {adminActions.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.menuItemRow}
@@ -188,8 +88,8 @@ export const ActionMoreModal = ({
           </View>
 
           {/* Circular Close Button at bottom */}
-          <TouchableOpacity 
-            style={styles.xButton} 
+          <TouchableOpacity
+            style={styles.xButton}
             onPress={onClose}
             activeOpacity={0.8}
           >
@@ -278,12 +178,12 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#059669',
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
     marginTop: 6,
-    shadowColor: '#2563EB',
+    shadowColor: '#059669',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
@@ -291,4 +191,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ActionMoreModal;
+export default MoreModal;

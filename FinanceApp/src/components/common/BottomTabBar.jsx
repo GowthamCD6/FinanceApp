@@ -1,7 +1,20 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import Icon from './Icon';
 
+/**
+ * BottomTabBar
+ *
+ * A curved bottom tab bar with a centre raised "+" action button.
+ * Splits tabs into 2 left + 2 right around the centre button.
+ *
+ * Props:
+ *   tabs          {Array}    – [{ id, label, iconName, badge? }]
+ *   activeTab     {string}   – id of the active tab
+ *   onTabPress    {function} – called with tab id on press
+ *   onOpenMore    {function} – called when the centre "+" is pressed
+ *   primaryColor  {string}   – accent color for active state & centre button
+ */
 export const BottomTabBar = ({
   tabs = [],
   activeTab,
@@ -9,13 +22,13 @@ export const BottomTabBar = ({
   onOpenMore,
   primaryColor = '#2563EB',
 }) => {
-  // Split tabs into 2 on left and 2 on right for the center elevated button
-  const leftTabs = tabs.slice(0, 2);
+  const leftTabs  = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2, 4);
 
   return (
     <View style={styles.tabBarWrapper}>
       <View style={styles.tabBar}>
+
         {/* Left Tabs */}
         {leftTabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -45,7 +58,7 @@ export const BottomTabBar = ({
           );
         })}
 
-        {/* Center Raised Custom Tab Button (Exact FUND-APP GDKChit layout) */}
+        {/* Centre Raised "+" Button */}
         <TouchableOpacity
           style={styles.customTabButton}
           onPress={onOpenMore}
@@ -84,6 +97,7 @@ export const BottomTabBar = ({
             </TouchableOpacity>
           );
         })}
+
       </View>
     </View>
   );
@@ -104,14 +118,9 @@ const styles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 76 : 64,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
     elevation: 10,
     shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: -4,
-    },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
     paddingHorizontal: 8,
@@ -152,10 +161,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
   },
