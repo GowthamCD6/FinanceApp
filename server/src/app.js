@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 
 const path = require('path');
+const apiMetricsMiddleware = require('./middleware/apiMetrics.middleware');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const organizationRoutes = require('./modules/organizations/organization.routes');
@@ -21,6 +22,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+app.use(apiMetricsMiddleware);
 
 // Static web portal assets
 const publicDirectory = path.join(__dirname, '../public');

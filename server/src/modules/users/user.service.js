@@ -78,48 +78,55 @@ async function createUser(data, creatorId = null) {
       await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [userId, roleId]);
     }
 
-    // 4. Create customer record for borrowers / shopkeepers
-    const customerCode = await generateCustomerCode();
-    const custType = role === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER';
+    // 4. Create customer record ONLY for borrowers / shopkeepers (skip for SuperAdmin/Admin)
+    let customerCode = null;
+    let custId = null;
 
-    const [custRes] = await conn.query(
-      `INSERT INTO customers 
-       (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, user_id, assigned_agent_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        effectiveOrgId,
-        data.branchId || null,
-        customerCode,
-        displayName,
-        rawPhone,
-        alternatePhone || null,
-        address || null,
-        city || null,
-        custType,
-        occupation || null,
-        shopName || null,
-        status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
-        dateJoined ? String(dateJoined).slice(0, 10) : new Date().toISOString().slice(0, 10),
-        userId,
-        data.assignedAgentId || null,
-        creatorId || null,
-      ]
-    );
+    if (!['SUPER_ADMIN', 'ADMIN', 'AUDITOR'].includes(role)) {
+      customerCode = await generateCustomerCode();
+      const custType = role === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER';
 
-    // Save initial notes if provided
-    if (notes) {
-      await conn.query(
-        `INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)`,
-        [custRes.insertId, notes, creatorId || null]
+      const [custRes] = await conn.query(
+        `INSERT INTO customers 
+         (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, user_id, assigned_agent_id, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          effectiveOrgId,
+          data.branchId || null,
+          customerCode,
+          displayName,
+          rawPhone,
+          alternatePhone || null,
+          address || null,
+          city || null,
+          custType,
+          occupation || null,
+          shopName || null,
+          status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+          dateJoined ? String(dateJoined).slice(0, 10) : new Date().toISOString().slice(0, 10),
+          userId,
+          data.assignedAgentId || null,
+          creatorId || null,
+        ]
       );
+      custId = custRes.insertId;
+
+      // Save initial notes if provided
+      if (notes) {
+        await conn.query(
+          `INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)`,
+          [custId, notes, creatorId || null]
+        );
+      }
     }
 
     return {
       id: userId,
-      customerId: custRes.insertId,
+      customerId: custId,
       customerCode,
       name: displayName,
       phone: rawPhone,
+      email: userEmail,
       address,
       role,
       status,
@@ -143,9 +150,14 @@ async function getUsers({ search, role, status, organizationId, page = 1, limit 
   }
 
   if (search) {
-    whereClauses.push('(u.name LIKE ? OR u.phone LIKE ? OR c.customer_code LIKE ? OR c.shop_name LIKE ?)');
+    whereClauses.push('(u.name LIKE ? OR u.phone LIKE ? OR u.email LIKE ? OR c.customer_code LIKE ? OR c.shop_name LIKE ?)');
     const searchTerm = `%${search}%`;
-    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+  }
+
+  if (role && role !== 'ALL') {
+    whereClauses.push('(u.role_type = ? OR c.customer_type = ? OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = u.id AND r.name = ?))');
+    params.push(role, role, role);
   }
 
   if (status && status !== 'ALL') {
@@ -464,9 +476,20 @@ async function updateUser(userId, data, updaterId = null) {
   });
 }
 
+/**
+ * Update user active/suspended status
+ */
+async function updateUserStatus(userId, status) {
+  const nextStatus = status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+  await query(`UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?`, [nextStatus, userId]);
+  await query(`UPDATE customers SET status = ?, updated_at = NOW() WHERE user_id = ?`, [nextStatus, userId]);
+  return await getUserById(userId);
+}
+
 module.exports = {
   createUser,
   getUsers,
   getUserById,
   updateUser,
+  updateUserStatus,
 };

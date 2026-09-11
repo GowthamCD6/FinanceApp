@@ -38,7 +38,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [governanceOpen, setGovernanceOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [metrics, setMetrics] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -53,18 +52,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
       }
     }
   }, [pathOrgId, activeOrg, organizations, setActiveOrg]);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const m = await api.getAdminDashboardMetrics();
-        setMetrics(m);
-      } catch (err) {
-        console.error("Sidebar metrics fetch error:", err);
-      }
-    };
-    fetchStats();
-  }, []);
 
   const formatCurrency = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 

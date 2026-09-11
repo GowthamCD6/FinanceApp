@@ -58,9 +58,25 @@ async function updateUser(req, res) {
   }
 }
 
+async function updateUserStatus(req, res) {
+  try {
+    const { status } = req.body;
+    const user = await userService.updateUserStatus(req.params.id, status);
+    return res.json({
+      success: true,
+      message: 'User status updated successfully.',
+      data: user,
+    });
+  } catch (error) {
+    console.error('Update user status error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   createUser,
   getUsers,
   getUserById,
   updateUser,
+  updateUserStatus,
 };

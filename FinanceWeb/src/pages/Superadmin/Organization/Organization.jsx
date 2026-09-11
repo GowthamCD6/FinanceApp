@@ -8,12 +8,10 @@ import {
   Search,
   Phone,
   User,
-  ShieldCheck,
   Power,
   ExternalLink,
   CheckCircle2,
   AlertCircle,
-  Briefcase,
   Layers,
   ArrowRight,
   DollarSign,
@@ -21,24 +19,34 @@ import {
   Edit2,
   Save,
   X,
-  CreditCard,
-  MapPin,
+  RotateCw,
+  Sparkles,
+  ShieldCheck,
   TrendingUp,
 } from 'lucide-react';
 
 const PLANS = [
-  { id: 'STARTER', label: 'Starter', color: 'badge-starter', desc: 'Single branch, up to 100 borrowers' },
-  { id: 'PRO', label: 'Pro', color: 'badge-pro', desc: 'Multi-branch operations with rapid collections' },
-  { id: 'ENTERPRISE', label: 'Enterprise', color: 'badge-enterprise', desc: 'Unlimited branches, custom limits & priority SLA' },
+  { id: 'STARTER', label: 'Starter', desc: 'Single branch, up to 100 borrowers' },
+  { id: 'PRO', label: 'Pro', desc: 'Multi-branch operations with rapid collections' },
+  { id: 'ENTERPRISE', label: 'Enterprise', desc: 'Unlimited branches, custom limits & priority SLA' },
 ];
 
 export const Organization = () => {
   const navigate = useNavigate();
-  const { organizations, addOrganization, updateOrganization, updateOrgStatus, setActiveOrg } = useOrg();
+  const {
+    organizations,
+    loading,
+    addOrganization,
+    updateOrganization,
+    updateOrgStatus,
+    setActiveOrg,
+    refreshOrganizations,
+  } = useOrg();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [planFilter, setPlanFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Add Org Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -68,6 +76,17 @@ export const Organization = () => {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
+
+  const handleManualRefresh = async () => {
+    if (refreshOrganizations) {
+      setIsRefreshing(true);
+      try {
+        await refreshOrganizations();
+      } finally {
+        setTimeout(() => setIsRefreshing(false), 500);
+      }
+    }
+  };
 
   const validateAdd = () => {
     const errs = {};
@@ -206,21 +225,38 @@ export const Organization = () => {
       {/* Page Header */}
       <div className="org-header-row">
         <div className="org-header-left">
-          <div className="org-section-tag">SUPERADMIN GOVERNANCE • MULTI-TENANT</div>
-          <h1 className="org-main-title">Organization & Branch Registry</h1>
-          <p className="org-main-subtitle">
-            Manage platform tenant organizations, multi-branch network operations, and subscription tier licenses.
-          </p>
+          <div className="header-title-wrap">
+            <h1 className="org-main-title">Organization & Branch Registry</h1>
+            <span className="org-count-badge">
+              {loading ? (
+                <span className="skeleton-pill" style={{ width: 45, height: 20 }} />
+              ) : (
+                `${organizations.length} Tenants`
+              )}
+            </span>
+          </div>
         </div>
 
-        <button
-          type="button"
-          className="btn-create-org"
-          onClick={() => setIsAddModalOpen(true)}
-        >
-          <Plus size={18} />
-          <span>Onboard Organization</span>
-        </button>
+        <div className="org-header-actions">
+          <button
+            type="button"
+            className={`btn-refresh-data ${isRefreshing || loading ? 'refreshing' : ''}`}
+            onClick={handleManualRefresh}
+            title="Refresh Live Data"
+            disabled={loading || isRefreshing}
+          >
+            <RotateCw size={16} />
+          </button>
+
+          <button
+            type="button"
+            className="btn-create-org"
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            <Plus size={18} />
+            <span>Onboard Organization</span>
+          </button>
+        </div>
       </div>
 
       {/* Success Alert Banner */}
@@ -233,58 +269,75 @@ export const Organization = () => {
 
       {/* Summary KPI Strip */}
       <div className="org-kpi-grid">
-        <div className="org-kpi-card">
-          <div className="org-kpi-top">
-            <span className="org-kpi-label">Total Organizations</span>
-            <div className="org-kpi-icon icon-blue">
-              <Building size={20} />
+        {loading ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="org-kpi-card skeleton-card">
+                <div className="org-kpi-top">
+                  <div className="skeleton-bar" style={{ width: '45%', height: 14 }} />
+                  <div className="skeleton-circle" style={{ width: 36, height: 36 }} />
+                </div>
+                <div className="skeleton-bar" style={{ width: '60%', height: 28, margin: '10px 0' }} />
+                <div className="skeleton-bar" style={{ width: '75%', height: 12 }} />
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <div className="org-kpi-card">
+              <div className="org-kpi-top">
+                <span className="org-kpi-label">Total Organizations</span>
+                <div className="org-kpi-icon icon-blue">
+                  <Building size={20} />
+                </div>
+              </div>
+              <div className="org-kpi-value">{organizations.length}</div>
+              <div className="org-kpi-footer">
+                <span className="dot-green" />
+                <span>Active Tenants Registered</span>
+              </div>
             </div>
-          </div>
-          <div className="org-kpi-value">{organizations.length}</div>
-          <div className="org-kpi-footer">
-            <span className="dot-green" />
-            <span>Active Tenants Registered</span>
-          </div>
-        </div>
 
-        <div className="org-kpi-card">
-          <div className="org-kpi-top">
-            <span className="org-kpi-label">Operating Branches</span>
-            <div className="org-kpi-icon icon-purple">
-              <Layers size={20} />
+            <div className="org-kpi-card">
+              <div className="org-kpi-top">
+                <span className="org-kpi-label">Operating Branches</span>
+                <div className="org-kpi-icon icon-purple">
+                  <Layers size={20} />
+                </div>
+              </div>
+              <div className="org-kpi-value">{totalBranches}</div>
+              <div className="org-kpi-footer">
+                <span>Multi-Branch Field Network</span>
+              </div>
             </div>
-          </div>
-          <div className="org-kpi-value">{totalBranches}</div>
-          <div className="org-kpi-footer">
-            <span>Multi-Branch Field Network</span>
-          </div>
-        </div>
 
-        <div className="org-kpi-card">
-          <div className="org-kpi-top">
-            <span className="org-kpi-label">Active Borrowers</span>
-            <div className="org-kpi-icon icon-green">
-              <Users size={20} />
+            <div className="org-kpi-card">
+              <div className="org-kpi-top">
+                <span className="org-kpi-label">Active Borrowers</span>
+                <div className="org-kpi-icon icon-green">
+                  <Users size={20} />
+                </div>
+              </div>
+              <div className="org-kpi-value">{totalBorrowers}</div>
+              <div className="org-kpi-footer">
+                <span className="highlight-green">Across all registered branches</span>
+              </div>
             </div>
-          </div>
-          <div className="org-kpi-value">{totalBorrowers}</div>
-          <div className="org-kpi-footer">
-            <span className="highlight-green">Across all registered branches</span>
-          </div>
-        </div>
 
-        <div className="org-kpi-card">
-          <div className="org-kpi-top">
-            <span className="org-kpi-label">Total Circulating Capital</span>
-            <div className="org-kpi-icon icon-amber">
-              <DollarSign size={20} />
+            <div className="org-kpi-card">
+              <div className="org-kpi-top">
+                <span className="org-kpi-label">Total Circulating Capital</span>
+                <div className="org-kpi-icon icon-amber">
+                  <DollarSign size={20} />
+                </div>
+              </div>
+              <div className="org-kpi-value">{formatCurrency(totalPortfolio)}</div>
+              <div className="org-kpi-footer">
+                <span>Active lending liquidity</span>
+              </div>
             </div>
-          </div>
-          <div className="org-kpi-value">{formatCurrency(totalPortfolio)}</div>
-          <div className="org-kpi-footer">
-            <span>Active lending liquidity</span>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Search & Filter Toolbar */}
@@ -296,6 +349,7 @@ export const Organization = () => {
             placeholder="Search by organization name, code, admin name, or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            disabled={loading}
           />
           {searchTerm && (
             <button
@@ -313,6 +367,7 @@ export const Organization = () => {
             className="org-select"
             value={planFilter}
             onChange={(e) => setPlanFilter(e.target.value)}
+            disabled={loading}
           >
             <option value="ALL">All Plans</option>
             <option value="STARTER">Starter</option>
@@ -324,6 +379,7 @@ export const Organization = () => {
             className="org-select"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            disabled={loading}
           >
             <option value="ALL">All Statuses</option>
             <option value="ACTIVE">Active</option>
@@ -350,7 +406,50 @@ export const Organization = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredOrgs.length === 0 ? (
+              {loading ? (
+                <>
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <tr key={i} className="org-row skeleton-row">
+                      <td>
+                        <div className="org-name-cell">
+                          <div className="skeleton-circle" style={{ width: 36, height: 36 }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="skeleton-bar" style={{ width: 140, height: 14 }} />
+                            <div className="skeleton-bar" style={{ width: 80, height: 10 }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="skeleton-bar" style={{ width: 110, height: 14 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-bar" style={{ width: 95, height: 14 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-pill" style={{ width: 75, height: 22 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-bar" style={{ width: 30, height: 14 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-bar" style={{ width: 40, height: 14 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-pill" style={{ width: 70, height: 22 }} />
+                      </td>
+                      <td>
+                        <div className="skeleton-bar" style={{ width: 85, height: 14 }} />
+                      </td>
+                      <td className="td-actions">
+                        <div className="action-buttons-group">
+                          <div className="skeleton-bar" style={{ width: 65, height: 28, borderRadius: 6 }} />
+                          <div className="skeleton-circle" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              ) : filteredOrgs.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="empty-table-cell">
                     <div className="empty-state">
@@ -401,7 +500,7 @@ export const Organization = () => {
                     <td>
                       <div className="admin-phone-cell">
                         <Phone size={14} className="phone-icon" />
-                        <span>{org.admin_phone || '9876543210'}</span>
+                        <span>{org.admin_phone || org.phone || '9876543210'}</span>
                       </div>
                     </td>
 
@@ -419,7 +518,7 @@ export const Organization = () => {
 
                     {/* Total Borrowers */}
                     <td>
-                      <span className="borrower-count-badge">{org.total_customers || 0}</span>
+                      <span className="borrower-count-badge">{org.total_customers || org.customer_count || 0}</span>
                     </td>
 
                     {/* Status */}
@@ -733,19 +832,16 @@ export const Organization = () => {
 
         .org-header-row {
           display: flex;
-          align-items: flex-start;
+          align-items: center;
           justify-content: space-between;
           gap: 1.5rem;
           flex-wrap: wrap;
         }
 
-        .org-section-tag {
-          font-size: 0.72rem;
-          font-weight: 700;
-          color: #1976d2;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          margin-bottom: 0.25rem;
+        .header-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.85rem;
         }
 
         .org-main-title {
@@ -757,11 +853,51 @@ export const Organization = () => {
           line-height: 1.2;
         }
 
-        .org-main-subtitle {
-          font-size: 0.88rem;
+        .org-count-badge {
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          color: #1976d2;
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 0.25rem 0.6rem;
+          border-radius: 9999px;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .org-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .btn-refresh-data {
+          width: 38px;
+          height: 38px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
           color: #475569;
-          margin: 0.35rem 0 0 0;
-          max-width: 680px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-refresh-data:hover:not(:disabled) {
+          background: #f1f5f9;
+          color: #1976d2;
+          border-color: #93c5fd;
+        }
+
+        .btn-refresh-data.refreshing svg {
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         .btn-create-org {
@@ -797,6 +933,35 @@ export const Organization = () => {
           color: #065f46;
           font-size: 0.85rem;
           font-weight: 600;
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        /* Skeleton Styles */
+        .skeleton-bar {
+          background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+          background-size: 200% 100%;
+          border-radius: 4px;
+          animation: shimmer 1.5s infinite;
+        }
+
+        .skeleton-circle {
+          background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+          background-size: 200% 100%;
+          border-radius: 50%;
+          animation: shimmer 1.5s infinite;
+          flex-shrink: 0;
+        }
+
+        .skeleton-pill {
+          background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+          background-size: 200% 100%;
+          border-radius: 9999px;
+          animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
 
         /* KPI Cards */
@@ -830,16 +995,16 @@ export const Organization = () => {
 
         .org-kpi-label {
           font-size: 0.8rem;
-          font-weight: 600;
+          font-weight: 700;
           color: #475569;
           text-transform: uppercase;
           letter-spacing: 0.04em;
         }
 
         .org-kpi-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -851,10 +1016,10 @@ export const Organization = () => {
         .icon-amber { background: #fffbeb; color: #d97706; }
 
         .org-kpi-value {
-          font-size: 1.6rem;
+          font-size: 1.65rem;
           font-weight: 800;
           color: #0f172a;
-          margin: 0.4rem 0 0.35rem 0;
+          margin: 0.45rem 0 0.35rem 0;
           letter-spacing: -0.02em;
         }
 
@@ -864,19 +1029,20 @@ export const Organization = () => {
           gap: 0.45rem;
           font-size: 0.75rem;
           color: #64748b;
-          font-weight: 500;
+          font-weight: 600;
         }
 
         .dot-green {
-          width: 6px;
-          height: 6px;
+          width: 7px;
+          height: 7px;
           border-radius: 50%;
           background: #059669;
+          box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
         }
 
         .highlight-green {
           color: #059669;
-          font-weight: 600;
+          font-weight: 700;
         }
 
         /* Toolbar */
@@ -904,7 +1070,7 @@ export const Organization = () => {
 
         .org-search-box input {
           width: 100%;
-          padding: 0.6rem 2.2rem 0.6rem 2.4rem;
+          padding: 0.65rem 2.2rem 0.65rem 2.4rem;
           background: #ffffff;
           border: 1px solid #cbd5e1;
           border-radius: 8px;
@@ -944,9 +1110,9 @@ export const Organization = () => {
           background: #ffffff;
           border: 1px solid #cbd5e1;
           border-radius: 8px;
-          padding: 0.6rem 0.85rem;
+          padding: 0.65rem 0.85rem;
           font-size: 0.85rem;
-          font-weight: 500;
+          font-weight: 600;
           color: #0f172a;
           outline: none;
           cursor: pointer;
@@ -978,7 +1144,7 @@ export const Organization = () => {
 
         .org-table thead th {
           background: #f8fafc;
-          padding: 0.85rem 1rem;
+          padding: 0.9rem 1rem;
           font-size: 0.75rem;
           font-weight: 700;
           color: #475569;
@@ -997,12 +1163,12 @@ export const Organization = () => {
           transition: background-color 0.15s ease;
         }
 
-        .org-row:hover {
+        .org-row:hover:not(.skeleton-row) {
           background-color: #f8fafc;
         }
 
         .org-row td {
-          padding: 0.85rem 1rem;
+          padding: 0.9rem 1rem;
           font-size: 0.875rem;
           vertical-align: middle;
         }
@@ -1017,7 +1183,7 @@ export const Organization = () => {
           width: 36px;
           height: 36px;
           border-radius: 8px;
-          background: #1976d2;
+          background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
           color: #ffffff;
           display: flex;
           align-items: center;
@@ -1042,7 +1208,7 @@ export const Organization = () => {
         .org-code-sub {
           font-size: 0.75rem;
           color: #64748b;
-          font-weight: 600;
+          font-weight: 700;
         }
 
         .admin-name-cell {
@@ -1064,6 +1230,7 @@ export const Organization = () => {
           gap: 0.4rem;
           color: #475569;
           font-size: 0.85rem;
+          font-weight: 500;
         }
 
         .phone-icon {
@@ -1073,7 +1240,7 @@ export const Organization = () => {
 
         .plan-pill {
           display: inline-block;
-          padding: 0.2rem 0.65rem;
+          padding: 0.25rem 0.7rem;
           border-radius: 6px;
           font-size: 0.75rem;
           font-weight: 700;
@@ -1094,8 +1261,8 @@ export const Organization = () => {
         .status-pill {
           display: inline-flex;
           align-items: center;
-          gap: 0.4rem;
-          padding: 0.2rem 0.65rem;
+          gap: 0.45rem;
+          padding: 0.25rem 0.75rem;
           border-radius: 9999px;
           font-size: 0.75rem;
           font-weight: 700;
@@ -1115,6 +1282,7 @@ export const Organization = () => {
         .created-date-text {
           color: #64748b;
           font-size: 0.8rem;
+          font-weight: 500;
         }
 
         .td-actions {
@@ -1132,7 +1300,7 @@ export const Organization = () => {
           display: inline-flex;
           align-items: center;
           gap: 0.35rem;
-          padding: 0.35rem 0.75rem;
+          padding: 0.38rem 0.75rem;
           background: #eff6ff;
           border: 1px solid #bfdbfe;
           color: #1976d2;
@@ -1150,8 +1318,8 @@ export const Organization = () => {
         }
 
         .btn-icon-action {
-          width: 30px;
-          height: 30px;
+          width: 32px;
+          height: 32px;
           border-radius: 6px;
           border: 1px solid #e2e8f0;
           background: #ffffff;
@@ -1258,7 +1426,7 @@ export const Organization = () => {
 
         .modal-form-input, .modal-form-select {
           width: 100%;
-          padding: 0.6rem 0.85rem;
+          padding: 0.65rem 0.85rem;
           border-radius: 6px;
           border: 1px solid #cbd5e1;
           background: #ffffff;

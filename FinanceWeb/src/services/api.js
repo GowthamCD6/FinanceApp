@@ -329,8 +329,9 @@ export const api = {
       const queryStr = new URLSearchParams(params).toString();
       return await request(`/governance/audit-logs${queryStr ? `?${queryStr}` : ''}`);
     },
-    getApiMetrics: async () => {
-      return await request('/governance/api-metrics');
+    getApiMetrics: async (params = {}) => {
+      const queryStr = new URLSearchParams(params).toString();
+      return await request(`/governance/api-metrics${queryStr ? `?${queryStr}` : ''}`);
     },
     getSettings: async () => {
       return await request('/governance/settings');
@@ -341,6 +342,21 @@ export const api = {
         body: JSON.stringify({ value }),
       });
     },
+  },
+
+  // Top-Level Convenience Aliases for Field Operations & Reports
+  getAdminDashboardMetrics: async () => {
+    return await request('/reports/dashboard');
+  },
+  getWeeklyDues: async (params = {}) => {
+    const queryStr = new URLSearchParams({ frequency: 'WEEKLY', ...params }).toString();
+    const res = await request(`/reports/payments?${queryStr}`);
+    return res?.records || res || [];
+  },
+  getDailyCollections: async (params = {}) => {
+    const queryStr = new URLSearchParams({ frequency: 'DAILY', ...params }).toString();
+    const res = await request(`/reports/payments?${queryStr}`);
+    return res?.records || res || [];
   },
 };
 

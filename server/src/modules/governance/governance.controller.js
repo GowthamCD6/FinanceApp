@@ -69,7 +69,7 @@ const governanceController = {
 
   getApiMetrics: async (req, res, next) => {
     try {
-      const data = await governanceService.getApiMetrics();
+      const data = await governanceService.getApiMetrics(req.query);
       res.json({ success: true, data });
     } catch (err) {
       next(err);

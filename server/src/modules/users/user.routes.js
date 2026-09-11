@@ -15,5 +15,6 @@ router.post('/', userController.createUser);
 router.get('/', userController.getUsers);
 router.get('/:id', userController.getUserById);
 router.put('/:id', userController.updateUser);
+router.patch('/:id/status', userController.updateUserStatus);
 
 module.exports = router;

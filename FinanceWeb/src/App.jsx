@@ -32,7 +32,7 @@ export default function App() {
   return (
     <AuthProvider>
       <OrgProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             {/* 1. Public Authentication */}
             <Route path="/login" element={<LoginPage />} />
