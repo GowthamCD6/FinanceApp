@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
 import { StatusBadge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import {
@@ -7,101 +8,64 @@ import {
   ShieldCheck,
   Edit2,
   CheckCircle2,
-  AlertTriangle,
-  Plus,
-  Save,
-  DollarSign,
-  Percent,
-  Calendar,
-  Briefcase,
   Store,
   UserCheck,
 } from 'lucide-react';
 
 export const DefaultCategories = () => {
-  const [categories, setCategories] = useState([
-    {
-      id: 'COMMON_CUSTOMER',
-      name: 'Borrower (Weekly Installment)',
-      code: 'CAT-BORROWER-WK',
-      description: 'Standard individual and worker micro-loans with 10-week recurring repayments.',
-      maxUsersPerBranch: 500,
-      currentActiveUsers: 248,
-      defaultMinLoan: 10000,
-      defaultMaxLoan: 50000,
-      defaultInterestRate: 10.0,
-      repaymentFrequency: 'WEEKLY',
-      tenureInstallments: 10,
-      gracePeriodDays: 3,
-      status: 'ACTIVE',
-    },
-    {
-      id: 'SHOPKEEPER',
-      name: 'Merchant (Daily Installment)',
-      code: 'CAT-MERCHANT-DLY',
-      description: 'Retail shopkeepers and stall merchants with 25-day rapid daily collections.',
-      maxUsersPerBranch: 200,
-      currentActiveUsers: 86,
-      defaultMinLoan: 15000,
-      defaultMaxLoan: 100000,
-      defaultInterestRate: 12.5,
-      repaymentFrequency: 'DAILY',
-      tenureInstallments: 25,
-      gracePeriodDays: 1,
-      status: 'ACTIVE',
-    },
-    {
-      id: 'FIELD_AGENT',
-      name: 'Field Collection Agent',
-      code: 'CAT-FIELD-AGENT',
-      description: 'Mobile route officers equipped with mobile app for daily & weekly cash/UPI recovery.',
-      maxUsersPerBranch: 15,
-      currentActiveUsers: 6,
-      defaultMinLoan: 0,
-      defaultMaxLoan: 0,
-      defaultInterestRate: 0.0,
-      repaymentFrequency: 'N/A',
-      tenureInstallments: 0,
-      gracePeriodDays: 0,
-      status: 'ACTIVE',
-    },
-    {
-      id: 'ADMIN',
-      name: 'Branch Manager / Staff',
-      code: 'CAT-BRANCH-ADMIN',
-      description: 'Branch operational staff managing customer KYC, disbursements, and reconciliation.',
-      maxUsersPerBranch: 5,
-      currentActiveUsers: 2,
-      defaultMinLoan: 0,
-      defaultMaxLoan: 0,
-      defaultInterestRate: 0.0,
-      repaymentFrequency: 'N/A',
-      tenureInstallments: 0,
-      gracePeriodDays: 0,
-      status: 'ACTIVE',
-    },
-  ]);
-
-  // Edit Modal State
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({});
   const [feedback, setFeedback] = useState(null);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await api.governance.getDefaultCategories();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
 
   const openEditModal = (cat) => {
     setEditingCategory(cat);
-    setFormData({ ...cat });
+    setFormData({
+      id: cat.id,
+      category_code: cat.category_code,
+      name: cat.name,
+      description: cat.description,
+      max_users_per_branch: cat.max_users_per_branch,
+      default_min_loan: cat.default_min_loan,
+      default_max_loan: cat.default_max_loan,
+      default_interest_rate: cat.default_interest_rate,
+      repayment_frequency: cat.repayment_frequency,
+      tenure_installments: cat.tenure_installments,
+      grace_period_days: cat.grace_period_days,
+      status: cat.status,
+    });
   };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
-    setCategories((prev) =>
-      prev.map((c) => (c.id === formData.id ? { ...c, ...formData } : c))
-    );
-    setEditingCategory(null);
-    setFeedback(`Default category "${formData.name}" rules updated!`);
-    setTimeout(() => setFeedback(null), 3500);
+    try {
+      await api.governance.updateDefaultCategory(formData.category_code, formData);
+      await fetchCategories();
+      setEditingCategory(null);
+      setFeedback(`Default category "${formData.name}" rules updated in database!`);
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Failed to update category:', err);
+    }
   };
 
   return (
@@ -123,115 +87,108 @@ export const DefaultCategories = () => {
         </div>
       )}
 
-      {/* Categories Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
-        {categories.map((cat) => (
-          <div
-            key={cat.id}
-            className="card"
-            style={{
-              padding: '1.5rem',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {cat.id === 'SHOPKEEPER' ? (
-                      <Store size={20} color="var(--purple)" />
-                    ) : cat.id === 'COMMON_CUSTOMER' ? (
-                      <Users size={20} color="var(--accent-primary)" />
-                    ) : cat.id === 'FIELD_AGENT' ? (
-                      <UserCheck size={20} color="var(--emerald)" />
-                    ) : (
-                      <ShieldCheck size={20} color="#fbbf24" />
-                    )}
-                    <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>{cat.name}</h3>
+      {loading ? (
+        <div style={{ color: 'var(--text-muted)', padding: '2rem 0' }}>Loading live category policies from TiDB Cloud...</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          {categories.map((cat) => (
+            <div
+              key={cat.id || cat.category_code}
+              className="card"
+              style={{
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {cat.customer_type === 'SHOPKEEPER' ? (
+                        <Store size={20} color="var(--purple)" />
+                      ) : cat.customer_type === 'COMMON_CUSTOMER' ? (
+                        <Users size={20} color="var(--accent-primary)" />
+                      ) : cat.customer_type === 'FIELD_AGENT' ? (
+                        <UserCheck size={20} color="var(--emerald)" />
+                      ) : (
+                        <ShieldCheck size={20} color="#fbbf24" />
+                      )}
+                      <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>{cat.name}</h3>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cat.category_code}</span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cat.code}</span>
+                  <StatusBadge status={cat.status} />
                 </div>
-                <StatusBadge status={cat.status} />
-              </div>
 
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-                {cat.description}
-              </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                  {cat.description}
+                </p>
 
-              {/* User Capacity Bar */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>User Capacity Limit</span>
-                  <strong style={{ color: '#fff' }}>
-                    {cat.currentActiveUsers} / {cat.maxUsersPerBranch} Allocated ({Math.round((cat.currentActiveUsers / cat.maxUsersPerBranch) * 100)}%)
-                  </strong>
+                {/* User Capacity */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Branch Max Capacity Limit</span>
+                    <strong style={{ color: '#fff' }}>
+                      Max {cat.max_users_per_branch} Allocated
+                    </strong>
+                  </div>
                 </div>
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+
+                {/* Rules Specs Grid */}
+                {Number(cat.default_min_loan) > 0 ? (
                   <div
                     style={{
-                      height: '100%',
-                      width: `${Math.min(100, (cat.currentActiveUsers / cat.maxUsersPerBranch) * 100)}%`,
-                      background: cat.id === 'SHOPKEEPER' ? 'var(--purple)' : 'var(--accent-primary)',
-                      borderRadius: 3,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '0.75rem',
+                      background: 'rgba(255,255,255,0.02)',
+                      padding: '0.75rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-color)',
+                      fontSize: '0.85rem',
                     }}
-                  />
-                </div>
+                  >
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Loan Limits</span>
+                      <div style={{ color: '#fff', fontWeight: 600 }}>{formatCurrency(cat.default_min_loan)} – {formatCurrency(cat.default_max_loan)}</div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Default Rate</span>
+                      <div style={{ color: 'var(--emerald)', fontWeight: 600 }}>{cat.default_interest_rate}% Flat</div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tenure</span>
+                      <div style={{ color: '#fff', fontWeight: 600 }}>{cat.tenure_installments} {cat.repayment_frequency?.toLowerCase()}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: '0.75rem',
+                      background: 'rgba(255,255,255,0.02)',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-color)',
+                      fontSize: '0.85rem',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    Staff Account • Max {cat.max_users_per_branch} seats per branch organization
+                  </div>
+                )}
               </div>
 
-              {/* Rules Specs Grid */}
-              {cat.defaultMinLoan > 0 ? (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '0.75rem',
-                    background: 'rgba(255,255,255,0.02)',
-                    padding: '0.75rem',
-                    borderRadius: 8,
-                    border: '1px solid var(--border-color)',
-                    fontSize: '0.85rem',
-                  }}
-                >
-                  <div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Loan Limits</span>
-                    <div style={{ color: '#fff', fontWeight: 600 }}>{formatCurrency(cat.defaultMinLoan)} – {formatCurrency(cat.defaultMaxLoan)}</div>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Default Rate</span>
-                    <div style={{ color: 'var(--emerald)', fontWeight: 600 }}>{cat.defaultInterestRate}% Flat</div>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tenure</span>
-                    <div style={{ color: '#fff', fontWeight: 600 }}>{cat.tenureInstallments} {cat.repaymentFrequency.toLowerCase()}</div>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    padding: '0.75rem',
-                    background: 'rgba(255,255,255,0.02)',
-                    borderRadius: 8,
-                    border: '1px solid var(--border-color)',
-                    fontSize: '0.85rem',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  Staff Account • Max {cat.maxUsersPerBranch} seats per branch organization
-                </div>
-              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+                <button className="btn btn-secondary" onClick={() => openEditModal(cat)}>
+                  <Edit2 size={15} />
+                  Configure Role Limits
+                </button>
+              </div>
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-              <button className="btn btn-secondary" onClick={() => openEditModal(cat)}>
-                <Edit2 size={15} />
-                Configure Role Limits
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Edit Category Modal */}
       {editingCategory && (
@@ -252,80 +209,8 @@ export const DefaultCategories = () => {
               />
             </div>
 
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Max Allowed Users / Branch *</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={formData.maxUsersPerBranch || ''}
-                  onChange={(e) => setFormData({ ...formData, maxUsersPerBranch: parseInt(e.target.value, 10) })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Grace Period (Days)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={formData.gracePeriodDays || 0}
-                  onChange={(e) => setFormData({ ...formData, gracePeriodDays: parseInt(e.target.value, 10) })}
-                />
-              </div>
-            </div>
-
-            {formData.defaultMinLoan > 0 && (
-              <>
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Default Min Loan (₹)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={formData.defaultMinLoan || ''}
-                      onChange={(e) => setFormData({ ...formData, defaultMinLoan: parseFloat(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Default Max Loan (₹)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={formData.defaultMaxLoan || ''}
-                      onChange={(e) => setFormData({ ...formData, defaultMaxLoan: parseFloat(e.target.value) })}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Default Interest Rate (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      className="form-input"
-                      value={formData.defaultInterestRate || ''}
-                      onChange={(e) => setFormData({ ...formData, defaultInterestRate: parseFloat(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Default Installments</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={formData.tenureInstallments || ''}
-                      onChange={(e) => setFormData({ ...formData, tenureInstallments: parseInt(e.target.value, 10) })}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
             <div className="form-group">
-              <label className="form-label">Description / Guidelines</label>
+              <label className="form-label">Role Description</label>
               <textarea
                 className="form-input"
                 rows={2}
@@ -334,17 +219,68 @@ export const DefaultCategories = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setEditingCategory(null)}
-              >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Max Users per Branch</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={formData.max_users_per_branch || 0}
+                  onChange={(e) => setFormData({ ...formData, max_users_per_branch: parseInt(e.target.value, 10) })}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select
+                  className="form-input"
+                  value={formData.status || 'ACTIVE'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+            </div>
+
+            {formData.default_min_loan > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Min Loan (₹)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={formData.default_min_loan || 0}
+                    onChange={(e) => setFormData({ ...formData, default_min_loan: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Max Loan (₹)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={formData.default_max_loan || 0}
+                    onChange={(e) => setFormData({ ...formData, default_max_loan: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Interest Rate (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="form-input"
+                    value={formData.default_interest_rate || 0}
+                    onChange={(e) => setFormData({ ...formData, default_interest_rate: parseFloat(e.target.value) })}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingCategory(null)}>
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary">
-                <Save size={15} />
-                Save Category Policy
+                Save & Update TiDB
               </button>
             </div>
           </form>
@@ -353,5 +289,3 @@ export const DefaultCategories = () => {
     </div>
   );
 };
-
-export default DefaultCategories;

@@ -20,6 +20,16 @@ async function getCashFlow(req, res) {
   }
 }
 
+async function getOverdue(req, res) {
+  try {
+    const data = await reportService.getOverdueReport();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('Overdue report error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 async function getPaymentReport(req, res) {
   try {
     const { start_date, end_date, frequency, status } = req.query;

@@ -1,21 +1,29 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
-import { MOCK_ORGANIZATIONS } from '../services/mockData';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { api } from '../services/api';
 
 const OrgContext = createContext(null);
 
 export const OrgProvider = ({ children }) => {
-  const [organizations, setOrganizations] = useState(() =>
-    MOCK_ORGANIZATIONS.map((o) => ({
-      ...o,
-      admin_name: o.admin_name || 'Branch Admin',
-      admin_email: o.admin_email || '',
-      admin_phone: o.admin_phone || '',
-      initial_capital: o.initial_capital || o.active_portfolio || 500000,
-      plan: o.plan || 'PRO',
-      address: o.address || '',
-    }))
-  );
+  const [organizations, setOrganizations] = useState([]);
   const [activeOrgId, setActiveOrgId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load live organizations from Backend on mount
+  const fetchOrganizations = async () => {
+    try {
+      setLoading(true);
+      const data = await api.organizations.getAll();
+      setOrganizations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load organizations from API:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
 
   const activeOrg = useMemo(
     () => organizations.find((o) => String(o.id) === String(activeOrgId)) || null,
@@ -25,63 +33,35 @@ export const OrgProvider = ({ children }) => {
   const setActiveOrg = (orgId) => setActiveOrgId(orgId);
   const clearActiveOrg = () => setActiveOrgId(null);
 
-  const addOrganization = (data) => {
-    const id = Date.now();
-    const code =
-      data.code ||
-      data.name
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 4) +
-        '-' +
-        String(id).slice(-2);
-
-    const newOrg = {
-      id,
-      name: data.name,
-      code,
-      status: 'ACTIVE',
-      plan: data.plan || 'PRO',
-      branch_count: 1,
-      total_customers: 0,
-      active_portfolio: 0,
-      initial_capital: parseFloat(data.initial_capital) || 500000,
-      admin_name: data.admin_name || 'Branch Admin',
-      admin_email: data.admin_email || '',
-      admin_phone: data.admin_phone || '',
-      address: data.address || '',
-      created_at: new Date().toISOString().split('T')[0],
-    };
-
-    setOrganizations((prev) => [newOrg, ...prev]);
-    return newOrg;
+  const addOrganization = async (data) => {
+    try {
+      const created = await api.organizations.create(data);
+      await fetchOrganizations();
+      return created;
+    } catch (err) {
+      console.error('Failed to create organization via API:', err);
+      throw err;
+    }
   };
 
-  const updateOrgStatus = (orgId, status) => {
-    setOrganizations((prev) =>
-      prev.map((o) => (String(o.id) === String(orgId) ? { ...o, status } : o))
-    );
+  const updateOrgStatus = async (orgId, status) => {
+    try {
+      await api.organizations.updateStatus(orgId, status);
+      await fetchOrganizations();
+    } catch (err) {
+      console.error('Failed to update organization status via API:', err);
+      throw err;
+    }
   };
 
-  const updateOrganization = (orgId, data) => {
-    setOrganizations((prev) =>
-      prev.map((o) => {
-        if (String(o.id) === String(orgId)) {
-          return {
-            ...o,
-            name: data.name !== undefined ? data.name : o.name,
-            admin_name: data.admin_name !== undefined ? data.admin_name : o.admin_name,
-            admin_phone: data.admin_phone !== undefined ? data.admin_phone : o.admin_phone,
-            plan: data.plan !== undefined ? data.plan : o.plan,
-            status: data.status !== undefined ? data.status : o.status,
-            branch_count: data.branch_count !== undefined ? data.branch_count : o.branch_count,
-          };
-        }
-        return o;
-      })
-    );
+  const updateOrganization = async (orgId, data) => {
+    try {
+      await api.organizations.update(orgId, data);
+      await fetchOrganizations();
+    } catch (err) {
+      console.error('Failed to update organization via API:', err);
+      throw err;
+    }
   };
 
   const platformStats = useMemo(() => {
@@ -90,9 +70,9 @@ export const OrgProvider = ({ children }) => {
       totalOrgs: organizations.length,
       activeOrgs: active.length,
       suspendedOrgs: organizations.length - active.length,
-      totalCustomers: organizations.reduce((s, o) => s + (o.total_customers || 0), 0),
-      totalPortfolio: organizations.reduce((s, o) => s + (o.active_portfolio || 0), 0),
-      totalCapital: organizations.reduce((s, o) => s + (o.initial_capital || 0), 0),
+      totalCustomers: organizations.reduce((s, o) => s + (Number(o.total_customers) || 0), 0),
+      totalPortfolio: organizations.reduce((s, o) => s + (Number(o.total_lent || o.active_portfolio) || 0), 0),
+      totalCapital: organizations.reduce((s, o) => s + (Number(o.initial_capital) || 0), 0),
     };
   }, [organizations]);
 
@@ -102,11 +82,13 @@ export const OrgProvider = ({ children }) => {
         organizations,
         activeOrg,
         activeOrgId,
+        loading,
         setActiveOrg,
         clearActiveOrg,
         addOrganization,
         updateOrganization,
         updateOrgStatus,
+        refreshOrganizations: fetchOrganizations,
         platformStats,
       }}
     >

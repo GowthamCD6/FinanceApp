@@ -66,10 +66,11 @@ async function createUser(data, creatorId = null) {
     const userEmail = email || `${rawPhone}@financeflow.local`;
 
     // 3. Insert into users
+    const effectiveOrgId = organizationId || 1;
     const [userRes] = await conn.query(
-      `INSERT INTO users (name, phone, email, password_hash, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [displayName, rawPhone, userEmail, passwordHash, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', dateJoined || new Date()]
+      `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, role_type, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [effectiveOrgId, data.branchId || null, displayName, rawPhone, userEmail, passwordHash, role, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', dateJoined || new Date()]
     );
     const userId = userRes.insertId;
 
@@ -83,9 +84,11 @@ async function createUser(data, creatorId = null) {
 
     const [custRes] = await conn.query(
       `INSERT INTO customers 
-       (customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, user_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, user_id, assigned_agent_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        effectiveOrgId,
+        data.branchId || null,
         customerCode,
         displayName,
         rawPhone,
@@ -98,6 +101,7 @@ async function createUser(data, creatorId = null) {
         status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
         dateJoined ? String(dateJoined).slice(0, 10) : new Date().toISOString().slice(0, 10),
         userId,
+        data.assignedAgentId || null,
         creatorId || null,
       ]
     );
@@ -128,10 +132,15 @@ async function createUser(data, creatorId = null) {
 /**
  * List users with live financial aggregates
  */
-async function getUsers({ search, role, status, page = 1, limit = 50 }) {
+async function getUsers({ search, role, status, organizationId, page = 1, limit = 50 }) {
   const offset = (page - 1) * limit;
   let whereClauses = ['1=1'];
   const params = [];
+
+  if (organizationId) {
+    whereClauses.push('(u.organization_id = ? OR c.organization_id = ?)');
+    params.push(organizationId, organizationId);
+  }
 
   if (search) {
     whereClauses.push('(u.name LIKE ? OR u.phone LIKE ? OR c.customer_code LIKE ? OR c.shop_name LIKE ?)');

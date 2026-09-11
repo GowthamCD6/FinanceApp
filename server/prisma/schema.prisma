@@ -1,0 +1,1082 @@
+// ==============================================================================
+// Fund Circulation & Lending Management Engine — Prisma Enterprise Schema
+// Multi-Tenant TiDB Cloud / MySQL Architecture
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. ORGANIZATIONS & TENANCY
+model Organization {
+  id              BigInt    @id @default(autoincrement())
+  code            String    @unique @db.VarChar(50)
+  name            String    @db.VarChar(200)
+  plan            PlanType  @default(PRO)
+  status          OrgStatus @default(ACTIVE)
+  currency        String    @default("INR") @db.VarChar(10)
+  initial_capital Decimal   @default(0.00) @db.Decimal(15, 2)
+  available_cash  Decimal   @default(0.00) @db.Decimal(15, 2)
+  total_lent      Decimal   @default(0.00) @db.Decimal(15, 2)
+  admin_name      String?   @db.VarChar(150)
+  admin_phone     String?   @db.VarChar(20)
+  admin_email     String?   @db.VarChar(255)
+  phone           String?   @db.VarChar(20)
+  address         String?   @db.Text
+  city            String?   @db.VarChar(100)
+  state           String?   @db.VarChar(100)
+  postal_code     String?   @db.VarChar(20)
+  logo_url        String?   @db.VarChar(500)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+
+  branches             Branch[]
+  settings             OrganizationSettings?
+  users                User[]
+  customers            Customer[]
+  loans                Loan[]
+  payments             Payment[]
+  fund_accounts        FundAccount[]
+  fund_transactions    FundTransaction[]
+  expenses             Expense[]
+  accounting_accounts  AccountingAccount[]
+  journal_entries      JournalEntry[]
+  collection_visits    CollectionVisit[]
+  reconciliations      Reconciliation[]
+  audit_logs           AuditLog[]
+  notifications        Notification[]
+
+  @@index([code])
+  @@index([status])
+  @@map("organizations")
+}
+
+enum PlanType {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+model Branch {
+  id              BigInt       @id @default(autoincrement())
+  organization_id BigInt
+  branch_code     String       @db.VarChar(50)
+  branch_name     String       @db.VarChar(150)
+  location        String?      @db.VarChar(255)
+  phone           String?      @db.VarChar(20)
+  manager_name    String?      @db.VarChar(150)
+  manager_phone   String?      @db.VarChar(20)
+  status          CommonStatus @default(ACTIVE)
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  users        User[]
+  customers    Customer[]
+  loans        Loan[]
+  payments     Payment[]
+  fund_accounts FundAccount[]
+
+  @@unique([organization_id, branch_code], name: "uk_org_branch")
+  @@index([organization_id])
+  @@map("branches")
+}
+
+model OrganizationSettings {
+  id                            BigInt   @id @default(autoincrement())
+  organization_id               BigInt   @unique
+  daily_loan_enabled            Boolean  @default(true)
+  weekly_loan_enabled           Boolean  @default(true)
+  max_active_loans_per_customer Int      @default(1) @db.UnsignedInt
+  auto_eligibility_check        Boolean  @default(true)
+  grace_period_days             Int      @default(0) @db.UnsignedInt
+  default_interest_rate         Decimal  @default(10.00) @db.Decimal(5, 2)
+  currency_symbol               String   @default("₹") @db.VarChar(10)
+  created_at                    DateTime @default(now())
+  updated_at                    DateTime @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+// 2. USERS & RBAC
+model User {
+  id              BigInt       @id @default(autoincrement())
+  organization_id BigInt?
+  branch_id       BigInt?
+  name            String       @db.VarChar(150)
+  phone           String?      @unique @db.VarChar(20)
+  email           String?      @unique @db.VarChar(255)
+  password_hash   String       @db.VarChar(255)
+  role_type       RoleType     @default(USER)
+  status          CommonStatus @default(ACTIVE)
+  credit_limit    Decimal?     @default(0.00) @db.Decimal(15, 2)
+  occupation      String?      @db.VarChar(150)
+  designation     String?      @db.VarChar(100)
+  avatar_url      String?      @db.VarChar(500)
+  address         String?      @db.Text
+  assigned_route  String?      @db.VarChar(150)
+  daily_target    Decimal?     @default(0.00) @db.Decimal(15, 2)
+  last_login_at   DateTime?
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @default(now()) @updatedAt
+
+  organization Organization? @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+  branch       Branch?       @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+
+  user_roles         UserRole[]
+  customers          Customer[]          @relation("UserCustomer")
+  assigned_customers Customer[]          @relation("AgentCustomers")
+  created_customers  Customer[]          @relation("CreatedCustomers")
+  customer_notes     CustomerNote[]
+  approved_loans     Loan[]              @relation("LoanApprover")
+  disbursed_loans    Loan[]              @relation("LoanDisburser")
+  collected_payments Payment[]           @relation("PaymentCollector")
+  fund_transactions  FundTransaction[]
+  created_expenses   Expense[]           @relation("ExpenseCreator")
+  approved_expenses  Expense[]           @relation("ExpenseApprover")
+  journal_entries    JournalEntry[]
+  collection_visits  CollectionVisit[]
+  reconciliations    Reconciliation[]
+  reconciliation_adj ReconciliationAdjustment[]
+  idempotency_keys   IdempotencyKey[]
+  audit_logs         AuditLog[]
+  notifications      Notification[]
+  evaluated_eligs    LoanEligibility[]
+  loan_history       LoanStatusHistory[]
+  loan_events        LoanEvent[]
+
+  @@index([organization_id])
+  @@index([phone])
+  @@index([email])
+  @@map("users")
+}
+
+enum RoleType {
+  SUPER_ADMIN
+  ADMIN
+  FIELD_AGENT
+  SHOPKEEPER
+  COMMON_CUSTOMER
+  USER
+}
+
+enum CommonStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model Role {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  created_at  DateTime @default(now())
+
+  role_permissions RolePermission[]
+  user_roles       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  created_at  DateTime @default(now())
+
+  role_permissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  role_id       BigInt
+  permission_id BigInt
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  user_id BigInt
+  role_id BigInt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+// 3. CUSTOMERS
+model Customer {
+  id                  BigInt         @id @default(autoincrement())
+  organization_id     BigInt
+  branch_id           BigInt?
+  customer_code       String         @db.VarChar(50)
+  full_name           String         @db.VarChar(150)
+  phone               String         @db.VarChar(20)
+  alternate_phone     String?        @db.VarChar(20)
+  address             String?        @db.Text
+  city                String?        @db.VarChar(100)
+  customer_type       CustomerType
+  occupation          String?        @db.VarChar(150)
+  shop_name           String?        @db.VarChar(200)
+  stall_no            String?        @db.VarChar(50)
+  market_location     String?        @db.VarChar(150)
+  aadhaar_number      String?        @db.VarChar(20)
+  pan_number          String?        @db.VarChar(20)
+  guarantor_name      String?        @db.VarChar(150)
+  guarantor_phone     String?        @db.VarChar(20)
+  guarantor_relation  String?        @db.VarChar(50)
+  credit_rating       CreditRating   @default(UNRATED)
+  credit_limit        Decimal        @default(50000.00) @db.Decimal(15, 2)
+  total_borrowed      Decimal        @default(0.00) @db.Decimal(15, 2)
+  total_repaid        Decimal        @default(0.00) @db.Decimal(15, 2)
+  current_outstanding Decimal        @default(0.00) @db.Decimal(15, 2)
+  status              CustomerStatus @default(ACTIVE)
+  registration_date   DateTime       @db.Date
+  user_id             BigInt?
+  assigned_agent_id   BigInt?
+  created_by          BigInt?
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @default(now()) @updatedAt
+
+  organization   Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch         Branch?      @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  user           User?        @relation("UserCustomer", fields: [user_id], references: [id], onDelete: SetNull)
+  assigned_agent User?        @relation("AgentCustomers", fields: [assigned_agent_id], references: [id], onDelete: SetNull)
+  creator        User?        @relation("CreatedCustomers", fields: [created_by], references: [id], onDelete: SetNull)
+
+  notes             CustomerNote[]
+  documents         CustomerDocument[]
+  loans             Loan[]
+  payments          Payment[]
+  collection_visits CollectionVisit[]
+  eligibility       LoanEligibility[]
+
+  @@unique([organization_id, customer_code], name: "uk_org_customer_code")
+  @@index([organization_id])
+  @@index([phone])
+  @@index([customer_type])
+  @@index([status])
+  @@map("customers")
+}
+
+enum CustomerType {
+  COMMON_CUSTOMER
+  SHOPKEEPER
+}
+
+enum CreditRating {
+  A
+  B
+  C
+  D
+  UNRATED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+  UNDER_REVIEW
+}
+
+model CustomerNote {
+  id          BigInt   @id @default(autoincrement())
+  customer_id BigInt
+  note        String   @db.Text
+  created_by  BigInt?
+  created_at  DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  creator  User?    @relation(fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@map("customer_notes")
+}
+
+model CustomerDocument {
+  id              BigInt       @id @default(autoincrement())
+  customer_id     BigInt
+  document_type   DocumentType
+  document_number String?      @db.VarChar(100)
+  document_url    String?      @db.VarChar(500)
+  verified        Boolean      @default(false)
+  created_at      DateTime     @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@map("customer_documents")
+}
+
+enum DocumentType {
+  AADHAAR
+  PAN
+  VOTER_ID
+  SHOP_REGISTRATION
+  RATION_CARD
+  OTHER
+}
+
+// 4. LOAN PRODUCTS & POLICIES
+model LoanProduct {
+  id                  BigInt             @id @default(autoincrement())
+  organization_id     BigInt?
+  product_code        String             @db.VarChar(50)
+  product_name        String             @db.VarChar(150)
+  customer_type       ProductTargetType
+  repayment_frequency RepaymentFrequency
+  status              CommonStatus       @default(ACTIVE)
+  description         String?            @db.Text
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @default(now()) @updatedAt
+
+  policies           LoanPolicy[]
+  loans              Loan[]
+  eligibility_target LoanEligibility[]
+
+  @@index([organization_id])
+  @@index([product_code])
+  @@map("loan_products")
+}
+
+enum ProductTargetType {
+  COMMON_CUSTOMER
+  SHOPKEEPER
+  BOTH
+}
+
+enum RepaymentFrequency {
+  DAILY
+  WEEKLY
+}
+
+model LoanPolicy {
+  id                     BigInt       @id @default(autoincrement())
+  product_id             BigInt
+  minimum_amount         Decimal      @db.Decimal(15, 2)
+  maximum_amount         Decimal      @db.Decimal(15, 2)
+  number_of_installments Int          @db.UnsignedInt
+  waiting_period_days    Int          @default(0) @db.UnsignedInt
+  income_type            IncomeType   @default(NONE)
+  income_value           Decimal      @default(0.0000) @db.Decimal(15, 4)
+  status                 CommonStatus @default(ACTIVE)
+  effective_from         DateTime     @db.Date
+  created_at             DateTime     @default(now())
+
+  product LoanProduct @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  loans   Loan[]
+
+  @@map("loan_policies")
+}
+
+enum IncomeType {
+  NONE
+  FIXED_FEE
+  PERCENTAGE
+}
+
+enum DisbursementMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+  OTHER
+}
+
+// 5. LOANS & REPEAT-LOAN PROGRESSION
+model Loan {
+  id                       BigInt             @id @default(autoincrement())
+  organization_id          BigInt
+  branch_id                BigInt?
+  loan_number              String             @db.VarChar(50)
+  customer_id              BigInt
+  product_id               BigInt
+  policy_id                BigInt?
+  parent_loan_id           BigInt?
+  loan_title               String?            @db.VarChar(200)
+  principal_amount         Decimal            @db.Decimal(15, 2)
+  contracted_income_amount Decimal            @default(0.00) @db.Decimal(15, 2)
+  interest_rate            Decimal            @default(10.00) @db.Decimal(5, 2)
+  total_repayment_amount   Decimal            @db.Decimal(15, 2)
+  total_installments       Int                @db.UnsignedInt
+  paid_installments        Int                @default(0) @db.UnsignedInt
+  repayment_frequency      RepaymentFrequency
+  disbursement_method      DisbursementMethod @default(CASH)
+  status                   LoanStatus         @default(PENDING)
+  application_date         DateTime           @db.Date
+  approval_date            DateTime?          @db.Date
+  disbursement_date        DateTime?          @db.Date
+  maturity_date            DateTime?          @db.Date
+  closed_at                DateTime?
+  approved_by              BigInt?
+  disbursed_by             BigInt?
+  notes                    String?            @db.Text
+  created_at               DateTime           @default(now())
+  updated_at               DateTime           @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  customer     Customer     @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  product      LoanProduct  @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  policy       LoanPolicy?  @relation(fields: [policy_id], references: [id], onDelete: SetNull)
+  parent_loan  Loan?        @relation("LoanProgression", fields: [parent_loan_id], references: [id], onDelete: SetNull)
+  child_loans  Loan[]       @relation("LoanProgression")
+  approver     User?        @relation("LoanApprover", fields: [approved_by], references: [id], onDelete: SetNull)
+  disburser    User?        @relation("LoanDisburser", fields: [disbursed_by], references: [id], onDelete: SetNull)
+
+  installments      LoanInstallment[]
+  payments          Payment[]
+  status_history    LoanStatusHistory[]
+  events            LoanEvent[]
+  collection_visits CollectionVisit[]
+  eligibility_prev  LoanEligibility[]
+
+  @@unique([organization_id, loan_number], name: "uk_org_loan_number")
+  @@index([organization_id])
+  @@index([customer_id])
+  @@index([status])
+  @@index([disbursement_date])
+  @@map("loans")
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  DISBURSED
+  ACTIVE
+  PARTIALLY_PAID
+  COMPLETED
+  OVERDUE
+  DEFAULTED
+  CANCELLED
+}
+
+model LoanInstallment {
+  id                  BigInt            @id @default(autoincrement())
+  loan_id             BigInt
+  installment_number  Int               @db.UnsignedInt
+  due_date            DateTime          @db.Date
+  scheduled_amount    Decimal           @db.Decimal(15, 2)
+  principal_component Decimal           @default(0.00) @db.Decimal(15, 2)
+  income_component    Decimal           @default(0.00) @db.Decimal(15, 2)
+  paid_amount         Decimal           @default(0.00) @db.Decimal(15, 2)
+  outstanding_amount  Decimal           @db.Decimal(15, 2)
+  status              InstallmentStatus @default(PENDING)
+  paid_at             DateTime?
+  created_at          DateTime          @default(now())
+
+  loan               Loan                @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+  payment_allocs     PaymentAllocation[]
+  collection_visits  CollectionVisit[]
+
+  @@unique([loan_id, installment_number], name: "uk_loan_installment")
+  @@index([due_date])
+  @@index([status])
+  @@map("loan_installments")
+}
+
+enum InstallmentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model LoanEligibility {
+  id               BigInt            @id @default(autoincrement())
+  customer_id      BigInt
+  previous_loan_id BigInt?
+  next_product_id  BigInt?
+  eligible_amount  Decimal?          @db.Decimal(15, 2)
+  status           EligibilityStatus
+  eligible_from    DateTime?         @db.Date
+  reason           String?           @db.VarChar(500)
+  evaluated_at     DateTime          @default(now())
+  evaluated_by     BigInt?
+
+  customer      Customer     @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  previous_loan Loan?        @relation(fields: [previous_loan_id], references: [id], onDelete: SetNull)
+  next_product  LoanProduct? @relation(fields: [next_product_id], references: [id], onDelete: SetNull)
+  evaluator     User?        @relation(fields: [evaluated_by], references: [id], onDelete: SetNull)
+
+  @@index([customer_id])
+  @@index([status])
+  @@map("loan_eligibility")
+}
+
+enum EligibilityStatus {
+  ELIGIBLE
+  NOT_ELIGIBLE
+  UNDER_REVIEW
+}
+
+model LoanStatusHistory {
+  id          BigInt   @id @default(autoincrement())
+  loan_id     BigInt
+  from_status String?  @db.VarChar(50)
+  to_status   String   @db.VarChar(50)
+  reason      String?  @db.VarChar(500)
+  changed_by  BigInt?
+  created_at  DateTime @default(now())
+
+  loan    Loan  @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+  changer User? @relation(fields: [changed_by], references: [id], onDelete: SetNull)
+
+  @@index([loan_id])
+  @@map("loan_status_history")
+}
+
+model LoanEvent {
+  id           BigInt   @id @default(autoincrement())
+  loan_id      BigInt
+  event_type   String   @db.VarChar(100)
+  payload      Json?
+  performed_by BigInt?
+  created_at   DateTime @default(now())
+
+  loan      Loan  @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+  performer User? @relation(fields: [performed_by], references: [id], onDelete: SetNull)
+
+  @@index([loan_id])
+  @@index([event_type])
+  @@map("loan_events")
+}
+
+// 6. PAYMENTS & ALLOCATIONS
+model Payment {
+  id              BigInt        @id @default(autoincrement())
+  organization_id BigInt
+  branch_id       BigInt?
+  payment_number  String        @db.VarChar(50)
+  customer_id     BigInt
+  loan_id         BigInt
+  payment_date    DateTime
+  amount          Decimal       @db.Decimal(15, 2)
+  payment_method  PaymentMethod @default(CASH)
+  reference_number String?      @db.VarChar(100)
+  receipt_number   String?      @db.VarChar(100)
+  collected_latitude  Decimal?  @db.Decimal(10, 8)
+  collected_longitude Decimal?  @db.Decimal(11, 8)
+  collector_id    BigInt?
+  status          PaymentStatus @default(COMPLETED)
+  notes           String?       @db.Text
+  created_at      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  customer     Customer     @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  loan         Loan         @relation(fields: [loan_id], references: [id], onDelete: Restrict)
+  collector    User?        @relation("PaymentCollector", fields: [collector_id], references: [id], onDelete: SetNull)
+
+  allocations       PaymentAllocation[]
+  collection_visits CollectionVisit[]
+
+  @@unique([organization_id, payment_number], name: "uk_org_payment_number")
+  @@index([organization_id])
+  @@index([customer_id])
+  @@index([loan_id])
+  @@index([payment_date])
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  OTHER
+}
+
+enum PaymentStatus {
+  COMPLETED
+  REVERSED
+  PENDING
+}
+
+model PaymentAllocation {
+  id              BigInt         @id @default(autoincrement())
+  payment_id      BigInt
+  installment_id  BigInt?
+  allocation_type AllocationType
+  amount          Decimal        @db.Decimal(15, 2)
+  created_at      DateTime       @default(now())
+
+  payment     Payment          @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+  installment LoanInstallment? @relation(fields: [installment_id], references: [id], onDelete: SetNull)
+
+  @@index([payment_id])
+  @@index([allocation_type])
+  @@map("payment_allocations")
+}
+
+enum AllocationType {
+  PRINCIPAL
+  LENDING_INCOME
+  PENALTY
+  OTHER
+}
+
+// 7. CENTRAL FUND LEDGER & ACCOUNTS
+model FundAccount {
+  id              BigInt       @id @default(autoincrement())
+  organization_id BigInt
+  branch_id       BigInt?
+  account_code    String       @db.VarChar(50)
+  account_name    String       @db.VarChar(150)
+  account_type    FundAccType
+  current_balance Decimal      @default(0.00) @db.Decimal(15, 2)
+  status          CommonStatus @default(ACTIVE)
+  created_at      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+
+  transactions    FundTransaction[]
+  expenses        Expense[]
+  reconciliations Reconciliation[]
+
+  @@unique([organization_id, account_code], name: "uk_org_fund_account")
+  @@index([organization_id])
+  @@map("fund_accounts")
+}
+
+enum FundAccType {
+  CASH
+  BANK
+  UPI
+  OTHER
+}
+
+model FundTransaction {
+  id                 BigInt          @id @default(autoincrement())
+  organization_id    BigInt
+  transaction_number String          @db.VarChar(50)
+  fund_account_id    BigInt
+  transaction_date   DateTime
+  transaction_type   FundTxType
+  direction          TxDirection
+  amount             Decimal         @db.Decimal(15, 2)
+  reference_type     String?         @db.VarChar(50)
+  reference_id       BigInt?
+  description        String?         @db.VarChar(500)
+  created_by         BigInt?
+  created_at         DateTime        @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  fund_account FundAccount  @relation(fields: [fund_account_id], references: [id], onDelete: Restrict)
+  creator      User?        @relation(fields: [created_by], references: [id], onDelete: SetNull)
+
+  reconciliation_adjustments ReconciliationAdjustment[]
+
+  @@unique([organization_id, transaction_number], name: "uk_org_fund_tx")
+  @@index([organization_id])
+  @@index([fund_account_id])
+  @@index([transaction_date])
+  @@index([transaction_type])
+  @@map("fund_transactions")
+}
+
+enum FundTxType {
+  CAPITAL_IN
+  LOAN_DISBURSEMENT
+  PRINCIPAL_COLLECTION
+  LENDING_INCOME
+  OTHER_INCOME
+  EXPENSE
+  REFUND
+  REVERSAL
+  ADJUSTMENT
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum TxDirection {
+  IN
+  OUT
+}
+
+// 8. EXPENSES
+model ExpenseCategory {
+  id              BigInt       @id @default(autoincrement())
+  organization_id BigInt?
+  name            String       @db.VarChar(100)
+  description     String?      @db.VarChar(255)
+  status          CommonStatus @default(ACTIVE)
+
+  expenses Expense[]
+
+  @@index([organization_id])
+  @@map("expense_categories")
+}
+
+model Expense {
+  id              BigInt        @id @default(autoincrement())
+  organization_id BigInt
+  expense_number  String        @db.VarChar(50)
+  category_id     BigInt
+  fund_account_id BigInt
+  amount          Decimal       @db.Decimal(15, 2)
+  expense_date    DateTime
+  description     String?       @db.Text
+  status          ExpenseStatus @default(PAID)
+  created_by      BigInt?
+  approved_by     BigInt?
+  created_at      DateTime      @default(now())
+
+  organization Organization    @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  category     ExpenseCategory @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  fund_account FundAccount     @relation(fields: [fund_account_id], references: [id], onDelete: Restrict)
+  creator      User?           @relation("ExpenseCreator", fields: [created_by], references: [id], onDelete: SetNull)
+  approver     User?           @relation("ExpenseApprover", fields: [approved_by], references: [id], onDelete: SetNull)
+
+  @@unique([organization_id, expense_number], name: "uk_org_expense_number")
+  @@index([organization_id])
+  @@map("expenses")
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+// 9. DOUBLE ENTRY ACCOUNTING
+model AccountingAccount {
+  id                BigInt            @id @default(autoincrement())
+  organization_id   BigInt
+  account_code      String            @db.VarChar(20)
+  account_name      String            @db.VarChar(100)
+  account_type      AccountClass
+  parent_account_id BigInt?
+  status            CommonStatus      @default(ACTIVE)
+  created_at        DateTime          @default(now())
+
+  organization   Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  parent_account AccountingAccount?  @relation("AccountHierarchy", fields: [parent_account_id], references: [id], onDelete: SetNull)
+  child_accounts AccountingAccount[] @relation("AccountHierarchy")
+
+  journal_lines JournalEntryLine[]
+
+  @@unique([organization_id, account_code], name: "uk_org_acc_code")
+  @@map("accounting_accounts")
+}
+
+enum AccountClass {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+model JournalEntry {
+  id              BigInt   @id @default(autoincrement())
+  organization_id BigInt
+  entry_number    String   @db.VarChar(50)
+  entry_date      DateTime
+  reference_type  String?  @db.VarChar(50)
+  reference_id    BigInt?
+  description     String?  @db.VarChar(500)
+  created_by      BigInt?
+  created_at      DateTime @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  creator      User?        @relation(fields: [created_by], references: [id], onDelete: SetNull)
+
+  lines JournalEntryLine[]
+
+  @@unique([organization_id, entry_number], name: "uk_org_journal_entry")
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id               BigInt  @id @default(autoincrement())
+  journal_entry_id BigInt
+  account_id       BigInt
+  debit            Decimal @default(0.00) @db.Decimal(15, 2)
+  credit           Decimal @default(0.00) @db.Decimal(15, 2)
+  description      String? @db.VarChar(255)
+
+  journal_entry JournalEntry      @relation(fields: [journal_entry_id], references: [id], onDelete: Cascade)
+  account       AccountingAccount @relation(fields: [account_id], references: [id], onDelete: Restrict)
+
+  @@map("journal_entry_lines")
+}
+
+// 10. FIELD VISITS & RECONCILIATION
+model CollectionVisit {
+  id               BigInt    @id @default(autoincrement())
+  organization_id  BigInt
+  collector_id     BigInt
+  customer_id      BigInt
+  loan_id          BigInt
+  installment_id   BigInt?
+  payment_id       BigInt?
+  expected_amount  Decimal   @default(0.00) @db.Decimal(15, 2)
+  collected_amount Decimal   @default(0.00) @db.Decimal(15, 2)
+  pending_amount   Decimal   @default(0.00) @db.Decimal(15, 2)
+  visit_date       DateTime  @default(now())
+  latitude         Decimal?  @db.Decimal(10, 8)
+  longitude        Decimal?  @db.Decimal(11, 8)
+  notes            String?   @db.Text
+  created_at       DateTime  @default(now())
+
+  organization Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  collector    User             @relation(fields: [collector_id], references: [id], onDelete: Restrict)
+  customer     Customer         @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  loan         Loan             @relation(fields: [loan_id], references: [id], onDelete: Restrict)
+  installment  LoanInstallment? @relation(fields: [installment_id], references: [id], onDelete: SetNull)
+  payment      Payment?         @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+
+  @@index([organization_id])
+  @@index([collector_id])
+  @@index([visit_date])
+  @@map("collection_visits")
+}
+
+model Reconciliation {
+  id                  BigInt               @id @default(autoincrement())
+  organization_id     BigInt
+  fund_account_id     BigInt
+  reconciliation_date DateTime
+  system_cash         Decimal              @db.Decimal(15, 2)
+  actual_cash         Decimal              @db.Decimal(15, 2)
+  discrepancy         Decimal              @db.Decimal(15, 2)
+  status              ReconciliationStatus @default(BALANCED)
+  reconciled_by       BigInt
+  notes               String?              @db.Text
+  created_at          DateTime             @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  fund_account FundAccount  @relation(fields: [fund_account_id], references: [id], onDelete: Restrict)
+  reconciler   User         @relation(fields: [reconciled_by], references: [id], onDelete: Restrict)
+
+  adjustments ReconciliationAdjustment[]
+
+  @@index([organization_id])
+  @@index([reconciliation_date])
+  @@map("reconciliations")
+}
+
+enum ReconciliationStatus {
+  BALANCED
+  DISCREPANCY_PENDING
+  ADJUSTED
+}
+
+model ReconciliationAdjustment {
+  id                  BigInt         @id @default(autoincrement())
+  reconciliation_id   BigInt
+  adjustment_type     AdjustmentType
+  amount              Decimal        @db.Decimal(15, 2)
+  fund_transaction_id BigInt?
+  reason              String         @db.VarChar(500)
+  authorized_by       BigInt
+  created_at          DateTime       @default(now())
+
+  reconciliation   Reconciliation   @relation(fields: [reconciliation_id], references: [id], onDelete: Cascade)
+  fund_transaction FundTransaction? @relation(fields: [fund_transaction_id], references: [id], onDelete: SetNull)
+  authorizer       User             @relation(fields: [authorized_by], references: [id], onDelete: Restrict)
+
+  @@map("reconciliation_adjustments")
+}
+
+enum AdjustmentType {
+  SHORTAGE
+  SURPLUS
+}
+
+model IdempotencyKey {
+  id              BigInt            @id @default(autoincrement())
+  organization_id BigInt?
+  idempotency_key String            @unique @db.VarChar(100)
+  user_id         BigInt
+  endpoint        String            @db.VarChar(255)
+  request_hash    String            @db.VarChar(64)
+  status          IdempotencyStatus @default(PENDING)
+  response_status Int?
+  response_body   Json?
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @default(now()) @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([idempotency_key])
+  @@map("idempotency_keys")
+}
+
+enum IdempotencyStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// 11. AUDIT LOGS & NOTIFICATIONS
+model AuditLog {
+  id              BigInt   @id @default(autoincrement())
+  organization_id BigInt?
+  user_id         BigInt?
+  action          String   @db.VarChar(100)
+  entity_type     String   @db.VarChar(100)
+  entity_id       BigInt?
+  old_values      Json?
+  new_values      Json?
+  reason          String?  @db.VarChar(500)
+  ip_address      String?  @db.VarChar(45)
+  user_agent      String?  @db.Text
+  created_at      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+  user         User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([organization_id])
+  @@index([entity_type, entity_id])
+  @@index([user_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id                BigInt    @id @default(autoincrement())
+  organization_id   BigInt?
+  user_id           BigInt
+  title             String    @db.VarChar(200)
+  message           String    @db.Text
+  notification_type String?   @db.VarChar(50)
+  reference_type    String?   @db.VarChar(50)
+  reference_id      BigInt?
+  is_read           Boolean   @default(false)
+  read_at           DateTime?
+  created_at        DateTime  @default(now())
+
+  organization Organization? @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id])
+  @@index([user_id])
+  @@index([is_read])
+  @@map("notifications")
+}
+
+// 12. SYSTEM GOVERNANCE & PLATFORM SETTINGS
+model PrivacyPolicy {
+  id             BigInt        @id @default(autoincrement())
+  version        String        @unique @db.VarChar(50)
+  title          String        @db.VarChar(255)
+  content        String        @db.LongText
+  effective_date DateTime      @db.Date
+  status         PolicyStatus  @default(PUBLISHED_ACTIVE)
+  author_name    String?       @db.VarChar(150)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @default(now()) @updatedAt
+
+  @@index([status])
+  @@map("privacy_policies")
+}
+
+enum PolicyStatus {
+  DRAFT
+  PUBLISHED_ACTIVE
+  ARCHIVED
+}
+
+model AppVersion {
+  id                    BigInt         @id @default(autoincrement())
+  platform              PlatformType
+  version_name          String         @db.VarChar(50)
+  version_code          Int
+  release_title         String         @db.VarChar(200)
+  release_notes         String?        @db.Text
+  download_url          String?        @db.VarChar(500)
+  min_supported_version String?        @db.VarChar(50)
+  force_update          Boolean        @default(false)
+  status                AppVerStatus   @default(ACTIVE)
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @default(now()) @updatedAt
+
+  @@index([platform, status])
+  @@map("app_versions")
+}
+
+enum PlatformType {
+  ANDROID
+  IOS
+  WEB
+}
+
+enum AppVerStatus {
+  ACTIVE
+  ROLLOUT
+  DEPRECATED
+}
+
+model ApiMetric {
+  id               BigInt    @id @default(autoincrement())
+  endpoint         String    @db.VarChar(255)
+  method           String    @db.VarChar(10)
+  status_code      Int
+  response_time_ms Decimal   @db.Decimal(10, 2)
+  organization_id  BigInt?
+  user_id          BigInt?
+  ip_address       String?   @db.VarChar(45)
+  created_at       DateTime  @default(now())
+
+  @@index([endpoint])
+  @@index([created_at])
+  @@map("api_metrics")
+}
+
+model SystemSetting {
+  id            BigInt   @id @default(autoincrement())
+  setting_key   String   @unique @db.VarChar(100)
+  setting_value String   @db.Text
+  setting_group String   @default("GENERAL") @db.VarChar(50)
+  description   String?  @db.VarChar(255)
+  updated_at    DateTime @default(now()) @updatedAt
+
+  @@index([setting_key])
+  @@map("system_settings")
+}
+
+model DefaultCategoryConfig {
+  id                    BigInt       @id @default(autoincrement())
+  category_code         String       @unique @db.VarChar(50)
+  name                  String       @db.VarChar(100)
+  customer_type         String       @db.VarChar(50)
+  description           String?      @db.Text
+  max_users_per_branch  Int          @default(500) @db.UnsignedInt
+  default_min_loan      Decimal      @default(0.00) @db.Decimal(15, 2)
+  default_max_loan      Decimal      @default(0.00) @db.Decimal(15, 2)
+  default_interest_rate Decimal      @default(0.00) @db.Decimal(5, 2)
+  repayment_frequency   String       @default("N/A") @db.VarChar(20)
+  tenure_installments   Int          @default(0) @db.UnsignedInt
+  grace_period_days     Int          @default(0) @db.UnsignedInt
+  status                CommonStatus @default(ACTIVE)
+  created_at            DateTime     @default(now())
+  updated_at            DateTime     @default(now()) @updatedAt
+
+  @@index([category_code])
+  @@map("default_category_configs")
+}
+
+

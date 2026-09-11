@@ -13,6 +13,7 @@ const fundRoutes = require('./modules/fund/fund.routes');
 const reportRoutes = require('./modules/reports/report.routes');
 const reconciliationRoutes = require('./modules/reconciliation/reconciliation.routes');
 const userRoutes = require('./modules/users/user.routes');
+const governanceRoutes = require('./modules/governance/governance.routes');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/funds', fundRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/reconciliation', reconciliationRoutes);
+app.use('/api/governance', governanceRoutes);
 
 // 404 handler
 app.use((req, res) => {

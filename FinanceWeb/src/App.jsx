@@ -2,8 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { OrgProvider } from './context/OrgContext';
-import { AppLayout } from './components/layout/AppLayout';
-import { OrgAdminLayout } from './components/layout/OrgAdminLayout';
+import { Sidebar } from './components/layout/Sidebar';
 
 // Auth Page
 import { LoginPage } from './pages/auth/Login/LoginPage';
@@ -38,8 +37,8 @@ export default function App() {
             {/* 1. Public Authentication */}
             <Route path="/login" element={<LoginPage />} />
 
-            {/* 2. Authenticated App Layout */}
-            <Route element={<AppLayout />}>
+            {/* 2. Authenticated App Layout directly hosted by Sidebar */}
+            <Route element={<Sidebar />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
               {/* SuperAdmin Portal: Governance, Analytics & System Modules */}
@@ -67,7 +66,7 @@ export default function App() {
               </Route>
 
               {/* Org-Scoped Admin Portal (Branch Specific Workspace) */}
-              <Route path="/org/:orgId" element={<OrgAdminLayout />}>
+              <Route path="/org/:orgId">
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="shopkeepers" element={<Shopkeepers />} />

@@ -1,59 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
 import {
   ShieldCheck,
-  FileText,
   Save,
   CheckCircle2,
-  Clock,
-  Lock,
   Eye,
-  History,
-  AlertCircle,
-  Globe,
 } from 'lucide-react';
 
 export const PrivacyPolicy = () => {
-  const [activeVersion, setActiveVersion] = useState('v2.1');
   const [isEditing, setIsEditing] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [versionHistory, setVersionHistory] = useState([]);
 
   const [policyData, setPolicyData] = useState({
     title: 'FinanceFlow Platform Privacy & Financial Data Governance Policy',
-    version: 'v2.1 (Production Active)',
+    version: 'v2.1',
     effectiveDate: '2026-09-01',
-    lastUpdated: '2026-09-10',
     status: 'PUBLISHED_ACTIVE',
-    content: `1. DATA COLLECTION & CONSENT
-FinanceFlow operates as a fund circulation and microfinance ledger platform. We collect borrower identifying data (Full Name, Phone, Aadhaar / Voter ID KYC, Residential Address, Shop / Stall Location) solely for loan underwriting, repayment schedule monitoring, and receipt generation.
-
-2. IMMUTABLE TRANSACTION AUDITABILITY
-In accordance with central financial standards and microfinance audit regulations, all payment transactions, principal recoveries, and lending fee allocations are stored as permanent, immutable ledger records. Repayment records are never erased upon loan completion and remain permanently accessible to borrowers and organization auditors.
-
-3. FIELD COLLECTION & GEO-VISIT DATA
-When field agents perform on-site merchant collections, GPS coordinates and visit timestamps may be recorded to verify route compliance and prevent cash reconciliation disputes.
-
-4. DATA ENCRYPTION & MULTI-TENANT ISOLATION
-All borrower and organization records are isolated by tenant identifier (organization_id). Data in transit is protected using TLS 1.3 encryption, and passwords/sensitive credentials are encrypted using industry-standard bcrypt hashing.
-
-5. RETENTION PERIOD
-Financial transaction history is retained for a mandatory minimum of 7 (seven) years from the date of loan closure in compliance with financial ledger auditing standards.`,
+    content: '',
   });
 
   const [previewModal, setPreviewModal] = useState(false);
 
-  const handleSavePolicy = () => {
-    setIsEditing(false);
-    setFeedback('Privacy Policy updated and published across all platform apps & web portals!');
-    setTimeout(() => setFeedback(null), 3500);
+  const fetchPolicy = async () => {
+    try {
+      setLoading(true);
+      const res = await api.governance.getPrivacyPolicies();
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setVersionHistory(list);
+
+      const active = list.find((p) => p.status === 'PUBLISHED_ACTIVE') || list[0];
+      if (active) {
+        setPolicyData({
+          title: active.title || 'FinanceFlow Platform Privacy & Financial Data Governance Policy',
+          version: active.version || 'v2.1',
+          effectiveDate: active.effective_date ? new Date(active.effective_date).toISOString().slice(0, 10) : '2026-09-01',
+          status: active.status || 'PUBLISHED_ACTIVE',
+          content: active.content || '',
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load privacy policy from API:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const versionHistory = [
-    { version: 'v2.1', date: '2026-09-01', status: 'ACTIVE', author: 'Priya Narayanan (Compliance Head)' },
-    { version: 'v2.0', date: '2026-01-15', status: 'ARCHIVED', author: 'Super Admin Root' },
-    { version: 'v1.0', date: '2025-06-10', status: 'ARCHIVED', author: 'Super Admin Root' },
-  ];
+  useEffect(() => {
+    fetchPolicy();
+  }, []);
+
+  const handleSavePolicy = async () => {
+    try {
+      await api.governance.updatePrivacyPolicy({
+        version: policyData.version,
+        title: policyData.title,
+        content: policyData.content,
+        effective_date: policyData.effectiveDate,
+        status: policyData.status,
+        author_name: 'Super Admin',
+      });
+      setIsEditing(false);
+      setFeedback('Privacy Policy updated and published directly in TiDB database!');
+      await fetchPolicy();
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Failed to save policy:', err);
+    }
+  };
 
   return (
     <div className="privacy-policy-page">
@@ -126,7 +143,9 @@ Financial transaction history is retained for a mandatory minimum of 7 (seven) y
             <span className="badge badge-emerald">Effective: {policyData.effectiveDate}</span>
           </div>
 
-          {isEditing ? (
+          {loading ? (
+            <div style={{ color: 'var(--text-muted)', padding: '2rem 0' }}>Loading policy terms from database...</div>
+          ) : isEditing ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <textarea
                 className="form-input"
@@ -181,9 +200,9 @@ Financial transaction history is retained for a mandatory minimum of 7 (seven) y
                 </thead>
                 <tbody>
                   {versionHistory.map((v, idx) => (
-                    <tr key={idx}>
+                    <tr key={v.id || idx}>
                       <td><strong style={{ color: '#fff' }}>{v.version}</strong></td>
-                      <td>{v.date}</td>
+                      <td>{v.effective_date ? new Date(v.effective_date).toISOString().slice(0, 10) : '2026-09-01'}</td>
                       <td>
                         <StatusBadge status={v.status} />
                       </td>

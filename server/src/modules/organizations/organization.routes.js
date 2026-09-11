@@ -11,7 +11,14 @@ router.get('/:id', organizationController.getOrganizationById);
 // Create new organization
 router.post('/', organizationController.createOrganization);
 
+// Update organization details
+router.put('/:id', organizationController.updateOrganization);
+
 // Update organization status
 router.patch('/:id/status', organizationController.updateOrganizationStatus);
+
+// Branches management
+router.get('/:id/branches', organizationController.getBranches);
+router.post('/:id/branches', organizationController.createBranch);
 
 module.exports = router;

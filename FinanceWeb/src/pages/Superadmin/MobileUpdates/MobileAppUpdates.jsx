@@ -1,99 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
 import {
   Smartphone,
-  UploadCloud,
   CheckCircle2,
-  AlertTriangle,
-  Download,
-  Clock,
-  ShieldCheck,
-  Radio,
   Plus,
-  Edit2,
-  RefreshCw,
-  Sliders,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const MobileAppUpdates = () => {
-  const [releases, setReleases] = useState([
-    {
-      id: 1,
-      version: 'v2.4.1',
-      buildNumber: 2410,
-      platform: 'ANDROID_APK',
-      forceUpdate: true,
-      minSupportedVersion: 'v2.2.0',
-      rolloutPercent: 100,
-      status: 'LIVE_PRODUCTION',
-      downloadUrl: 'https://cdn.fundlending.com/apps/finance-agent-v2.4.1.apk',
-      releaseDate: '2026-09-08',
-      changelog: [
-        'Added offline SQLite synchronization for rural route collections',
-        'Direct UPI QR generation and instant receipt generation',
-        'Reduced app bundle size by 35% with optimized assets',
-      ],
-    },
-    {
-      id: 2,
-      version: 'v2.3.0',
-      buildNumber: 2300,
-      platform: 'ANDROID_APK',
-      forceUpdate: false,
-      minSupportedVersion: 'v2.0.0',
-      rolloutPercent: 100,
-      status: 'ARCHIVED',
-      downloadUrl: 'https://cdn.fundlending.com/apps/finance-agent-v2.3.0.apk',
-      releaseDate: '2026-08-15',
-      changelog: ['Biometric fingerprint login support', 'GPS route check-in verification'],
-    },
-  ]);
-
+  const [releases, setReleases] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isNewReleaseModalOpen, setIsNewReleaseModalOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   const [formData, setFormData] = useState({
-    version: 'v2.5.0',
-    buildNumber: 2500,
-    platform: 'ANDROID_APK',
-    forceUpdate: false,
-    minSupportedVersion: 'v2.3.0',
-    rolloutPercent: 25,
-    downloadUrl: '',
-    changelogText: 'New feature release with speed improvements',
+    version_name: 'v2.5.0',
+    version_code: 25,
+    platform: 'ANDROID',
+    force_update: false,
+    min_supported_version: 'v2.3.0',
+    download_url: '',
+    release_title: 'v2.5.0 Feature Release',
+    release_notes: 'New feature release with speed improvements',
   });
+
+  const fetchReleases = async () => {
+    try {
+      setLoading(true);
+      const data = await api.governance.getAppVersions();
+      setReleases(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load app releases from API:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReleases();
+  }, []);
 
   const activeRelease = releases[0];
 
-  const handleCreateRelease = (e) => {
+  const handleCreateRelease = async (e) => {
     e.preventDefault();
-    const newRel = {
-      id: releases.length + 1,
-      version: formData.version,
-      buildNumber: parseInt(formData.buildNumber, 10),
-      platform: formData.platform,
-      forceUpdate: formData.forceUpdate,
-      minSupportedVersion: formData.minSupportedVersion,
-      rolloutPercent: parseInt(formData.rolloutPercent, 10),
-      status: 'LIVE_PRODUCTION',
-      downloadUrl: formData.downloadUrl || `https://cdn.fundlending.com/apps/finance-agent-${formData.version}.apk`,
-      releaseDate: new Date().toISOString().slice(0, 10),
-      changelog: formData.changelogText.split('\n').filter((l) => l.trim()),
-    };
-
-    setReleases([newRel, ...releases]);
-    setIsNewReleaseModalOpen(false);
-    setFeedback(`Mobile release ${formData.version} published to OTA network!`);
-    setTimeout(() => setFeedback(null), 3500);
-  };
-
-  const handleToggleForceUpdate = (id) => {
-    setReleases((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, forceUpdate: !r.forceUpdate } : r))
-    );
-    setFeedback('Force Update policy updated!');
-    setTimeout(() => setFeedback(null), 3000);
+    try {
+      await api.governance.createAppVersion({
+        platform: formData.platform,
+        version_name: formData.version_name,
+        version_code: parseInt(formData.version_code, 10),
+        release_title: formData.release_title || `${formData.version_name} Release`,
+        release_notes: formData.release_notes,
+        download_url: formData.download_url || `https://downloads.fundlending.com/builds/financeflow-${formData.version_name}.apk`,
+        min_supported_version: formData.min_supported_version,
+        force_update: formData.force_update,
+        status: 'ACTIVE',
+      });
+      setIsNewReleaseModalOpen(false);
+      setFeedback(`Mobile release ${formData.version_name} published to database!`);
+      await fetchReleases();
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Failed to create release:', err);
+    }
   };
 
   return (
@@ -151,55 +122,25 @@ export const MobileAppUpdates = () => {
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem' }}>{activeRelease.version}</h2>
+                  <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem' }}>{activeRelease.version_name}</h2>
                   <span className="badge badge-emerald">Active Production Live</span>
-                  {activeRelease.forceUpdate && <span className="badge badge-red">Force Update Mandatory</span>}
+                  {activeRelease.force_update && <span className="badge badge-red">Force Update Mandatory</span>}
                 </div>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Build #{activeRelease.buildNumber} • Released on {activeRelease.releaseDate} • Min Supported: {activeRelease.minSupportedVersion}
+                  Build #{activeRelease.version_code} • Released: {activeRelease.created_at ? new Date(activeRelease.created_at).toISOString().slice(0, 10) : 'Active'} • Min Supported: {activeRelease.min_supported_version || 'v2.0.0'}
                 </span>
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => handleToggleForceUpdate(activeRelease.id)}
-              >
-                <ShieldCheck size={16} />
-                {activeRelease.forceUpdate ? 'Disable Force Update' : 'Enable Force Update'}
-              </button>
-            </div>
           </div>
 
-          {/* Rollout progress */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}>
-              <span style={{ color: 'var(--text-muted)' }}>Field Agent Rollout Status</span>
-              <strong style={{ color: '#fff' }}>{activeRelease.rolloutPercent}% Global Coverage</strong>
-            </div>
-            <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '100%',
-                  width: `${activeRelease.rolloutPercent}%`,
-                  background: 'var(--emerald)',
-                  borderRadius: 4,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Changelog */}
+          {/* Release Notes */}
           <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 8 }}>
             <strong style={{ color: '#fff', fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>
-              Changelog & Key Improvements:
+              Release Title & Changelog:
             </strong>
-            <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-              {activeRelease.changelog.map((item, idx) => (
-                <li key={idx}>{item}</li>
-              ))}
-            </ul>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.6 }}>
+              {activeRelease.release_notes || activeRelease.release_title || 'Optimized offline synchronization and field route management.'}
+            </p>
           </div>
         </div>
       )}
@@ -218,141 +159,143 @@ export const MobileAppUpdates = () => {
                 <th>Build #</th>
                 <th>Platform</th>
                 <th>Min Version</th>
-                <th>Rollout %</th>
                 <th>Force Update</th>
                 <th>Release Date</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {releases.map((rel) => (
-                <tr key={rel.id}>
-                  <td><strong style={{ color: '#fff' }}>{rel.version}</strong></td>
-                  <td><code>#{rel.buildNumber}</code></td>
-                  <td><span className="badge badge-purple">{rel.platform}</span></td>
-                  <td>{rel.minSupportedVersion}</td>
-                  <td>{rel.rolloutPercent}%</td>
-                  <td>
-                    {rel.forceUpdate ? (
-                      <span className="badge badge-red">MANDATORY</span>
-                    ) : (
-                      <span className="badge badge-blue">OPTIONAL</span>
-                    )}
-                  </td>
-                  <td>{rel.releaseDate}</td>
-                  <td>
-                    <StatusBadge status={rel.status === 'LIVE_PRODUCTION' ? 'ACTIVE' : 'INACTIVE'} />
-                  </td>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading releases from database...</td>
                 </tr>
-              ))}
+              ) : releases.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No release history recorded yet.</td>
+                </tr>
+              ) : (
+                releases.map((rel) => (
+                  <tr key={rel.id}>
+                    <td><strong style={{ color: '#fff' }}>{rel.version_name}</strong></td>
+                    <td><code>#{rel.version_code}</code></td>
+                    <td><span className="badge badge-purple">{rel.platform}</span></td>
+                    <td>{rel.min_supported_version || 'N/A'}</td>
+                    <td>
+                      {rel.force_update ? (
+                        <span className="badge badge-red">MANDATORY</span>
+                      ) : (
+                        <span className="badge badge-blue">OPTIONAL</span>
+                      )}
+                    </td>
+                    <td>{rel.created_at ? new Date(rel.created_at).toISOString().slice(0, 10) : 'Live'}</td>
+                    <td>
+                      <StatusBadge status={rel.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE'} />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Publish Build Modal */}
+      {/* New Release Modal */}
       {isNewReleaseModalOpen && (
         <Modal
           isOpen={isNewReleaseModalOpen}
           onClose={() => setIsNewReleaseModalOpen(false)}
-          title="Publish New Mobile App Release"
+          title="Publish New Mobile Build (FinanceApp)"
         >
           <form onSubmit={handleCreateRelease}>
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Version String *</label>
+                <label className="form-label">Version Name</label>
                 <input
                   type="text"
                   className="form-input"
+                  value={formData.version_name}
+                  onChange={(e) => setFormData({ ...formData, version_name: e.target.value })}
                   placeholder="e.g. v2.5.0"
-                  value={formData.version}
-                  onChange={(e) => setFormData({ ...formData, version: e.target.value })}
                   required
                 />
               </div>
-
               <div className="form-group">
-                <label className="form-label">Build Number *</label>
+                <label className="form-label">Build Number</label>
                 <input
                   type="number"
                   className="form-input"
-                  placeholder="2500"
-                  value={formData.buildNumber}
-                  onChange={(e) => setFormData({ ...formData, buildNumber: e.target.value })}
+                  value={formData.version_code}
+                  onChange={(e) => setFormData({ ...formData, version_code: e.target.value })}
+                  placeholder="e.g. 25"
                   required
                 />
               </div>
             </div>
 
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Platform</label>
+                <select
+                  className="form-input"
+                  value={formData.platform}
+                  onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                >
+                  <option value="ANDROID">Android APK</option>
+                  <option value="IOS">iOS IPA</option>
+                  <option value="WEB">Web App</option>
+                </select>
+              </div>
               <div className="form-group">
                 <label className="form-label">Min Supported Version</label>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="v2.3.0"
-                  value={formData.minSupportedVersion}
-                  onChange={(e) => setFormData({ ...formData, minSupportedVersion: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Initial Rollout %</label>
-                <input
-                  type="number"
-                  min="5"
-                  max="100"
-                  className="form-input"
-                  value={formData.rolloutPercent}
-                  onChange={(e) => setFormData({ ...formData, rolloutPercent: e.target.value })}
+                  value={formData.min_supported_version}
+                  onChange={(e) => setFormData({ ...formData, min_supported_version: e.target.value })}
+                  placeholder="e.g. v2.2.0"
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Binary APK / Download URL</label>
+              <label className="form-label">Release Title</label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="https://cdn.fundlending.com/apps/..."
-                value={formData.downloadUrl}
-                onChange={(e) => setFormData({ ...formData, downloadUrl: e.target.value })}
+                value={formData.release_title}
+                onChange={(e) => setFormData({ ...formData, release_title: e.target.value })}
+                placeholder="Release summary..."
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Release Notes & Changelog</label>
+              <label className="form-label">Release Notes / Changelog</label>
               <textarea
                 className="form-input"
                 rows={3}
-                placeholder="List key fixes and features (one per line)..."
-                value={formData.changelogText}
-                onChange={(e) => setFormData({ ...formData, changelogText: e.target.value })}
+                value={formData.release_notes}
+                onChange={(e) => setFormData({ ...formData, release_notes: e.target.value })}
+                placeholder="List major changes..."
               />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1rem 0' }}>
-              <input
-                type="checkbox"
-                id="forceUpdateChk"
-                checked={formData.forceUpdate}
-                onChange={(e) => setFormData({ ...formData, forceUpdate: e.target.checked })}
-              />
-              <label htmlFor="forceUpdateChk" style={{ fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}>
-                Require Force Update (Block outdated app versions immediately)
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.force_update}
+                  onChange={(e) => setFormData({ ...formData, force_update: e.target.checked })}
+                />
+                Force Update Mandatory (Block older versions on app launch)
               </label>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsNewReleaseModalOpen(false)}
-              >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsNewReleaseModalOpen(false)}>
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary">
-                Deploy Release OTA
+                Publish to TiDB
               </button>
             </div>
           </form>

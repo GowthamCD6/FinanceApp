@@ -70,11 +70,10 @@ A modern, high-performance web dashboard built with **React 18**, **Vite**, and 
 ---
 
 ### 5. 🔌 Data & State Layer
-- **`AuthContext.jsx`**: Global authentication state, user session, and permission helpers.
+- **`AuthContext.jsx`**: Global authentication state, JWT user session, and permission helpers.
 - **`OrgContext.jsx`**: Multi-tenant state handling for switching active branches and organization context seamlessly.
-- **`api.js` & `mockData.js`**:
-  - Resilient API client configured for backend integration (`http://localhost:5000/api`).
-  - Automatic fallback to rich mock data when backend services are offline, enabling full offline exploration and UI testing.
+- **`api.js`**:
+  - Live production REST API client communicating directly with the backend server and TiDB Cloud database (`http://localhost:5000/api`).
 
 ---
 
@@ -99,23 +98,11 @@ FinanceWeb/
 │   │   ├── AuthContext.jsx          # Auth state & token management
 │   │   └── OrgContext.jsx           # Organization / tenant switcher state
 │   ├── pages/
-│   │   ├── Admin/
-│   │   │   ├── AddUser.jsx          # Staff onboarding form
-│   │   │   ├── AdminDashboard.jsx    # Branch KPI & financial overview
-│   │   │   ├── AdminLoans.jsx       # Loan issuance & repayment ledger
-│   │   │   ├── AdminProfile.jsx     # Branch profile & preferences
-│   │   │   ├── AdminReports.jsx     # Financial audit & collection reports
-│   │   │   ├── ManageUsers.jsx      # Agent & staff management table
-│   │   │   └── Shopkeepers.jsx      # Merchant directory & CRM profile
-│   │   ├── Superadmin/
-│   │   │   ├── Organization/
-│   │   │   │   └── CreateOrganization.jsx # Organization creation wizard
-│   │   │   └── SuperAdminDashboard.jsx    # Multi-tenant oversight dashboard
-│   │   └── auth/
-│   │       └── LoginPage.jsx        # Glassmorphic auth portal
+│   │   ├── Admin/                   # Branch Admin operational pages
+│   │   ├── Superadmin/              # Platform SuperAdmin governance pages
+│   │   └── auth/                    # Login and onboarding
 │   ├── services/
-│   │   ├── api.js                   # REST API service client with fallback
-│   │   └── mockData.js              # Comprehensive demo dataset
+│   │   └── api.js                   # Live Backend REST API client
 │   ├── styles/
 │   │   ├── index.css                # Global styles, layout utilities, animations
 │   │   └── tokens.css               # Color variables, gradients, spacing tokens

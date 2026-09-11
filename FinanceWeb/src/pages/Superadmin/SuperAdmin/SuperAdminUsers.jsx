@@ -1,63 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
 import {
   ShieldCheck,
   UserPlus,
   Search,
-  Key,
-  Lock,
   Mail,
   Phone,
   CheckCircle2,
-  AlertTriangle,
-  User,
   Power,
-  Edit2,
-  Clock,
-  Shield,
+  RefreshCw,
 } from 'lucide-react';
 
 export const SuperAdminUsers = () => {
-  const [admins, setAdmins] = useState([
-    {
-      id: 1,
-      name: 'Super Admin Root',
-      email: 'admin@fundlending.com',
-      phone: '9999999999',
-      role: 'SUPER_ADMIN_ROOT',
-      status: 'ACTIVE',
-      twoFactorEnabled: true,
-      lastLogin: '2026-09-11 15:30:12',
-      permissions: ['SYSTEM_ALL', 'ORG_GOVERNANCE', 'GLOBAL_LEDGER', 'MIGRATIONS_RUN'],
-      createdAt: '2025-01-01',
-    },
-    {
-      id: 2,
-      name: 'Priya Narayanan (Compliance Head)',
-      email: 'priya.audit@fundlending.com',
-      phone: '9840998877',
-      role: 'SUPER_ADMIN_AUDITOR',
-      status: 'ACTIVE',
-      twoFactorEnabled: true,
-      lastLogin: '2026-09-10 18:45:00',
-      permissions: ['ORG_GOVERNANCE', 'GLOBAL_LEDGER', 'AUDIT_LOG_EXPORT'],
-      createdAt: '2025-03-15',
-    },
-    {
-      id: 3,
-      name: 'Karthik Raja (DevOps Lead)',
-      email: 'karthik.ops@fundlending.com',
-      phone: '9884554433',
-      role: 'SUPER_ADMIN_TECH',
-      status: 'ACTIVE',
-      twoFactorEnabled: false,
-      lastLogin: '2026-09-08 09:12:30',
-      permissions: ['API_TELEMETRY', 'MIGRATIONS_RUN', 'APP_ROLLOUT'],
-      createdAt: '2025-05-10',
-    },
-  ]);
-
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -66,64 +24,87 @@ export const SuperAdminUsers = () => {
     name: '',
     email: '',
     phone: '',
-    role: 'SUPER_ADMIN_AUDITOR',
-    twoFactorEnabled: true,
+    role_type: 'SUPER_ADMIN',
+    password: '',
   });
 
-  const handleAddSubmit = (e) => {
+  const fetchAdmins = async () => {
+    try {
+      setLoading(true);
+      const data = await api.users.getAll({ role_type: 'SUPER_ADMIN' });
+      setAdmins(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load SuperAdmin users from API:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.email.trim()) return;
 
-    const newAdmin = {
-      id: admins.length + 1,
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      phone: formData.phone.trim() || '9XXXXXXXXX',
-      role: formData.role,
-      status: 'ACTIVE',
-      twoFactorEnabled: formData.twoFactorEnabled,
-      lastLogin: 'Never',
-      permissions: ['ORG_GOVERNANCE', 'GLOBAL_LEDGER'],
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-
-    setAdmins([newAdmin, ...admins]);
-    setIsAddModalOpen(false);
-    setFeedback(`SuperAdmin user "${formData.name}" successfully created!`);
-    setTimeout(() => setFeedback(null), 3500);
+    try {
+      await api.users.create({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password || 'Admin@123',
+        role_type: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+      });
+      setIsAddModalOpen(false);
+      setFeedback(`SuperAdmin user "${formData.name}" successfully created in database!`);
+      await fetchAdmins();
+      setFormData({ name: '', email: '', phone: '', role_type: 'SUPER_ADMIN', password: '' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Failed to create superadmin:', err);
+    }
   };
 
-  const handleToggleStatus = (id, name, currentStatus) => {
+  const handleToggleStatus = async (id, name, currentStatus) => {
     const nextStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    setAdmins((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: nextStatus } : a))
-    );
-    setFeedback(`${name} marked as ${nextStatus}`);
-    setTimeout(() => setFeedback(null), 3000);
+    try {
+      await api.users.updateStatus(id, nextStatus);
+      setFeedback(`User ${name} status updated to ${nextStatus}!`);
+      await fetchAdmins();
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (err) {
+      console.error('Failed to update user status:', err);
+    }
   };
 
   const filteredAdmins = admins.filter(
     (a) =>
-      a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.phone.includes(searchTerm)
+      a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.phone?.includes(searchTerm)
   );
 
   return (
-    <div className="super-admin-users-page">
+    <div className="superadmin-users-page">
       <div className="page-header">
         <div>
-          <div className="welcome-tag">ROOT ACCESS CONTROL & GOVERNANCE</div>
-          <h1 className="page-title">SuperAdmin User Management</h1>
+          <div className="welcome-tag">PLATFORM ROOT RBAC & ACCESS</div>
+          <h1 className="page-title">SuperAdmin Users & Roles</h1>
           <p className="page-subtitle">
-            Manage root platform administrators, multi-tenant RBAC privilege sets, and authentication security policies.
+            Manage multi-tenant system administrators, platform auditors, and root credential authorizations.
           </p>
         </div>
 
         <div className="header-actions">
+          <button className="btn btn-secondary" onClick={fetchAdmins}>
+            <RefreshCw size={16} />
+            Refresh
+          </button>
           <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)}>
             <UserPlus size={16} />
-            Invite SuperAdmin
+            Add SuperAdmin
           </button>
         </div>
       </div>
@@ -135,207 +116,183 @@ export const SuperAdminUsers = () => {
         </div>
       )}
 
-      {/* Top Security Strip */}
+      {/* Overview Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         <div className="card" style={{ padding: '1.25rem' }}>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total SuperAdmins</span>
           <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.6rem', color: '#fff' }}>{admins.length}</h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--emerald)' }}>Active Root Privilege</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--emerald)' }}>Active in TiDB Database</span>
         </div>
 
         <div className="card" style={{ padding: '1.25rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>2-Factor Authentication (2FA)</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.6rem', color: 'var(--emerald)' }}>
-            {Math.round((admins.filter((a) => a.twoFactorEnabled).length / admins.length) * 100)}%
-          </h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Enforced for all financial ops</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Multi-Tenant Isolation</span>
+          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.6rem', color: 'var(--accent-primary)' }}>Full Cross-Org Access</h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Global ledger governance</span>
         </div>
 
         <div className="card" style={{ padding: '1.25rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Security Level</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.6rem', color: 'var(--accent-primary)' }}>Tier-1 Vault</h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Encrypted session state</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Security Standard</span>
+          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.6rem', color: '#fbbf24' }}>BCrypt + JWT</h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HS256 signed sessions</span>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="table-controls" style={{ marginBottom: '1.25rem' }}>
-        <div className="search-box" style={{ maxWidth: 400 }}>
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Search SuperAdmin by name, email, or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* SuperAdmins Table */}
+      {/* Users Table */}
       <div className="table-card">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 className="card-title">SuperAdmin Directory</h3>
+          <div className="search-box" style={{ maxWidth: 300 }}>
+            <Search size={16} color="var(--text-muted)" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search by name, email, phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
         <div className="table-responsive">
           <table className="data-table">
             <thead>
               <tr>
-                <th>SuperAdmin User</th>
-                <th>Role & Access Tier</th>
-                <th>Contact Info</th>
-                <th>2FA Security</th>
-                <th>Last Login</th>
+                <th>User Details</th>
+                <th>Role Designation</th>
+                <th>Phone</th>
+                <th>Registered Date</th>
                 <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredAdmins.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: '50%',
-                          background: 'rgba(99, 102, 241, 0.15)',
-                          color: 'var(--accent-primary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 700,
-                        }}
-                      >
-                        <ShieldCheck size={18} />
-                      </div>
-                      <div>
-                        <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{a.name}</strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Created {a.createdAt}</div>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td>
-                    <span className="badge badge-purple">{a.role.replace(/_/g, ' ')}</span>
-                  </td>
-
-                  <td>
-                    <div style={{ fontSize: '0.85rem', color: '#fff' }}>{a.email}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>📞 {a.phone}</div>
-                  </td>
-
-                  <td>
-                    {a.twoFactorEnabled ? (
-                      <span className="badge badge-emerald">2FA Enabled</span>
-                    ) : (
-                      <span className="badge badge-yellow">2FA Pending</span>
-                    )}
-                  </td>
-
-                  <td>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{a.lastLogin}</span>
-                  </td>
-
-                  <td>
-                    <StatusBadge status={a.status} />
-                  </td>
-
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button
-                        className="btn-icon"
-                        title={a.status === 'ACTIVE' ? 'Deactivate SuperAdmin' : 'Activate SuperAdmin'}
-                        onClick={() => handleToggleStatus(a.id, a.name, a.status)}
-                      >
-                        <Power size={16} color={a.status === 'ACTIVE' ? 'var(--red)' : 'var(--emerald)'} />
-                      </button>
-                    </div>
-                  </td>
+              {loading ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Loading live SuperAdmins from TiDB...</td>
                 </tr>
-              ))}
+              ) : filteredAdmins.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No SuperAdmin users found.</td>
+                </tr>
+              ) : (
+                filteredAdmins.map((admin) => (
+                  <tr key={admin.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: '50%',
+                            background: 'rgba(99, 102, 241, 0.2)',
+                            color: 'var(--accent-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {admin.name?.[0]?.toUpperCase() || 'A'}
+                        </div>
+                        <div>
+                          <strong style={{ color: '#fff' }}>{admin.name}</strong>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Mail size={12} /> {admin.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="badge badge-purple">{admin.role_type || 'SUPER_ADMIN'}</span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Phone size={12} /> {admin.phone || 'N/A'}
+                      </span>
+                    </td>
+                    <td>{admin.created_at ? new Date(admin.created_at).toISOString().slice(0, 10) : 'Live'}</td>
+                    <td>
+                      <StatusBadge status={admin.status} />
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ padding: '0.35rem 0.65rem' }}
+                        title="Toggle Status"
+                        onClick={() => handleToggleStatus(admin.id, admin.name, admin.status)}
+                      >
+                        <Power size={14} color={admin.status === 'ACTIVE' ? 'var(--emerald)' : 'var(--text-muted)'} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Invite SuperAdmin Modal */}
+      {/* Add SuperAdmin Modal */}
       {isAddModalOpen && (
         <Modal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          title="Invite SuperAdmin User"
+          title="Create New SuperAdmin User"
         >
           <form onSubmit={handleAddSubmit}>
             <div className="form-group">
-              <label className="form-label">Full Name *</label>
+              <label className="form-label">Full Name</label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Ramesh Krishnan"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Anand R"
                 required
               />
             </div>
 
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Email Address *</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  placeholder="ramesh@fundlending.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="9876543210"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <input
+                type="email"
+                className="form-input"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="admin.name@fundlending.com"
+                required
+              />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Governance Role Tier</label>
-              <select
-                className="form-input"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              >
-                <option value="SUPER_ADMIN_AUDITOR">SuperAdmin Auditor (Financial & Compliance)</option>
-                <option value="SUPER_ADMIN_TECH">SuperAdmin Tech (DevOps & Telemetry)</option>
-                <option value="SUPER_ADMIN_ROOT">SuperAdmin Root (Full Platform Master)</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1rem 0' }}>
+              <label className="form-label">Phone Number (10-digit)</label>
               <input
-                type="checkbox"
-                id="twoFactorCheckbox"
-                checked={formData.twoFactorEnabled}
-                onChange={(e) => setFormData({ ...formData, twoFactorEnabled: e.target.checked })}
+                type="tel"
+                className="form-input"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="9876543210"
+                required
               />
-              <label htmlFor="twoFactorCheckbox" style={{ fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}>
-                Require Two-Factor Authentication (2FA) upon first login
-              </label>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsAddModalOpen(false)}
-              >
+            <div className="form-group">
+              <label className="form-label">Temporary Initial Password</label>
+              <input
+                type="password"
+                className="form-input"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="Admin@123"
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)}>
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary">
-                Send Invitation & Save
+                Create SuperAdmin
               </button>
             </div>
           </form>

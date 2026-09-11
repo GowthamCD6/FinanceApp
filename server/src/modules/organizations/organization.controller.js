@@ -45,6 +45,24 @@ const organizationController = {
     }
   },
 
+  // PUT /api/organizations/:id
+  updateOrganization: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = await organizationService.updateOrganization(id, req.body);
+      res.json({
+        success: true,
+        message: 'Organization updated successfully',
+        data,
+      });
+    } catch (err) {
+      res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  },
+
   // PATCH /api/organizations/:id/status
   updateOrganizationStatus: async (req, res, next) => {
     try {
@@ -54,6 +72,38 @@ const organizationController = {
       res.json({
         success: true,
         message: `Organization status updated to ${status}`,
+        data,
+      });
+    } catch (err) {
+      res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  },
+
+  // GET /api/organizations/:id/branches
+  getBranches: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = await organizationService.getBranches(id);
+      res.json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // POST /api/organizations/:id/branches
+  createBranch: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = await organizationService.createBranch(id, req.body);
+      res.status(201).json({
+        success: true,
+        message: 'Branch created successfully',
         data,
       });
     } catch (err) {
