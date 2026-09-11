@@ -20,6 +20,8 @@ import {
   FileText,
   Bell,
   DollarSign,
+  Calendar,
+  Navigation,
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }) => {
@@ -47,6 +49,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     ? [
         { label: 'Org Dashboard', path: `/org/${activeOrg.id}/dashboard`, icon: LayoutDashboard },
         { label: 'Shopkeeper Ledger', path: `/org/${activeOrg.id}/shopkeepers`, icon: Store },
+        { label: 'Weekly Customers', path: `/org/${activeOrg.id}/weekly-customers`, icon: Calendar },
         { label: 'Manage Borrowers', path: `/org/${activeOrg.id}/users`, icon: Users },
         { label: 'Onboard Borrower', path: `/org/${activeOrg.id}/users/add`, icon: UserPlus },
         { label: 'Loan Portfolio', path: `/org/${activeOrg.id}/loans`, icon: CreditCard },
@@ -56,6 +59,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     : [
         { label: 'Admin Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
         { label: 'Shopkeeper Ledger', path: '/admin/shopkeepers', icon: Store },
+        { label: 'Weekly Customers', path: '/admin/weekly-customers', icon: Calendar },
         { label: 'Manage Users', path: '/admin/users', icon: Users },
         { label: 'Add User', path: '/admin/users/add', icon: UserPlus },
         { label: 'Loan Portfolio', path: '/admin/loans', icon: CreditCard },

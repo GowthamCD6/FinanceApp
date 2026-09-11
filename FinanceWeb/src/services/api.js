@@ -830,9 +830,48 @@ class ApiService {
     // Compute user payment history
     const history = this.payments.filter((p) => p.customer_id === u.id || p.customer_id === u.customerId);
 
+    // Compute Ongoing and Completed loans
+    const allUserLoans = u.loans || (u.active_loan ? [u.active_loan] : []);
+    const ongoingLoans = allUserLoans.filter((l) => l.status === 'ACTIVE' || (l.remaining_balance || 0) > 0);
+    
+    // Default completed loans if none in array
+    const completedLoans = allUserLoans.filter((l) => l.status === 'COMPLETED') || [];
+    if (completedLoans.length === 0 && (u.completedLoansCount || 0) > 0) {
+      for (let i = 1; i <= (u.completedLoansCount || 2); i++) {
+        completedLoans.push({
+          id: 500 + i,
+          loan_code: `LN-2025-00${i}`,
+          loanNumber: `LN-2025-00${i}`,
+          loan_name: `Loan Cycle #${i} (${u.role === 'SHOPKEEPER' ? 'Daily Merchant' : 'Weekly Loan'})`,
+          principal: 10000 * i,
+          principal_amount: 10000 * i,
+          total_repayable: Math.round(10000 * i * (u.role === 'SHOPKEEPER' ? 1.125 : 1.1)),
+          total_repaid: Math.round(10000 * i * (u.role === 'SHOPKEEPER' ? 1.125 : 1.1)),
+          frequency: u.role === 'SHOPKEEPER' ? 'DAILY' : 'WEEKLY',
+          paid_installments: u.role === 'SHOPKEEPER' ? 25 : 10,
+          total_installments: u.role === 'SHOPKEEPER' ? 25 : 10,
+          status: 'COMPLETED',
+          disbursed_date: `2025-0${i + 2}-10`,
+          settled_date: `2025-0${i + 4}-20`,
+          rating: '100% On-Time (Flawless)',
+        });
+      }
+    }
+
     return {
       ...u,
+      ongoingLoans,
+      completedLoans,
       paymentHistory: history,
+      financialSummary: {
+        totalBorrowed: u.totalBorrowed || 30000,
+        totalRepaid: u.totalPaid || 20000,
+        outstanding: u.outstandingAmount || 0,
+        completedCount: completedLoans.length,
+        activeCount: ongoingLoans.length,
+        creditRating: u.credit_rating || 'A+',
+        repaymentReliability: '100% On-Time Record',
+      },
     };
   }
 
@@ -1282,6 +1321,607 @@ class ApiService {
       overdueBorrowersCount: 2,
       repaymentRate: 98.4,
       availableCash: 285400,
+    };
+  }
+
+  // ==========================================
+  // SHOPKEEPERS (DAILY MARKET COLLECTION)
+  // ==========================================
+  async getShopkeepers() {
+    try {
+      const res = await fetch(`${this.baseUrl}/shopkeepers`, {
+        headers: this.getHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) return json.data;
+      }
+    } catch (_) {}
+
+    // Synchronize and map from internal users
+    const shopUsers = this.users.filter((u) => u.role === 'SHOPKEEPER' || u.shop_name || u.stall_no);
+    if (shopUsers.length === 0) {
+      // Return predefined rich mock shopkeepers
+      return [
+        {
+          id: 2,
+          customer_code: 'CUST-002',
+          name: 'Murugan Supermarket',
+          shop_name: 'Murugan Supermarket & Provisions',
+          market_location: 'Saidapet Bazaar Route',
+          stall_no: 'Shop #12-B',
+          phone: '9840112233',
+          credit_limit: 80000,
+          today_collection_status: 'PENDING',
+          daily_collection_target: 1800,
+          total_principal_given: 40000,
+          total_outstanding: 18000,
+          status: 'ACTIVE',
+          today_entries: [
+            { loan_code: 'LN-2026-005', amount: 1800, status: 'PENDING', collected_amount: 0 },
+          ],
+          loans: [
+            {
+              id: 103,
+              loan_code: 'LN-2026-005',
+              loan_name: 'Daily Grocery Stocking',
+              principal: 40000,
+              total_repayable: 45000,
+              installment_amount: 1800,
+              frequency: 'DAILY',
+              paid_installments: 15,
+              total_installments: 25,
+              remaining_balance: 18000,
+              status: 'ACTIVE',
+            },
+          ],
+        },
+        {
+          id: 4,
+          customer_code: 'CUST-004',
+          name: 'Selvam Tea Stall',
+          shop_name: 'Selvam Tea & Bakery',
+          market_location: 'T. Nagar Market Corridor',
+          stall_no: 'Stall #05-Corner',
+          phone: '9444123456',
+          credit_limit: 30000,
+          today_collection_status: 'MISSED',
+          daily_collection_target: 675,
+          total_principal_given: 15000,
+          total_outstanding: 12825,
+          status: 'ACTIVE',
+          today_entries: [
+            { loan_code: 'LN-2026-007', amount: 675, status: 'MISSED', collected_amount: 0 },
+          ],
+          loans: [
+            {
+              id: 104,
+              loan_code: 'LN-2026-007',
+              loan_name: 'Tea Leaves & Milk Supply',
+              principal: 15000,
+              total_repayable: 16875,
+              installment_amount: 675,
+              frequency: 'DAILY',
+              paid_installments: 6,
+              total_installments: 25,
+              remaining_balance: 12825,
+              status: 'ACTIVE',
+            },
+          ],
+        },
+        {
+          id: 5,
+          customer_code: 'CUST-005',
+          name: 'Priya Sweets & Snacks',
+          shop_name: 'Priya Sweets Stall',
+          market_location: 'Triplicane High Road',
+          stall_no: 'Stall #28',
+          phone: '9840554433',
+          credit_limit: 60000,
+          today_collection_status: 'COLLECTED',
+          daily_collection_target: 1200,
+          total_principal_given: 30000,
+          total_outstanding: 8400,
+          status: 'ACTIVE',
+          today_entries: [
+            { loan_code: 'LN-2026-012', amount: 1200, status: 'COLLECTED', collected_amount: 1200 },
+          ],
+          loans: [
+            {
+              id: 105,
+              loan_code: 'LN-2026-012',
+              loan_name: 'Festival Sweet Raw Materials',
+              principal: 30000,
+              total_repayable: 33750,
+              installment_amount: 1200,
+              frequency: 'DAILY',
+              paid_installments: 21,
+              total_installments: 25,
+              remaining_balance: 8400,
+              status: 'ACTIVE',
+            },
+          ],
+        },
+      ];
+    }
+
+    return shopUsers.map((u) => {
+      const activeDailyLoan = (u.loans || []).find((l) => l.frequency === 'DAILY' && l.status === 'ACTIVE');
+      const dailyTarget = activeDailyLoan ? activeDailyLoan.installment_amount : 1500;
+      const todayStatus = u.today_collection_status || 'PENDING';
+
+      return {
+        id: u.id,
+        customer_code: u.customer_code || u.customerCode || `SHOP-${u.id}`,
+        name: u.name,
+        shop_name: u.shop_name || u.shopName || `${u.name}'s Shop`,
+        market_location: u.market_location || u.city || 'Saidapet Bazaar Route',
+        stall_no: u.stall_no || `Stall #${u.id + 10}`,
+        phone: u.phone,
+        credit_limit: u.credit_limit || 50000,
+        today_collection_status: todayStatus,
+        daily_collection_target: dailyTarget,
+        total_principal_given: u.totalBorrowed || 30000,
+        total_outstanding: u.outstandingAmount || 15000,
+        status: u.status || 'ACTIVE',
+        today_entries: [
+          {
+            loan_code: activeDailyLoan ? activeDailyLoan.loan_code : `LN-${u.id}`,
+            amount: dailyTarget,
+            status: todayStatus,
+            collected_amount: todayStatus === 'COLLECTED' ? dailyTarget : 0,
+          },
+        ],
+        loans: u.loans || [],
+      };
+    });
+  }
+
+  async recordShopkeeperCollection(shopId, loanCode, paymentMode = 'UPI', customAmount = null) {
+    const shop = this.users.find((u) => u.id === Number(shopId) || u.customerId === Number(shopId));
+    const targetLoan = shop && shop.loans ? shop.loans.find((l) => l.loan_code === loanCode || l.loanNumber === loanCode) : null;
+    const amount = customAmount ? parseFloat(customAmount) : (targetLoan ? targetLoan.installment_amount : 1500);
+
+    const receiptNo = `RCP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    if (shop) {
+      shop.today_collection_status = 'COLLECTED';
+      if (shop.outstandingAmount) {
+        shop.outstandingAmount = Math.max(0, shop.outstandingAmount - amount);
+      }
+      if (shop.totalPaid !== undefined) {
+        shop.totalPaid += amount;
+      }
+    }
+
+    if (targetLoan) {
+      targetLoan.paid_installments = (targetLoan.paid_installments || 0) + 1;
+      targetLoan.remaining_balance = Math.max(0, (targetLoan.remaining_balance || 0) - amount);
+      if (targetLoan.remaining_balance <= 0) {
+        targetLoan.status = 'COMPLETED';
+      }
+    }
+
+    // Record immutable payment
+    const paymentRecord = {
+      id: Date.now(),
+      receiptNumber: receiptNo,
+      receipt_number: receiptNo,
+      customer_id: Number(shopId),
+      customer_name: shop ? shop.name : 'Shopkeeper',
+      customer_phone: shop ? shop.phone : '',
+      loan_id: targetLoan ? targetLoan.id : 1,
+      loan_code: loanCode,
+      amount,
+      payment_method: paymentMode,
+      payment_date: new Date().toISOString().slice(0, 10),
+      notes: `Daily collection for ${loanCode} via ${paymentMode}`,
+    };
+    this.payments.unshift(paymentRecord);
+
+    return {
+      success: true,
+      receiptNumber: receiptNo,
+      receipt_number: receiptNo,
+      amount,
+      payment_mode: paymentMode,
+      date: new Date().toISOString().slice(0, 10),
+      collected_at: new Date().toLocaleTimeString(),
+    };
+  }
+
+  async createShopkeeper(data) {
+    const nextId = this.users.length + 1;
+    const initialLoan = parseFloat(data.initial_loan_amount || data.initialLoanAmount || 20000);
+
+    const newShop = {
+      id: nextId,
+      customerId: nextId,
+      customer_code: `CUST-0${nextId}`,
+      customerCode: `CUST-0${nextId}`,
+      name: data.owner_name || data.name,
+      shop_name: data.shop_name || `${data.owner_name}'s Store`,
+      shopName: data.shop_name || `${data.owner_name}'s Store`,
+      market_location: data.market_location || 'Saidapet Bazaar Route',
+      stall_no: data.stall_no || `Stall #${nextId}`,
+      phone: data.phone,
+      email: data.email || '',
+      role: 'SHOPKEEPER',
+      type_label: 'Merchant (Daily)',
+      status: 'ACTIVE',
+      credit_limit: parseFloat(data.credit_limit || 50000),
+      occupation: 'Market Shopkeeper / Retailer',
+      city: data.market_location || 'Saidapet, Chennai',
+      address: `${data.stall_no || 'Stall'}, ${data.market_location || 'Market'}, Chennai`,
+      dateJoined: new Date().toISOString().slice(0, 10),
+      joined_date: new Date().toISOString().slice(0, 10),
+      activeLoansCount: initialLoan > 0 ? 1 : 0,
+      completedLoansCount: 0,
+      outstandingAmount: initialLoan > 0 ? Math.round(initialLoan * 1.125) : 0,
+      totalBorrowed: initialLoan,
+      totalPaid: 0,
+      today_collection_status: 'PENDING',
+      loans: [],
+    };
+
+    if (initialLoan > 0) {
+      const loanCode = `LN-2026-${Math.floor(100 + Math.random() * 900)}`;
+      const totalRepay = Math.round(initialLoan * 1.125);
+      const installmentAmt = Math.round(totalRepay / 25);
+
+      newShop.loans.push({
+        id: Date.now(),
+        loan_code: loanCode,
+        loanNumber: loanCode,
+        loan_name: 'Initial Daily Micro-Loan',
+        principal: initialLoan,
+        principal_amount: initialLoan,
+        total_repayable: totalRepay,
+        installment_amount: installmentAmt,
+        frequency: 'DAILY',
+        paid_installments: 0,
+        total_installments: 25,
+        disbursed_date: new Date().toISOString().slice(0, 10),
+        next_due_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        remaining_balance: totalRepay,
+        status: 'ACTIVE',
+      });
+    }
+
+    this.users.unshift(newShop);
+    return newShop;
+  }
+
+  // ==========================================
+  // WEEKLY CUSTOMERS (WEEKLY CYCLE LENDING)
+  // ==========================================
+  async getWeeklyCustomers() {
+    try {
+      const res = await fetch(`${this.baseUrl}/weekly-customers`, {
+        headers: this.getHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) return json.data;
+      }
+    } catch (_) {}
+
+    // Filter weekly customers
+    const weeklyUsers = this.users.filter(
+      (u) => u.role === 'COMMON_CUSTOMER' || (u.loans && u.loans.some((l) => l.frequency === 'WEEKLY'))
+    );
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    return weeklyUsers.map((u) => {
+      const activeWeeklyLoan = (u.loans || []).find((l) => l.frequency === 'WEEKLY' && l.status === 'ACTIVE') || (u.loans && u.loans[0]) || null;
+      const weeklyDue = activeWeeklyLoan ? activeWeeklyLoan.installment_amount : 2200;
+      const nextDueDate = activeWeeklyLoan ? activeWeeklyLoan.next_due_date : '2026-09-15';
+      const paidInstallments = activeWeeklyLoan ? activeWeeklyLoan.paid_installments : 4;
+      const totalInstallments = activeWeeklyLoan ? activeWeeklyLoan.total_installments : 10;
+
+      let currentWeekStatus = 'UNPAID';
+      if (paidInstallments >= totalInstallments) {
+        currentWeekStatus = 'PAID';
+      } else if (nextDueDate && nextDueDate < today) {
+        currentWeekStatus = 'OVERDUE';
+      } else if (u.totalPaid && u.totalPaid > 0) {
+        currentWeekStatus = 'UNPAID';
+      }
+
+      // Generate or retrieve 10-week schedule
+      const fullSchedule = [];
+      for (let i = 1; i <= (totalInstallments || 10); i++) {
+        const isPaid = i <= paidInstallments;
+        const dueD = new Date(Date.now() + (i - paidInstallments) * 7 * 86400000).toISOString().slice(0, 10);
+        fullSchedule.push({
+          installment_no: i,
+          due_date: dueD,
+          amount: weeklyDue,
+          status: isPaid ? 'PAID' : dueD < today ? 'OVERDUE' : 'UNPAID',
+          paid_date: isPaid ? '2026-09-05' : null,
+          receipt_no: isPaid ? `RCP-WK0${i}-882` : null,
+        });
+      }
+
+      return {
+        id: u.id,
+        customer_code: u.customer_code || u.customerCode || `CUST-0${u.id}`,
+        name: u.name,
+        phone: u.phone,
+        email: u.email,
+        address: u.address || 'Chennai, Tamil Nadu',
+        occupation: u.occupation || 'Self Employed',
+        credit_limit: u.credit_limit || 50000,
+        status: u.status || 'ACTIVE',
+        weekly_installment: weeklyDue,
+        current_week_due: weeklyDue,
+        current_week_due_date: nextDueDate,
+        current_week_status: currentWeekStatus,
+        paid_installments: paidInstallments,
+        total_installments: totalInstallments,
+        total_borrowed: u.totalBorrowed || 30000,
+        outstanding_balance: u.outstandingAmount || 13200,
+        active_loan: activeWeeklyLoan,
+        loans: u.loans || [],
+        schedule: fullSchedule,
+      };
+    });
+  }
+
+  async recordWeeklyCollection(customerId, loanCode, paymentMode = 'UPI', customAmount = null) {
+    const user = this.users.find((u) => u.id === Number(customerId) || u.customerId === Number(customerId));
+    const targetLoan = user && user.loans ? user.loans.find((l) => l.loan_code === loanCode || l.loanNumber === loanCode) : null;
+    const amount = customAmount ? parseFloat(customAmount) : (targetLoan ? targetLoan.installment_amount : 2200);
+
+    const receiptNo = `RCP-WK-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    if (user) {
+      if (user.outstandingAmount) {
+        user.outstandingAmount = Math.max(0, user.outstandingAmount - amount);
+      }
+      if (user.totalPaid !== undefined) {
+        user.totalPaid += amount;
+      }
+    }
+
+    if (targetLoan) {
+      targetLoan.paid_installments = (targetLoan.paid_installments || 0) + 1;
+      targetLoan.remaining_balance = Math.max(0, (targetLoan.remaining_balance || 0) - amount);
+      if (targetLoan.remaining_balance <= 0) {
+        targetLoan.status = 'COMPLETED';
+      }
+    }
+
+    // Record immutable payment
+    const paymentRecord = {
+      id: Date.now(),
+      receiptNumber: receiptNo,
+      receipt_number: receiptNo,
+      customer_id: Number(customerId),
+      customer_name: user ? user.name : 'Weekly Customer',
+      customer_phone: user ? user.phone : '',
+      loan_id: targetLoan ? targetLoan.id : 1,
+      loan_code: loanCode,
+      amount,
+      payment_method: paymentMode,
+      payment_date: new Date().toISOString().slice(0, 10),
+      notes: `Weekly installment for ${loanCode} via ${paymentMode}`,
+    };
+    this.payments.unshift(paymentRecord);
+
+    return {
+      success: true,
+      receiptNumber: receiptNo,
+      receipt_number: receiptNo,
+      amount,
+      payment_mode: paymentMode,
+      date: new Date().toISOString().slice(0, 10),
+      collected_at: new Date().toLocaleTimeString(),
+    };
+  }
+
+  // ==========================================
+  // FIELD AGENTS (ROUTE COLLECTION OFFICERS)
+  // ==========================================
+  async getFieldAgents() {
+    try {
+      const res = await fetch(`${this.baseUrl}/field-agents`, {
+        headers: this.getHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) return json.data;
+      }
+    } catch (_) {}
+
+    return [
+      {
+        id: 1,
+        agent_code: 'FA-01',
+        name: 'Vigneshwaran M',
+        phone: '9840223344',
+        assigned_route: 'Saidapet Bazaar Route',
+        assigned_borrowers: 34,
+        daily_target: 28500,
+        today_collected: 24200,
+        cash_in_hand: 18400,
+        upi_collected: 5800,
+        status: 'ON_ROUTE', // 'ON_ROUTE', 'IDLE', 'OFF_DUTY'
+        collection_rate: 85,
+        rating: '4.9 ★',
+        last_sync: '10 mins ago',
+      },
+      {
+        id: 2,
+        agent_code: 'FA-02',
+        name: 'Karthik Raja',
+        phone: '9790112233',
+        assigned_route: 'T. Nagar Market Corridor',
+        assigned_borrowers: 42,
+        daily_target: 36000,
+        today_collected: 36000,
+        cash_in_hand: 22000,
+        upi_collected: 14000,
+        status: 'COMPLETED',
+        collection_rate: 100,
+        rating: '5.0 ★',
+        last_sync: '2 mins ago',
+      },
+      {
+        id: 3,
+        agent_code: 'FA-03',
+        name: 'Saravanan S',
+        phone: '9444332211',
+        assigned_route: 'Triplicane High Road',
+        assigned_borrowers: 28,
+        daily_target: 22000,
+        today_collected: 15400,
+        cash_in_hand: 12000,
+        upi_collected: 3400,
+        status: 'ON_ROUTE',
+        collection_rate: 70,
+        rating: '4.7 ★',
+        last_sync: '15 mins ago',
+      },
+      {
+        id: 4,
+        agent_code: 'FA-04',
+        name: 'Dinesh Kumar',
+        phone: '9884556677',
+        assigned_route: 'Mylapore Tank Area',
+        assigned_borrowers: 20,
+        daily_target: 18000,
+        today_collected: 0,
+        cash_in_hand: 0,
+        upi_collected: 0,
+        status: 'OFF_DUTY',
+        collection_rate: 0,
+        rating: '4.8 ★',
+        last_sync: 'Yesterday',
+      },
+    ];
+  }
+
+  async createFieldAgent(data) {
+    const nextId = Date.now();
+    return {
+      id: nextId,
+      agent_code: `FA-0${Math.floor(5 + Math.random() * 5)}`,
+      name: data.name,
+      phone: data.phone,
+      assigned_route: data.assigned_route || 'Saidapet Bazaar Route',
+      assigned_borrowers: 0,
+      daily_target: parseFloat(data.daily_target || 25000),
+      today_collected: 0,
+      cash_in_hand: 0,
+      upi_collected: 0,
+      status: 'IDLE',
+      collection_rate: 0,
+      rating: '5.0 ★',
+      last_sync: 'Just now',
+    };
+  }
+
+  async handoverCash(agentId, amount) {
+    return {
+      success: true,
+      handover_receipt: `HND-${Date.now().toString().slice(-6)}`,
+      agent_id: agentId,
+      amount: parseFloat(amount),
+      timestamp: new Date().toLocaleTimeString(),
+    };
+  }
+
+  // ==========================================
+  // BRANCH STAFF & ADMIN MANAGEMENT
+  // ==========================================
+  async getBranchStaff() {
+    try {
+      const res = await fetch(`${this.baseUrl}/branch-staff`, {
+        headers: this.getHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) return json.data;
+      }
+    } catch (_) {}
+
+    return [
+      {
+        id: 1,
+        staff_code: 'ADM-01',
+        name: 'Rajesh Kumar',
+        email: 'rajesh.ops@apexfinance.com',
+        phone: '9876543210',
+        designation: 'Branch Operations Manager',
+        role: 'BRANCH_MANAGER',
+        permissions: ['LOAN_APPROVE', 'DISBURSAL_EXEC', 'REPORTS_AUDIT', 'USER_GOVERN'],
+        status: 'ACTIVE',
+        last_login: 'Today, 09:15 AM',
+        two_factor_enabled: true,
+        joined_date: '2025-01-15',
+      },
+      {
+        id: 2,
+        staff_code: 'ADM-02',
+        name: 'Priya Sundaram',
+        email: 'priya.credit@apexfinance.com',
+        phone: '9840112233',
+        designation: 'Credit & Underwriting Officer',
+        role: 'LOAN_OFFICER',
+        permissions: ['LOAN_CREATE', 'LOAN_APPROVE', 'KYC_VERIFY'],
+        status: 'ACTIVE',
+        last_login: 'Today, 10:30 AM',
+        two_factor_enabled: true,
+        joined_date: '2025-03-20',
+      },
+      {
+        id: 3,
+        staff_code: 'ADM-03',
+        name: 'Manoj Prabhakar',
+        email: 'manoj.cashier@apexfinance.com',
+        phone: '9444123456',
+        designation: 'Head Cashier & Vault Auditor',
+        role: 'CASHIER',
+        permissions: ['PAYMENT_COLLECT', 'CASH_VAULT_DEPOSIT', 'EXPENSE_LOG'],
+        status: 'ACTIVE',
+        last_login: 'Today, 08:45 AM',
+        two_factor_enabled: false,
+        joined_date: '2025-05-10',
+      },
+      {
+        id: 4,
+        staff_code: 'ADM-04',
+        name: 'Anand R',
+        email: 'anand.kyc@apexfinance.com',
+        phone: '9790554433',
+        designation: 'Borrower KYC & Field Verifier',
+        role: 'VERIFIER',
+        permissions: ['USER_CREATE', 'KYC_VERIFY', 'REPORT_VIEW'],
+        status: 'INACTIVE',
+        last_login: '3 days ago',
+        two_factor_enabled: true,
+        joined_date: '2025-08-01',
+      },
+    ];
+  }
+
+  async createBranchStaff(data) {
+    const nextId = Date.now();
+    return {
+      id: nextId,
+      staff_code: `ADM-0${Math.floor(5 + Math.random() * 5)}`,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      designation: data.designation || 'Branch Administrative Officer',
+      role: data.role || 'LOAN_OFFICER',
+      permissions: data.permissions || ['USER_CREATE', 'PAYMENT_COLLECT'],
+      status: 'ACTIVE',
+      last_login: 'Never',
+      two_factor_enabled: data.two_factor_enabled || false,
+      joined_date: new Date().toISOString().slice(0, 10),
     };
   }
 

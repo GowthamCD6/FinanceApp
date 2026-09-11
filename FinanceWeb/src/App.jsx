@@ -21,7 +21,8 @@ import { AuditLogsBroadcast } from './pages/Superadmin/AditLog/AuditLogsBroadcas
 
 // Dedicated Admin Portal Pages
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
-import { Shopkeepers } from './pages/Admin/Shopkeepers';
+import { Shopkeepers } from './pages/Admin/Shopkeeper/Shopkeepers';
+import { WeeklyCustomers } from './pages/Admin/WeeklyCustomers/WeeklyCustomers';
 import { ManageUsers } from './pages/Admin/ManageUser/ManageUsers';
 import { AddUser } from './pages/Admin/Adduser/AddUser';
 import { AdminLoans } from './pages/Admin/AdminLoans';
@@ -57,6 +58,7 @@ export default function App() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="shopkeepers" element={<Shopkeepers />} />
+                <Route path="weekly-customers" element={<WeeklyCustomers />} />
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="users/add" element={<AddUser />} />
                 <Route path="loans" element={<AdminLoans />} />
@@ -69,6 +71,7 @@ export default function App() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="shopkeepers" element={<Shopkeepers />} />
+                <Route path="weekly-customers" element={<WeeklyCustomers />} />
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="users/add" element={<AddUser />} />
                 <Route path="loans" element={<AdminLoans />} />
@@ -85,6 +88,7 @@ export default function App() {
               <Route path="/audit" element={<Navigate to="/superadmin/audit" replace />} />
 
               <Route path="/shopkeepers" element={<Navigate to="/admin/shopkeepers" replace />} />
+              <Route path="/weekly-customers" element={<Navigate to="/admin/weekly-customers" replace />} />
               <Route path="/users" element={<Navigate to="/admin/users" replace />} />
               <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />
               <Route path="/loans" element={<Navigate to="/admin/loans" replace />} />

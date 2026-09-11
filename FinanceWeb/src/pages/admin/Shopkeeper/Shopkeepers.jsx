@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
-import { useOrg } from '../../context/OrgContext';
-import { StatCard } from '../../components/common/StatCard';
-import { StatusBadge } from '../../components/common/Badge';
-import { Modal } from '../../components/common/Modal';
+import { api } from '../../../services/api';
+import { useOrg } from '../../../context/OrgContext';
+import { StatCard } from '../../../components/common/StatCard';
+import { StatusBadge } from '../../../components/common/Badge';
+import { Modal } from '../../../components/common/Modal';
 import {
   Store,
   Plus,
@@ -1220,3 +1220,5 @@ export const Shopkeepers = () => {
     </div>
   );
 };
+
+export default Shopkeepers;
