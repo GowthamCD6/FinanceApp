@@ -4,6 +4,7 @@
  */
 
 const { query, withTransaction } = require('../../config/database');
+const bcrypt = require('bcryptjs');
 
 // In-memory fallback registry for offline / staging resiliency
 let memoryOrganizations = [
@@ -15,14 +16,16 @@ let memoryOrganizations = [
     status: 'ACTIVE',
     currency: 'INR',
     initial_capital: 1000000,
-    available_cash: 222000,
+    available_cash: 240000,
     total_lent: 760000,
     admin_name: 'Rajesh Kumar',
     admin_email: 'rajesh@apexfinance.com',
-    phone: '+91 98765 43210',
+    phone: '9876543210',
     address: '14, Financial District, Chennai, Tamil Nadu',
-    customer_count: 5,
-    active_loans_count: 4,
+    total_customers: 6,
+    customer_count: 6,
+    active_loans_count: 5,
+    branch_count: 2,
     created_at: new Date('2026-01-01').toISOString(),
   },
   {
@@ -37,10 +40,12 @@ let memoryOrganizations = [
     total_lent: 315000,
     admin_name: 'Priya Sharma',
     admin_email: 'priya@horizoncredit.in',
-    phone: '+91 98401 23456',
+    phone: '9840123456',
     address: '88, Gandhi Road, Coimbatore, Tamil Nadu',
+    total_customers: 3,
     customer_count: 3,
     active_loans_count: 2,
+    branch_count: 1,
     created_at: new Date('2026-02-15').toISOString(),
   },
   {
@@ -55,11 +60,33 @@ let memoryOrganizations = [
     total_lent: 180000,
     admin_name: 'Suresh Babu',
     admin_email: 'suresh@deltarural.in',
-    phone: '+91 94432 77890',
+    phone: '9443277890',
     address: '22, Bazaar Street, Madurai, Tamil Nadu',
+    total_customers: 2,
     customer_count: 2,
     active_loans_count: 1,
+    branch_count: 1,
     created_at: new Date('2026-03-01').toISOString(),
+  },
+  {
+    id: 4,
+    code: 'ORG-SBP',
+    name: 'Sri Bhuvaneshwari Lending',
+    plan: 'ENTERPRISE',
+    status: 'ACTIVE',
+    currency: 'INR',
+    initial_capital: 850000,
+    available_cash: 230000,
+    total_lent: 620000,
+    admin_name: 'Senthil Nathan',
+    admin_email: 'senthil@sbpfinance.com',
+    phone: '9876501234',
+    address: '55, Industrial Estate, Salem, Tamil Nadu',
+    total_customers: 2,
+    customer_count: 2,
+    active_loans_count: 1,
+    branch_count: 1,
+    created_at: new Date('2026-02-10').toISOString(),
   },
 ];
 
@@ -86,7 +113,7 @@ const organizationService = {
           o.state,
           o.created_at,
           o.updated_at,
-          (SELECT COUNT(*) FROM customers c WHERE c.organization_id = o.id) AS customer_count,
+          (SELECT COUNT(*) FROM customers c WHERE c.organization_id = o.id) AS total_customers,
           (SELECT COUNT(*) FROM loans l WHERE l.organization_id = o.id AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')) AS active_loans_count,
           (SELECT COUNT(*) FROM branches b WHERE b.organization_id = o.id) AS branch_count
         FROM organizations o
@@ -110,7 +137,8 @@ const organizationService = {
           address: r.address || '',
           city: r.city || '',
           state: r.state || '',
-          customer_count: parseInt(r.customer_count || 0, 10),
+          total_customers: parseInt(r.total_customers || 0, 10),
+          customer_count: parseInt(r.total_customers || 0, 10),
           active_loans_count: parseInt(r.active_loans_count || 0, 10),
           branch_count: parseInt(r.branch_count || 0, 10),
           created_at: r.created_at,
@@ -128,8 +156,9 @@ const organizationService = {
       const rows = await query(
         `SELECT 
            o.*,
-           (SELECT COUNT(*) FROM customers c WHERE c.organization_id = o.id) AS customer_count,
-           (SELECT COUNT(*) FROM loans l WHERE l.organization_id = o.id AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')) AS active_loans_count
+           (SELECT COUNT(*) FROM customers c WHERE c.organization_id = o.id) AS total_customers,
+           (SELECT COUNT(*) FROM loans l WHERE l.organization_id = o.id AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')) AS active_loans_count,
+           (SELECT COUNT(*) FROM branches b WHERE b.organization_id = o.id) AS branch_count
          FROM organizations o
          WHERE o.id = ?
          LIMIT 1`,
@@ -157,8 +186,10 @@ const organizationService = {
           address: r.address,
           city: r.city,
           state: r.state,
-          customer_count: parseInt(r.customer_count || 0, 10),
+          total_customers: parseInt(r.total_customers || 0, 10),
+          customer_count: parseInt(r.total_customers || 0, 10),
           active_loans_count: parseInt(r.active_loans_count || 0, 10),
+          branch_count: parseInt(r.branch_count || (branches?.length || 1), 10),
           branches: branches || [],
           settings: settings && settings.length > 0 ? settings[0] : null,
           created_at: r.created_at,
@@ -175,16 +206,24 @@ const organizationService = {
 
   // Create new tenant organization
   createOrganization: async (data) => {
-    const { name, code, plan = 'PRO', currency = 'INR', initial_capital = 500000, admin_name, admin_email, phone, address, city, state } = data;
+    let { name, code, plan = 'PRO', currency = 'INR', initial_capital = 500000, admin_name, admin_email, phone, admin_phone, address, city, state } = data;
 
-    if (!name || !code) {
-      throw new Error('Organization name and unique organization code are required.');
+    if (!name || !name.trim()) {
+      throw new Error('Organization name is required.');
+    }
+
+    const effectivePhone = (admin_phone || phone || '').trim();
+    const effectiveAdminName = (admin_name || 'Admin').trim();
+
+    if (!code || !code.trim()) {
+      const cleanName = name.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase() || 'ORG';
+      code = `ORG-${cleanName}-${Math.floor(100 + Math.random() * 900)}`;
     }
 
     const formattedCode = code.trim().toUpperCase();
 
     try {
-      const [existing] = await query(`SELECT id FROM organizations WHERE code = ? LIMIT 1`, [formattedCode]);
+      const existing = await query(`SELECT id FROM organizations WHERE code = ? LIMIT 1`, [formattedCode]);
       if (existing && existing.length > 0) {
         throw new Error(`Organization code "${formattedCode}" is already registered.`);
       }
@@ -199,38 +238,56 @@ const organizationService = {
             name.trim(),
             plan.toUpperCase(),
             currency,
-            parseFloat(initial_capital) || 0,
-            parseFloat(initial_capital) || 0,
-            admin_name || 'Admin',
+            parseFloat(initial_capital) || 500000,
+            parseFloat(initial_capital) || 500000,
+            effectiveAdminName,
             admin_email || `${formattedCode.toLowerCase()}@fundflow.in`,
-            phone || '',
-            address || '',
-            city || null,
-            state || null,
+            effectivePhone,
+            address || 'Tamil Nadu, India',
+            city || 'Chennai',
+            state || 'Tamil Nadu',
           ]
         );
         const orgId = orgRes.insertId;
 
-        // Default Main Branch
-        await conn.query(
+        // 1. Default Main Branch
+        const [branchRes] = await conn.query(
           `INSERT INTO branches (organization_id, branch_code, branch_name, location, phone, manager_name, status)
            VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')`,
-          [orgId, `BR-${formattedCode}-01`, `${name.trim()} Main Branch`, address || city || 'Headquarters', phone || '', admin_name || 'Branch Manager']
+          [orgId, `BR-${formattedCode}-01`, `${name.trim()} Main Branch`, address || city || 'Headquarters', effectivePhone, effectiveAdminName]
         );
+        const branchId = branchRes.insertId;
 
-        // Default Settings
+        // 2. Default Settings
         await conn.query(
           `INSERT INTO organization_settings (organization_id, daily_loan_enabled, weekly_loan_enabled, max_active_loans_per_customer, auto_eligibility_check, default_interest_rate)
-           VALUES (?, TRUE, TRUE, 1, TRUE, 10.00)`,
+           VALUES (?, TRUE, TRUE, 2, TRUE, 10.00)`,
           [orgId]
         );
 
-        // Default Fund Account (Cash Vault)
+        // 3. Default Fund Account (Cash Vault)
         await conn.query(
           `INSERT INTO fund_accounts (organization_id, account_code, account_name, account_type, current_balance)
            VALUES (?, ?, ?, 'CASH', ?)`,
-          [orgId, `CASH_MAIN_${formattedCode}`, `${name.trim()} Central Cash Vault`, parseFloat(initial_capital) || 0]
+          [orgId, `CASH_MAIN_${formattedCode}`, `${name.trim()} Central Cash Vault`, parseFloat(initial_capital) || 500000]
         );
+
+        // 4. Create Initial Admin User
+        if (effectivePhone) {
+          const [roles] = await conn.query(`SELECT id FROM roles WHERE name = 'ADMIN' LIMIT 1`);
+          const adminRoleId = roles?.[0]?.id || 2;
+          const defaultPassHash = await bcrypt.hash('Admin@123', 10);
+          
+          const [userExists] = await conn.query(`SELECT id FROM users WHERE phone = ? LIMIT 1`, [effectivePhone]);
+          if (userExists.length === 0) {
+            const [uRes] = await conn.query(
+              `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, role_type, status)
+               VALUES (?, ?, ?, ?, ?, ?, 'ADMIN', 'ACTIVE')`,
+              [orgId, branchId, effectiveAdminName, effectivePhone, admin_email || `${effectivePhone}@fundflow.in`, defaultPassHash]
+            );
+            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [uRes.insertId, adminRoleId]);
+          }
+        }
 
         return orgId;
       });
@@ -249,15 +306,20 @@ const organizationService = {
       plan: plan.toUpperCase(),
       status: 'ACTIVE',
       currency,
-      initial_capital: parseFloat(initial_capital) || 0,
-      available_cash: parseFloat(initial_capital) || 0,
+      initial_capital: parseFloat(initial_capital) || 500000,
+      available_cash: parseFloat(initial_capital) || 500000,
       total_lent: 0,
-      admin_name: admin_name || 'Admin',
+      admin_name: effectiveAdminName,
       admin_email: admin_email || `${formattedCode.toLowerCase()}@fundflow.in`,
-      phone: phone || '',
+      phone: effectivePhone,
+      admin_phone: effectivePhone,
       address: address || '',
+      city: city || 'Chennai',
+      state: state || 'Tamil Nadu',
+      total_customers: 0,
       customer_count: 0,
       active_loans_count: 0,
+      branch_count: 1,
       created_at: new Date().toISOString(),
     };
 
@@ -267,7 +329,10 @@ const organizationService = {
 
   // Update organization details
   updateOrganization: async (id, data) => {
-    const { name, plan, status, admin_name, admin_email, phone, address, city, state } = data;
+    const { name, plan, status, admin_name, admin_email, phone, admin_phone, address, city, state } = data;
+    const effectivePhone = (admin_phone || phone || '').trim();
+    const effectiveAdminName = (admin_name || '').trim();
+
     try {
       await query(
         `UPDATE organizations SET 
@@ -286,15 +351,16 @@ const organizationService = {
           name ? name.trim() : null,
           plan ? plan.toUpperCase() : null,
           status ? status.toUpperCase() : null,
-          admin_name || null,
+          effectiveAdminName || null,
           admin_email || null,
-          phone || null,
+          effectivePhone || null,
           address || null,
           city || null,
           state || null,
           id,
         ]
       );
+
       return await organizationService.getOrganizationById(id);
     } catch (err) {
       console.warn('Database update fallback in updateOrganization:', err.message);
@@ -305,9 +371,12 @@ const organizationService = {
     if (name) org.name = name.trim();
     if (plan) org.plan = plan.toUpperCase();
     if (status) org.status = status.toUpperCase();
-    if (admin_name) org.admin_name = admin_name;
+    if (effectiveAdminName) org.admin_name = effectiveAdminName;
     if (admin_email) org.admin_email = admin_email;
-    if (phone) org.phone = phone;
+    if (effectivePhone) {
+      org.phone = effectivePhone;
+      org.admin_phone = effectivePhone;
+    }
     if (address) org.address = address;
     org.updated_at = new Date().toISOString();
     return org;

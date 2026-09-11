@@ -101,8 +101,10 @@ export const Organization = () => {
 
     setSubmitting(true);
     try {
+      const cleanCode = `ORG-${formData.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
       const created = await addOrganization({
         name: formData.name.trim(),
+        code: cleanCode,
         admin_name: formData.admin_name.trim(),
         admin_phone: formData.admin_phone.trim(),
         plan: formData.plan,
