@@ -6,11 +6,18 @@ import { AppLayout } from './components/layout/AppLayout';
 import { OrgAdminLayout } from './components/layout/OrgAdminLayout';
 
 // Auth Page
-import { LoginPage } from './pages/auth/LoginPage';
+import { LoginPage } from './pages/auth/Login/LoginPage';
 
 // SuperAdmin Tier Pages
-import { SuperAdminDashboard } from './pages/Superadmin/SuperAdminDashboard';
-import { CreateOrganization } from './pages/Superadmin/Organization/CreateOrganization';
+import { SuperAdminDashboard } from './pages/Superadmin/Dashboard/Dashboard';
+import { CreateOrganization } from './pages/Superadmin/Organization/Organization';
+import { UserPaymentOverview } from './pages/Superadmin/UserPaymentOverview/UserPaymentOverview';
+import { ApiAnalytics } from './pages/Superadmin/ApiAnalytics/ApiAnalytics';
+import { SuperAdminUsers } from './pages/Superadmin/SuperAdmin/SuperAdminUsers';
+import { DefaultCategories } from './pages/Superadmin/DefaultCategories';
+import { MobileAppUpdates } from './pages/Superadmin/MobileUpdates/MobileAppUpdates';
+import { PrivacyPolicy } from './pages/Superadmin/PrivacyPolicy/PrivacyPolicy';
+import { AuditLogsBroadcast } from './pages/Superadmin/AditLog/AuditLogsBroadcast';
 
 // Dedicated Admin Portal Pages
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
@@ -34,9 +41,16 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-              {/* SuperAdmin Portal: Organizations Governance & Registry */}
+              {/* SuperAdmin Portal: Governance, Analytics & System Modules */}
               <Route path="/dashboard" element={<SuperAdminDashboard />} />
               <Route path="/org/create" element={<CreateOrganization />} />
+              <Route path="/superadmin/payments" element={<UserPaymentOverview />} />
+              <Route path="/superadmin/analytics" element={<ApiAnalytics />} />
+              <Route path="/superadmin/users" element={<SuperAdminUsers />} />
+              <Route path="/superadmin/categories" element={<DefaultCategories />} />
+              <Route path="/superadmin/app-updates" element={<MobileAppUpdates />} />
+              <Route path="/superadmin/privacy" element={<PrivacyPolicy />} />
+              <Route path="/superadmin/audit" element={<AuditLogsBroadcast />} />
 
               {/* Dedicated Admin Portal (Direct Routes) */}
               <Route path="/admin">
@@ -63,6 +77,13 @@ export default function App() {
               </Route>
 
               {/* Shortcut Top-Level Aliases */}
+              <Route path="/payments-overview" element={<Navigate to="/superadmin/payments" replace />} />
+              <Route path="/analytics" element={<Navigate to="/superadmin/analytics" replace />} />
+              <Route path="/categories" element={<Navigate to="/superadmin/categories" replace />} />
+              <Route path="/app-updates" element={<Navigate to="/superadmin/app-updates" replace />} />
+              <Route path="/privacy" element={<Navigate to="/superadmin/privacy" replace />} />
+              <Route path="/audit" element={<Navigate to="/superadmin/audit" replace />} />
+
               <Route path="/shopkeepers" element={<Navigate to="/admin/shopkeepers" replace />} />
               <Route path="/users" element={<Navigate to="/admin/users" replace />} />
               <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />

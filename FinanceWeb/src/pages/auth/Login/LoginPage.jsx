@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Landmark, ArrowRight, Lock, Mail, CheckCircle2, ShieldCheck, UserCheck } from 'lucide-react';
 
 export const LoginPage = () => {

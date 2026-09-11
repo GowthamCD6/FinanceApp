@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOrg } from '../../context/OrgContext';
+import { useOrg } from '../../../context/OrgContext';
 import {
   Building,
   Plus,
@@ -18,7 +18,11 @@ import {
   Search,
   ToggleLeft,
   ToggleRight,
+  Edit2,
+  Save,
+  AlertCircle,
 } from 'lucide-react';
+import { Modal } from '../../../components/common/Modal';
 
 const PLAN_CONFIG = {
   STARTER:    { label: 'Starter',    color: '#B45309', bg: '#FFFBEB', border: '#FDE68A' },
@@ -35,9 +39,23 @@ const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN')
 
 export const SuperAdminDashboard = () => {
   const navigate = useNavigate();
-  const { organizations, platformStats, updateOrgStatus, setActiveOrg } = useOrg();
+  const { organizations, platformStats, updateOrgStatus, updateOrganization, setActiveOrg } = useOrg();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Edit Org Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    id: null,
+    name: '',
+    admin_name: '',
+    admin_phone: '',
+    plan: 'PRO',
+    status: 'ACTIVE',
+  });
+  const [editErrors, setEditErrors] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState('');
 
   const filtered = organizations.filter((o) => {
     if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
@@ -52,6 +70,58 @@ export const SuperAdminDashboard = () => {
     return true;
   });
 
+  const validateEdit = () => {
+    const errs = {};
+    if (!editFormData.name.trim()) errs.name = 'Organization name is required';
+    if (!editFormData.admin_name.trim()) errs.admin_name = 'Admin Name is required';
+    if (!editFormData.admin_phone.trim()) {
+      errs.admin_phone = 'Admin phone number is required';
+    } else if (!/^[6-9]\d{9}$/.test(editFormData.admin_phone.trim().replace(/\D/g, '').slice(-10))) {
+      errs.admin_phone = 'Please enter a valid 10-digit phone number';
+    }
+    setEditErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const openEditModal = (org) => {
+    setEditErrors({});
+    setEditFormData({
+      id: org.id,
+      name: org.name || '',
+      admin_name: org.admin_name || '',
+      admin_phone: org.admin_phone || '',
+      plan: org.plan || 'PRO',
+      status: org.status || 'ACTIVE',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    if (!validateEdit()) return;
+
+    setSavingEdit(true);
+    try {
+      if (updateOrganization) {
+        updateOrganization(editFormData.id, {
+          name: editFormData.name.trim(),
+          admin_name: editFormData.admin_name.trim(),
+          admin_phone: editFormData.admin_phone.trim(),
+          plan: editFormData.plan,
+          status: editFormData.status,
+        });
+      }
+
+      setIsEditModalOpen(false);
+      setFeedbackMsg(`Organization "${editFormData.name}" updated successfully!`);
+      setTimeout(() => setFeedbackMsg(''), 3500);
+    } catch (err) {
+      setEditErrors({ form: err.message || 'Failed to update organization' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleManageOrg = (org) => {
     setActiveOrg(org.id);
     navigate(`/org/${org.id}/dashboard`);
@@ -60,6 +130,8 @@ export const SuperAdminDashboard = () => {
   const handleToggleStatus = (org) => {
     const next = org.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     updateOrgStatus(org.id, next);
+    setFeedbackMsg(`Organization "${org.name}" status updated to ${next}`);
+    setTimeout(() => setFeedbackMsg(''), 3000);
   };
 
   return (
@@ -78,6 +150,13 @@ export const SuperAdminDashboard = () => {
           <span>Create Organization</span>
         </button>
       </div>
+
+      {feedbackMsg && (
+        <div className="feedback-banner" style={{ marginBottom: '1.25rem' }}>
+          <CheckCircle2 size={18} color="var(--emerald)" />
+          <span>{feedbackMsg}</span>
+        </div>
+      )}
 
       {/* Platform KPI Cards */}
       <div className="kpi-grid">
@@ -234,6 +313,14 @@ export const SuperAdminDashboard = () => {
               {/* Actions */}
               <div className="org-actions">
                 <button
+                  className="btn btn-sm btn-secondary"
+                  title="Edit Organization Details"
+                  onClick={() => openEditModal(org)}
+                >
+                  <Edit2 size={13} color="var(--accent-primary)" />
+                  <span>Edit</span>
+                </button>
+                <button
                   className={`btn btn-sm ${org.status === 'ACTIVE' ? 'btn-secondary' : 'btn-emerald'}`}
                   onClick={() => handleToggleStatus(org)}
                 >
@@ -245,7 +332,7 @@ export const SuperAdminDashboard = () => {
                   onClick={() => handleManageOrg(org)}
                 >
                   <Briefcase size={14} />
-                  <span>Manage Organization</span>
+                  <span>Workspace</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -261,6 +348,117 @@ export const SuperAdminDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Organization Modal */}
+      {isEditModalOpen && (
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          title={`Edit Organization: ${editFormData.name}`}
+        >
+          <form onSubmit={handleSaveEdit}>
+            {editErrors.form && (
+              <div className="feedback-banner" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'var(--red)', marginBottom: '1rem' }}>
+                <AlertCircle size={16} color="var(--red)" />
+                <span style={{ color: '#fca5a5' }}>{editErrors.form}</span>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Organization / Company Name *</label>
+              <input
+                type="text"
+                className={`form-input ${editErrors.name ? 'input-error' : ''}`}
+                value={editFormData.name}
+                onChange={(e) => {
+                  setEditFormData({ ...editFormData, name: e.target.value });
+                  if (editErrors.name) setEditErrors({ ...editErrors, name: null });
+                }}
+                required
+              />
+              {editErrors.name && <span style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{editErrors.name}</span>}
+            </div>
+
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Admin Name *</label>
+                <input
+                  type="text"
+                  className={`form-input ${editErrors.admin_name ? 'input-error' : ''}`}
+                  value={editFormData.admin_name}
+                  onChange={(e) => {
+                    setEditFormData({ ...editFormData, admin_name: e.target.value });
+                    if (editErrors.admin_name) setEditErrors({ ...editErrors, admin_name: null });
+                  }}
+                  required
+                />
+                {editErrors.admin_name && <span style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{editErrors.admin_name}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Admin Phone Number *</label>
+                <input
+                  type="text"
+                  className={`form-input ${editErrors.admin_phone ? 'input-error' : ''}`}
+                  value={editFormData.admin_phone}
+                  onChange={(e) => {
+                    setEditFormData({ ...editFormData, admin_phone: e.target.value });
+                    if (editErrors.admin_phone) setEditErrors({ ...editErrors, admin_phone: null });
+                  }}
+                  required
+                />
+                {editErrors.admin_phone && <span style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{editErrors.admin_phone}</span>}
+              </div>
+            </div>
+
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Plan Tier</label>
+                <select
+                  className="form-input"
+                  value={editFormData.plan}
+                  onChange={(e) => setEditFormData({ ...editFormData, plan: e.target.value })}
+                >
+                  <option value="PRO">PRO</option>
+                  <option value="STARTER">STARTER</option>
+                  <option value="ENTERPRISE">ENTERPRISE</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select
+                  className="form-input"
+                  value={editFormData.status}
+                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="SUSPENDED">SUSPENDED</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsEditModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingEdit}
+                className="btn btn-primary"
+                style={{ minWidth: 150, justifyContent: 'center' }}
+              >
+                <Save size={15} />
+                {savingEdit ? 'Saving Changes...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       <style>{`
         .sa-dash { display: flex; flex-direction: column; gap: 1.5rem; }

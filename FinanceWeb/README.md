@@ -15,14 +15,16 @@ A modern, high-performance web dashboard built with **React 18**, **Vite**, and 
 
 ---
 
-### 2. 👑 SuperAdmin Portal (Multi-Tenant Governance)
-- **`SuperAdminDashboard.jsx`**:
-  - Platform-wide consolidated financial metrics (Total Disbursed, Collections, Active Borrowers).
-  - Organization directory with status monitoring, branch statistics, and direct workspace drill-down.
-  - Real-time revenue insights and aggregated portfolio health checks.
-- **`CreateOrganization.jsx`**:
-  - Multi-step onboarding for new branches/companies.
-  - Configuration of lending terms, interest rules, collection cycles (Daily / Weekly / Monthly), and initial admin assignment.
+### 2. 👑 SuperAdmin Portal (Multi-Tenant Governance & Platform Operations)
+- **`Dashboard/Dashboard.jsx`**: Platform-wide consolidated financial metrics, organization registry, and direct workspace drill-down.
+- **`Organization/CreateOrganization.jsx`**: Multi-step branch onboarding wizard for lending rules and initial admin assignment.
+- **`UserPaymentOverview/UserPaymentOverview.jsx`**: Global cross-organization payment transaction ledger, collection volumes, settlement auditing, and digital receipt generation.
+- **`ApiAnalytics/ApiAnalytics.jsx`**: Real-time API telemetry, request throughput, response latency distributions (p50, p95), server uptime (99.98%), and idempotency deduplication status.
+- **`SuperAdmin/SuperAdminUsers.jsx`**: Root platform administrators management, RBAC privilege sets, 2FA security enforcement, and session logs.
+- **`DefaultCategories.jsx`**: Role and capacity policy configuration: set max user counts per role, default loan limits, default interest rates, and installment tenures.
+- **`MobileUpdates/MobileAppUpdates.jsx`**: Mobile companion app (`FinanceApp`) OTA release center with build numbers, force update toggles, rollout percentage sliders, and APK download URLs.
+- **`PrivacyPolicy/PrivacyPolicy.jsx`**: Platform privacy policy and statutory financial data retention compliance manager with live borrower preview.
+- **`AditLog/AuditLogsBroadcast.jsx`**: Dual-tabbed security surveillance suite with immutable system activity audit trail and platform-wide broadcast notification dispatcher.
 
 ---
 

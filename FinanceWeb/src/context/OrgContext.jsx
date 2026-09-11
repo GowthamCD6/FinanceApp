@@ -65,6 +65,25 @@ export const OrgProvider = ({ children }) => {
     );
   };
 
+  const updateOrganization = (orgId, data) => {
+    setOrganizations((prev) =>
+      prev.map((o) => {
+        if (String(o.id) === String(orgId)) {
+          return {
+            ...o,
+            name: data.name !== undefined ? data.name : o.name,
+            admin_name: data.admin_name !== undefined ? data.admin_name : o.admin_name,
+            admin_phone: data.admin_phone !== undefined ? data.admin_phone : o.admin_phone,
+            plan: data.plan !== undefined ? data.plan : o.plan,
+            status: data.status !== undefined ? data.status : o.status,
+            branch_count: data.branch_count !== undefined ? data.branch_count : o.branch_count,
+          };
+        }
+        return o;
+      })
+    );
+  };
+
   const platformStats = useMemo(() => {
     const active = organizations.filter((o) => o.status === 'ACTIVE');
     return {
@@ -86,6 +105,7 @@ export const OrgProvider = ({ children }) => {
         setActiveOrg,
         clearActiveOrg,
         addOrganization,
+        updateOrganization,
         updateOrgStatus,
         platformStats,
       }}

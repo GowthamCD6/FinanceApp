@@ -12,8 +12,14 @@ import {
   ArrowLeft,
   CreditCard,
   Shield,
+  ShieldCheck,
   Layers,
   Store,
+  Smartphone,
+  Activity,
+  FileText,
+  Bell,
+  DollarSign,
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }) => {
@@ -27,6 +33,13 @@ export const Sidebar = ({ isOpen, onClose }) => {
   const superAdminNav = [
     { label: 'All Organizations', path: '/dashboard', icon: Building },
     { label: 'Create Organization', path: '/org/create', icon: PlusCircle },
+    { label: 'User Payment Overview', path: '/superadmin/payments', icon: DollarSign },
+    { label: 'API Analytics', path: '/superadmin/analytics', icon: Activity },
+    { label: 'Super Admin Users', path: '/superadmin/users', icon: ShieldCheck },
+    { label: 'Default Categories', path: '/superadmin/categories', icon: Layers },
+    { label: 'Mobile App Updates', path: '/superadmin/app-updates', icon: Smartphone },
+    { label: 'Privacy Policy', path: '/superadmin/privacy', icon: FileText },
+    { label: 'Audit Logs & Broadcast', path: '/superadmin/audit', icon: Bell },
     { label: 'Branch Operations Hub', path: '/admin/dashboard', icon: LayoutDashboard },
   ];
 
