@@ -12,6 +12,7 @@ const paymentRoutes = require('./modules/payments/payment.routes');
 const fundRoutes = require('./modules/fund/fund.routes');
 const reportRoutes = require('./modules/reports/report.routes');
 const reconciliationRoutes = require('./modules/reconciliation/reconciliation.routes');
+const userRoutes = require('./modules/users/user.routes');
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.get('/health', (req, res) => {
 
 // Mount modular routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/loans', loanRoutes);

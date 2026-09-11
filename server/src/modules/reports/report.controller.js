@@ -20,11 +20,18 @@ async function getCashFlow(req, res) {
   }
 }
 
-async function getOverdue(req, res) {
+async function getPaymentReport(req, res) {
   try {
-    const data = await reportService.getOverdueReport();
+    const { start_date, end_date, frequency, status } = req.query;
+    const data = await reportService.getPaymentReport({
+      startDate: start_date,
+      endDate: end_date,
+      frequency,
+      status,
+    });
     return res.json({ success: true, data });
   } catch (error) {
+    console.error('Payment report error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 }
@@ -33,4 +40,5 @@ module.exports = {
   getDashboard,
   getCashFlow,
   getOverdue,
+  getPaymentReport,
 };

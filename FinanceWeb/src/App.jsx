@@ -15,10 +15,10 @@ import { CreateOrganization } from './pages/Superadmin/Organization/CreateOrgani
 // Dedicated Admin Portal Pages
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
 import { Shopkeepers } from './pages/Admin/Shopkeepers';
-import { ManageUsers } from './pages/Admin/ManageUsers';
-import { AddUser } from './pages/Admin/AddUser';
+import { ManageUsers } from './pages/Admin/ManageUser/ManageUsers';
+import { AddUser } from './pages/Admin/Adduser/AddUser';
 import { AdminLoans } from './pages/Admin/AdminLoans';
-import { AdminReports } from './pages/Admin/AdminReports';
+import { AdminReports } from './pages/Admin/Reports/Reports';
 import { AdminProfile } from './pages/Admin/AdminProfile';
 
 export default function App() {

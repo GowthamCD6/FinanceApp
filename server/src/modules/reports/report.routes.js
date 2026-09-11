@@ -8,5 +8,6 @@ router.use(authenticate);
 router.get('/dashboard', requirePermission('REPORT_VIEW'), reportController.getDashboard);
 router.get('/cashflow', requirePermission('REPORT_VIEW'), reportController.getCashFlow);
 router.get('/overdue', requirePermission('REPORT_VIEW'), reportController.getOverdue);
+router.get('/payments', requirePermission('REPORT_VIEW'), reportController.getPaymentReport);
 
 module.exports = router;
