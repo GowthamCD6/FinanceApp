@@ -45,6 +45,13 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
   const orgMatch = location.pathname.match(/^\/org\/([^/]+)/);
   const pathOrgId = orgMatch && orgMatch[1] !== "create" ? orgMatch[1] : null;
 
+  const isInsideOrg =
+    location.pathname.startsWith("/org/") &&
+    !location.pathname.startsWith("/org/create");
+  const isDirectAdmin = location.pathname.startsWith("/admin");
+
+  const [metrics, setMetrics] = useState({ todayDailyCollected: 4200, todayDailyTarget: 5850 });
+
   useEffect(() => {
     if (pathOrgId && organizations.length > 0) {
       if (!activeOrg || String(activeOrg.id) !== String(pathOrgId)) {
@@ -52,8 +59,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
       }
     }
   }, [pathOrgId, activeOrg, organizations, setActiveOrg]);
-
-  const [metrics, setMetrics] = useState({ todayDailyCollected: 4200, todayDailyTarget: 5850 });
 
   useEffect(() => {
     if (isInsideOrg) {
@@ -70,11 +75,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
   const handleLinkClick = () => {
     setMobileOpen(false);
   };
-
-  const isInsideOrg =
-    location.pathname.startsWith("/org/") &&
-    !location.pathname.startsWith("/org/create");
-  const isDirectAdmin = location.pathname.startsWith("/admin");
 
   const effectiveRole =
     propUserRole ||
@@ -187,6 +187,11 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         path: `${orgPrefix}/loans`,
         label: "Loan Portfolio",
         icon: CreditCard,
+      },
+      {
+        path: `${orgPrefix}/interest-rates`,
+        label: "Lending Rates & Tenures",
+        icon: Percent,
       },
       {
         path: `${orgPrefix}/reports`,

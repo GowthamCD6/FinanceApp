@@ -29,4 +29,9 @@ router.delete('/broadcasts/:id', governanceController.deleteBroadcast);
 router.get('/settings', governanceController.getSystemSettings);
 router.put('/settings/:key', governanceController.updateSystemSetting);
 
+// Organization Lending Schemes & Interest Rates
+router.get('/lending-config', governanceController.getLendingConfig);
+router.get('/lending-config/:orgId', governanceController.getLendingConfig);
+router.put('/lending-config/:orgId', governanceController.updateLendingConfig);
+
 module.exports = router;

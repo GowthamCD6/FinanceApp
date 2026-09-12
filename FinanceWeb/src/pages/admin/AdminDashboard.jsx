@@ -229,7 +229,7 @@ export const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* 2. OPERATIONAL KPI SUMMARY */}
+      {/* 2. THREE-TIER RECOVERY TARGET TRACKER (DAILY, WEEKLY, MONTHLY) */}
       <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
         <StatCard
           label="Today's Daily Target"
@@ -237,43 +237,66 @@ export const AdminDashboard = () => {
           icon={Receipt}
           trend={`${dailyProgress}% Collected`}
           trendDirection="up"
-          meta={`Collected: ${formatCurrency(metrics.todayDailyCollected)}`}
+          meta={`Collected Today: ${formatCurrency(metrics.todayDailyCollected)}`}
           accentColor="#059669"
           accentBg="#ECFDF5"
         />
 
         <StatCard
-          label="This Week's Dues"
-          value={formatCurrency(metrics.todayWeeklyTarget)}
+          label="This Week's Target"
+          value={formatCurrency(metrics.todayWeeklyTarget || 18000)}
           icon={Calendar}
           trend={`${weeklyProgress}% Recovered`}
           trendDirection="up"
-          meta={`Received: ${formatCurrency(metrics.weeklyCollected)}`}
+          meta={`Collected This Week: ${formatCurrency(metrics.weeklyCollected || 14500)}`}
           accentColor="#4F46E5"
           accentBg="#EEF2FF"
         />
 
         <StatCard
-          label="Active Borrowers"
-          value={`${metrics.totalActiveUsers} Clients`}
-          icon={Users}
-          trend="Multi-Loan Enabled"
+          label="Monthly Target"
+          value={formatCurrency((metrics.todayWeeklyTarget || 18000) * 4)}
+          icon={TrendingUp}
+          trend="Monthly Pace: 78%"
           trendDirection="up"
-          meta="100% Enrolled"
-          accentColor="#D97706"
-          accentBg="#FFFBEB"
+          meta={`Net Disbursed: ${formatCurrency(metrics.netDisbursedThisMonth || 85000)}`}
+          accentColor="#8B5CF6"
+          accentBg="#F5F3FF"
         />
 
         <StatCard
-          label="Action Overdues"
-          value={`${metrics.overdueBorrowersCount} Overdue`}
-          icon={AlertTriangle}
-          trend="Requires Visit"
-          trendDirection="down"
-          meta="Priority follow-up"
-          accentColor="#E11D48"
-          accentBg="#FFF1F2"
+          label="Active Borrowers"
+          value={`${metrics.totalActiveUsers || 24} Clients`}
+          icon={Users}
+          trend={`${metrics.totalActiveLoans || 38} Active Loans`}
+          trendDirection="up"
+          meta={`Outstanding: ${formatCurrency(metrics.activePrincipalOutstanding || 142000)}`}
+          accentColor="#D97706"
+          accentBg="#FFFBEB"
         />
+      </div>
+
+      {/* Dynamic Lending Model Quick-Bar */}
+      <div className="card" style={{ marginBottom: '1.5rem', background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '1.25rem 1.5rem' }}>
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div style={{ padding: '0.6rem', background: '#EFF6FF', borderRadius: '0.5rem', color: '#2563eb' }}>
+              <Percent size={22} />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm m-0">Active Organization Lending Schemes & Rates</h4>
+              <p className="text-xs text-slate-500 m-0">Daily 100-day cycles (10% flat) • Weekly 10-week micro-loans (10% flat) • Monthly business EMI (18% p.a.)</p>
+            </div>
+          </div>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => navigate(getOrgPath('interest-rates'))}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+          >
+            <span>Configure Interest Rates</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
       </div>
 
       {/* 3. TWO COLUMN SECTION: QUICK ACTIONS & URGENT DUES */}
@@ -289,6 +312,18 @@ export const AdminDashboard = () => {
           </div>
 
           <div className="modules-list">
+            {/* Lending Rates & Tenures */}
+            <div className="module-item" onClick={() => navigate(getOrgPath('interest-rates'))}>
+              <div className="mod-icon blue">
+                <Percent size={20} />
+              </div>
+              <div className="mod-info">
+                <span className="mod-title">Lending Rates & Tenures Engine</span>
+                <span className="mod-desc">Configure dynamic interest rates, 100-day daily dues, 10-week micro-loans, and interactive calculator</span>
+              </div>
+              <ArrowRight size={16} className="mod-arrow" />
+            </div>
+
             {/* Shopkeeper Ledger */}
             <div className="module-item" onClick={() => navigate(getOrgPath('shopkeepers'))}>
               <div className="mod-icon green">
@@ -296,7 +331,7 @@ export const AdminDashboard = () => {
               </div>
               <div className="mod-info">
                 <span className="mod-title">Shopkeeper Daily Ledger & Collections</span>
-                <span className="mod-desc">25-day merchant microfinance, multi-loan tracking per shop, and rapid daily collection</span>
+                <span className="mod-desc">25-day / 100-day merchant microfinance, multi-loan tracking per shop, and rapid daily collection</span>
               </div>
               <ArrowRight size={16} className="mod-arrow" />
             </div>

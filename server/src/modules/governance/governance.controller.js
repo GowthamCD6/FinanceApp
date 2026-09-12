@@ -142,6 +142,26 @@ const governanceController = {
       next(err);
     }
   },
+
+  getLendingConfig: async (req, res, next) => {
+    try {
+      const orgId = req.params.orgId || req.query.orgId || 1;
+      const data = await governanceService.getLendingConfig(orgId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  updateLendingConfig: async (req, res, next) => {
+    try {
+      const orgId = req.params.orgId || req.query.orgId || 1;
+      const data = await governanceService.updateLendingConfig(orgId, req.body);
+      res.json({ success: true, message: 'Organization lending schemes updated', data });
+    } catch (err) {
+      next(err);
+    }
+  },
 };
 
 module.exports = governanceController;

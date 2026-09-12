@@ -440,6 +440,143 @@ const organizationService = {
       return { id: Date.now(), organization_id: orgId, branch_code: bCode, branch_name, location, phone, manager_name, status: 'ACTIVE' };
     }
   },
+  // Get organization lending & interest rate schemes
+  getLendingConfig: async (orgId) => {
+    try {
+      const alters = [
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_interest_rate DECIMAL(5,2) DEFAULT 10.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_tenure_days INT DEFAULT 100",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_interest_rate DECIMAL(5,2) DEFAULT 10.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_tenure_weeks INT DEFAULT 10",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_interest_rate DECIMAL(5,2) DEFAULT 18.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_tenure_months INT DEFAULT 12",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_loan_enabled BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_min_amount DECIMAL(15,2) DEFAULT 2000.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_max_amount DECIMAL(15,2) DEFAULT 100000.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_min_amount DECIMAL(15,2) DEFAULT 5000.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_max_amount DECIMAL(15,2) DEFAULT 150000.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_min_amount DECIMAL(15,2) DEFAULT 10000.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_max_amount DECIMAL(15,2) DEFAULT 500000.00"
+      ];
+      for (const alt of alters) {
+        try { await query(alt); } catch (e) {}
+      }
+
+      const rows = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
+      if (rows && rows.length > 0) return rows[0];
+
+      await query(
+        `INSERT INTO organization_settings 
+         (organization_id, daily_loan_enabled, weekly_loan_enabled, monthly_loan_enabled, daily_interest_rate, daily_tenure_days, weekly_interest_rate, weekly_tenure_weeks, monthly_interest_rate, monthly_tenure_months, max_active_loans_per_customer, auto_eligibility_check, grace_period_days, default_interest_rate, currency_symbol)
+         VALUES (?, 1, 1, 1, 10.00, 100, 10.00, 10, 18.00, 12, 1, 1, 0, 10.00, '₹')`,
+        [orgId]
+      );
+      const [created] = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
+      return created;
+    } catch (err) {
+      console.warn('Fallback in getLendingConfig:', err.message);
+      return {
+        organization_id: parseInt(orgId, 10),
+        daily_loan_enabled: true,
+        weekly_loan_enabled: true,
+        monthly_loan_enabled: true,
+        daily_interest_rate: 10.00,
+        daily_tenure_days: 100,
+        weekly_interest_rate: 10.00,
+        weekly_tenure_weeks: 10,
+        monthly_interest_rate: 18.00,
+        monthly_tenure_months: 12,
+        daily_min_amount: 2000,
+        daily_max_amount: 100000,
+        weekly_min_amount: 5000,
+        weekly_max_amount: 150000,
+        monthly_min_amount: 10000,
+        monthly_max_amount: 500000,
+        max_active_loans_per_customer: 1,
+        auto_eligibility_check: true,
+        grace_period_days: 0,
+        currency_symbol: '₹'
+      };
+    }
+  },
+
+  // Update organization lending & interest rate schemes
+  updateLendingConfig: async (orgId, configData) => {
+    const {
+      daily_loan_enabled,
+      weekly_loan_enabled,
+      monthly_loan_enabled,
+      daily_interest_rate,
+      daily_tenure_days,
+      weekly_interest_rate,
+      weekly_tenure_weeks,
+      monthly_interest_rate,
+      monthly_tenure_months,
+      daily_min_amount,
+      daily_max_amount,
+      weekly_min_amount,
+      weekly_max_amount,
+      monthly_min_amount,
+      monthly_max_amount,
+      max_active_loans_per_customer,
+      auto_eligibility_check,
+      grace_period_days,
+      currency_symbol
+    } = configData;
+
+    try {
+      await organizationService.getLendingConfig(orgId);
+      await query(
+        `UPDATE organization_settings SET
+           daily_loan_enabled = COALESCE(?, daily_loan_enabled),
+           weekly_loan_enabled = COALESCE(?, weekly_loan_enabled),
+           monthly_loan_enabled = COALESCE(?, monthly_loan_enabled),
+           daily_interest_rate = COALESCE(?, daily_interest_rate),
+           daily_tenure_days = COALESCE(?, daily_tenure_days),
+           weekly_interest_rate = COALESCE(?, weekly_interest_rate),
+           weekly_tenure_weeks = COALESCE(?, weekly_tenure_weeks),
+           monthly_interest_rate = COALESCE(?, monthly_interest_rate),
+           monthly_tenure_months = COALESCE(?, monthly_tenure_months),
+           daily_min_amount = COALESCE(?, daily_min_amount),
+           daily_max_amount = COALESCE(?, daily_max_amount),
+           weekly_min_amount = COALESCE(?, weekly_min_amount),
+           weekly_max_amount = COALESCE(?, weekly_max_amount),
+           monthly_min_amount = COALESCE(?, monthly_min_amount),
+           monthly_max_amount = COALESCE(?, monthly_max_amount),
+           max_active_loans_per_customer = COALESCE(?, max_active_loans_per_customer),
+           auto_eligibility_check = COALESCE(?, auto_eligibility_check),
+           grace_period_days = COALESCE(?, grace_period_days),
+           currency_symbol = COALESCE(?, currency_symbol)
+         WHERE organization_id = ?`,
+        [
+          daily_loan_enabled != null ? (daily_loan_enabled ? 1 : 0) : null,
+          weekly_loan_enabled != null ? (weekly_loan_enabled ? 1 : 0) : null,
+          monthly_loan_enabled != null ? (monthly_loan_enabled ? 1 : 0) : null,
+          daily_interest_rate,
+          daily_tenure_days,
+          weekly_interest_rate,
+          weekly_tenure_weeks,
+          monthly_interest_rate,
+          monthly_tenure_months,
+          daily_min_amount,
+          daily_max_amount,
+          weekly_min_amount,
+          weekly_max_amount,
+          monthly_min_amount,
+          monthly_max_amount,
+          max_active_loans_per_customer,
+          auto_eligibility_check != null ? (auto_eligibility_check ? 1 : 0) : null,
+          grace_period_days,
+          currency_symbol,
+          orgId
+        ]
+      );
+      return await organizationService.getLendingConfig(orgId);
+    } catch (err) {
+      console.warn('Update fallback in updateLendingConfig:', err.message);
+      return { organization_id: orgId, ...configData };
+    }
+  },
 };
 
 module.exports = organizationService;

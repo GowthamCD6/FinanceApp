@@ -27,6 +27,7 @@ import { AddUser } from './pages/Admin/Adduser/AddUser';
 import { AdminLoans } from './pages/Admin/AdminLoans';
 import { AdminReports } from './pages/Admin/Reports/Reports';
 import { AdminProfile } from './pages/Admin/AdminProfile';
+import { LendingInterestRates } from './pages/Admin/InterestRates/LendingInterestRates';
 
 export default function App() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="users/add" element={<AddUser />} />
                 <Route path="loans" element={<AdminLoans />} />
+                <Route path="interest-rates" element={<LendingInterestRates />} />
                 <Route path="reports" element={<AdminReports />} />
                 <Route path="profile" element={<AdminProfile />} />
               </Route>
@@ -74,6 +76,7 @@ export default function App() {
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="users/add" element={<AddUser />} />
                 <Route path="loans" element={<AdminLoans />} />
+                <Route path="interest-rates" element={<LendingInterestRates />} />
                 <Route path="reports" element={<AdminReports />} />
                 <Route path="profile" element={<AdminProfile />} />
               </Route>
@@ -91,6 +94,7 @@ export default function App() {
               <Route path="/users" element={<Navigate to="/admin/users" replace />} />
               <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />
               <Route path="/loans" element={<Navigate to="/admin/loans" replace />} />
+              <Route path="/interest-rates" element={<Navigate to="/admin/interest-rates" replace />} />
               <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
               <Route path="/profile" element={<Navigate to="/admin/profile" replace />} />
             </Route>

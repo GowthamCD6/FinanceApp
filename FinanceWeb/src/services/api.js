@@ -383,6 +383,55 @@ export const api = {
     const res = await request(`/reports/payments?${queryStr}`);
     return res?.records || res || [];
   },
+
+  // Lending Schemes & Interest Rate Configuration
+  getLendingConfig: async (orgId = 1) => {
+    try {
+      const res = await request(`/governance/lending-config/${orgId}`);
+      return res || null;
+    } catch (e) {
+      try {
+        return await request(`/organizations/${orgId}/lending-config`);
+      } catch (err) {
+        return {
+          organization_id: orgId,
+          daily_loan_enabled: true,
+          weekly_loan_enabled: true,
+          monthly_loan_enabled: true,
+          daily_interest_rate: 10.0,
+          daily_tenure_days: 100,
+          weekly_interest_rate: 10.0,
+          weekly_tenure_weeks: 10,
+          monthly_interest_rate: 18.0,
+          monthly_tenure_months: 12,
+          daily_min_amount: 2000,
+          daily_max_amount: 100000,
+          weekly_min_amount: 5000,
+          weekly_max_amount: 150000,
+          monthly_min_amount: 10000,
+          monthly_max_amount: 500000,
+          max_active_loans_per_customer: 1,
+          auto_eligibility_check: true,
+          grace_period_days: 0,
+          currency_symbol: '₹',
+        };
+      }
+    }
+  },
+
+  updateLendingConfig: async (orgId = 1, configData = {}) => {
+    try {
+      return await request(`/governance/lending-config/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify(configData),
+      });
+    } catch (e) {
+      return await request(`/organizations/${orgId}/lending-config`, {
+        method: 'PUT',
+        body: JSON.stringify(configData),
+      });
+    }
+  },
 };
 
 export default api;

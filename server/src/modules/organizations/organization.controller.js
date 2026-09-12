@@ -113,6 +113,37 @@ const organizationController = {
       });
     }
   },
+  // GET /api/organizations/:id/lending-config
+  getLendingConfig: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = await organizationService.getLendingConfig(id);
+      res.json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // PUT /api/organizations/:id/lending-config
+  updateLendingConfig: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = await organizationService.updateLendingConfig(id, req.body);
+      res.json({
+        success: true,
+        message: 'Lending scheme and interest rates updated successfully',
+        data,
+      });
+    } catch (err) {
+      res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  },
 };
 
 module.exports = organizationController;

@@ -21,4 +21,8 @@ router.patch('/:id/status', organizationController.updateOrganizationStatus);
 router.get('/:id/branches', organizationController.getBranches);
 router.post('/:id/branches', organizationController.createBranch);
 
+// Lending schemes & Interest rate configuration
+router.get('/:id/lending-config', organizationController.getLendingConfig);
+router.put('/:id/lending-config', organizationController.updateLendingConfig);
+
 module.exports = router;
