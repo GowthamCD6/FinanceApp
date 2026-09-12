@@ -24,6 +24,7 @@ import {
   Landmark,
   ArrowLeft,
   User,
+  Percent,
   ExternalLink,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -40,6 +41,14 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // ── Auth Guard: redirect to login if no token/user ──
+  const token = localStorage.getItem('finance_token') || sessionStorage.getItem('finance_token');
+  useEffect(() => {
+    if (!token && !user) {
+      navigate('/login', { replace: true });
+    }
+  }, [token, user, navigate]);
 
   // Sync active organization directly from URL path (/org/:orgId/...)
   const orgMatch = location.pathname.match(/^\/org\/([^/]+)/);

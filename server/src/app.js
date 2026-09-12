@@ -5,16 +5,16 @@ const morgan = require('morgan');
 const path = require('path');
 const apiMetricsMiddleware = require('./middleware/apiMetrics.middleware');
 
-const authRoutes = require('./modules/auth/auth.routes');
-const organizationRoutes = require('./modules/organizations/organization.routes');
-const customerRoutes = require('./modules/customers/customer.routes');
-const loanRoutes = require('./modules/loans/loan.routes');
-const paymentRoutes = require('./modules/payments/payment.routes');
-const fundRoutes = require('./modules/fund/fund.routes');
-const reportRoutes = require('./modules/reports/report.routes');
-const reconciliationRoutes = require('./modules/reconciliation/reconciliation.routes');
-const userRoutes = require('./modules/users/user.routes');
-const governanceRoutes = require('./modules/governance/governance.routes');
+const authRoutes = require('./routes/auth.routes');
+const organizationRoutes = require('./routes/organization.routes');
+const customerRoutes = require('./routes/customer.routes');
+const loanRoutes = require('./routes/loan.routes');
+const paymentRoutes = require('./routes/payment.routes');
+const fundRoutes = require('./routes/fund.routes');
+const reportRoutes = require('./routes/report.routes');
+const reconciliationRoutes = require('./routes/reconciliation.routes');
+const userRoutes = require('./routes/user.routes');
+const governanceRoutes = require('./routes/governance.routes');
 
 const app = express();
 
