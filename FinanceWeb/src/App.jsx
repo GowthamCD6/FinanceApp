@@ -13,7 +13,7 @@ import { CreateOrganization } from './pages/Superadmin/Organization/Organization
 import { UserPaymentOverview } from './pages/Superadmin/UserPaymentOverview/UserPaymentOverview';
 import { ApiAnalytics } from './pages/Superadmin/ApiAnalytics/ApiAnalytics';
 import { SuperAdminUsers } from './pages/Superadmin/SuperAdmin/SuperAdminUsers';
-import { DefaultCategories } from './pages/Superadmin/DefaultCategories';
+import { DefaultCategories } from './pages/Superadmin/DefaultCategories/DefaultCategories';
 import { MobileAppUpdates } from './pages/Superadmin/MobileUpdates/MobileAppUpdates';
 import { PrivacyPolicy } from './pages/Superadmin/PrivacyPolicy/PrivacyPolicy';
 import { AuditLogsBroadcast } from './pages/Superadmin/AditLog/AuditLogsBroadcast';

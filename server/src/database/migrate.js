@@ -98,7 +98,12 @@ async function runMigration() {
       "ALTER TABLE loans ADD COLUMN IF NOT EXISTS closed_at DATETIME NULL AFTER maturity_date;",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_number VARCHAR(100) NULL AFTER reference_number;",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS collected_latitude DECIMAL(10,8) NULL AFTER receipt_number;",
-      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS collected_longitude DECIMAL(11,8) NULL AFTER collected_latitude;"
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS collected_longitude DECIMAL(11,8) NULL AFTER collected_latitude;",
+      "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_name VARCHAR(150) NULL AFTER user_id;",
+      "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_email VARCHAR(150) NULL AFTER user_name;",
+      "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'SUCCESS' AFTER reason;",
+      "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS details TEXT NULL AFTER user_agent;",
+      "ALTER TABLE audit_logs MODIFY COLUMN entity_id VARCHAR(100) NULL;"
     ];
 
     for (const sql of alterations) {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../../services/api';
 import {
@@ -22,41 +22,71 @@ import {
   Mail,
   Shield,
   Award,
+  Clock,
+  Layers,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
 
-const PROGRAM_ROLES = [
+const DEFAULT_FALLBACK_ROLES = [
   {
-    id: 'COMMON_CUSTOMER',
-    label: 'Borrower (Weekly)',
-    badge: 'badge-blue',
-    icon: Calendar,
-    color: 'var(--accent-primary)',
-    desc: '10-Week personal & trade loan cycles with weekly installments (10% flat interest)',
+    category_code: 'CAT-BORROWER-WK',
+    name: 'Weekly Customer / Borrower',
+    customer_type: 'COMMON_CUSTOMER',
+    repayment_frequency: 'WEEKLY',
+    default_min_loan: 10000,
+    default_max_loan: 50000,
+    default_interest_rate: 10.0,
+    tenure_installments: 10,
+    description: '10-Week personal & trade loan cycles with weekly installments (10% flat interest)',
+    status: 'ACTIVE',
   },
   {
-    id: 'SHOPKEEPER',
-    label: 'Shopkeeper (Daily)',
-    badge: 'badge-purple',
-    icon: Store,
-    color: 'var(--purple)',
-    desc: '25-Day daily market collections for stall owners & shopkeepers (12.5% flat interest)',
+    category_code: 'CAT-MERCHANT-DLY',
+    name: 'Shopkeeper / Daily Merchant',
+    customer_type: 'SHOPKEEPER',
+    repayment_frequency: 'DAILY',
+    default_min_loan: 15000,
+    default_max_loan: 100000,
+    default_interest_rate: 12.5,
+    tenure_installments: 25,
+    description: '25-Day daily market collections for stall owners & shopkeepers (12.5% flat interest)',
+    status: 'ACTIVE',
   },
   {
-    id: 'FIELD_AGENT',
-    label: 'Field Man (Collector)',
-    badge: 'badge-emerald',
-    icon: Navigation,
-    color: 'var(--emerald)',
-    desc: 'Field collection officer assigned to specific market routes and daily cash recovery',
+    category_code: 'CAT-LENDER-MO',
+    name: 'Monthly Lender / Borrower',
+    customer_type: 'COMMON_CUSTOMER',
+    repayment_frequency: 'MONTHLY',
+    default_min_loan: 25000,
+    default_max_loan: 500000,
+    default_interest_rate: 15.0,
+    tenure_installments: 12,
+    description: 'Long term monthly installment loans over 12 months (15% flat interest)',
+    status: 'ACTIVE',
   },
   {
-    id: 'ADMIN',
-    label: 'Admin (Branch Staff)',
-    badge: 'badge-yellow',
-    icon: ShieldCheck,
-    color: '#fbbf24',
-    desc: 'Branch operational staff, loan underwriter, cashier, or administrative officer',
+    category_code: 'CAT-FIELD-COLLECTOR',
+    name: 'Collector from Users (Field Agent)',
+    customer_type: 'FIELD_AGENT',
+    repayment_frequency: 'N/A',
+    default_min_loan: 0,
+    default_max_loan: 0,
+    default_interest_rate: 0,
+    tenure_installments: 0,
+    description: 'Field collection officer assigned to market routes and daily cash recovery',
+    status: 'ACTIVE',
+  },
+  {
+    category_code: 'CAT-BRANCH-ADMIN',
+    name: 'Admin (Branch Staff)',
+    customer_type: 'ADMIN',
+    repayment_frequency: 'N/A',
+    default_min_loan: 0,
+    default_max_loan: 0,
+    default_interest_rate: 0,
+    tenure_installments: 0,
+    description: 'Branch operational staff, loan underwriter, cashier, or administrative officer',
+    status: 'ACTIVE',
   },
 ];
 
@@ -64,9 +94,14 @@ export const AddUser = () => {
   const navigate = useNavigate();
   const { activeOrg } = useOrg();
 
+  // Dynamic Categories from Super Admin
+  const [categories, setCategories] = useState(DEFAULT_FALLBACK_ROLES);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [selectedCategoryCode, setSelectedCategoryCode] = useState('CAT-BORROWER-WK');
+
   // Form State
   const [formData, setFormData] = useState({
-    role: 'COMMON_CUSTOMER', // 'COMMON_CUSTOMER' | 'SHOPKEEPER' | 'FIELD_AGENT' | 'ADMIN'
+    role: 'COMMON_CUSTOMER',
     name: '',
     phone: '',
     email: '',
@@ -80,6 +115,7 @@ export const AddUser = () => {
     issue_initial_loan: true,
     initial_loan_amount: 20000,
     tenure: '10',
+    frequency: 'WEEKLY',
   });
 
   const [errors, setErrors] = useState({});
@@ -87,8 +123,76 @@ export const AddUser = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Fetch Super Admin Categories
+  useEffect(() => {
+    const fetchSuperAdminCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const data = await api.governance.getDefaultCategories();
+        if (Array.isArray(data) && data.length > 0) {
+          const activeOnly = data.filter((c) => c.status === 'ACTIVE');
+          const catsToUse = activeOnly.length > 0 ? activeOnly : data;
+          setCategories(catsToUse);
+          // Set initial selected category
+          if (catsToUse.length > 0) {
+            handleSelectCategory(catsToUse[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch Super Admin categories, using presets:', err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchSuperAdminCategories();
+  }, []);
+
   const getOrgPath = (sub) => (activeOrg ? `/org/${activeOrg.id}/${sub}` : `/admin/${sub}`);
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
+
+  // Active Category Object
+  const activeCategory = useMemo(() => {
+    return (
+      categories.find((c) => c.category_code === selectedCategoryCode) ||
+      categories[0] ||
+      DEFAULT_FALLBACK_ROLES[0]
+    );
+  }, [categories, selectedCategoryCode]);
+
+  const isShop = activeCategory?.customer_type === 'SHOPKEEPER';
+  const isFieldMan = activeCategory?.customer_type === 'FIELD_AGENT';
+  const isAdmin = activeCategory?.customer_type === 'ADMIN';
+  const isLending = activeCategory?.repayment_frequency && activeCategory.repayment_frequency !== 'N/A';
+  const isWeekly = activeCategory?.repayment_frequency === 'WEEKLY';
+  const isDaily = activeCategory?.repayment_frequency === 'DAILY';
+  const isMonthly = activeCategory?.repayment_frequency === 'MONTHLY';
+
+  // Handle Category Click
+  const handleSelectCategory = (cat) => {
+    setSelectedCategoryCode(cat.category_code);
+    const hasLoanTerms = cat.repayment_frequency && cat.repayment_frequency !== 'N/A';
+    const minLoan = Number(cat.default_min_loan) || 10000;
+    const maxLoan = Number(cat.default_max_loan) || 50000;
+    const tenure = String(cat.tenure_installments || (cat.customer_type === 'SHOPKEEPER' ? 25 : 10));
+
+    setFormData((prev) => ({
+      ...prev,
+      role: cat.customer_type || 'COMMON_CUSTOMER',
+      frequency: cat.repayment_frequency || (cat.customer_type === 'SHOPKEEPER' ? 'DAILY' : 'WEEKLY'),
+      tenure,
+      credit_limit: maxLoan > 0 ? maxLoan : 50000,
+      initial_loan_amount: minLoan > 0 ? minLoan : 20000,
+      issue_initial_loan: hasLoanTerms,
+    }));
+  };
+
+  // Live Loan Calculation Preview
+  const principalAmount = parseFloat(formData.initial_loan_amount) || 0;
+  const flatRate = Number(activeCategory?.default_interest_rate) || (isShop ? 12.5 : isMonthly ? 15.0 : 10.0);
+  const interestAmount = (principalAmount * flatRate) / 100;
+  const totalRepayable = principalAmount + interestAmount;
+  const installmentCount = parseInt(formData.tenure, 10) || (isShop ? 25 : isMonthly ? 12 : 10);
+  const installmentAmount = installmentCount > 0 ? Math.ceil(totalRepayable / installmentCount) : 0;
 
   const validate = () => {
     const errs = {};
@@ -99,11 +203,11 @@ export const AddUser = () => {
       errs.phone = 'Please enter a valid 10-digit mobile number';
     }
 
-    if (formData.role === 'ADMIN' && (!formData.email || !formData.email.includes('@'))) {
+    if (isAdmin && (!formData.email || !formData.email.includes('@'))) {
       errs.email = 'Valid official email address is required for admin staff';
     }
 
-    if ((formData.role === 'COMMON_CUSTOMER' || formData.role === 'SHOPKEEPER') && !formData.address.trim()) {
+    if ((isWeekly || isShop || isMonthly) && !formData.address.trim()) {
       errs.address = 'Residential or stall address is required';
     }
 
@@ -118,36 +222,44 @@ export const AddUser = () => {
 
     setSubmitting(true);
     try {
-      const isShop = formData.role === 'SHOPKEEPER';
-      const isWeekly = formData.role === 'COMMON_CUSTOMER';
-      const isFieldMan = formData.role === 'FIELD_AGENT';
-      const isAdmin = formData.role === 'ADMIN';
       const principal = parseFloat(formData.initial_loan_amount) || 20000;
+      const freq = activeCategory.repayment_frequency !== 'N/A'
+        ? activeCategory.repayment_frequency
+        : isShop
+        ? 'DAILY'
+        : 'WEEKLY';
 
       await api.createUser({
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim(),
-        role: formData.role,
+        role: activeCategory.customer_type || formData.role,
+        category_code: activeCategory.category_code,
         status: 'ACTIVE',
         address: formData.address.trim(),
-        occupation: isShop ? 'Market Shopkeeper' : isFieldMan ? 'Route Field Collector' : isAdmin ? formData.designation : (formData.occupation.trim() || 'Self Employed'),
+        occupation: isShop
+          ? 'Market Shopkeeper'
+          : isFieldMan
+          ? 'Route Field Collector'
+          : isAdmin
+          ? formData.designation
+          : (formData.occupation.trim() || 'Self Employed'),
         shopName: isShop ? (formData.shop_name.trim() || `${formData.name}'s Store`) : null,
         assigned_route: isFieldMan ? formData.assigned_route : null,
         daily_target: isFieldMan ? parseFloat(formData.daily_quota) : null,
         designation: isAdmin ? formData.designation : null,
-        credit_limit: (isWeekly || isShop) ? (parseFloat(formData.credit_limit) || 50000) : 0,
-        initial_loan: (isWeekly || isShop) && formData.issue_initial_loan
+        credit_limit: isLending ? (parseFloat(formData.credit_limit) || 50000) : 0,
+        initial_loan: isLending && formData.issue_initial_loan
           ? {
               principal,
-              total_installments: isShop ? 25 : parseInt(formData.tenure, 10) || 10,
-              frequency: isShop ? 'DAILY' : 'WEEKLY',
+              total_installments: installmentCount,
+              frequency: freq,
+              interest_rate: flatRate,
             }
           : null,
       });
 
-      const roleObj = PROGRAM_ROLES.find((r) => r.id === formData.role);
-      setSuccessMsg(`${roleObj ? roleObj.label : 'User'} "${formData.name}" successfully onboarded!`);
+      setSuccessMsg(`User "${formData.name}" successfully onboarded under category "${activeCategory.name}"!`);
 
       setTimeout(() => {
         if (isShop) navigate(getOrgPath('shopkeepers'));
@@ -161,41 +273,46 @@ export const AddUser = () => {
     }
   };
 
-  const isShop = formData.role === 'SHOPKEEPER';
-  const isWeekly = formData.role === 'COMMON_CUSTOMER';
-  const isFieldMan = formData.role === 'FIELD_AGENT';
-  const isAdmin = formData.role === 'ADMIN';
+  // Get icon for category
+  const getCategoryIcon = (cat) => {
+    if (cat.customer_type === 'FIELD_AGENT') return Navigation;
+    if (cat.customer_type === 'ADMIN') return ShieldCheck;
+    if (cat.repayment_frequency === 'DAILY' || cat.customer_type === 'SHOPKEEPER') return Store;
+    if (cat.repayment_frequency === 'MONTHLY') return Calendar;
+    return Users;
+  };
 
-  const principalAmount = parseFloat(formData.initial_loan_amount) || 0;
-  const interestRate = isShop ? 0.125 : 0.10;
-  const totalRepayable = Math.round(principalAmount * (1 + interestRate));
-  const installmentCount = isShop ? 25 : parseInt(formData.tenure, 10) || 10;
-  const installmentAmount = installmentCount > 0 ? Math.round(totalRepayable / installmentCount) : 0;
-  const activeRole = PROGRAM_ROLES.find((r) => r.id === formData.role) || PROGRAM_ROLES[0];
+  const getCategoryColor = (cat) => {
+    if (cat.customer_type === 'FIELD_AGENT') return 'var(--emerald)';
+    if (cat.customer_type === 'ADMIN') return '#fbbf24';
+    if (cat.repayment_frequency === 'DAILY' || cat.customer_type === 'SHOPKEEPER') return 'var(--purple)';
+    if (cat.repayment_frequency === 'MONTHLY') return '#06b6d4';
+    return 'var(--accent-primary)';
+  };
 
   return (
-    <div className="onboard-user-page">
-      {/* Header */}
+    <div className="add-user-page">
+      {/* Page Header */}
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
-          <div className="welcome-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <UserPlus size={14} />
-            USER ONBOARDING & ORIGINATION DESK
-          </div>
-          <h1 className="page-title">Onboard User / Borrower</h1>
-          <p className="page-subtitle">
-            Enrol weekly borrowers, daily market shopkeepers, field collectors, or branch staff with clean required fields.
-          </p>
-        </div>
-
-        <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => navigate(getOrgPath('users'))}>
-            <ArrowLeft size={16} />
-            <span>Back to Directory</span>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate(getOrgPath('users'))}
+            style={{ marginBottom: '0.75rem', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+          >
+            <ArrowLeft size={14} /> Back to User Directory
           </button>
+          <div className="welcome-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Sparkles size={14} /> DYNAMIC CATEGORY & POLICY ENROLMENT
+          </div>
+          <h1 className="page-title">Onboard New Customer / Staff</h1>
+          <p className="page-subtitle">
+            Register weekly customers, daily lenders, monthly borrowers, or field collectors governed by Super Admin categories.
+          </p>
         </div>
       </div>
 
+      {/* Feedback Messages */}
       {successMsg && (
         <div className="feedback-banner" style={{ marginBottom: '1.5rem' }}>
           <CheckCircle2 size={18} color="var(--emerald)" />
@@ -214,36 +331,55 @@ export const AddUser = () => {
         {/* Streamlined Form Card */}
         <div className="card" style={{ padding: '1.5rem' }}>
           <form onSubmit={handleSubmit}>
-            {/* 1. Category Selector (4 Clean Roles) */}
+            {/* 1. Dynamic Category Selector from Super Admin */}
             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.6rem' }}>
-                Select Role / Onboarding Category *
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.88rem', margin: 0 }}>
+                  Select Onboarding Category & Policy *
+                </label>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {categories.length} Super Admin Categories Available
+                </span>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                {PROGRAM_ROLES.map((prog) => {
-                  const Icon = prog.icon;
-                  const isSelected = formData.role === prog.id;
+                {categories.map((cat) => {
+                  const Icon = getCategoryIcon(cat);
+                  const color = getCategoryColor(cat);
+                  const isSelected = selectedCategoryCode === cat.category_code;
                   return (
                     <div
-                      key={prog.id}
-                      onClick={() => setFormData({ ...formData, role: prog.id })}
+                      key={cat.id || cat.category_code}
+                      onClick={() => handleSelectCategory(cat)}
                       style={{
                         padding: '0.85rem',
                         borderRadius: 10,
                         cursor: 'pointer',
-                        border: isSelected ? `2px solid ${prog.color}` : '1px solid var(--border-color)',
+                        border: isSelected ? `2px solid ${color}` : '1px solid var(--border-color)',
                         background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-card)',
                         transition: 'all 0.2s ease',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
-                        <Icon size={17} color={isSelected ? prog.color : 'var(--text-muted)'} />
-                        <strong style={{ fontSize: '0.9rem', color: isSelected ? '#fff' : 'var(--text-secondary)' }}>
-                          {prog.label}
-                        </strong>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Icon size={17} color={isSelected ? color : 'var(--text-muted)'} />
+                          <strong style={{ fontSize: '0.88rem', color: isSelected ? '#fff' : 'var(--text-secondary)' }}>
+                            {cat.name}
+                          </strong>
+                        </div>
                       </div>
-                      <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                        {prog.desc}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 4 }}>
+                        <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: color, background: 'rgba(255,255,255,0.05)', padding: '1px 5px', borderRadius: 3 }}>
+                          {cat.repayment_frequency !== 'N/A' ? `${cat.repayment_frequency} CYCLE` : cat.customer_type}
+                        </span>
+                        {Number(cat.default_interest_rate) > 0 && (
+                          <span style={{ fontSize: '0.68rem', color: 'var(--emerald)' }}>
+                            {cat.default_interest_rate}% Flat
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {cat.description}
                       </p>
                     </div>
                   );
@@ -334,8 +470,8 @@ export const AddUser = () => {
                 </div>
               )}
 
-              {/* Conditional Field: Occupation (For Weekly Borrower) */}
-              {isWeekly && (
+              {/* Conditional Field: Occupation (For Borrowers) */}
+              {(isWeekly || isMonthly) && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label">
                     <Briefcase size={14} style={{ display: 'inline', marginRight: 4 }} /> Trade / Occupation
@@ -343,14 +479,14 @@ export const AddUser = () => {
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="e.g. Fabrication Technician / Tailor"
+                    placeholder="e.g. Fabrication Technician / Tailor / Wholesale Trader"
                     value={formData.occupation}
                     onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
                   />
                 </div>
               )}
 
-              {/* Conditional Field: Assigned Route & Quota (For Field Man) */}
+              {/* Conditional Field: Assigned Route & Quota (For Field Collector) */}
               {isFieldMan && (
                 <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
@@ -398,8 +534,8 @@ export const AddUser = () => {
                 </div>
               )}
 
-              {/* Address (Only for Borrowers & Shopkeepers) */}
-              {(isWeekly || isShop) && (
+              {/* Address (For Borrowers & Shopkeepers) */}
+              {(isWeekly || isShop || isMonthly) && (
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">
                     <MapPin size={14} style={{ display: 'inline', marginRight: 4 }} /> Residential / Stall Address *
@@ -420,12 +556,12 @@ export const AddUser = () => {
               )}
             </div>
 
-            {/* 3. Credit Limit & Optional Initial Loan (For Borrowers & Shopkeepers only) */}
-            {(isWeekly || isShop) && (
+            {/* 3. Credit Limit & Optional Initial Loan (For Lending Categories) */}
+            {isLending && (
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h4 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Credit Limit & Loan Origination
+                    Credit Limit & Loan Origination ({activeCategory.repayment_frequency} Policy)
                   </h4>
 
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', color: '#fff' }}>
@@ -448,7 +584,7 @@ export const AddUser = () => {
                       value={formData.credit_limit}
                       onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
                       step={5000}
-                      min={10000}
+                      min={activeCategory.default_min_loan || 10000}
                     />
                   </div>
 
@@ -461,7 +597,7 @@ export const AddUser = () => {
                         value={formData.initial_loan_amount}
                         onChange={(e) => setFormData({ ...formData, initial_loan_amount: e.target.value })}
                         step={1000}
-                        min={2000}
+                        min={activeCategory.default_min_loan || 2000}
                         max={formData.credit_limit}
                         required
                       />
@@ -480,7 +616,7 @@ export const AddUser = () => {
                 style={{ flex: 1, justifyContent: 'center', padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}
               >
                 <UserPlus size={17} />
-                <span>{submitting ? 'Onboarding User...' : `Save & Onboard ${activeRole.label}`}</span>
+                <span>{submitting ? 'Onboarding User...' : `Save & Onboard ${activeCategory.name}`}</span>
                 <ArrowRight size={17} />
               </button>
 
@@ -500,7 +636,7 @@ export const AddUser = () => {
           <div className="card" style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Live User Card Preview
+                Live User Policy Card
               </span>
               <span className="badge badge-emerald">STATUS: ACTIVE</span>
             </div>
@@ -511,8 +647,8 @@ export const AddUser = () => {
                   width: 46,
                   height: 46,
                   borderRadius: '50%',
-                  background: activeRole.color ? `${activeRole.color}22` : 'rgba(99, 102, 241, 0.2)',
-                  color: activeRole.color || 'var(--accent-primary)',
+                  background: `${getCategoryColor(activeCategory)}22`,
+                  color: getCategoryColor(activeCategory),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -533,7 +669,18 @@ export const AddUser = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
-              <span className={`badge ${activeRole.badge}`}>{activeRole.label}</span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  background: `${getCategoryColor(activeCategory)}22`,
+                  color: getCategoryColor(activeCategory),
+                }}
+              >
+                {activeCategory.name}
+              </span>
               {isShop && formData.shop_name && (
                 <span className="badge badge-yellow">{formData.shop_name}</span>
               )}
@@ -545,13 +692,13 @@ export const AddUser = () => {
               )}
             </div>
 
-            {(isWeekly || isShop) && (
+            {(isWeekly || isShop || isMonthly) && (
               <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
                 📍 {formData.address || 'Address pending input'}
               </div>
             )}
 
-            {(isWeekly || isShop) && (
+            {isLending && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Approved Credit Limit:</span>
                 <strong style={{ color: 'var(--emerald)' }}>{formatCurrency(formData.credit_limit)}</strong>
@@ -566,14 +713,14 @@ export const AddUser = () => {
             )}
           </div>
 
-          {/* Loan Breakdown Preview (For Borrowers & Shopkeepers) */}
-          {(isWeekly || isShop) && formData.issue_initial_loan && principalAmount > 0 && (
+          {/* Loan Breakdown Preview (For Lending Categories) */}
+          {isLending && formData.issue_initial_loan && principalAmount > 0 && (
             <div className="card" style={{ padding: '1.25rem', background: 'rgba(99, 102, 241, 0.05)', borderColor: 'rgba(99, 102, 241, 0.25)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
-                  Originated Loan Obligation
+                  Super Admin Configured Loan Obligation
                 </span>
-                <span className="badge badge-emerald">CYCLE #1</span>
+                <span className="badge badge-emerald">{activeCategory.repayment_frequency} #{installmentCount}</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.82rem' }}>
@@ -582,19 +729,19 @@ export const AddUser = () => {
                   <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{formatCurrency(principalAmount)}</strong>
                 </div>
                 <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Total Repayable:</span>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Total Repayable ({flatRate}%):</span>
                   <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{formatCurrency(totalRepayable)}</strong>
                 </div>
                 <div>
                   <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Installment:</span>
                   <strong style={{ color: 'var(--accent-primary)', fontSize: '0.95rem' }}>
-                    {formatCurrency(installmentAmount)} / {isShop ? 'Day' : 'Week'}
+                    {formatCurrency(installmentAmount)} / {activeCategory.repayment_frequency?.toLowerCase() === 'daily' ? 'Day' : activeCategory.repayment_frequency?.toLowerCase() === 'monthly' ? 'Month' : 'Week'}
                   </strong>
                 </div>
                 <div>
                   <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Tenure:</span>
                   <strong style={{ color: '#fff', fontSize: '0.95rem' }}>
-                    {installmentCount} {isShop ? 'Days' : 'Weeks'}
+                    {installmentCount} {activeCategory.repayment_frequency?.toLowerCase() === 'daily' ? 'Days' : activeCategory.repayment_frequency?.toLowerCase() === 'monthly' ? 'Months' : 'Weeks'}
                   </strong>
                 </div>
               </div>

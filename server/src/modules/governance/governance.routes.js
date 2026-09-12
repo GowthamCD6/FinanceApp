@@ -4,7 +4,9 @@ const governanceController = require('./governance.controller');
 
 // Default Categories
 router.get('/categories', governanceController.getDefaultCategories);
+router.post('/categories', governanceController.createDefaultCategory);
 router.put('/categories/:code', governanceController.updateDefaultCategory);
+router.delete('/categories/:code', governanceController.deleteDefaultCategory);
 
 // Privacy Policy & Compliance
 router.get('/privacy-policy', governanceController.getPrivacyPolicies);
@@ -17,6 +19,11 @@ router.post('/app-versions', governanceController.createAppVersion);
 // Audit Logs & Telemetry
 router.get('/audit-logs', governanceController.getAuditLogs);
 router.get('/api-metrics', governanceController.getApiMetrics);
+
+// Broadcast Notifications
+router.get('/broadcasts', governanceController.getBroadcasts);
+router.post('/broadcasts', governanceController.createBroadcast);
+router.delete('/broadcasts/:id', governanceController.deleteBroadcast);
 
 // System Settings
 router.get('/settings', governanceController.getSystemSettings);

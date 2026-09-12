@@ -64,7 +64,9 @@ async function createCustomer(data, userId) {
  * List customers with financial aggregates
  */
 async function getCustomers({ search, customerType, status, page = 1, limit = 20 }) {
-  const offset = (page - 1) * limit;
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
+  const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
 
@@ -116,11 +118,11 @@ async function getCustomers({ search, customerType, status, page = 1, limit = 20
      WHERE ${whereSql}
      GROUP BY c.id
      ORDER BY c.id DESC
-     LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+     LIMIT ${safeLimit} OFFSET ${offset}`,
+    params
   );
 
-  return { customers, total, page, totalPages: Math.ceil(total / limit) };
+  return { customers, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
 }
 
 /**

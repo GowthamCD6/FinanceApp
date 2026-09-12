@@ -301,10 +301,21 @@ export const api = {
     getDefaultCategories: async () => {
       return await request('/governance/categories');
     },
+    createDefaultCategory: async (data) => {
+      return await request('/governance/categories', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
     updateDefaultCategory: async (code, data) => {
       return await request(`/governance/categories/${code}`, {
         method: 'PUT',
         body: JSON.stringify(data),
+      });
+    },
+    deleteDefaultCategory: async (code) => {
+      return await request(`/governance/categories/${code}`, {
+        method: 'DELETE',
       });
     },
     getPrivacyPolicies: async () => {
@@ -328,6 +339,20 @@ export const api = {
     getAuditLogs: async (params = {}) => {
       const queryStr = new URLSearchParams(params).toString();
       return await request(`/governance/audit-logs${queryStr ? `?${queryStr}` : ''}`);
+    },
+    getBroadcasts: async () => {
+      return await request('/governance/broadcasts');
+    },
+    createBroadcast: async (data) => {
+      return await request('/governance/broadcasts', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    deleteBroadcast: async (id) => {
+      return await request(`/governance/broadcasts/${id}`, {
+        method: 'DELETE',
+      });
     },
     getApiMetrics: async (params = {}) => {
       const queryStr = new URLSearchParams(params).toString();

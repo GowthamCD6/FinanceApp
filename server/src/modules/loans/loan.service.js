@@ -326,7 +326,9 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
  * List loans with optional filters
  */
 async function getLoans({ status, customerId, frequency, page = 1, limit = 20 }) {
-  const offset = (page - 1) * limit;
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
+  const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
 
@@ -362,11 +364,11 @@ async function getLoans({ status, customerId, frequency, page = 1, limit = 20 })
      JOIN loan_products lp ON l.product_id = lp.id
      WHERE ${whereSql}
      ORDER BY l.id DESC
-     LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+     LIMIT ${safeLimit} OFFSET ${offset}`,
+    params
   );
 
-  return { loans, total, page, totalPages: Math.ceil(total / limit) };
+  return { loans, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
 }
 
 /**

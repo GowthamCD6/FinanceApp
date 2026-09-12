@@ -105,7 +105,9 @@ async function recordAdjustment({ reconciliationId, adjustmentType, amount, reas
  * List reconciliations history
  */
 async function getReconciliationsList(page = 1, limit = 20) {
-  const offset = (page - 1) * limit;
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
+  const offset = (safePage - 1) * safeLimit;
 
   const reconciliations = await query(
     `SELECT 
@@ -123,8 +125,7 @@ async function getReconciliationsList(page = 1, limit = 20) {
      LEFT JOIN reconciliation_adjustments ra ON r.id = ra.reconciliation_id
      LEFT JOIN users auth_u ON ra.authorized_by = auth_u.id
      ORDER BY r.reconciliation_date DESC
-     LIMIT ? OFFSET ?`,
-    [limit, offset]
+     LIMIT ${safeLimit} OFFSET ${offset}`
   );
 
   return reconciliations;

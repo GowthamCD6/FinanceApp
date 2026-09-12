@@ -10,11 +10,30 @@ const governanceController = {
     }
   },
 
+  createDefaultCategory: async (req, res, next) => {
+    try {
+      const data = await governanceService.createDefaultCategory(req.body);
+      res.status(201).json({ success: true, message: 'Category created successfully', data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   updateDefaultCategory: async (req, res, next) => {
     try {
       const { code } = req.params;
       const data = await governanceService.updateDefaultCategory(code, req.body);
       res.json({ success: true, message: 'Category updated successfully', data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  deleteDefaultCategory: async (req, res, next) => {
+    try {
+      const { code } = req.params;
+      const data = await governanceService.deleteDefaultCategory(code);
+      res.json({ success: true, message: 'Category deleted successfully', data });
     } catch (err) {
       next(err);
     }
@@ -62,6 +81,34 @@ const governanceController = {
     try {
       const data = await governanceService.getAuditLogs(req.query);
       res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  getBroadcasts: async (req, res, next) => {
+    try {
+      const data = await governanceService.getBroadcasts();
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  createBroadcast: async (req, res, next) => {
+    try {
+      const data = await governanceService.createBroadcast(req.body);
+      res.status(201).json({ success: true, message: 'Broadcast sent successfully', data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  deleteBroadcast: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = await governanceService.deleteBroadcast(id);
+      res.json({ success: true, message: 'Broadcast deleted successfully', data });
     } catch (err) {
       next(err);
     }

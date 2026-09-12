@@ -233,6 +233,7 @@ async function recordExpense({ category, amount, description, accountName = 'CAS
  * Capital -> Loan Disbursements -> Collections -> Re-lent Loans
  */
 async function getCirculationTrail(limit = 50) {
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 50);
   const transactions = await query(
     `SELECT 
        ft.id,
@@ -250,8 +251,7 @@ async function getCirculationTrail(limit = 50) {
      JOIN fund_accounts fa ON ft.fund_account_id = fa.id
      LEFT JOIN users u ON ft.created_by = u.id
      ORDER BY ft.transaction_date DESC, ft.id DESC
-     LIMIT ?`,
-    [limit]
+     LIMIT ${safeLimit}`
   );
   return transactions;
 }

@@ -6,7 +6,7 @@ const { query, withTransaction } = require('../../config/database');
  */
 async function generateCustomerCode() {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const [rows] = await query(`SELECT COUNT(*) AS total FROM customers WHERE customer_code LIKE ?`, [`CUST-${dateStr}-%`]);
+  const rows = await query(`SELECT COUNT(*) AS total FROM customers WHERE customer_code LIKE ?`, [`CUST-${dateStr}-%`]);
   const seq = String((rows[0]?.total || 0) + 1).padStart(4, '0');
   return `CUST-${dateStr}-${seq}`;
 }
@@ -44,8 +44,8 @@ async function createUser(data, creatorId = null) {
   }
 
   // Check phone uniqueness in users and customers
-  const [existingUser] = await query(`SELECT id FROM users WHERE phone = ? LIMIT 1`, [rawPhone]);
-  const [existingCust] = await query(`SELECT id FROM customers WHERE phone = ? LIMIT 1`, [rawPhone]);
+  const existingUser = await query(`SELECT id FROM users WHERE phone = ? LIMIT 1`, [rawPhone]);
+  const existingCust = await query(`SELECT id FROM customers WHERE phone = ? LIMIT 1`, [rawPhone]);
   if (existingUser.length > 0 || existingCust.length > 0) {
     throw new Error(`A user or customer with phone number ${rawPhone} already exists.`);
   }
@@ -140,7 +140,9 @@ async function createUser(data, creatorId = null) {
  * List users with live financial aggregates
  */
 async function getUsers({ search, role, status, organizationId, page = 1, limit = 50 }) {
-  const offset = (page - 1) * limit;
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 50);
+  const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
 
@@ -167,7 +169,7 @@ async function getUsers({ search, role, status, organizationId, page = 1, limit 
 
   const whereSql = whereClauses.join(' AND ');
 
-  const [countRows] = await query(
+  const countRows = await query(
     `SELECT COUNT(DISTINCT u.id) AS total 
      FROM users u 
      LEFT JOIN customers c ON c.user_id = u.id 
@@ -217,8 +219,8 @@ async function getUsers({ search, role, status, organizationId, page = 1, limit 
      WHERE ${whereSql}
      GROUP BY u.id, c.id
      ORDER BY u.id DESC
-     LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+     LIMIT ${safeLimit} OFFSET ${offset}`,
+    params
   );
 
   // Map display role and structure
@@ -255,14 +257,14 @@ async function getUsers({ search, role, status, organizationId, page = 1, limit 
     };
   });
 
-  return { users: formatted, total, page, totalPages: Math.ceil(total / limit) };
+  return { users: formatted, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
 }
 
 /**
  * Get borrower financial profile & full permanent payment history
  */
 async function getUserById(userId) {
-  const [users] = await query(
+  const users = await query(
     `SELECT u.*, c.id AS customer_id, c.customer_code, c.customer_type, c.address, c.city, c.occupation, c.shop_name
      FROM users u
      LEFT JOIN customers c ON c.user_id = u.id
@@ -271,7 +273,7 @@ async function getUserById(userId) {
     [userId, userId]
   );
 
-  if (users.length === 0) return null;
+  if (!users || users.length === 0) return null;
   const user = users[0];
   const customerId = user.customer_id;
 
@@ -407,16 +409,16 @@ async function getUserById(userId) {
 async function updateUser(userId, data, updaterId = null) {
   const { name, phone, address, city, role, status, notes, occupation, shopName } = data;
 
-  const [existingUsers] = await query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [userId]);
-  if (existingUsers.length === 0) {
+  const existingUsers = await query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [userId]);
+  if (!existingUsers || existingUsers.length === 0) {
     throw new Error('User not found.');
   }
   const user = existingUsers[0];
 
   // If phone changed, verify uniqueness
   if (phone && phone !== user.phone) {
-    const [dup] = await query(`SELECT id FROM users WHERE phone = ? AND id != ? LIMIT 1`, [phone, userId]);
-    if (dup.length > 0) {
+    const dup = await query(`SELECT id FROM users WHERE phone = ? AND id != ? LIMIT 1`, [phone, userId]);
+    if (dup && dup.length > 0) {
       throw new Error(`Phone number ${phone} is already used by another user.`);
     }
   }

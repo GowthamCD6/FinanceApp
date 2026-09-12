@@ -74,9 +74,9 @@ async function getTodaysCollections(req, res) {
 
 async function getPaymentsList(req, res) {
   try {
-    const page = parseInt(req.query.page || '1', 10);
-    const limit = parseInt(req.query.limit || '20', 10);
-    const offset = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
+    const safeLimit = Math.max(1, parseInt(req.query.limit || '20', 10) || 20);
+    const offset = (safePage - 1) * safeLimit;
 
     const [countRows] = await query(`SELECT COUNT(*) AS total FROM payments`);
     const total = countRows[0]?.total || 0;
@@ -93,11 +93,10 @@ async function getPaymentsList(req, res) {
        JOIN loans l ON p.loan_id = l.id
        LEFT JOIN users u ON p.collector_id = u.id
        ORDER BY p.payment_date DESC
-       LIMIT ? OFFSET ?`,
-      [limit, offset]
+       LIMIT ${safeLimit} OFFSET ${offset}`
     );
 
-    return res.json({ success: true, data: { payments, total, page, totalPages: Math.ceil(total / limit) } });
+    return res.json({ success: true, data: { payments, total, page: safePage, totalPages: Math.ceil(total / safeLimit) } });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
