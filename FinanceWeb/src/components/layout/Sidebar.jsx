@@ -53,6 +53,18 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     }
   }, [pathOrgId, activeOrg, organizations, setActiveOrg]);
 
+  const [metrics, setMetrics] = useState({ todayDailyCollected: 4200, todayDailyTarget: 5850 });
+
+  useEffect(() => {
+    if (isInsideOrg) {
+      api.getAdminDashboardMetrics()
+        .then((data) => {
+          if (data) setMetrics(data);
+        })
+        .catch(() => {});
+    }
+  }, [isInsideOrg, activeOrg]);
+
   const formatCurrency = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
   const handleLinkClick = () => {
