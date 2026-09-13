@@ -65,12 +65,15 @@ export default function App() {
                 <Route path="shopkeepers" element={<Shopkeepers />} />
                 <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
                 <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
+                <Route path="shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
                 <Route path="weekly-customers" element={<WeeklyCustomers />} />
                 <Route path="weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
                 <Route path="weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
+                <Route path="weekly-collect/:customerId" element={<WeeklyCollect />} />
                 <Route path="monthly-customers" element={<MonthlyCustomers />} />
                 <Route path="monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
                 <Route path="monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
+                <Route path="monthly-collect/:customerId" element={<MonthlyCollect />} />
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="staff" element={<ManageStaff />} />
                 <Route path="users/add" element={<AddUser />} />
@@ -87,12 +90,15 @@ export default function App() {
                 <Route path="shopkeepers" element={<Shopkeepers />} />
                 <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
                 <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
+                <Route path="shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
                 <Route path="weekly-customers" element={<WeeklyCustomers />} />
                 <Route path="weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
                 <Route path="weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
+                <Route path="weekly-collect/:customerId" element={<WeeklyCollect />} />
                 <Route path="monthly-customers" element={<MonthlyCustomers />} />
                 <Route path="monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
                 <Route path="monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
+                <Route path="monthly-collect/:customerId" element={<MonthlyCollect />} />
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="staff" element={<ManageStaff />} />
                 <Route path="users/add" element={<AddUser />} />
@@ -105,10 +111,13 @@ export default function App() {
               {/* Top-Level Direct Collect Routes */}
               <Route path="/shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
               <Route path="/shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
+              <Route path="/shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
               <Route path="/weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
               <Route path="/weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
+              <Route path="/weekly-collect/:customerId" element={<WeeklyCollect />} />
               <Route path="/monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
               <Route path="/monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
+              <Route path="/monthly-collect/:customerId" element={<MonthlyCollect />} />
 
               {/* Shortcut Top-Level Aliases */}
               <Route path="/payments-overview" element={<Navigate to="/superadmin/payments" replace />} />

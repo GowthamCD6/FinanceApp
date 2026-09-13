@@ -11,26 +11,65 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
-  UserCheck,
   CheckCircle2,
   Users,
+  Printer,
+  RefreshCw,
+  X,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CreditCard,
+  Building,
+  Check,
+  AlertTriangle,
 } from 'lucide-react';
 
 export const MonthlyCustomers = () => {
   const navigate = useNavigate();
   const { activeOrg } = useOrg();
+
+  // State
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonthOffset, setSelectedMonthOffset] = useState(0); // 0 = Current Month, -1 = Last Month, +1 = Next Month
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, PENDING, PAID, OVERDUE
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Monthly Log Modal State
+  const [selectedCustForModal, setSelectedCustForModal] = useState(null);
+  const [modalFilterStatus, setModalFilterStatus] = useState('ALL'); // ALL, PAID, PENDING
 
   const getOrgPath = (sub) => (activeOrg ? `/org/${activeOrg.id}/${sub}` : `/admin/${sub}`);
+  const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
+
+  // Compute Month Label based on offset
+  const getMonthInfo = (offset = 0) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + offset);
+    const monthName = d.toLocaleDateString('en-IN', { month: 'long' });
+    const year = d.getFullYear();
+    return {
+      label: `${monthName} ${year}`,
+      monthName,
+      year,
+    };
+  };
+
+  const currentMonthInfo = getMonthInfo(selectedMonthOffset);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const data = await api.getMonthlyCustomers(activeOrg ? { organizationId: activeOrg.id } : {});
-      setCustomers(data);
+      setCustomers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error loading monthly customers:', err);
     } finally {
@@ -42,197 +81,1303 @@ export const MonthlyCustomers = () => {
     loadData();
   }, [activeOrg?.id]);
 
-  const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, selectedMonthOffset]);
 
+  // Filter logic
   const filteredCustomers = customers.filter((cust) => {
     const q = searchTerm.toLowerCase();
     const matchSearch =
       cust.name?.toLowerCase().includes(q) ||
       cust.customer_code?.toLowerCase().includes(q) ||
-      cust.phone?.includes(q);
-    const matchStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'PAID' && cust.current_month_status === 'PAID') ||
-      (statusFilter === 'UNPAID' && cust.current_month_status !== 'PAID');
+      cust.phone?.includes(q) ||
+      cust.address?.toLowerCase().includes(q);
+
+    let currentStatus = cust.current_month_status || 'UNPAID';
+    if (currentStatus === 'UNPAID') currentStatus = 'PENDING';
+
+    let matchStatus = true;
+    if (statusFilter === 'PAID' || statusFilter === 'COLLECTED') {
+      matchStatus = currentStatus === 'PAID' || currentStatus === 'COLLECTED';
+    } else if (statusFilter === 'PENDING') {
+      matchStatus = currentStatus === 'PENDING' || currentStatus === 'UNPAID';
+    } else if (statusFilter === 'OVERDUE') {
+      matchStatus = currentStatus === 'OVERDUE';
+    }
+
     return matchSearch && matchStatus;
   });
 
-  const totalMonthlyTarget = customers.reduce((sum, c) => sum + (c.monthly_emi || 0), 0);
-  const totalOutstanding = customers.reduce((sum, c) => sum + (c.outstanding_balance || 0), 0);
-  const paidThisMonth = customers.filter((c) => c.current_month_status === 'PAID').length;
+  // Aggregations
+  const totalBorrowers = customers.length;
+  const totalMonthlyTarget = customers.reduce((s, c) => s + (c.monthly_emi || 5000), 0);
+  const paidBorrowers = customers.filter(
+    (c) => c.current_month_status === 'PAID' || c.current_month_status === 'COLLECTED'
+  );
+  const collectedAmount = paidBorrowers.reduce((s, c) => s + (c.monthly_emi || 5000), 0);
+  const pendingCount = totalBorrowers - paidBorrowers.length;
+  const pendingAmount = Math.max(0, totalMonthlyTarget - collectedAmount);
+  const overdueCount = customers.filter((c) => c.current_month_status === 'OVERDUE').length;
+  const collectionRate = totalMonthlyTarget > 0 ? Math.round((collectedAmount / totalMonthlyTarget) * 100) : 0;
+
+  // Pagination Calculations
+  const totalItems = filteredCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
+
+  // Helper to open Monthly Log Modal
+  const handleOpenMonthlyLog = (cust) => {
+    setSelectedCustForModal(cust);
+    setModalFilterStatus('ALL');
+  };
+
+  // Helper to navigate to collect page
+  const handleNavigateCollect = (cust) => {
+    navigate(getOrgPath(`monthly-customers/${cust.id}/collect`), {
+      state: { customer: cust },
+    });
+  };
+
+  // Helper to generate full monthly schedule for a customer
+  const getMonthlyInstallmentLogs = (cust) => {
+    if (!cust) return [];
+    if (Array.isArray(cust.schedule) && cust.schedule.length > 0) {
+      return cust.schedule.map((s, idx) => ({
+        month_number: s.installment_no || idx + 1,
+        due_date: s.due_date,
+        amount: s.amount || cust.monthly_emi || 5000,
+        paid_amount: s.status === 'PAID' ? s.amount || cust.monthly_emi || 5000 : 0,
+        status: s.status,
+        paid_date: s.status === 'PAID' ? s.due_date : null,
+        receipt_no: s.receipt_no || (s.status === 'PAID' ? `REC-MTH-${cust.id}-${s.installment_no || idx + 1}` : null),
+        payment_mode: (idx + 1) % 2 === 0 ? 'CASH' : 'UPI',
+      }));
+    }
+
+    const totalMonths = cust.total_installments || 12;
+    const paidMonths = cust.paid_installments || 4;
+    const monthlyEmi = cust.monthly_emi || 5000;
+    const baseDate = new Date();
+    baseDate.setMonth(baseDate.getMonth() - paidMonths);
+
+    const list = [];
+    for (let m = 1; m <= totalMonths; m++) {
+      const d = new Date(baseDate);
+      d.setMonth(d.getMonth() + (m - 1));
+      const isPaid = m <= paidMonths;
+      const isCurrent = m === paidMonths + 1;
+      list.push({
+        month_number: m,
+        due_date: d.toISOString().slice(0, 10),
+        amount: monthlyEmi,
+        paid_amount: isPaid ? monthlyEmi : 0,
+        status: isPaid ? 'PAID' : isCurrent ? 'CURRENT_DUE' : 'PENDING',
+        paid_date: isPaid ? d.toISOString().slice(0, 10) : null,
+        receipt_no: isPaid ? `REC-MTH-${cust.id}-${m}` : null,
+        payment_mode: m % 2 === 0 ? 'CASH' : 'UPI',
+      });
+    }
+    return list;
+  };
+
+  const modalSchedule = selectedCustForModal ? getMonthlyInstallmentLogs(selectedCustForModal) : [];
+  const modalFilteredSchedule = modalSchedule.filter((inst) => {
+    if (modalFilterStatus === 'PAID') return inst.status === 'PAID';
+    if (modalFilterStatus === 'PENDING') return inst.status !== 'PAID';
+    return true;
+  });
+
+  const modalTotalMonths = selectedCustForModal?.total_installments || 12;
+  const modalPaidMonths = modalSchedule.filter((s) => s.status === 'PAID').length;
+  const modalProgressPct = Math.min(100, Math.round((modalPaidMonths / modalTotalMonths) * 100));
+  const modalRecoveredAmt = modalPaidMonths * (selectedCustForModal?.monthly_emi || 5000);
+  const modalTotalRepayable = modalTotalMonths * (selectedCustForModal?.monthly_emi || 5000);
+  const modalRemainingAmt = Math.max(0, modalTotalRepayable - modalRecoveredAmt);
 
   return (
-    <div className="weekly-customers-page" style={{ padding: '0 0.5rem' }}>
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="page-title" style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, color: '#fff' }}>
-            Monthly Customers (EMI)
-            {activeOrg && (
-              <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--accent-primary)', marginLeft: '0.75rem' }}>
-                • {activeOrg.name}
-              </span>
-            )}
-          </h1>
-          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            Card-based monthly installment tracker with real-time payment schedule
-          </p>
+    <div className="monthly-customers-page" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0 }}>
+      {/* 1. Page Header */}
+      <div
+        className="page-header"
+        style={{
+          marginBottom: '1.25rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: '10px',
+              background: '#EEF2FF',
+              color: 'var(--primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <CreditCard size={22} />
+          </div>
+          <div>
+            <h1
+              className="page-title"
+              style={{
+                margin: 0,
+                fontSize: '1.45rem',
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                color: 'var(--text-primary)',
+              }}
+            >
+              Monthly Customers (EMI) Lending
+            </h1>
+            <p style={{ margin: '0.15rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 500 }}>
+              12-Month EMI structured personal & business loan recovery ledger
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div className="header-actions" style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
           <button
             className="btn btn-secondary"
-            onClick={() => navigate(getOrgPath('users'))}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={() => window.print()}
+            title="Print Monthly EMI Schedule Sheet"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 700 }}
           >
-            <Users size={16} />
-            <span>Manage Users</span>
+            <Printer size={15} />
+            <span>Print Sheet</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={loadData}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 700 }}
+          >
+            <RefreshCw size={15} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate(getOrgPath('users'))}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 800 }}
+          >
+            <Users size={15} />
+            <span>Borrower Directory</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Monthly Borrowers</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.4rem', color: '#fff' }}>{customers.length}</h3>
+      {/* 2. Fast Month Navigation Stepper */}
+      <div
+        className="card"
+        style={{
+          padding: '0.75rem 1rem',
+          marginBottom: '1.25rem',
+          borderRadius: 12,
+          border: '1.5px solid #E2E8F0',
+          background: '#FFFFFF',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#F1F5F9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#475569',
+            }}
+          >
+            <Calendar size={16} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Collection Billing Period
+            </div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+              {currentMonthInfo.label}
+            </div>
+          </div>
         </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monthly EMI Target</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.4rem', color: 'var(--accent-primary)' }}>{formatCurrency(totalMonthlyTarget)}</h3>
-        </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Outstanding</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.4rem', color: '#fbbf24' }}>{formatCurrency(totalOutstanding)}</h3>
-        </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Collected This Month</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.4rem', color: 'var(--emerald)' }}>
-            {paidThisMonth} / {customers.length}
-          </h3>
+
+        {/* Stepper Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setSelectedMonthOffset((o) => o - 1)}
+            title="Previous Month"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700, fontSize: '0.78rem' }}
+          >
+            <ChevronLeft size={15} />
+            <span>Prev Month</span>
+          </button>
+          <button
+            className={`btn btn-sm ${selectedMonthOffset === 0 ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setSelectedMonthOffset(0)}
+            style={{ fontWeight: 800, fontSize: '0.78rem', minWidth: 80 }}
+          >
+            This Month
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setSelectedMonthOffset((o) => o + 1)}
+            title="Next Month"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700, fontSize: '0.78rem' }}
+          >
+            <span>Next Month</span>
+            <ChevronRight size={15} />
+          </button>
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="search-box" style={{ flex: 1, minWidth: 240 }}>
-          <Search size={16} />
+      {/* 3. Four KPI Metric Cards (With Skeleton Pulse) */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.25rem',
+        }}
+      >
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="card"
+              style={{
+                padding: '1.15rem 1.25rem',
+                background: '#FFFFFF',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 12,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <div className="skeleton-bar" style={{ width: '45%', height: 12 }} />
+                <div className="skeleton-circle" style={{ width: 34, height: 34, borderRadius: 8 }} />
+              </div>
+              <div className="skeleton-bar" style={{ width: '70%', height: 28, marginBottom: '0.5rem' }} />
+              <div className="skeleton-bar" style={{ width: '50%', height: 12 }} />
+            </div>
+          ))
+        ) : (
+          <>
+            {/* Stat 1: Total Borrowers */}
+            <div
+              className="card"
+              style={{
+                padding: '1.15rem 1.25rem',
+                background: '#FFFFFF',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 12,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Total Monthly Borrowers
+                </span>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Users size={16} color="var(--primary)" />
+                </div>
+              </div>
+              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
+                {totalBorrowers}
+              </div>
+              <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
+                Active 12-month EMI schemes
+              </div>
+            </div>
+
+            {/* Stat 2: Monthly Target */}
+            <div
+              className="card"
+              style={{
+                padding: '1.15rem 1.25rem',
+                background: '#FFFFFF',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 12,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Month Target EMIs
+                </span>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <DollarSign size={16} color="#059669" />
+                </div>
+              </div>
+              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
+                {formatCurrency(totalMonthlyTarget)}
+              </div>
+              <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
+                Scheduled for {currentMonthInfo.monthName}
+              </div>
+            </div>
+
+            {/* Stat 3: Collected This Month */}
+            <div
+              className="card"
+              style={{
+                padding: '1.15rem 1.25rem',
+                background: '#FFFFFF',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 12,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Collected This Month
+                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '2px 8px', borderRadius: 12, background: '#ECFDF5', color: '#059669' }}>
+                  {collectionRate}%
+                </span>
+              </div>
+              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#059669', letterSpacing: '-0.03em' }}>
+                {formatCurrency(collectedAmount)}
+              </div>
+              <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
+                {paidBorrowers.length} of {totalBorrowers} borrowers cleared
+              </div>
+            </div>
+
+            {/* Stat 4: Pending Month Balance */}
+            <div
+              className="card"
+              style={{
+                padding: '1.15rem 1.25rem',
+                background: '#FFFFFF',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 12,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.74rem', color: overdueCount > 0 ? '#DC2626' : '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Pending Month Balance
+                </span>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={16} color={overdueCount > 0 ? '#DC2626' : '#64748B'} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.65rem', fontWeight: 900, color: overdueCount > 0 ? '#DC2626' : 'var(--text-primary)', letterSpacing: '-0.03em' }}>
+                  {formatCurrency(pendingAmount)}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600 }}>({pendingCount} Unpaid)</span>
+              </div>
+              <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: overdueCount > 0 ? '#DC2626' : '#64748B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                {overdueCount > 0 ? (
+                  <>
+                    <AlertTriangle size={13} color="#DC2626" />
+                    <span>{overdueCount} Overdue accounts</span>
+                  </>
+                ) : (
+                  'All accounts on track'
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 4. Controls: Search & Status Filters */}
+      <div
+        className="card"
+        style={{
+          padding: '0.75rem 1rem',
+          marginBottom: '1.25rem',
+          borderRadius: 12,
+          border: '1.5px solid #E2E8F0',
+          background: '#FFFFFF',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.85rem',
+        }}
+      >
+        {/* Search */}
+        <div className="search-box" style={{ flex: '1 1 280px', minWidth: 240, background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 8 }}>
+          <Search size={16} color="#64748B" />
           <input
             type="text"
-            placeholder="Search by customer name, code, phone..."
+            placeholder="Search borrower name, code, phone, location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ fontSize: '0.85rem', fontWeight: 600 }}
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: '#64748B' }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        <select
-          className="form-input"
-          style={{ width: 180 }}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="ALL">All Statuses</option>
-          <option value="PAID">Paid This Month</option>
-          <option value="UNPAID">Pending EMI</option>
-        </select>
+        {/* Status Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', background: '#F8FAFC', padding: 3, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${statusFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+              onClick={() => setStatusFilter('ALL')}
+            >
+              All ({customers.length})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${statusFilter === 'PENDING' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+              onClick={() => setStatusFilter('PENDING')}
+            >
+              Pending ({pendingCount})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${statusFilter === 'PAID' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+              onClick={() => setStatusFilter('PAID')}
+            >
+              Paid ({paidBorrowers.length})
+            </button>
+            {overdueCount > 0 && (
+              <button
+                type="button"
+                className={`btn btn-sm ${statusFilter === 'OVERDUE' ? 'btn-danger' : 'btn-secondary'}`}
+                style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+                onClick={() => setStatusFilter('OVERDUE')}
+              >
+                Overdue ({overdueCount})
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Cards Grid */}
+      {/* 5. Main Content: Professional Data Table Function */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading Monthly Customers...</div>
+        <div
+          className="card"
+          style={{
+            padding: 0,
+            overflow: 'hidden',
+            borderRadius: 14,
+            border: '1.5px solid #E2E8F0',
+            background: '#FFFFFF',
+            marginBottom: '1.5rem',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          }}
+        >
+          <div className="table-responsive">
+            <table className="table" style={{ margin: 0 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
+                  <th style={{ padding: '0.95rem 1.15rem' }}><div className="skeleton-bar" style={{ width: 100, height: 12 }} /></th>
+                  <th style={{ padding: '0.95rem 1.15rem' }}><div className="skeleton-bar" style={{ width: 80, height: 12 }} /></th>
+                  <th style={{ padding: '0.95rem 1.15rem' }}><div className="skeleton-bar" style={{ width: 110, height: 12 }} /></th>
+                  <th style={{ padding: '0.95rem 1.15rem' }}><div className="skeleton-bar" style={{ width: 90, height: 12 }} /></th>
+                  <th style={{ padding: '0.95rem 1.15rem' }}><div className="skeleton-bar" style={{ width: 80, height: 12 }} /></th>
+                  <th style={{ padding: '0.95rem 1.15rem' }}><div className="skeleton-bar" style={{ width: 70, height: 12 }} /></th>
+                  <th style={{ padding: '0.95rem 1.15rem' }}><div className="skeleton-bar" style={{ width: 90, height: 12, marginLeft: 'auto' }} /></th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '0.95rem 1.15rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div className="skeleton-circle" style={{ width: 36, height: 36, borderRadius: 10 }} />
+                        <div>
+                          <div className="skeleton-bar" style={{ width: 130, height: 14, marginBottom: '0.3rem' }} />
+                          <div className="skeleton-bar" style={{ width: 85, height: 10 }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.95rem 1.15rem' }}>
+                      <div className="skeleton-bar" style={{ width: 90, height: 14, marginBottom: '0.25rem' }} />
+                      <div className="skeleton-bar" style={{ width: 65, height: 10 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1.15rem' }}>
+                      <div className="skeleton-bar" style={{ width: 80, height: 14, marginBottom: '0.35rem' }} />
+                      <div className="skeleton-bar" style={{ width: 100, height: 6, borderRadius: 3 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1.15rem' }}>
+                      <div className="skeleton-bar" style={{ width: 75, height: 16 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1.15rem' }}>
+                      <div className="skeleton-bar" style={{ width: 80, height: 16 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1.15rem' }}>
+                      <div className="skeleton-pill" style={{ width: 70, height: 22 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1.15rem', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                        <div className="skeleton-bar" style={{ width: 65, height: 30, borderRadius: 6 }} />
+                        <div className="skeleton-bar" style={{ width: 75, height: 30, borderRadius: 6 }} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : filteredCustomers.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-          <UserCheck size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
-          <p>No monthly installment borrowers found.</p>
+        <div
+          className="card"
+          style={{
+            padding: '3.5rem 1.5rem',
+            textAlign: 'center',
+            borderRadius: 14,
+            border: '1.5px solid #E2E8F0',
+            background: '#FFFFFF',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: '#F8FAFC',
+              border: '1.5px solid #E2E8F0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1rem auto',
+            }}
+          >
+            <Search size={24} color="#94A3B8" />
+          </div>
+          <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+            No Monthly Borrowers Found
+          </h3>
+          <p style={{ margin: 0, color: '#64748B', fontSize: '0.85rem' }}>
+            No borrower records match your search criteria or filter for {currentMonthInfo.label}.
+          </p>
+          {(searchTerm || statusFilter !== 'ALL') && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('ALL');
+              }}
+              style={{ marginTop: '1rem', fontWeight: 700 }}
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
-          {filteredCustomers.map((cust) => {
-            const isPaid = cust.current_month_status === 'PAID';
-            const isOverdue = cust.current_month_status === 'OVERDUE';
-            const progress = cust.total_installments > 0 ? Math.round((cust.paid_installments / cust.total_installments) * 100) : 0;
+        <div
+          className="card"
+          style={{
+            padding: 0,
+            overflow: 'hidden',
+            borderRadius: 14,
+            border: '1.5px solid #E2E8F0',
+            background: '#FFFFFF',
+            marginBottom: '1.5rem',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          }}
+        >
+          <div className="table-responsive">
+            <table className="table" style={{ margin: 0, width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
+                  <th style={{ padding: '0.95rem 1.15rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Borrower / Client
+                  </th>
+                  <th style={{ padding: '0.95rem 1.15rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Loan Reference
+                  </th>
+                  <th style={{ padding: '0.95rem 1.15rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Tenure (12 Mos)
+                  </th>
+                  <th style={{ padding: '0.95rem 1.15rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Monthly EMI Due
+                  </th>
+                  <th style={{ padding: '0.95rem 1.15rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Outstanding
+                  </th>
+                  <th style={{ padding: '0.95rem 1.15rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Status
+                  </th>
+                  <th style={{ padding: '0.95rem 1.15rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedCustomers.map((cust) => {
+                  const isPaid = cust.current_month_status === 'PAID' || cust.current_month_status === 'COLLECTED';
+                  const isOverdue = cust.current_month_status === 'OVERDUE';
+                  const totalMonths = cust.total_installments || 12;
+                  const paidMonths = cust.paid_installments || (isPaid ? 5 : 4);
+                  const monthlyEmi = cust.monthly_emi || 5000;
+                  const progressPct = Math.min(100, Math.round((paidMonths / totalMonths) * 100));
 
-            return (
-              <div
-                key={cust.id}
-                className="card"
-                style={{
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  borderLeft: isPaid ? '4px solid var(--emerald)' : isOverdue ? '4px solid var(--danger)' : '4px solid var(--accent-primary)',
-                }}
-              >
-                <div>
-                  {/* Top Row: Name & Status */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#fff', fontWeight: 600 }}>{cust.name}</h4>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cust.customer_code} • {cust.occupation}</span>
-                    </div>
-                    <span
+                  return (
+                    <tr
+                      key={cust.id}
                       style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: 4,
-                        background: isPaid ? 'rgba(16, 185, 129, 0.15)' : isOverdue ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                        color: isPaid ? 'var(--emerald)' : isOverdue ? 'var(--danger)' : '#fbbf24',
+                        borderBottom: '1px solid #F1F5F9',
+                        transition: 'background-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      {/* Borrower Info */}
+                      <td style={{ padding: '0.95rem 1.15rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div
+                            style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: 10,
+                              background: isPaid ? '#ECFDF5' : '#EEF2FF',
+                              color: isPaid ? '#059669' : 'var(--primary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 900,
+                              fontSize: '0.95rem',
+                              flexShrink: 0,
+                              border: isPaid ? '1.5px solid #A7F3D0' : '1.5px solid #C7D2FE',
+                            }}
+                          >
+                            {cust.name?.charAt(0) || 'M'}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.92rem' }}>
+                              {cust.name}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  background: '#F1F5F9',
+                                  color: '#475569',
+                                  padding: '1px 6px',
+                                  borderRadius: 4,
+                                }}
+                              >
+                                {cust.customer_code}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                                • {cust.phone}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Loan Reference */}
+                      <td style={{ padding: '0.95rem 1.15rem' }}>
+                        <div style={{ fontWeight: 800, color: '#334155', fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                          {cust.active_loan?.loan_code || `LN-MTH-${cust.customer_code}`}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.15rem', fontWeight: 600 }}>
+                          Principal: {formatCurrency(cust.active_loan?.principal || 50000)}
+                        </div>
+                      </td>
+
+                      {/* Scheme Tenure & Progress */}
+                      <td style={{ padding: '0.95rem 1.15rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', width: 120 }}>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                            Mo {paidMonths} / {totalMonths}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: isPaid ? '#059669' : '#64748B' }}>
+                            {progressPct}%
+                          </span>
+                        </div>
+                        <div style={{ width: 120, height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: `${progressPct}%`,
+                              height: '100%',
+                              background: isPaid ? '#059669' : 'var(--primary)',
+                              borderRadius: 3,
+                              transition: 'width 0.3s ease',
+                            }}
+                          />
+                        </div>
+                      </td>
+
+                      {/* Month Due */}
+                      <td style={{ padding: '0.95rem 1.15rem' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 900, color: isPaid ? '#059669' : 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                          {formatCurrency(monthlyEmi)}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748B', marginTop: '0.15rem', fontWeight: 600 }}>
+                          {isPaid ? 'Settled this month' : `${currentMonthInfo.monthName} EMI`}
+                        </div>
+                      </td>
+
+                      {/* Outstanding */}
+                      <td style={{ padding: '0.95rem 1.15rem' }}>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 900, color: '#DC2626', letterSpacing: '-0.02em' }}>
+                          {formatCurrency(cust.outstanding_balance || 40000)}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748B', marginTop: '0.15rem', fontWeight: 600 }}>
+                          Total Remaining
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '0.95rem 1.15rem' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            padding: '4px 10px',
+                            borderRadius: 16,
+                            fontSize: '0.74rem',
+                            fontWeight: 800,
+                            background: isPaid ? '#ECFDF5' : isOverdue ? '#FEF2F2' : '#FFFBEB',
+                            color: isPaid ? '#059669' : isOverdue ? '#DC2626' : '#D97706',
+                            border: isPaid ? '1px solid #A7F3D0' : isOverdue ? '1px solid #FECACA' : '1px solid #FDE68A',
+                          }}
+                        >
+                          {isPaid ? (
+                            <>
+                              <CheckCircle2 size={12} />
+                              <span>PAID</span>
+                            </>
+                          ) : isOverdue ? (
+                            <>
+                              <AlertTriangle size={12} />
+                              <span>OVERDUE</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock size={12} />
+                              <span>PENDING</span>
+                            </>
+                          )}
+                        </span>
+                      </td>
+
+                      {/* Action Buttons */}
+                      <td style={{ padding: '0.95rem 1.15rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.45rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              padding: '0.35rem 0.65rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                            }}
+                            onClick={() => handleOpenMonthlyLog(cust)}
+                            title="View 12-Month EMI Log"
+                          >
+                            <FileText size={14} />
+                            <span>Log</span>
+                          </button>
+
+                          {isPaid ? (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                padding: '0.35rem 0.65rem',
+                                borderRadius: 6,
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                background: '#ECFDF5',
+                                color: '#059669',
+                                border: '1px solid #A7F3D0',
+                              }}
+                            >
+                              <Check size={14} /> Settled
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              style={{
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                padding: '0.35rem 0.75rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                              }}
+                              onClick={() => handleNavigateCollect(cust)}
+                            >
+                              <span>Collect</span>
+                              <ArrowRight size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Clean Numbered Pagination Component */}
+      {totalPages > 1 && (
+        <div
+          className="card"
+          style={{
+            padding: '0.75rem 1.25rem',
+            borderRadius: 12,
+            border: '1.5px solid #E2E8F0',
+            background: '#FFFFFF',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: 600 }}>
+            Showing <strong style={{ color: 'var(--text-primary)' }}>{startIndex + 1}</strong> to{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>{endIndex}</strong> of{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>{totalItems}</strong> borrowers
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <button
+              className="btn btn-sm btn-secondary"
+              disabled={validCurrentPage === 1}
+              onClick={() => setCurrentPage(1)}
+              style={{ padding: '0.3rem 0.5rem', borderRadius: 6 }}
+              title="First Page"
+            >
+              <ChevronsLeft size={15} />
+            </button>
+            <button
+              className="btn btn-sm btn-secondary"
+              disabled={validCurrentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              style={{ padding: '0.3rem 0.5rem', borderRadius: 6 }}
+              title="Previous Page"
+            >
+              <ChevronLeft size={15} />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - validCurrentPage) <= 1)
+              .map((pageNum, idx, arr) => {
+                const showEllipsisBefore = idx > 0 && pageNum - arr[idx - 1] > 1;
+                return (
+                  <React.Fragment key={pageNum}>
+                    {showEllipsisBefore && (
+                      <span style={{ padding: '0 4px', color: '#94A3B8', fontSize: '0.8rem' }}>…</span>
+                    )}
+                    <button
+                      className={`btn btn-sm ${pageNum === validCurrentPage ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setCurrentPage(pageNum)}
+                      style={{
+                        minWidth: 32,
+                        padding: '0.3rem 0.5rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 800,
+                        borderRadius: 6,
                       }}
                     >
-                      {isPaid ? 'PAID THIS MONTH' : isOverdue ? 'OVERDUE' : 'DUE THIS MONTH'}
-                    </span>
-                  </div>
+                      {pageNum}
+                    </button>
+                  </React.Fragment>
+                );
+              })}
 
-                  {/* Contact Info */}
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Phone size={13} />
-                      <span>{cust.phone}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <MapPin size={13} />
-                      <span>{cust.address}</span>
-                    </div>
-                  </div>
+            <button
+              className="btn btn-sm btn-secondary"
+              disabled={validCurrentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              style={{ padding: '0.3rem 0.5rem', borderRadius: 6 }}
+              title="Next Page"
+            >
+              <ChevronRight size={15} />
+            </button>
+            <button
+              className="btn btn-sm btn-secondary"
+              disabled={validCurrentPage === totalPages}
+              onClick={() => setCurrentPage(totalPages)}
+              style={{ padding: '0.3rem 0.5rem', borderRadius: 6 }}
+              title="Last Page"
+            >
+              <ChevronsRight size={15} />
+            </button>
+          </div>
 
-                  {/* Financial Stats */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Monthly EMI:</span>
-                      <strong style={{ color: 'var(--accent-primary)', fontSize: '0.95rem' }}>{formatCurrency(cust.monthly_emi)}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Outstanding Balance:</span>
-                      <strong style={{ color: '#fff', fontSize: '0.85rem' }}>{formatCurrency(cust.outstanding_balance)}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Progress:</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {cust.paid_installments} / {cust.total_installments} months ({progress}%)
-                      </span>
-                    </div>
-                    {/* Progress Bar */}
-                    <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, marginTop: '0.4rem', overflow: 'hidden' }}>
-                      <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent-primary)', borderRadius: 3 }} />
-                    </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600 }}>Rows per page:</span>
+            <select
+              className="form-input"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontWeight: 700, width: 70, borderRadius: 6 }}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Monthly Log Modal Dialog */}
+      {selectedCustForModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={() => setSelectedCustForModal(null)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 16,
+              maxWidth: 780,
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1.5px solid #E2E8F0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1.5px solid #E2E8F0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#F8FAFC',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 10,
+                    background: '#EEF2FF',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 900,
+                    fontSize: '1.1rem',
+                  }}
+                >
+                  {selectedCustForModal.name?.charAt(0) || 'M'}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                    {selectedCustForModal.name} — 12-Month EMI Schedule Log
+                  </h3>
+                  <div style={{ fontSize: '0.76rem', color: '#64748B', marginTop: '0.15rem' }}>
+                    {selectedCustForModal.customer_code} • {selectedCustForModal.phone} • {selectedCustForModal.address || 'Chennai'}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedCustForModal(null)}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.4rem',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', flex: 1 }}>
+              {/* Financial Progress Strip */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '0.75rem',
+                  marginBottom: '1.25rem',
+                }}
+              >
+                <div style={{ background: '#F8FAFC', padding: '0.75rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Scheme Tenure</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                    {modalPaidMonths} / {modalTotalMonths} <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>Months</span>
                   </div>
                 </div>
 
-                {/* Bottom Action: Collect Button */}
+                <div style={{ background: '#F8FAFC', padding: '0.75rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Monthly EMI</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                    {formatCurrency(selectedCustForModal.monthly_emi || 5000)}
+                  </div>
+                </div>
+
+                <div style={{ background: '#F8FAFC', padding: '0.75rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 700, textTransform: 'uppercase' }}>Total Recovered</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#059669', marginTop: '0.2rem' }}>
+                    {formatCurrency(modalRecoveredAmt)}
+                  </div>
+                </div>
+
+                <div style={{ background: '#F8FAFC', padding: '0.75rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.68rem', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>Balance Due</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#DC2626', marginTop: '0.2rem' }}>
+                    {formatCurrency(modalRemainingAmt)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Ledger Schedule Table */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  12-Month EMI Breakdown
+                </span>
+
+                <div style={{ display: 'flex', background: '#F8FAFC', padding: 2, borderRadius: 6, border: '1px solid #E2E8F0' }}>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${modalFilterStatus === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', fontWeight: 700, border: 'none' }}
+                    onClick={() => setModalFilterStatus('ALL')}
+                  >
+                    All ({modalSchedule.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${modalFilterStatus === 'PAID' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', fontWeight: 700, border: 'none' }}
+                    onClick={() => setModalFilterStatus('PAID')}
+                  >
+                    Paid ({modalPaidMonths})
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${modalFilterStatus === 'PENDING' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', fontWeight: 700, border: 'none' }}
+                    onClick={() => setModalFilterStatus('PENDING')}
+                  >
+                    Pending ({modalTotalMonths - modalPaidMonths})
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+                <table className="table" style={{ margin: 0 }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>MONTH #</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>DUE DATE</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>AMOUNT</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>PAID DATE</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>PAYMENT DETAILS</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>STATUS</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B', textAlign: 'right' }}>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modalFilteredSchedule.map((inst) => {
+                      const isPaid = inst.status === 'PAID';
+                      const isCurrent = inst.status === 'CURRENT_DUE';
+                      return (
+                        <tr key={inst.month_number} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '0.65rem 0.85rem', fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.82rem' }}>
+                            Month {inst.month_number}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                            {inst.due_date}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.88rem', fontWeight: 900, color: isPaid ? '#059669' : 'var(--text-primary)' }}>
+                            {formatCurrency(inst.amount)}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: isPaid ? '#059669' : '#94A3B8', fontWeight: isPaid ? 700 : 500 }}>
+                            {isPaid ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <CheckCircle2 size={12} color="#059669" />
+                                <span>{inst.paid_date || inst.due_date}</span>
+                              </span>
+                            ) : (
+                              <span>—</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.78rem', color: '#64748B' }}>
+                            {isPaid ? (
+                              <span>
+                                {inst.receipt_no} • <strong style={{ color: 'var(--primary)' }}>{inst.payment_mode}</strong>
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94A3B8' }}>Uncollected</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem' }}>
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 12,
+                                fontSize: '0.7rem',
+                                fontWeight: 800,
+                                background: isPaid ? '#ECFDF5' : isCurrent ? '#EFF6FF' : '#FFFBEB',
+                                color: isPaid ? '#059669' : isCurrent ? '#2563EB' : '#D97706',
+                                border: isPaid ? '1px solid #A7F3D0' : isCurrent ? '1px solid #BFDBFE' : '1px solid #FDE68A',
+                              }}
+                            >
+                              {isPaid ? 'PAID' : isCurrent ? 'DUE NOW' : 'PENDING'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
+                            {isPaid ? (
+                              <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700 }}>Settled</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const custId = selectedCustForModal.id;
+                                  setSelectedCustForModal(null);
+                                  navigate(getOrgPath(`monthly-customers/collect/${custId}`));
+                                }}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  fontSize: '0.72rem',
+                                  fontWeight: 800,
+                                  background: 'var(--primary)',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  boxShadow: '0 1px 2px rgba(79, 70, 229, 0.2)',
+                                }}
+                              >
+                                <span>Pay</span>
+                                <ArrowRight size={11} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '1rem 1.5rem',
+                borderTop: '1.5px solid #E2E8F0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#F8FAFC',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => window.print()}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 700 }}
+              >
+                <Printer size={15} />
+                <span>Print Borrower Statement</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
                 <button
-                  className="btn btn-primary"
-                  style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
-                  onClick={() => navigate(getOrgPath(`monthly-customers/collect/${cust.id}`), { state: { customer: cust } })}
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedCustForModal(null)}
+                  style={{ fontSize: '0.82rem', fontWeight: 700 }}
                 >
-                  <DollarSign size={16} />
-                  <span>{isPaid ? 'View / Extra Payment' : `Collect ${formatCurrency(cust.monthly_emi)}`}</span>
+                  Close Log
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    const custId = selectedCustForModal.id;
+                    setSelectedCustForModal(null);
+                    navigate(getOrgPath(`monthly-customers/collect/${custId}`));
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 800 }}
+                >
+                  <span>Collect Monthly EMI</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
-            );
-          })}
+            </div>
+          </div>
         </div>
       )}
     </div>

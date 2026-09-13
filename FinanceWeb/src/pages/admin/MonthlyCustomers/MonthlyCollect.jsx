@@ -13,6 +13,20 @@ import {
   User,
   Receipt,
   Printer,
+  Building,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  Check,
+  X,
+  Layers,
+  FileText,
+  AlertTriangle,
+  Smartphone,
+  Banknote,
+  Building2,
+  ArrowRight,
 } from 'lucide-react';
 
 export const MonthlyCollect = () => {
@@ -21,60 +35,234 @@ export const MonthlyCollect = () => {
   const { customerId } = useParams();
   const { activeOrg } = useOrg();
 
-  const [customer, setCustomer] = useState(location.state?.customer || null);
-  const [loadingCust, setLoadingCust] = useState(!location.state?.customer);
-  const [paymentAmount, setPaymentAmount] = useState(
-    String(location.state?.customer?.monthly_emi || 5000)
-  );
+  const initialCustomer = location.state?.customer || null;
+  const initialDate = location.state?.selectedDate || new Date().toISOString().slice(0, 10);
+
+  const [customer, setCustomer] = useState(initialCustomer);
+  const [loadingCust, setLoadingCust] = useState(!initialCustomer);
+  const [collectionDate, setCollectionDate] = useState(initialDate);
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [submitting, setSubmitting] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
 
+  // Tabs: 'COLLECT' | 'SCHEDULE'
+  const [activeTab, setActiveTab] = useState('COLLECT');
+
+  // Selected Loan Cards Selection (Multi-card Support)
+  const [selectedLoans, setSelectedLoans] = useState({});
+
+  // Monthly Log Modal
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [selectedLoanForModal, setSelectedLoanForModal] = useState(null);
+  const [modalFilterStatus, setModalFilterStatus] = useState('ALL');
+
   const getOrgPath = (sub) => (activeOrg ? `/org/${activeOrg.id}/${sub}` : `/admin/${sub}`);
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
 
+  // Initialize selected loans
+  const initializeLoanState = (cust) => {
+    const loans = cust.loans || [
+      cust.active_loan || {
+        id: `loan-${cust.id}`,
+        loan_code: `LN-MTH-${cust.customer_code || cust.id}`,
+        loan_name: '12-Month EMI Business Loan',
+        principal: cust.principal || 50000,
+        interest_rate: 18.0,
+        total_installments: cust.total_installments || 12,
+        paid_installments: cust.paid_installments || 4,
+        installment_amount: cust.monthly_emi || 5000,
+        remaining_balance: cust.outstanding_balance || 40000,
+        issue_date: '2026-05-10',
+        maturity_date: '2027-05-10',
+      },
+    ];
+    const selMap = {};
+    loans.forEach((l) => {
+      selMap[l.id] = true;
+    });
+    setSelectedLoans(selMap);
+  };
+
+  // Fast Date Steppers
+  const handlePrevDay = () => {
+    const d = new Date(collectionDate);
+    d.setDate(d.getDate() - 1);
+    setCollectionDate(d.toISOString().slice(0, 10));
+  };
+
+  const handleNextDay = () => {
+    const d = new Date(collectionDate);
+    d.setDate(d.getDate() + 1);
+    setCollectionDate(d.toISOString().slice(0, 10));
+  };
+
+  const handleSetToday = () => {
+    setCollectionDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const handleSetYesterday = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    setCollectionDate(d.toISOString().slice(0, 10));
+  };
+
+  const isToday = collectionDate === new Date().toISOString().slice(0, 10);
+  const isYesterday = (() => {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return collectionDate === y.toISOString().slice(0, 10);
+  })();
+
+  const formatDisplayDate = (dStr) => {
+    try {
+      const [year, month, day] = dStr.split('-');
+      const d = new Date(year, month - 1, day);
+      return d.toLocaleDateString('en-IN', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dStr;
+    }
+  };
+
   useEffect(() => {
-    if (!customer && customerId) {
+    if (initialCustomer) {
+      initializeLoanState(initialCustomer);
+    } else if (customerId) {
       setLoadingCust(true);
       api.getCustomerById(customerId)
         .then((cust) => {
           if (cust) {
-            setCustomer({
+            const mapped = {
               id: cust.id,
-              name: cust.full_name || cust.name,
               customer_code: cust.customer_code || `MTH-${cust.id}`,
-              phone: cust.phone,
+              name: cust.full_name || cust.name || 'Monthly Borrower',
+              phone: cust.phone || '9876543210',
               address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
-              occupation: cust.occupation || 'Salaried Professional',
+              occupation: cust.occupation || 'Salaried Executive',
               monthly_emi: cust.monthly_emi || 5000,
-              outstanding_balance: cust.totalOutstanding || 45000,
-              paid_installments: 3,
+              current_month_status: 'UNPAID',
               total_installments: 12,
-              active_loan: cust.loans?.[0] || { loan_code: `LN-MTH-${cust.customer_code || cust.id}` },
-            });
-            setPaymentAmount(String(cust.monthly_emi || 5000));
+              paid_installments: 4,
+              outstanding_balance: cust.totalOutstanding || 40000,
+              loans: [
+                {
+                  id: `loan-${cust.id}`,
+                  loan_code: `LN-MTH-${cust.customer_code || cust.id}`,
+                  loan_name: '12-Month EMI Business Loan',
+                  principal: 50000,
+                  interest_rate: 18.0,
+                  total_installments: 12,
+                  paid_installments: 4,
+                  installment_amount: 5000,
+                  remaining_balance: 40000,
+                  issue_date: '2026-05-10',
+                  maturity_date: '2027-05-10',
+                },
+              ],
+            };
+            setCustomer(mapped);
+            initializeLoanState(mapped);
           }
         })
         .catch((err) => console.error('Error fetching monthly customer for collection:', err))
         .finally(() => setLoadingCust(false));
     }
-  }, [customerId, customer]);
+  }, [customerId]);
 
-  const handleSubmit = async (e) => {
+  const activeLoans = customer?.loans || (customer?.active_loan ? [customer.active_loan] : []);
+
+  // Helper to generate full monthly schedule for a loan
+  const getLoanInstallments = (loan) => {
+    if (!loan) return [];
+    if (Array.isArray(loan.schedule) && loan.schedule.length > 0) {
+      return loan.schedule;
+    }
+
+    const total = loan.total_installments || 12;
+    const isPaid = customer?.current_month_status === 'PAID' || customer?.current_month_status === 'COLLECTED';
+    const paidCount = loan.paid_installments || (isPaid ? 5 : 4);
+    const monthlyAmt = loan.installment_amount || customer?.monthly_emi || 5000;
+    const baseDate = new Date(loan.issue_date || '2026-05-10');
+
+    const list = [];
+    for (let i = 1; i <= total; i++) {
+      const d = new Date(baseDate);
+      d.setMonth(d.getMonth() + (i - 1));
+      const isMonthPaid = i <= paidCount;
+      const isCurrentDue = i === paidCount + 1;
+
+      list.push({
+        month_number: i,
+        due_date: d.toISOString().slice(0, 10),
+        amount: monthlyAmt,
+        paid_amount: isMonthPaid ? monthlyAmt : 0,
+        status: isMonthPaid ? 'PAID' : isCurrentDue ? 'CURRENT_DUE' : 'PENDING',
+        paid_date: isMonthPaid ? d.toISOString().slice(0, 10) : null,
+        receipt_no: isMonthPaid ? `REC-MTH-${customer?.id || '101'}-${i}` : null,
+        payment_mode: i % 2 === 0 ? 'CASH' : 'UPI',
+        remaining_after: Math.max(0, (total - i) * monthlyAmt),
+      });
+    }
+    return list;
+  };
+
+  const isLoanPaidOnDate = (loan) => {
+    return customer?.current_month_status === 'PAID' || customer?.current_month_status === 'COLLECTED';
+  };
+
+  const toggleLoanSelection = (loanId) => {
+    setSelectedLoans((prev) => ({
+      ...prev,
+      [loanId]: !prev[loanId],
+    }));
+  };
+
+  const payableSelectedLoans = activeLoans.filter((l) => selectedLoans[l.id] && !isLoanPaidOnDate(l));
+  const totalPayableAmount = payableSelectedLoans.reduce((sum, l) => sum + Number(l.installment_amount || 5000), 0);
+  const totalCombinedMonthlyDue = activeLoans.reduce((sum, l) => sum + Number(l.installment_amount || 5000), 0);
+  const isAlreadyPaid = customer?.current_month_status === 'PAID' || customer?.current_month_status === 'COLLECTED';
+
+  const handleSubmitPayment = async (e) => {
     e.preventDefault();
-    if (!customer) return;
+    if (!customer || payableSelectedLoans.length === 0 || totalPayableAmount <= 0) return;
+
     setSubmitting(true);
     try {
-      const loanCode = customer.active_loan?.loan_code || `LN-MTH-${customer.customer_code || customer.id}`;
-      const res = await api.recordMonthlyCollection(customer.id, loanCode, paymentMode, paymentAmount);
+      const collectedItems = [];
+      for (const loan of payableSelectedLoans) {
+        const amt = loan.installment_amount || 5000;
+        const res = await api.recordMonthlyCollection(customer.id, loan.loan_code, paymentMode, amt);
+        collectedItems.push({
+          loan_id: loan.id,
+          loan_code: loan.loan_code,
+          loan_name: loan.loan_name || '12-Month EMI Loan',
+          amount: amt,
+          receipt_no: res?.receipt_no || res?.receiptNumber || `REC-MTH-${Date.now().toString().slice(-6)}`,
+        });
+      }
+
+      setCustomer((prev) => ({
+        ...prev,
+        current_month_status: 'PAID',
+        paid_installments: (prev?.paid_installments || 4) + 1,
+        outstanding_balance: Math.max(0, (prev?.outstanding_balance || 40000) - totalPayableAmount),
+      }));
+
       setReceiptData({
-        ...res,
+        receipt_master_no: `REC-MTH-BATCH-${Date.now().toString().slice(-6)}`,
         customer_name: customer.name,
         customer_code: customer.customer_code,
-        loan_code: loanCode,
-        amount: parseFloat(paymentAmount),
+        phone: customer.phone,
+        address: customer.address,
+        total_collected: totalPayableAmount,
         payment_mode: paymentMode,
+        collection_date: collectionDate,
         timestamp: new Date().toLocaleString('en-IN'),
+        items: collectedItems,
       });
     } catch (err) {
       alert('Failed to record payment: ' + (err.message || err));
@@ -83,22 +271,38 @@ export const MonthlyCollect = () => {
     }
   };
 
+  const handleOpenLoanModal = (loan) => {
+    setSelectedLoanForModal(loan);
+    setModalFilterStatus('ALL');
+    setShowLogModal(true);
+  };
+
   if (loadingCust) {
     return (
-      <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-          Loading Monthly EMI Account...
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem 0.5rem' }}>
+        <div className="skeleton-bar" style={{ width: 220, height: 38, marginBottom: '1.5rem', borderRadius: 8 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+          <div className="card" style={{ padding: '2rem', borderRadius: 14 }}>
+            <div className="skeleton-bar" style={{ width: '60%', height: 24, marginBottom: 12 }} />
+            <div className="skeleton-bar" style={{ width: '40%', height: 16, marginBottom: 20 }} />
+            <div className="skeleton-bar" style={{ width: '100%', height: 140, borderRadius: 10 }} />
+          </div>
+          <div className="card" style={{ padding: '2rem', borderRadius: 14 }}>
+            <div className="skeleton-bar" style={{ width: '70%', height: 24, marginBottom: 16 }} />
+            <div className="skeleton-bar" style={{ width: '100%', height: 180, borderRadius: 10 }} />
+          </div>
         </div>
-        <span>Retrieving installment schedule</span>
       </div>
     );
   }
 
   if (!customer) {
     return (
-      <div style={{ padding: '3rem', textAlign: 'center' }}>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-          Borrower EMI record not available.
+      <div style={{ padding: '4rem 1rem', textAlign: 'center' }}>
+        <CreditCard size={44} style={{ opacity: 0.35, marginBottom: '0.75rem' }} />
+        <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Borrower Record Not Found</h3>
+        <p style={{ color: '#64748B', margin: '0.5rem 0 1.5rem 0' }}>
+          Unable to find active monthly EMI schemes for this borrower.
         </p>
         <button className="btn btn-secondary" onClick={() => navigate(getOrgPath('monthly-customers'))}>
           <ArrowLeft size={16} /> Back to Monthly Borrowers
@@ -107,80 +311,163 @@ export const MonthlyCollect = () => {
     );
   }
 
-  const progressPct = customer.total_installments > 0
-    ? Math.round((customer.paid_installments / customer.total_installments) * 100)
-    : 25;
-
+  // =========================================================================
+  // VIEW 1: OFFICIAL POST-PAYMENT RECEIPT
+  // =========================================================================
   if (receiptData) {
     return (
-      <div style={{ maxWidth: 640, margin: '2rem auto', padding: '0 1rem' }}>
-        <div className="card" style={{ padding: '2.5rem 2rem', textAlign: 'center', borderTop: '4px solid var(--emerald)' }}>
+      <div style={{ maxWidth: 740, margin: '1.5rem auto', padding: '0 1rem' }}>
+        <div
+          className="card"
+          style={{
+            padding: '2.5rem 2rem',
+            textAlign: 'center',
+            borderTop: '4px solid #059669',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+            borderRadius: 16,
+            background: '#FFFFFF',
+            border: '1.5px solid #E2E8F0',
+          }}
+        >
           <div
             style={{
-              width: 60,
-              height: 60,
+              width: 64,
+              height: 64,
               borderRadius: '50%',
-              background: 'rgba(5, 150, 105, 0.12)',
+              background: '#ECFDF5',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 1.25rem auto',
+              border: '2px solid #A7F3D0',
             }}
           >
-            <CheckCircle2 size={34} color="var(--emerald)" />
+            <CheckCircle2 size={36} color="#059669" />
           </div>
-          <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '1.6rem', fontWeight: 700 }}>
-            Monthly EMI Collected!
+
+          <h2 style={{ margin: '0 0 0.4rem 0', color: 'var(--text-primary)', fontSize: '1.65rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
+            Monthly EMI Collection Receipt
           </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.75rem' }}>
-            Monthly installment collection has been logged and the loan ledger is updated.
+          <p style={{ color: '#64748B', fontSize: '0.9rem', marginBottom: '1.75rem' }}>
+            Monthly EMI installment collection logged into branch loan portfolio.
           </p>
 
           <div
             style={{
-              background: 'var(--bg-primary)',
-              borderRadius: 10,
+              background: '#F8FAFC',
+              borderRadius: 12,
               padding: '1.5rem',
               textAlign: 'left',
               marginBottom: '1.75rem',
-              border: '1px solid var(--border-color)',
+              border: '1px solid #E2E8F0',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Receipt Number:</span>
-              <strong style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>
-                {receiptData.receipt_no || receiptData.receiptNumber || `REC-MTH-${Date.now().toString().slice(-6)}`}
+              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Receipt Number:</span>
+              <strong style={{ color: 'var(--primary)', fontSize: '0.92rem', fontWeight: 800 }}>
+                {receiptData.receipt_master_no}
               </strong>
             </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Borrower:</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem' }}>
+              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Borrower / Client:</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
                 {receiptData.customer_name} ({receiptData.customer_code})
               </span>
             </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loan Identifier:</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{receiptData.loan_code}</span>
+              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Phone & Location:</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                {receiptData.phone} • {receiptData.address}
+              </span>
             </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Amount Collected:</span>
-              <strong style={{ color: 'var(--emerald)', fontSize: '1.15rem' }}>{formatCurrency(receiptData.amount)}</strong>
+              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Payment Mode:</span>
+              <span
+                style={{
+                  color: '#065F46',
+                  background: '#D1FAE5',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  border: '1px solid #A7F3D0',
+                }}
+              >
+                {receiptData.payment_mode}
+              </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Payment Mode:</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem' }}>{receiptData.payment_mode}</span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Collection Date:</span>
+              <span style={{ color: '#64748B', fontSize: '0.85rem' }}>{receiptData.collection_date} • {receiptData.timestamp}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Timestamp:</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{receiptData.timestamp}</span>
+
+            <hr style={{ borderColor: '#E2E8F0', margin: '0.75rem 0' }} />
+
+            <div style={{ marginBottom: '0.85rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>
+                Allocated EMI Scheme Dues:
+              </span>
+              {receiptData.items.map((it, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: '#FFFFFF',
+                    padding: '0.65rem 0.9rem',
+                    borderRadius: 8,
+                    marginBottom: 6,
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 800 }}>{it.loan_code}</strong>
+                    <span style={{ fontSize: '0.78rem', color: '#64748B', marginLeft: 6 }}>({it.loan_name})</span>
+                    <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Ref: {it.receipt_no}</div>
+                  </div>
+                  <strong style={{ color: '#047857', fontSize: '1.05rem', fontWeight: 900 }}>
+                    {formatCurrency(it.amount)}
+                  </strong>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                paddingTop: '0.75rem',
+                borderTop: '2px solid #E2E8F0',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Total EMI Collected:
+              </span>
+              <strong style={{ fontSize: '1.45rem', fontWeight: 900, color: '#047857' }}>
+                {formatCurrency(receiptData.total_collected)}
+              </strong>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button className="btn btn-secondary" onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Printer size={16} /> <span>Print Receipt</span>
+            <button
+              className="btn btn-secondary"
+              onClick={() => window.print()}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.35rem', fontWeight: 700 }}
+            >
+              <Printer size={16} /> <span>Print Official Receipt</span>
             </button>
-            <button className="btn btn-primary" onClick={() => navigate(getOrgPath('monthly-customers'))}>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate(getOrgPath('monthly-customers'))}
+              style={{ padding: '0.7rem 1.35rem', fontWeight: 800 }}
+            >
               Back to Monthly Borrowers
             </button>
           </div>
@@ -189,143 +476,909 @@ export const MonthlyCollect = () => {
     );
   }
 
-  return (
-    <div style={{ maxWidth: 840, margin: '0 auto', padding: '0 0.5rem' }}>
-      {/* Back Button */}
-      <button
-        className="btn btn-secondary"
-        onClick={() => navigate(getOrgPath('monthly-customers'))}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}
-      >
-        <ArrowLeft size={16} />
-        <span>Back to Monthly Borrowers</span>
-      </button>
+  // =========================================================================
+  // VIEW 2: ACTIVE MULTI-LOAN COLLECTION & SCHEDULE WORKSPACE
+  // =========================================================================
+  const scheduleLoan = activeLoans[0];
+  const scheduleItems = scheduleLoan ? getLoanInstallments(scheduleLoan) : [];
+  const filteredScheduleItems = scheduleItems.filter((inst) => {
+    if (modalFilterStatus === 'PAID') return inst.status === 'PAID';
+    if (modalFilterStatus === 'PENDING') return inst.status !== 'PAID';
+    return true;
+  });
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
-        {/* Borrower & EMI Progress Overview */}
-        <div className="card" style={{ padding: '1.75rem', borderLeft: '4px solid var(--primary)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
+  return (
+    <div style={{ width: '100%', maxWidth: '100%', padding: '0 0.5rem' }}>
+      {/* Top Header & Breadcrumb */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <button
+          className="btn btn-secondary"
+          onClick={() => navigate(getOrgPath('monthly-customers'))}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}
+        >
+          <ArrowLeft size={16} />
+          <span>Back to Monthly Borrowers</span>
+        </button>
+
+        {/* Tab Selector: Collection Mode vs Day-wise Installment Schedule */}
+        <div style={{ display: 'flex', background: '#F1F5F9', padding: '0.25rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+          <button
+            type="button"
+            className={`btn btn-sm ${activeTab === 'COLLECT' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
+            onClick={() => setActiveTab('COLLECT')}
+          >
+            <DollarSign size={14} /> Quick Collection Form
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${activeTab === 'SCHEDULE' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
+            onClick={() => setActiveTab('SCHEDULE')}
+          >
+            <Calendar size={14} /> 12-Month EMI Schedule
+          </button>
+        </div>
+      </div>
+
+      {/* Borrower Profile Hero Bar */}
+      <div
+        className="card"
+        style={{
+          padding: '1.35rem 1.5rem',
+          marginBottom: '1.25rem',
+          border: '1.5px solid #E2E8F0',
+          borderRadius: 14,
+          background: '#FFFFFF',
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
             <div
               style={{
                 width: 48,
                 height: 48,
-                borderRadius: '50%',
-                background: 'rgba(79, 70, 229, 0.12)',
+                borderRadius: 12,
+                background: '#EEF2FF',
                 color: 'var(--primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '1.2rem',
+                fontWeight: 900,
+                fontSize: '1.25rem',
+                boxShadow: '0 2px 6px rgba(79, 70, 229, 0.12)',
               }}
             >
-              <User size={22} color="var(--primary)" />
+              {customer.name?.charAt(0) || 'M'}
             </div>
+
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {customer.name}
-              </h3>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                {customer.customer_code} • {customer.occupation}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                  {customer.name}
+                </h2>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '0.25rem 0.6rem',
+                    borderRadius: 6,
+                    background: '#EEF2FF',
+                    border: '1px solid #C7D2FE',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <Layers size={11} /> {activeLoans.length} Active Scheme{activeLoans.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.85rem', marginTop: 4, fontSize: '0.82rem', color: 'var(--text-secondary)', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span>Code: <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{customer.customer_code}</strong></span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <Phone size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{customer.phone}</strong></span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <MapPin size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{customer.address || 'Chennai'}</strong></span>
+                <span>• Profession: <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{customer.occupation || 'Salaried Executive'}</strong></span>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Phone size={14} color="var(--text-muted)" />
-              <strong style={{ color: 'var(--text-primary)' }}>{customer.phone}</strong>
+          <div style={{ display: 'flex', gap: '1.25rem', background: '#F8FAFC', padding: '0.75rem 1.25rem', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+            <div>
+              <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Monthly Combined EMI</span>
+              <strong style={{ fontSize: '1.25rem', fontWeight: 900, color: isAlreadyPaid ? '#059669' : 'var(--primary)', letterSpacing: '-0.02em' }}>
+                {formatCurrency(totalCombinedMonthlyDue)}
+              </strong>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <MapPin size={14} color="var(--text-muted)" />
-              <span>{customer.address}</span>
+            <div style={{ borderLeft: '1px solid #E2E8F0', paddingLeft: '1.25rem' }}>
+              <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Total Outstanding</span>
+              <strong style={{ fontSize: '1.25rem', fontWeight: 900, color: '#DC2626', letterSpacing: '-0.02em' }}>
+                {formatCurrency(customer.outstanding_balance || 40000)}
+              </strong>
             </div>
-          </div>
-
-          <hr style={{ borderColor: 'var(--border-color)', margin: '1rem 0' }} />
-
-          <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-            Monthly EMI Progress
-          </h4>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.45rem' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Monthly EMI Amount:</span>
-            <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>{formatCurrency(customer.monthly_emi)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.45rem' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Remaining Portfolio Outstanding:</span>
-            <strong style={{ color: 'var(--amber)' }}>{formatCurrency(customer.outstanding_balance)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Months Completed:</span>
-            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-              {customer.paid_installments || 0} / {customer.total_installments || 12} months ({progressPct}%)
-            </span>
-          </div>
-
-          <div style={{ width: '100%', height: 8, background: 'var(--border-color)', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ width: `${progressPct}%`, height: '100%', background: 'var(--primary)', borderRadius: 4, transition: 'width 0.3s' }} />
           </div>
         </div>
+      </div>
 
-        {/* Collection Form Card */}
-        <div className="card" style={{ padding: '1.75rem' }}>
-          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Record Monthly Collection
-          </h3>
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Payment Amount (₹) *</label>
-              <input
-                type="number"
-                className="form-input"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                min="1"
-                required
-                style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--emerald)' }}
-              />
+      {/* ===================================================================== */}
+      {/* TAB 1: QUICK COLLECTION WORKSPACE                                     */}
+      {/* ===================================================================== */}
+      {activeTab === 'COLLECT' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem' }}>
+          {/* Left Column: Active Loan Cards Shelf */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                Active Monthly EMI Schemes ({activeLoans.length})
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
+                Click card to open 12-Month Log
+              </span>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label className="form-label">Payment Mode *</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                {['UPI', 'CASH', 'BANK_TRANSFER'].map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={`btn ${paymentMode === mode ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ fontSize: '0.8rem', padding: '0.55rem' }}
-                    onClick={() => setPaymentMode(mode)}
+            {activeLoans.map((loan, idx) => {
+              const isSelected = !!selectedLoans[loan.id];
+              const totalMonths = loan.total_installments || 12;
+              const paidMonths = loan.paid_installments || (isAlreadyPaid ? 5 : 4);
+              const progressPct = totalMonths > 0 ? Math.round((paidMonths / totalMonths) * 100) : 0;
+              const isPaidForMonth = isLoanPaidOnDate(loan);
+
+              return (
+                <div
+                  key={loan.id || idx}
+                  className="card"
+                  onClick={() => handleOpenLoanModal(loan)}
+                  style={{
+                    padding: '1.25rem 1.4rem',
+                    border: `1.5px solid ${isPaidForMonth ? '#A7F3D0' : isSelected ? 'var(--primary)' : '#E2E8F0'}`,
+                    borderRadius: 14,
+                    background: isPaidForMonth ? '#F0FDF4' : isSelected ? '#FFFFFF' : '#F8FAFC',
+                    boxShadow: isSelected ? '0 4px 12px rgba(79, 70, 229, 0.08)' : '0 1px 3px rgba(0,0,0,0.02)',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = isPaidForMonth ? '#059669' : 'var(--primary)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = isPaidForMonth ? '#A7F3D0' : isSelected ? 'var(--primary)' : '#E2E8F0';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+                      {isPaidForMonth ? (
+                        <div
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            background: '#059669',
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                          }}
+                          title="Settled for this month"
+                        >
+                          <Check size={14} strokeWidth={3} />
+                        </div>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => toggleLoanSelection(loan.id)}
+                          style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                        />
+                      )}
+
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                            {loan.loan_code}
+                          </h4>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: 4,
+                              background: '#EEF2FF',
+                              border: '1px solid #C7D2FE',
+                              color: 'var(--primary)',
+                            }}
+                          >
+                            {loan.loan_name || '12-Month EMI Loan'}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                          Issued: {loan.issue_date || '2026-05-10'} • Maturity: {loan.maturity_date || '2027-05-10'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Monthly EMI</span>
+                      <strong style={{ fontSize: '1.35rem', fontWeight: 900, color: isPaidForMonth ? '#047857' : 'var(--primary)', letterSpacing: '-0.02em' }}>
+                        {formatCurrency(loan.installment_amount || 5000)}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Financial Details */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '0.5rem',
+                      background: isPaidForMonth ? '#FFFFFF' : '#F8FAFC',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 8,
+                      marginBottom: '0.75rem',
+                      border: '1px solid #E2E8F0',
+                      fontSize: '0.78rem',
+                    }}
                   >
-                    {mode.replace('_', ' ')}
+                    <div>
+                      <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Principal & Rate</span>
+                      <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                        {formatCurrency(loan.principal || 50000)} @ {loan.interest_rate || 18}%
+                      </strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Total Repayable</span>
+                      <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                        {formatCurrency((loan.principal || 50000) * 1.18)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Remaining Balance</span>
+                      <strong style={{ color: '#DC2626', fontWeight: 900 }}>
+                        {formatCurrency(loan.remaining_balance || 40000)}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Timeline Progress */}
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: 4 }}>
+                      <span style={{ color: '#64748B', fontWeight: 600 }}>
+                        Repayment Timeline:
+                      </span>
+                      <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                        Month {paidMonths} of {totalMonths} ({progressPct}%)
+                      </strong>
+                    </div>
+                    <div style={{ width: '100%', height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${progressPct}%`,
+                          height: '100%',
+                          background: isPaidForMonth ? '#059669' : 'linear-gradient(90deg, #6366F1, #4F46E5)',
+                          borderRadius: 3,
+                          transition: 'width 0.3s',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Card Actions Bottom Bar */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingTop: '0.65rem',
+                      borderTop: '1px solid #E2E8F0',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => handleOpenLoanModal(loan)}
+                      style={{
+                        fontSize: '0.75rem',
+                        padding: '0.35rem 0.75rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        color: 'var(--primary)',
+                        borderColor: '#C7D2FE',
+                        background: '#EEF2FF',
+                      }}
+                    >
+                      <Calendar size={13} /> View 12-Month Log ↗
+                    </button>
+
+                    {isPaidForMonth ? (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          background: '#ECFDF5',
+                          color: '#059669',
+                          border: '1px solid #A7F3D0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <CheckCircle2 size={13} /> Settled
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          background: '#FFFBEB',
+                          color: '#D97706',
+                          border: '1px solid #FDE68A',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <Clock size={13} /> EMI Due
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right Column: Payment Form or Settled Screen */}
+          <div>
+            <div
+              className="card"
+              style={{
+                padding: '1.5rem',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: 14,
+                background: '#FFFFFF',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+              }}
+            >
+              {/* Date Stepper in Form */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                  Collection Date
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handlePrevDay}
+                    style={{ padding: '0.35rem 0.6rem' }}
+                  >
+                    <ChevronLeft size={15} />
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${isToday ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={handleSetToday}
+                    style={{ fontWeight: 800, fontSize: '0.78rem' }}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleNextDay}
+                    style={{ padding: '0.35rem 0.6rem' }}
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={collectionDate}
+                    onChange={(e) => setCollectionDate(e.target.value)}
+                    style={{ flex: 1, padding: '0.35rem 0.65rem', fontSize: '0.85rem', fontWeight: 600, borderRadius: 8, border: '1.5px solid #E2E8F0' }}
+                  />
+                </div>
+              </div>
+
+              {isAlreadyPaid ? (
+                <div
+                  style={{
+                    padding: '2.5rem 1.5rem',
+                    textAlign: 'center',
+                    background: '#F0FDF4',
+                    borderRadius: 12,
+                    border: '1.5px solid #A7F3D0',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: '50%',
+                      background: '#ECFDF5',
+                      border: '2px solid #A7F3D0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 1rem auto',
+                    }}
+                  >
+                    <CheckCircle2 size={32} color="#059669" />
+                  </div>
+                  <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.25rem', fontWeight: 900, color: '#065F46' }}>
+                    Month EMI Dues Settled!
+                  </h4>
+                  <p style={{ margin: 0, color: '#047857', fontSize: '0.85rem' }}>
+                    This customer has completed their monthly installment payment.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setShowLogModal(true)}
+                    style={{ marginTop: '1.25rem', fontWeight: 700 }}
+                  >
+                    View Statement History
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitPayment}>
+                  {/* Amount Banner */}
+                  <div
+                    style={{
+                      background: 'linear-gradient(135deg, #4F46E5, #3730A3)',
+                      borderRadius: 12,
+                      padding: '1.25rem',
+                      color: '#FFFFFF',
+                      marginBottom: '1.25rem',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Selected Monthly EMI
+                    </span>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em', marginTop: '0.15rem' }}>
+                      {formatCurrency(totalPayableAmount)}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.85 }}>
+                      Collecting for {payableSelectedLoans.length} active monthly scheme(s)
+                    </span>
+                  </div>
+
+                  {/* Payment Mode Pills */}
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                      Select Payment Mode
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                      {['UPI', 'CASH', 'BANK'].map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          className={`btn btn-sm ${paymentMode === mode ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setPaymentMode(mode)}
+                          style={{ padding: '0.55rem', fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                        >
+                          {mode === 'UPI' ? <Smartphone size={15} /> : mode === 'CASH' ? <Banknote size={15} /> : <Building2 size={15} />}
+                          <span>{mode === 'UPI' ? 'UPI' : mode === 'CASH' ? 'Cash' : 'Bank'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Submit Action */}
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={submitting || totalPayableAmount <= 0}
+                    style={{
+                      width: '100%',
+                      padding: '0.85rem',
+                      fontSize: '1rem',
+                      fontWeight: 900,
+                      borderRadius: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    {submitting ? (
+                      <span>Recording Collection...</span>
+                    ) : (
+                      <>
+                        <span>Collect {formatCurrency(totalPayableAmount)} Now</span>
+                        <Check size={18} />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB 2: INLINE 12-MONTH LEDGER & SCHEDULE                              */}
+      {/* ===================================================================== */}
+      {activeTab === 'SCHEDULE' && (
+        <div
+          className="card"
+          style={{
+            padding: '1.5rem',
+            border: '1.5px solid #E2E8F0',
+            borderRadius: 14,
+            background: '#FFFFFF',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                12-Month EMI Repayment Ledger
+              </h3>
+              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748B' }}>
+                Full installment breakdown and payment receipt log for {customer.name}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', background: '#F8FAFC', padding: 3, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${modalFilterStatus === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+                  onClick={() => setModalFilterStatus('ALL')}
+                >
+                  All ({scheduleItems.length})
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${modalFilterStatus === 'PAID' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+                  onClick={() => setModalFilterStatus('PAID')}
+                >
+                  Paid
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${modalFilterStatus === 'PENDING' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+                  onClick={() => setModalFilterStatus('PENDING')}
+                >
+                  Pending
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => window.print()}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
+              >
+                <Printer size={15} /> Print Ledger
+              </button>
+            </div>
+          </div>
+
+          <div className="table-responsive" style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+            <table className="table" style={{ margin: 0 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>MONTH #</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>DUE DATE</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>AMOUNT</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>PAID DATE</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>PAYMENT INFO</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textAlign: 'right' }}>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredScheduleItems.map((inst) => {
+                  const isPaid = inst.status === 'PAID';
+                  const isCurrent = inst.status === 'CURRENT_DUE';
+                  return (
+                    <tr key={inst.month_number} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                        Month {inst.month_number}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
+                        {inst.due_date}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.92rem', fontWeight: 900, color: isPaid ? '#059669' : 'var(--text-primary)' }}>
+                        {formatCurrency(inst.amount)}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.82rem' }}>
+                        {isPaid ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', color: '#047857', padding: '3px 8px', borderRadius: 6, fontWeight: 700, border: '1px solid #A7F3D0' }}>
+                            <CheckCircle2 size={13} color="#059669" />
+                            <span>{inst.paid_date || inst.due_date}</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontWeight: 500 }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748B' }}>
+                        {isPaid ? (
+                          <span>
+                            {inst.receipt_no} • <strong style={{ color: 'var(--primary)' }}>{inst.payment_mode}</strong>
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8' }}>Uncollected</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                        <span
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: 12,
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            background: isPaid ? '#ECFDF5' : isCurrent ? '#EFF6FF' : '#FFFBEB',
+                            color: isPaid ? '#059669' : isCurrent ? '#2563EB' : '#D97706',
+                            border: isPaid ? '1px solid #A7F3D0' : isCurrent ? '1px solid #BFDBFE' : '1px solid #FDE68A',
+                          }}
+                        >
+                          {isPaid ? 'PAID' : isCurrent ? 'DUE NOW' : 'PENDING'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Log Modal */}
+      {showLogModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={() => setShowLogModal(false)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 16,
+              maxWidth: 760,
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1.5px solid #E2E8F0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1.5px solid #E2E8F0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#F8FAFC',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 10,
+                    background: '#EEF2FF',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 900,
+                    fontSize: '1.1rem',
+                  }}
+                >
+                  {customer.name?.charAt(0) || 'M'}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                    {customer.name} — 12-Month EMI Schedule Log
+                  </h3>
+                  <div style={{ fontSize: '0.76rem', color: '#64748B', marginTop: '0.15rem' }}>
+                    {customer.customer_code} • {customer.phone}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowLogModal(false)}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.4rem',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', flex: 1 }}>
+              <div style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+                <table className="table" style={{ margin: 0 }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>MONTH #</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>DUE DATE</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>AMOUNT</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>PAID DATE</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>PAYMENT INFO</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>STATUS</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B', textAlign: 'right' }}>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredScheduleItems.map((inst) => {
+                      const isPaid = inst.status === 'PAID';
+                      const isCurrent = inst.status === 'CURRENT_DUE';
+                      return (
+                        <tr key={inst.month_number} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '0.65rem 0.85rem', fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.82rem' }}>
+                            Month {inst.month_number}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                            {inst.due_date}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.88rem', fontWeight: 900, color: isPaid ? '#059669' : 'var(--text-primary)' }}>
+                            {formatCurrency(inst.amount)}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem' }}>
+                            {isPaid ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', color: '#047857', padding: '2px 7px', borderRadius: 6, fontWeight: 700, border: '1px solid #A7F3D0' }}>
+                                <CheckCircle2 size={12} color="#059669" />
+                                <span>{inst.paid_date || inst.due_date}</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#94A3B8', fontWeight: 500 }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.78rem', color: '#64748B' }}>
+                            {isPaid ? (
+                              <span>
+                                {inst.receipt_no} • <strong style={{ color: 'var(--primary)' }}>{inst.payment_mode}</strong>
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94A3B8' }}>Uncollected</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem' }}>
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 12,
+                                fontSize: '0.7rem',
+                                fontWeight: 800,
+                                background: isPaid ? '#ECFDF5' : isCurrent ? '#EFF6FF' : '#FFFBEB',
+                                color: isPaid ? '#059669' : isCurrent ? '#2563EB' : '#D97706',
+                                border: isPaid ? '1px solid #A7F3D0' : isCurrent ? '1px solid #BFDBFE' : '1px solid #FDE68A',
+                              }}
+                            >
+                              {isPaid ? 'PAID' : isCurrent ? 'DUE NOW' : 'PENDING'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
+                            {isPaid ? (
+                              <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700 }}>Settled</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowLogModal(false);
+                                  setActiveTab('COLLECT');
+                                }}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  fontSize: '0.72rem',
+                                  fontWeight: 800,
+                                  background: 'var(--primary)',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  boxShadow: '0 1px 2px rgba(79, 70, 229, 0.2)',
+                                }}
+                              >
+                                <span>Pay</span>
+                                <ArrowRight size={11} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submitting || !paymentAmount}
+            <div
               style={{
-                width: '100%',
-                padding: '0.85rem',
-                fontSize: '1rem',
-                fontWeight: 600,
+                padding: '1rem 1.5rem',
+                borderTop: '1.5px solid #E2E8F0',
                 display: 'flex',
-                justifyContent: 'center',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: '0.5rem',
+                background: '#F8FAFC',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
               }}
             >
-              <DollarSign size={18} />
-              <span>{submitting ? 'Processing Payment...' : `Collect ${formatCurrency(paymentAmount)}`}</span>
-            </button>
-          </form>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => window.print()}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 700 }}
+              >
+                <Printer size={15} />
+                <span>Print Borrower Statement</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowLogModal(false)}
+                  style={{ fontSize: '0.82rem', fontWeight: 700 }}
+                >
+                  Close Log
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setShowLogModal(false);
+                    setActiveTab('COLLECT');
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 800 }}
+                >
+                  <span>Collect Monthly EMI</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

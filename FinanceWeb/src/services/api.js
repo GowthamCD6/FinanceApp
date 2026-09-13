@@ -525,6 +525,11 @@ export const api = {
     return await api.governance.deleteBroadcast(id);
   },
 
+  // Customer Aliases
+  getCustomerById: async (id) => {
+    return await api.customers.getById(id);
+  },
+
   // Weekly Customers & Division Ledgers
   getWeeklyCustomers: async (params = {}) => {
     try {

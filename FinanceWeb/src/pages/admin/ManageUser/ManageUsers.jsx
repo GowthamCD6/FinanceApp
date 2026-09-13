@@ -738,8 +738,9 @@ export const ManageUsers = () => {
                           <Phone size={13} color="var(--text-muted)" />
                           {u.phone}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                          📍 {u.address || u.city || 'Chennai'}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <MapPin size={12} color="var(--text-muted)" />
+                          <span>{u.address || u.city || 'Chennai'}</span>
                         </div>
                       </td>
 

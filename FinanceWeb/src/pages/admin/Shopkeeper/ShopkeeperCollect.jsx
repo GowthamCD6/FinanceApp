@@ -17,6 +17,9 @@ import {
   ChevronRight,
   ShieldCheck,
   Check,
+  Phone,
+  MapPin,
+  ArrowRight,
 } from 'lucide-react';
 
 export const ShopkeeperCollect = () => {
@@ -619,8 +622,8 @@ export const ShopkeeperCollect = () => {
                     {shop.stall_no}
                   </span>
                 )}
-                <span>• 📍 <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{shop.market_location || 'Saidapet Bazaar Route'}</strong></span>
-                <span>• 📞 <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{shop.phone}</strong></span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <MapPin size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{shop.market_location || 'Saidapet Bazaar Route'}</strong></span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <Phone size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{shop.phone}</strong></span>
               </div>
             </div>
           </div>
@@ -1241,25 +1244,30 @@ export const ShopkeeperCollect = () => {
                                 background: isPaid
                                   ? '#D1FAE5'
                                   : isTodayDue
-                                  ? '#FEF3C7'
-                                  : '#F1F5F9',
+                                    ? '#FEF3C7'
+                                    : '#F1F5F9',
                                 color: isPaid
                                   ? '#065F46'
                                   : isTodayDue
-                                  ? '#92400E'
-                                  : 'var(--text-muted)',
+                                    ? '#92400E'
+                                    : 'var(--text-muted)',
                                 border: `1px solid ${isPaid ? '#A7F3D0' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
                                 fontWeight: 800,
                                 fontSize: '0.72rem',
                               }}
                             >
-                              {isPaid ? 'PAID ✓' : isTodayDue ? "TODAY'S DUE ⏱" : 'PENDING'}
+                              {isPaid ? 'PAID' : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                             </span>
                           </td>
                           <td>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                              {inst.paid_date || (isPaid ? inst.due_date : '-')}
-                            </span>
+                            {isPaid ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', color: '#047857', padding: '2px 7px', borderRadius: 6, fontWeight: 700, border: '1px solid #A7F3D0', fontSize: '0.78rem' }}>
+                                <CheckCircle2 size={12} color="#059669" />
+                                <span>{inst.paid_date || inst.due_date}</span>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>—</span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1469,9 +1477,11 @@ export const ShopkeeperCollect = () => {
                       <th>Due Date</th>
                       <th>Target</th>
                       <th>Paid Amount</th>
+                      <th>Paid Date</th>
                       <th>Mode</th>
                       <th>Status</th>
                       <th>Receipt Ref</th>
+                      <th style={{ textAlign: 'right' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1506,6 +1516,16 @@ export const ShopkeeperCollect = () => {
                               {formatCurrency(inst.paid_amount)}
                             </td>
                             <td>
+                              {isPaid ? (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', color: '#047857', padding: '2px 7px', borderRadius: 6, fontWeight: 700, border: '1px solid #A7F3D0', fontSize: '0.75rem' }}>
+                                  <CheckCircle2 size={12} color="#059669" />
+                                  <span>{inst.paid_date || inst.due_date}</span>
+                                </div>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                              )}
+                            </td>
+                            <td>
                               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                                 {isPaid ? inst.payment_mode : '-'}
                               </span>
@@ -1517,25 +1537,55 @@ export const ShopkeeperCollect = () => {
                                   background: isPaid
                                     ? '#D1FAE5'
                                     : isTodayDue
-                                    ? '#FEF3C7'
-                                    : '#F1F5F9',
+                                      ? '#FEF3C7'
+                                      : '#F1F5F9',
                                   color: isPaid
                                     ? '#065F46'
                                     : isTodayDue
-                                    ? '#92400E'
-                                    : 'var(--text-muted)',
+                                      ? '#92400E'
+                                      : 'var(--text-muted)',
                                   border: `1px solid ${isPaid ? '#A7F3D0' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
                                   fontWeight: 800,
                                   fontSize: '0.7rem',
                                 }}
                               >
-                                {isPaid ? 'PAID ✓' : isTodayDue ? "TODAY'S DUE ⏱" : 'PENDING'}
+                                {isPaid ? 'PAID' : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                               </span>
                             </td>
                             <td>
                               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                                 {inst.receipt_no || '-'}
                               </span>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              {isPaid ? (
+                                <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700 }}>Settled</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedLoanForModal(null);
+                                    setActiveTab('COLLECT');
+                                  }}
+                                  style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    fontSize: '0.72rem',
+                                    fontWeight: 800,
+                                    background: 'var(--primary)',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    boxShadow: '0 1px 2px rgba(79, 70, 229, 0.2)',
+                                  }}
+                                >
+                                  <span>Pay</span>
+                                  <ArrowRight size={11} />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1555,6 +1605,8 @@ export const ShopkeeperCollect = () => {
                 alignItems: 'center',
                 background: '#F8FAFC',
                 borderRadius: '0 0 16px 16px',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
               }}
             >
               <button
@@ -1566,14 +1618,29 @@ export const ShopkeeperCollect = () => {
                 <Printer size={15} /> Print Daily Log
               </button>
 
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setSelectedLoanForModal(null)}
-                style={{ padding: '0.5rem 1.25rem', fontWeight: 800 }}
-              >
-                Done / Close
-              </button>
+              <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedLoanForModal(null)}
+                  style={{ padding: '0.5rem 1rem', fontWeight: 700 }}
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setSelectedLoanForModal(null);
+                    setActiveTab('COLLECT');
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.5rem 1.25rem', fontWeight: 800 }}
+                >
+                  <span>Collect Daily Payment</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

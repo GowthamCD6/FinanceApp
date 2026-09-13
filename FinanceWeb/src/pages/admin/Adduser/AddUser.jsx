@@ -695,8 +695,9 @@ export const AddUser = () => {
             </div>
 
             {(isWeekly || isShop || isMonthly) && (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
-                📍 {formData.address || 'Address pending input'}
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <MapPin size={13} color="var(--text-muted)" />
+                <span>{formData.address || 'Address pending input'}</span>
               </div>
             )}
 

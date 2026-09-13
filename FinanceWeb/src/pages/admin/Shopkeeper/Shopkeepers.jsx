@@ -1570,8 +1570,8 @@ export const Shopkeepers = () => {
                         {selectedShopForModal.stall_no}
                       </span>
                     )}
-                    <span>• 📍 {selectedShopForModal.market_location || 'Saidapet Bazaar Route'}</span>
-                    <span>• 📞 <strong style={{ color: 'var(--text-primary)' }}>{selectedShopForModal.phone}</strong></span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <MapPin size={13} color="#64748B" /> {selectedShopForModal.market_location || 'Saidapet Bazaar Route'}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <Phone size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)' }}>{selectedShopForModal.phone}</strong></span>
                   </div>
                 </div>
               </div>
@@ -1855,9 +1855,11 @@ export const Shopkeepers = () => {
                         <th style={{ padding: '0.65rem 1rem' }}>Due Date</th>
                         <th style={{ padding: '0.65rem 1rem' }}>Target</th>
                         <th style={{ padding: '0.65rem 1rem' }}>Amount Paid</th>
+                        <th style={{ padding: '0.65rem 1rem' }}>Paid Date</th>
                         <th style={{ padding: '0.65rem 1rem' }}>Mode</th>
                         <th style={{ padding: '0.65rem 1rem' }}>Status</th>
-                        <th style={{ padding: '0.65rem 1rem', textAlign: 'right' }}>Receipt Reference</th>
+                        <th style={{ padding: '0.65rem 1rem' }}>Receipt Ref</th>
+                        <th style={{ padding: '0.65rem 1rem', textAlign: 'right' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1893,6 +1895,16 @@ export const Shopkeepers = () => {
                             </td>
                             <td style={{ padding: '0.65rem 1rem' }}>
                               {isPaid ? (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', color: '#047857', padding: '2px 7px', borderRadius: 6, fontWeight: 700, border: '1px solid #A7F3D0', fontSize: '0.75rem' }}>
+                                  <CheckCircle2 size={12} color="#059669" />
+                                  <span>{inst.paid_date || inst.due_date}</span>
+                                </div>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.65rem 1rem' }}>
+                              {isPaid ? (
                                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#4338CA', background: '#EEF2FF', padding: '1px 6px', borderRadius: 4 }}>
                                   {inst.payment_mode}
                                 </span>
@@ -1914,11 +1926,42 @@ export const Shopkeepers = () => {
                                   borderRadius: 4,
                                 }}
                               >
-                                {isPaid ? 'PAID ✓' : isTodayDue ? "TODAY'S DUE ⏱" : 'PENDING'}
+                                {isPaid ? 'PAID' : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                               </span>
                             </td>
-                            <td style={{ padding: '0.65rem 1rem', textAlign: 'right', color: isPaid ? 'var(--text-secondary)' : 'var(--text-muted)', fontSize: '0.76rem', fontWeight: 600 }}>
+                            <td style={{ padding: '0.65rem 1rem', color: isPaid ? 'var(--text-secondary)' : 'var(--text-muted)', fontSize: '0.76rem', fontWeight: 600 }}>
                               {inst.receipt_no || 'Uncollected'}
+                            </td>
+                            <td style={{ padding: '0.65rem 1rem', textAlign: 'right' }}>
+                              {isPaid ? (
+                                <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700 }}>Settled</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const shopId = selectedShopForModal.id;
+                                    setSelectedShopForModal(null);
+                                    navigate(getOrgPath(`shopkeepers/collect/${shopId}`));
+                                  }}
+                                  style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    fontSize: '0.72rem',
+                                    fontWeight: 800,
+                                    background: 'var(--primary)',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    boxShadow: '0 1px 2px rgba(79, 70, 229, 0.2)',
+                                  }}
+                                >
+                                  <span>Pay</span>
+                                  <ArrowRight size={11} />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );

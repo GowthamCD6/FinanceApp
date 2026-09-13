@@ -820,8 +820,8 @@ const PaymentCard = ({ record, onRecordPayment, formatCurrency }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
         <div>
           <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#fff' }}>{record.customerName}</h4>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            📞 {record.customerPhone} {record.shopName ? `• ${record.shopName}` : ''}
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Phone size={13} /> <span>{record.customerPhone} {record.shopName ? `• ${record.shopName}` : ''}</span>
           </div>
         </div>
         <StatusBadge status={record.status} />
