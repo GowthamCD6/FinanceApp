@@ -514,10 +514,11 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
 
         .layout-main {
           flex: 1;
-          padding: 2rem 2.25rem;
-          max-width: 1540px;
+          padding: 1.5rem 2rem;
+          max-width: 100%;
           width: 100%;
-          margin: 0 auto;
+          margin: 0;
+          box-sizing: border-box;
         }
 
         @media (max-width: 768px) {

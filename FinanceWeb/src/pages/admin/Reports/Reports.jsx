@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../../services/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
+import { StatCard } from '../../../components/common/StatCard';
 import {
   Calendar,
   Receipt,
@@ -22,8 +23,15 @@ import {
   TrendingUp,
   AlertCircle,
   FileText,
+  RefreshCw,
+  LayoutGrid,
+  List,
+  Store,
+  Check,
+  Building,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
+import './Reports.css';
 
 // Helper: Format Date to YYYY-MM-DD in local time
 const formatDateStr = (d) => {
@@ -60,9 +68,14 @@ export const AdminReports = () => {
   const [endDate, setEndDate] = useState(getWeekRange().end);
 
   // Filters & Tabs
-  const [frequencyFilter, setFrequencyFilter] = useState('ALL'); // 'ALL' | 'WEEKLY' | 'DAILY'
+  const [frequencyFilter, setFrequencyFilter] = useState('ALL'); // 'ALL' | 'WEEKLY' | 'DAILY' | 'MONTHLY'
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE'
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Report Data State
   const [report, setReport] = useState({
@@ -110,6 +123,11 @@ export const AdminReports = () => {
     fetchReport(startDate, endDate, frequencyFilter, statusFilter);
   }, [startDate, endDate, frequencyFilter, statusFilter]);
 
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, frequencyFilter, statusFilter, startDate, endDate]);
+
   // Handle Preset Changes
   const handlePresetChange = (preset) => {
     setDatePreset(preset);
@@ -155,7 +173,6 @@ export const AdminReports = () => {
     setEndDate(range.end);
   };
 
-  // Reset to Current Week
   const handleCurrentWeek = () => {
     handlePresetChange('THIS_WEEK');
   };
@@ -165,7 +182,7 @@ export const AdminReports = () => {
   const formatDateDisplay = (dStr) => {
     if (!dStr) return '';
     const date = new Date(dStr);
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   // Open Collect Modal
@@ -177,7 +194,7 @@ export const AdminReports = () => {
       paymentDate: formatDateStr(new Date()),
       paymentMethod: 'CASH',
       referenceNumber: `REC-${Math.floor(1000 + Math.random() * 9000)}`,
-      notes: `Weekly collection for ${record.customerName}`,
+      notes: `Collection for ${record.customerName}`,
     });
     setIsCollectModalOpen(true);
   };
@@ -216,7 +233,7 @@ export const AdminReports = () => {
 
       setIsCollectModalOpen(false);
 
-      // Instant In-Place State Update: Transition card & recalculate summary
+      // Instant in-place state update
       const updatedBalance = Math.max(0, (collectTarget.balance || collectTarget.expectedAmount) - parsedAmt);
       const nextStatus = updatedBalance === 0 ? 'PAID' : 'PARTIAL';
       const nextSortPriority = nextStatus === 'PAID' ? 4 : 3;
@@ -235,7 +252,6 @@ export const AdminReports = () => {
           return r;
         });
 
-        // Re-sort so PAID items move down to the bottom
         updatedRecords.sort((a, b) => {
           if (a.sortPriority !== b.sortPriority) return a.sortPriority - b.sortPriority;
           return new Date(a.dueDate) - new Date(b.dueDate);
@@ -259,9 +275,9 @@ export const AdminReports = () => {
         };
       });
 
-      // Show instant receipt confirmation
+      // Show instant receipt confirmation modal
       setReceiptSuccess({
-        receiptNo: res.paymentNumber || paymentForm.referenceNumber,
+        receiptNo: res?.data?.referenceNumber || paymentForm.referenceNumber,
         borrower: collectTarget.customerName,
         phone: collectTarget.customerPhone,
         amount: parsedAmt,
@@ -279,6 +295,35 @@ export const AdminReports = () => {
     }
   };
 
+  // Export to CSV
+  const handleExportCSV = () => {
+    if (!displayRecords.length) return;
+    const headers = ['Schedule ID', 'Borrower Name', 'Phone', 'Shop Name', 'Loan Number', 'Frequency', 'Installment', 'Due Date', 'Expected (INR)', 'Paid (INR)', 'Balance (INR)', 'Status'];
+    const rows = displayRecords.map((r) => [
+      r.scheduleId,
+      `"${r.customerName || ''}"`,
+      `"${r.customerPhone || ''}"`,
+      `"${r.shopName || ''}"`,
+      r.loanNumber,
+      r.frequency,
+      r.installmentNumber,
+      r.dueDate,
+      r.expectedAmount,
+      r.paidAmount,
+      r.balance,
+      r.status,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `collections_report_${startDate}_to_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Filtered records by search query
   const displayRecords = useMemo(() => {
     if (!searchTerm.trim()) return report.records;
@@ -292,108 +337,78 @@ export const AdminReports = () => {
     );
   }, [report.records, searchTerm]);
 
-  // Grouped for clear visual distinction: Unpaid/Overdue -> Partial -> Paid
+  // Paginated records
+  const totalPages = Math.ceil(displayRecords.length / pageSize) || 1;
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return displayRecords.slice(start, start + pageSize);
+  }, [displayRecords, currentPage, pageSize]);
+
+  const summary = report.summary || {};
+  const recoveryRate = summary.expected > 0 ? Math.round((summary.collected / summary.expected) * 100) : 0;
+
+  // Grouped for Card View
   const overdueOrUnpaid = displayRecords.filter((r) => r.status === 'OVERDUE' || r.status === 'UNPAID');
   const partialRecords = displayRecords.filter((r) => r.status === 'PARTIAL');
   const paidRecords = displayRecords.filter((r) => r.status === 'PAID');
 
-  const summary = report.summary || {};
-
   return (
     <div className="admin-reports-page">
-      {/* Header */}
+      {/* 1. Page Header (Admin Dashboard Style) */}
       <div className="page-header">
         <div>
-          <div className="welcome-tag">DYNAMIC PAYMENT OBLIGATION HUB</div>
-          <h1 className="page-title">Weekly Collections & Monitoring</h1>
-          <p className="page-subtitle">
-            Track borrower payment obligations, record collections in real time, and monitor outstanding balances.
-          </p>
+          <h1 className="page-title">Financial Reports & Recovery Audit</h1>
+        </div>
+
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={handleExportCSV} title="Export Filtered Report to CSV">
+            <Download size={16} />
+            <span>Export CSV</span>
+          </button>
+          <button className="btn btn-secondary" onClick={() => window.print()} title="Print Report">
+            <Printer size={16} />
+            <span>Print Report</span>
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => fetchReport(startDate, endDate, frequencyFilter, statusFilter)}
+            title="Refresh Collections Data"
+          >
+            <RefreshCw size={16} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
         </div>
       </div>
 
-      {/* Week Navigation & Date Preset Controls Bar */}
-      <div
-        className="card"
-        style={{
-          marginBottom: '1.25rem',
-          padding: '1rem 1.25rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          background: 'rgba(255,255,255,0.02)',
-        }}
-      >
-        {/* Interactive Week Navigator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button
-            className="btn btn-secondary"
-            onClick={() => handleShiftWeek(-1)}
-            title="Navigate to Previous Week"
-            style={{ padding: '0.5rem 0.85rem' }}
-          >
-            <ChevronLeft size={16} />
-            Previous Week
+      {/* 2. Interactive Date Range Navigator Bar */}
+      <div className="rep-nav-bar">
+        <div className="rep-nav-left">
+          <button className="btn btn-secondary btn-sm" onClick={() => handleShiftWeek(-1)}>
+            <ChevronLeft size={15} />
+            <span>Prev Week</span>
           </button>
 
-          <div
-            style={{
-              padding: '0.5rem 1rem',
-              background: 'rgba(99, 102, 241, 0.12)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontWeight: 600,
-              color: '#fff',
-              fontSize: '0.95rem',
-            }}
-          >
-            <Calendar size={16} color="var(--accent-primary)" />
-            <span>
-              {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
-            </span>
+          <div className="rep-nav-badge">
+            <Calendar size={15} />
+            <span>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
           </div>
 
-          <button
-            className="btn btn-secondary"
-            onClick={() => handleShiftWeek(1)}
-            title="Navigate to Next Week"
-            style={{ padding: '0.5rem 0.85rem' }}
-          >
-            Next Week
-            <ChevronRight size={16} />
+          <button className="btn btn-secondary btn-sm" onClick={() => handleShiftWeek(1)}>
+            <span>Next Week</span>
+            <ChevronRight size={15} />
           </button>
 
-          <button
-            className="btn btn-secondary"
-            onClick={handleCurrentWeek}
-            style={{ fontSize: '0.8rem', padding: '0.5rem 0.75rem' }}
-          >
+          <button className={`btn btn-sm ${datePreset === 'THIS_WEEK' ? 'btn-primary' : 'btn-secondary'}`} onClick={handleCurrentWeek}>
             Current Week
           </button>
         </div>
 
-        {/* Date Presets Selector */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="rep-presets">
           {['TODAY', 'THIS_WEEK', 'LAST_WEEK', 'THIS_MONTH', 'LAST_MONTH'].map((p) => (
             <button
               key={p}
               onClick={() => handlePresetChange(p)}
-              style={{
-                padding: '0.45rem 0.75rem',
-                borderRadius: 6,
-                border: datePreset === p ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                background: datePreset === p ? 'var(--accent-primary)' : 'var(--bg-card)',
-                color: datePreset === p ? '#fff' : 'var(--text-secondary)',
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-                fontWeight: datePreset === p ? 600 : 400,
-                transition: 'all 0.15s ease',
-              }}
+              className={`rep-preset-chip ${datePreset === p ? 'active' : ''}`}
             >
               {p.replace('_', ' ')}
             </button>
@@ -401,167 +416,385 @@ export const AdminReports = () => {
         </div>
       </div>
 
-      {/* KPI Financial Summary Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Expected</span>
-          <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.35rem', color: '#fff' }}>
-            {formatCurrency(summary.expected)}
-          </h3>
-        </div>
-
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Collected</span>
-          <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.35rem', color: 'var(--emerald)' }}>
-            {formatCurrency(summary.collected)}
-          </h3>
-        </div>
-
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remaining Due</span>
-          <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.35rem', color: '#fbbf24' }}>
-            {formatCurrency(summary.outstanding)}
-          </h3>
-        </div>
-
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Paid Borrowers</span>
-          <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.35rem', color: 'var(--emerald)' }}>
-            {summary.paid_count || 0}
-          </h3>
-        </div>
-
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Unpaid Pending</span>
-          <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.35rem', color: '#f87171' }}>
-            {summary.unpaid_count || 0}
-          </h3>
-        </div>
-
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Partial Payments</span>
-          <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.35rem', color: '#60a5fa' }}>
-            {summary.partial_count || 0}
-          </h3>
-        </div>
+      {/* 3. Four KPI Financial Overview Strip (Admin Dashboard StatCards with Shimmer) */}
+      <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
+        {loading ? (
+          [1, 2, 3, 4].map((i) => (
+            <div key={i} className="card stat-card" style={{ minHeight: 120 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+                <div className="skeleton-bar" style={{ width: '50%', height: 12 }} />
+                <div className="skeleton-circle" style={{ width: 38, height: 38, borderRadius: 8 }} />
+              </div>
+              <div className="skeleton-bar" style={{ width: '70%', height: 28, marginBottom: '0.5rem' }} />
+              <div className="skeleton-bar" style={{ width: '60%', height: 12 }} />
+            </div>
+          ))
+        ) : (
+          <>
+            <StatCard
+              label="TOTAL EXPECTED DUE"
+              value={formatCurrency(summary.expected)}
+              icon={DollarSign}
+              trend="Across scheduled dues"
+              trendDirection="neutral"
+              meta="All active schemes"
+              accentColor="#2563EB"
+              accentBg="#EFF6FF"
+            />
+            <StatCard
+              label="REALIZED COLLECTIONS"
+              value={formatCurrency(summary.collected)}
+              icon={TrendingUp}
+              trend={`${recoveryRate}% Recovery`}
+              trendDirection="up"
+              meta={`${summary.paid_count || 0} settled`}
+              accentColor="#059669"
+              accentBg="#ECFDF5"
+            />
+            <StatCard
+              label="REMAINING BALANCE"
+              value={formatCurrency(summary.outstanding)}
+              icon={Clock}
+              trend={`${summary.overdue_count || 0} Overdue`}
+              trendDirection="down"
+              meta={`${summary.unpaid_count || 0} pending`}
+              accentColor="#D97706"
+              accentBg="#FFFBEB"
+            />
+            <StatCard
+              label="SETTLEMENT RATE"
+              value={`${recoveryRate}%`}
+              icon={CheckCircle2}
+              trend={`${summary.paid_count || 0} Paid`}
+              trendDirection="up"
+              meta={`${summary.overdue_count || 0} Overdue`}
+              accentColor="#7C3AED"
+              accentBg="#FAF5FF"
+            />
+          </>
+        )}
       </div>
 
-      {/* Filter and Search Bar */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="search-box" style={{ flex: 1, minWidth: 240 }}>
-          <Search size={18} />
+      {/* 4. Filter, Search & View Switcher Bar */}
+      <div className="rep-toolbar">
+        <div className="rep-search-wrap">
+          <Search size={16} className="rep-search-icon" />
           <input
             type="text"
+            className="rep-search-input"
             placeholder="Search borrower by name, phone, shop, or loan number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div className="rep-filters-group">
           <select
-            className="form-input"
-            style={{ width: 160 }}
+            className="rep-select"
             value={frequencyFilter}
             onChange={(e) => setFrequencyFilter(e.target.value)}
           >
-            <option value="ALL">All Frequencies</option>
-            <option value="WEEKLY">Weekly Borrowers</option>
+            <option value="ALL">All Schemes</option>
+            <option value="WEEKLY">Weekly Micro-Loans</option>
             <option value="DAILY">Daily Merchants</option>
+            <option value="MONTHLY">Monthly Business</option>
           </select>
 
           <select
-            className="form-input"
-            style={{ width: 160 }}
+            className="rep-select"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="ALL">All Statuses</option>
-            <option value="UNPAID">UNPAID (Pending)</option>
-            <option value="OVERDUE">OVERDUE</option>
-            <option value="PARTIAL">PARTIAL</option>
-            <option value="PAID">PAID</option>
+            <option value="UNPAID">Pending / Unpaid</option>
+            <option value="OVERDUE">Overdue</option>
+            <option value="PARTIAL">Partial Payment</option>
+            <option value="PAID">Fully Settled</option>
           </select>
+
+          <div className="rep-view-toggle">
+            <button
+              className={`rep-view-btn ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+              title="Table Ledger View"
+            >
+              <List size={16} />
+            </button>
+            <button
+              className={`rep-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              onClick={() => setViewMode('grid')}
+              title="Card Grid View"
+            >
+              <LayoutGrid size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Dynamic Payment Cards Section */}
+      {/* 5. Main Content: Table View or Card View */}
       {loading ? (
-        <div className="page-loading">Querying Period Payment Schedules...</div>
+        <div className="rep-table-container">
+          <table className="rep-table">
+            <thead>
+              <tr>
+                <th>Borrower & Shop</th>
+                <th>Loan Number</th>
+                <th>Installment & Due</th>
+                <th>Expected</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <tr key={i} className="rep-skeleton-row">
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="skeleton-circle" style={{ width: 34, height: 34, borderRadius: 8 }} />
+                      <div style={{ width: 120 }}>
+                        <div className="skeleton-bar" style={{ height: 14, marginBottom: 4 }} />
+                        <div className="skeleton-bar" style={{ height: 10, width: '60%' }} />
+                      </div>
+                    </div>
+                  </td>
+                  <td><div className="skeleton-bar" style={{ width: 80, height: 14 }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: 100, height: 14 }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: 65, height: 14 }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: 65, height: 14 }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: 65, height: 14 }} /></td>
+                  <td><div className="skeleton-pill" style={{ width: 70, height: 22 }} /></td>
+                  <td style={{ textAlign: 'right' }}><div className="skeleton-bar" style={{ width: 80, height: 28, marginLeft: 'auto', borderRadius: 6 }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : displayRecords.length === 0 ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <Calendar size={36} style={{ margin: '0 auto 1rem auto', opacity: 0.4 }} />
-          <h3>No payment obligations scheduled for this period</h3>
-          <p style={{ margin: 0, fontSize: '0.9rem' }}>
-            Try shifting to the previous/next week or choose a broader date range.
+        <div className="rep-empty-state">
+          <div className="rep-empty-icon">
+            <Calendar size={28} />
+          </div>
+          <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>No payment records found</h3>
+          <p style={{ margin: 0, fontSize: '0.85rem' }}>
+            Try adjusting your search query, switching schemes, or shifting to another date range.
           </p>
         </div>
+      ) : viewMode === 'table' ? (
+        /* ========================
+           TABLE LEDGER VIEW
+           ======================== */
+        <>
+          <div className="rep-table-container">
+            <table className="rep-table">
+              <thead>
+                <tr>
+                  <th>Borrower & Shop</th>
+                  <th>Loan & Scheme</th>
+                  <th>Due Date & Installment</th>
+                  <th>Expected (₹)</th>
+                  <th>Paid (₹)</th>
+                  <th>Balance (₹)</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedRecords.map((rec) => {
+                  const isPaid = rec.status === 'PAID';
+                  const isOverdue = rec.status === 'OVERDUE';
+                  const initials = rec.customerName
+                    ? rec.customerName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
+                    : 'CU';
+
+                  return (
+                    <tr key={rec.scheduleId}>
+                      {/* Borrower & Shop */}
+                      <td>
+                        <div className="rep-borrower-cell">
+                          <div className="rep-avatar">{initials}</div>
+                          <div>
+                            <div className="rep-borrower-name">{rec.customerName}</div>
+                            <div className="rep-borrower-sub">
+                              <Phone size={12} />
+                              <span>{rec.customerPhone} {rec.shopName ? `• ${rec.shopName}` : ''}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Loan & Scheme */}
+                      <td>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{rec.loanNumber}</div>
+                        <span className={`rep-scheme-badge ${rec.frequency === 'DAILY' ? 'scheme-daily' : rec.frequency === 'MONTHLY' ? 'scheme-monthly' : 'scheme-weekly'}`}>
+                          {rec.frequency}
+                        </span>
+                      </td>
+
+                      {/* Installment & Due Date */}
+                      <td>
+                        <div style={{ fontWeight: 700, color: isOverdue ? '#dc2626' : '#0f172a' }}>
+                          {rec.dueDate}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Installment #{rec.installmentNumber}
+                        </div>
+                      </td>
+
+                      {/* Expected Amount */}
+                      <td>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                          {formatCurrency(rec.expectedAmount)}
+                        </div>
+                      </td>
+
+                      {/* Paid Amount */}
+                      <td>
+                        <div style={{ fontWeight: 700, color: isPaid ? '#059669' : rec.paidAmount > 0 ? '#2563eb' : '#94a3b8' }}>
+                          {formatCurrency(rec.paidAmount || 0)}
+                        </div>
+                      </td>
+
+                      {/* Balance */}
+                      <td>
+                        <div style={{ fontWeight: 800, color: rec.balance === 0 ? '#059669' : '#d97706' }}>
+                          {formatCurrency(rec.balance || 0)}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td>
+                        <StatusBadge status={rec.status} />
+                      </td>
+
+                      {/* Actions */}
+                      <td>
+                        <div className="rep-action-cell">
+                          {isPaid ? (
+                            <button
+                              className="rep-btn-receipt"
+                              onClick={() =>
+                                setReceiptSuccess({
+                                  receiptNo: `REC-${rec.scheduleId}`,
+                                  borrower: rec.customerName,
+                                  phone: rec.customerPhone,
+                                  amount: rec.paidAmount,
+                                  balance: 0,
+                                  loanNumber: rec.loanNumber,
+                                  mode: 'CASH',
+                                  date: rec.dueDate,
+                                  status: 'PAID',
+                                })
+                              }
+                            >
+                              <Receipt size={13} />
+                              <span>Receipt</span>
+                            </button>
+                          ) : (
+                            <button className="rep-btn-collect" onClick={() => openCollectModal(rec)}>
+                              <DollarSign size={13} />
+                              <span>Collect</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="rep-pagination">
+            <div className="rep-pag-info">
+              Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, displayRecords.length)} of {displayRecords.length} records
+            </div>
+
+            <div className="rep-pag-controls">
+              <select
+                className="rep-select"
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.78rem' }}
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+              >
+                <option value={10}>10 rows</option>
+                <option value={25}>25 rows</option>
+                <option value={50}>50 rows</option>
+              </select>
+
+              <button
+                className="rep-pag-btn"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '0 0.5rem' }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="rep-pag-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        </>
       ) : (
+        /* ========================
+           CARD GRID VIEW
+           ======================== */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* 1. OVERDUE & UNPAID CARDS (PRIORITY TOP) */}
+          {/* Overdue & Unpaid Cards */}
           {overdueOrUnpaid.length > 0 && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <AlertTriangle size={18} color="var(--red)" />
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#f87171' }}>
-                  Action Required: Overdue & Unpaid Borrowers ({overdueOrUnpaid.length})
+                <AlertTriangle size={18} color="#dc2626" />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#dc2626' }}>
+                  Action Required: Overdue & Unpaid ({overdueOrUnpaid.length})
                 </h3>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+              <div className="rep-cards-grid">
                 {overdueOrUnpaid.map((rec) => (
-                  <PaymentCard
-                    key={rec.scheduleId}
-                    record={rec}
-                    onRecordPayment={openCollectModal}
-                    formatCurrency={formatCurrency}
-                  />
+                  <PaymentCardItem key={rec.scheduleId} record={rec} onRecordPayment={openCollectModal} formatCurrency={formatCurrency} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* 2. PARTIAL PAYMENT CARDS (MIDDLE) */}
+          {/* Partial Payment Cards */}
           {partialRecords.length > 0 && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <Clock size={18} color="#60a5fa" />
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#60a5fa' }}>
+                <Clock size={18} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#2563eb' }}>
                   Partial Payments in Progress ({partialRecords.length})
                 </h3>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+              <div className="rep-cards-grid">
                 {partialRecords.map((rec) => (
-                  <PaymentCard
-                    key={rec.scheduleId}
-                    record={rec}
-                    onRecordPayment={openCollectModal}
-                    formatCurrency={formatCurrency}
-                  />
+                  <PaymentCardItem key={rec.scheduleId} record={rec} onRecordPayment={openCollectModal} formatCurrency={formatCurrency} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* 3. PAID CARDS (BOTTOM) */}
+          {/* Settled Cards */}
           {paidRecords.length > 0 && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <CheckCircle2 size={18} color="var(--emerald)" />
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--emerald)' }}>
-                  Settled & Paid Obligations ({paidRecords.length})
+                <CheckCircle2 size={18} color="#059669" />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#059669' }}>
+                  Settled Obligations ({paidRecords.length})
                 </h3>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+              <div className="rep-cards-grid">
                 {paidRecords.map((rec) => (
-                  <PaymentCard
-                    key={rec.scheduleId}
-                    record={rec}
-                    onRecordPayment={openCollectModal}
-                    formatCurrency={formatCurrency}
-                  />
+                  <PaymentCardItem key={rec.scheduleId} record={rec} onRecordPayment={openCollectModal} formatCurrency={formatCurrency} />
                 ))}
               </div>
             </div>
@@ -570,79 +803,89 @@ export const AdminReports = () => {
       )}
 
       {/* ========================================== */}
-      {/* PAYMENT ENTRY MODAL                        */}
+      {/* RECORD PAYMENT ENTRY MODAL                 */}
       {/* ========================================== */}
       {isCollectModalOpen && collectTarget && (
         <Modal
           isOpen={isCollectModalOpen}
           onClose={() => setIsCollectModalOpen(false)}
-          title={`Record Collection: ${collectTarget.customerName}`}
+          title={`Record Payment: ${collectTarget.customerName}`}
         >
           <form onSubmit={handleConfirmPayment}>
             {paymentError && (
               <div
-                className="feedback-banner"
-                style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'var(--red)', marginBottom: '1rem' }}
+                style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  padding: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '1rem',
+                  color: '#dc2626',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                }}
               >
-                <AlertCircle size={16} color="var(--red)" />
-                <span style={{ color: '#fca5a5' }}>{paymentError}</span>
+                <AlertCircle size={16} color="#dc2626" />
+                <span>{paymentError}</span>
               </div>
             )}
 
             {/* Obligation Snapshot */}
             <div
               style={{
-                padding: '0.85rem',
-                background: 'rgba(255,255,255,0.03)',
+                padding: '0.85rem 1rem',
+                background: '#f8fafc',
                 borderRadius: 8,
-                border: '1px solid var(--border-color)',
+                border: '1.5px solid #e2e8f0',
                 marginBottom: '1.25rem',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <div>
-                  <strong style={{ color: '#fff' }}>{collectTarget.customerName}</strong>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 6 }}>
+                  <strong style={{ color: '#0f172a' }}>{collectTarget.customerName}</strong>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: 6 }}>
                     ({collectTarget.customerPhone})
                   </span>
                 </div>
                 <StatusBadge status={collectTarget.status} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <div>Loan: {collectTarget.loanNumber}</div>
-                <div>Expected: {formatCurrency(collectTarget.expectedAmount)}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '0.825rem', color: '#475569' }}>
+                <div>Loan: <strong>{collectTarget.loanNumber}</strong></div>
+                <div>Expected: <strong>{formatCurrency(collectTarget.expectedAmount)}</strong></div>
                 <div>
-                  Outstanding Balance: <strong style={{ color: '#fbbf24' }}>{formatCurrency(collectTarget.balance || collectTarget.expectedAmount)}</strong>
+                  Remaining: <strong style={{ color: '#d97706' }}>{formatCurrency(collectTarget.balance || collectTarget.expectedAmount)}</strong>
                 </div>
               </div>
             </div>
 
             {/* Payment Fields */}
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">
-                  <DollarSign size={14} style={{ display: 'inline', marginRight: 4 }} /> Payment Amount (₹) *
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                  Payment Amount (₹) *
                 </label>
                 <input
                   type="number"
                   step="any"
-                  className="form-input"
+                  className="rep-search-input"
+                  style={{ padding: '0.55rem 0.75rem' }}
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                   required
                 />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                  Default is remaining due. Supports partial collection.
-                </span>
               </div>
 
               <div className="form-group">
-                <label className="form-label">
-                  <Calendar size={14} style={{ display: 'inline', marginRight: 4 }} /> Payment Date
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                  Payment Date *
                 </label>
                 <input
                   type="date"
-                  className="form-input"
+                  className="rep-search-input"
+                  style={{ padding: '0.55rem 0.75rem' }}
                   value={paymentForm.paymentDate}
                   onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
                   required
@@ -650,62 +893,58 @@ export const AdminReports = () => {
               </div>
             </div>
 
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Payment Method</label>
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                  Payment Mode
+                </label>
                 <select
-                  className="form-input"
+                  className="rep-select"
+                  style={{ width: '100%' }}
                   value={paymentForm.paymentMethod}
                   onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
                 >
                   <option value="CASH">CASH (Physical Handover)</option>
                   <option value="UPI">UPI (QR / GooglePay / PhonePe)</option>
-                  <option value="BANK_TRANSFER">Bank IMPS / NEFT</option>
+                  <option value="BANK_TRANSFER">Bank Transfer (IMPS/NEFT)</option>
                   <option value="CHEQUE">Cheque</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">
-                  <Receipt size={14} style={{ display: 'inline', marginRight: 4 }} /> Receipt / Ref Number
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                  Receipt / Ref Number
                 </label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="rep-search-input"
+                  style={{ padding: '0.55rem 0.75rem' }}
                   value={paymentForm.referenceNumber}
                   onChange={(e) => setPaymentForm({ ...paymentForm, referenceNumber: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                <FileText size={14} style={{ display: 'inline', marginRight: 4 }} /> Collection Notes
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                Collection Notes
               </label>
               <input
                 type="text"
-                className="form-input"
-                placeholder="e.g. Collected at stall #12. Full weekly installment."
+                className="rep-search-input"
+                style={{ padding: '0.55rem 0.75rem' }}
+                placeholder="e.g. Full installment collected on route"
                 value={paymentForm.notes}
                 onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsCollectModalOpen(false)}
-              >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsCollectModalOpen(false)}>
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={submittingPayment}
-                className="btn btn-primary"
-                style={{ minWidth: 160, justifyContent: 'center' }}
-              >
-                {submittingPayment ? 'Storing Payment in DB...' : 'Record Payment & Save'}
+              <button type="submit" disabled={submittingPayment} className="btn btn-primary">
+                {submittingPayment ? 'Recording...' : 'Record Payment & Save'}
               </button>
             </div>
           </form>
@@ -716,68 +955,60 @@ export const AdminReports = () => {
       {/* INSTANT RECEIPT SUCCESS MODAL              */}
       {/* ========================================== */}
       {receiptSuccess && (
-        <Modal
-          isOpen={!!receiptSuccess}
-          onClose={() => setReceiptSuccess(null)}
-          title="Payment Collected Successfully"
-        >
-          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+        <Modal isOpen={!!receiptSuccess} onClose={() => setReceiptSuccess(null)} title="Payment Receipt">
+          <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
             <div
               style={{
-                width: 56,
-                height: 56,
+                width: 52,
+                height: 52,
                 borderRadius: '50%',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: 'var(--emerald)',
+                background: '#ecfdf5',
+                color: '#059669',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 1rem auto',
+                margin: '0 auto 0.75rem auto',
               }}
             >
-              <CheckCircle2 size={32} />
+              <CheckCircle2 size={30} />
             </div>
 
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.3rem' }}>
-              {formatCurrency(receiptSuccess.amount)} Received
+            <h3 style={{ margin: '0 0 0.35rem 0', color: '#0f172a', fontSize: '1.25rem' }}>
+              {formatCurrency(receiptSuccess.amount)} Collected
             </h3>
-            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              Immutable transaction stored with receipt number <code>{receiptSuccess.receiptNo}</code>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '0.825rem' }}>
+              Receipt Ref: <strong>{receiptSuccess.receiptNo}</strong>
             </p>
 
             <div
               style={{
-                background: 'rgba(255,255,255,0.03)',
-                padding: '1rem',
+                background: '#f8fafc',
+                padding: '0.95rem',
                 borderRadius: 8,
-                border: '1px solid var(--border-color)',
-                margin: '1.25rem 0',
+                border: '1.5px solid #e2e8f0',
+                margin: '1.15rem 0',
                 textAlign: 'left',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: '0.5rem',
-                fontSize: '0.85rem',
+                fontSize: '0.825rem',
               }}
             >
               <div>Borrower: <strong>{receiptSuccess.borrower}</strong></div>
-              <div>Mode: <span className="badge badge-blue">{receiptSuccess.mode}</span></div>
+              <div>Mode: <span className="rep-kpi-pill pill-blue">{receiptSuccess.mode}</span></div>
               <div>Date: {receiptSuccess.date}</div>
-              <div>Remaining Balance: <strong style={{ color: receiptSuccess.balance === 0 ? 'var(--emerald)' : '#fbbf24' }}>{formatCurrency(receiptSuccess.balance)}</strong></div>
+              <div>
+                Remaining: <strong style={{ color: receiptSuccess.balance === 0 ? '#059669' : '#d97706' }}>{formatCurrency(receiptSuccess.balance)}</strong>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => window.print()}
-              >
+              <button className="btn btn-secondary" onClick={() => window.print()}>
                 <Printer size={15} />
-                Print Receipt
+                <span>Print Receipt</span>
               </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => setReceiptSuccess(null)}
-              >
-                Done
+              <button className="btn btn-primary" onClick={() => setReceiptSuccess(null)}>
+                <span>Done</span>
               </button>
             </div>
           </div>
@@ -788,114 +1019,59 @@ export const AdminReports = () => {
 };
 
 // ==========================================
-// SUB-COMPONENT: DYNAMIC PAYMENT CARD
+// SUB-COMPONENT: CARD GRID ITEM
 // ==========================================
-const PaymentCard = ({ record, onRecordPayment, formatCurrency }) => {
+const PaymentCardItem = ({ record, onRecordPayment, formatCurrency }) => {
   const isPaid = record.status === 'PAID';
-  const isPartial = record.status === 'PARTIAL';
   const isOverdue = record.status === 'OVERDUE';
 
   return (
-    <div
-      className="card"
-      style={{
-        padding: '1.25rem',
-        borderRadius: 12,
-        border: isOverdue
-          ? '1px solid rgba(239, 68, 68, 0.4)'
-          : isPaid
-          ? '1px solid rgba(16, 185, 129, 0.25)'
-          : isPartial
-          ? '1px solid rgba(96, 165, 250, 0.35)'
-          : '1px solid var(--border-color)',
-        background: isPaid
-          ? 'rgba(16, 185, 129, 0.03)'
-          : isOverdue
-          ? 'rgba(239, 68, 68, 0.03)'
-          : 'var(--bg-card)',
-        transition: 'all 0.25s ease',
-      }}
-    >
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+    <div className={`rep-card-item ${isOverdue ? 'card-overdue' : isPaid ? 'card-paid' : ''}`}>
+      <div className="rep-card-header">
         <div>
-          <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#fff' }}>{record.customerName}</h4>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Phone size={13} /> <span>{record.customerPhone} {record.shopName ? `• ${record.shopName}` : ''}</span>
+          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem' }}>{record.customerName}</div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Phone size={12} />
+            <span>{record.customerPhone} {record.shopName ? `• ${record.shopName}` : ''}</span>
           </div>
         </div>
         <StatusBadge status={record.status} />
       </div>
 
-      {/* Loan & Week Info */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: '0.8rem',
-          color: 'var(--text-secondary)',
-          background: 'rgba(0,0,0,0.2)',
-          padding: '0.45rem 0.65rem',
-          borderRadius: 6,
-          marginBottom: '0.85rem',
-        }}
-      >
+      <div className="rep-card-info-strip">
         <span>{record.loanNumber}</span>
-        <span>
-          {record.frequency === 'DAILY' ? `Day ${record.installmentNumber}` : `Week ${record.installmentNumber}`} • Due: {record.dueDate}
-        </span>
+        <span>{record.frequency} • Due: {record.dueDate}</span>
       </div>
 
-      {/* Financial Matrix */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '0.5rem',
-          textAlign: 'center',
-          padding: '0.65rem 0',
-          borderTop: '1px solid rgba(255,255,255,0.05)',
-          borderBottom: '1px solid rgba(255,255,255,0.05)',
-          marginBottom: '0.85rem',
-        }}
-      >
+      <div className="rep-card-matrix">
         <div>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Expected</span>
-          <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.95rem' }}>
-            {formatCurrency(record.expectedAmount)}
-          </div>
+          <div className="rep-matrix-label">Expected</div>
+          <div className="rep-matrix-val">{formatCurrency(record.expectedAmount)}</div>
         </div>
-
         <div>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Paid</span>
-          <div style={{ fontWeight: 600, color: isPaid ? 'var(--emerald)' : (record.paidAmount > 0 ? '#60a5fa' : 'var(--text-muted)'), fontSize: '0.95rem' }}>
+          <div className="rep-matrix-label">Paid</div>
+          <div className="rep-matrix-val" style={{ color: isPaid ? '#059669' : '#2563eb' }}>
             {formatCurrency(record.paidAmount || 0)}
           </div>
         </div>
-
         <div>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Balance</span>
-          <div style={{ fontWeight: 600, color: record.balance === 0 ? 'var(--emerald)' : '#fbbf24', fontSize: '0.95rem' }}>
+          <div className="rep-matrix-label">Balance</div>
+          <div className="rep-matrix-val" style={{ color: record.balance === 0 ? '#059669' : '#d97706' }}>
             {formatCurrency(record.balance || 0)}
           </div>
         </div>
       </div>
 
-      {/* Action Area */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="rep-card-action">
         {isPaid ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--emerald)', fontSize: '0.85rem', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#059669', fontSize: '0.8rem', fontWeight: 700 }}>
             <CheckCircle2 size={16} />
-            <span>Fully Paid</span>
+            <span>Settled</span>
           </div>
         ) : (
-          <button
-            className="btn btn-primary"
-            style={{ width: '100%', justifyContent: 'center', fontSize: '0.85rem', padding: '0.55rem' }}
-            onClick={() => onRecordPayment(record)}
-          >
-            <DollarSign size={15} />
-            Record Payment
+          <button className="rep-btn-collect" style={{ width: '100%', justifyContent: 'center' }} onClick={() => onRecordPayment(record)}>
+            <DollarSign size={14} />
+            <span>Record Payment</span>
           </button>
         )}
       </div>

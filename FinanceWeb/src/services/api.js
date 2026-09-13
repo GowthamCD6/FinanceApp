@@ -753,6 +753,24 @@ export const api = {
       });
     }
   },
+
+  // 12. REPORTS & PAYMENT AUDIT
+  getPaymentReport: async (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.startDate) query.append('start_date', params.startDate);
+    if (params.endDate) query.append('end_date', params.endDate);
+    if (params.frequency && params.frequency !== 'ALL') query.append('frequency', params.frequency);
+    if (params.status && params.status !== 'ALL') query.append('status', params.status);
+    const res = await request(`/reports/payments?${query.toString()}`);
+    return res || { summary: {}, records: [] };
+  },
+
+  recordPayment: async (paymentData) => {
+    return await request('/payments', {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    });
+  },
 };
 
 export default api;
