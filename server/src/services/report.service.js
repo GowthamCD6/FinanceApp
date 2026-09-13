@@ -15,19 +15,19 @@ async function getDashboardMetrics() {
     .slice(0, 10);
 
   // 1. Available Cash & Total Capital
-  const [capRow] = await query(
+  const capRow = await query(
     `SELECT COALESCE(SUM(amount), 0) AS totalCapital FROM fund_transactions WHERE transaction_type = 'CAPITAL_IN'`
   );
   const totalCapital = parseFloat(capRow[0]?.totalCapital || 0);
 
-  const [cashRow] = await query(
+  const cashRow = await query(
     `SELECT COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS availableCash 
      FROM fund_transactions`
   );
   const availableCash = parseFloat(cashRow[0]?.availableCash || 0);
 
   // 2. Principal Disbursed vs Principal Recovered
-  const [loanMetrics] = await query(`
+  const loanMetrics = await query(`
     SELECT 
       COALESCE(SUM(CASE WHEN transaction_type = 'LOAN_DISBURSEMENT' THEN amount ELSE 0 END), 0) AS totalDisbursed,
       COALESCE(SUM(CASE WHEN transaction_type = 'PRINCIPAL_COLLECTION' THEN amount ELSE 0 END), 0) AS totalPrincipalRecovered
@@ -38,7 +38,7 @@ async function getDashboardMetrics() {
   const outstandingPrincipal = Math.max(0, moneyCurrentlyLent - principalRecovered);
 
   // 3. Today's Collections & Income
-  const [todayRows] = await query(
+  const todayRows = await query(
     `SELECT 
        COALESCE(SUM(amount), 0) AS todayTotalCollection,
        COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS todayLendingIncome
@@ -50,7 +50,7 @@ async function getDashboardMetrics() {
   const todayLendingIncome = parseFloat(todayRows[0]?.todayLendingIncome || 0);
 
   // 4. Monthly Collections, Income, Expenses, and Net Profit
-  const [monthRows] = await query(
+  const monthRows = await query(
     `SELECT 
        COALESCE(SUM(CASE WHEN transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME') THEN amount ELSE 0 END), 0) AS monthlyCollection,
        COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS monthlyIncome,
@@ -65,7 +65,7 @@ async function getDashboardMetrics() {
   const netProfit = monthlyIncome - monthlyExpenses;
 
   // 5. Loan Counts
-  const [loanStats] = await query(`
+  const loanStats = await query(`
     SELECT 
       COUNT(CASE WHEN status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID') THEN 1 END) AS activeLoans,
       COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS completedLoans,
@@ -99,7 +99,7 @@ async function getCashFlowReport(startDate, endDate) {
   const to = endDate || new Date().toISOString().slice(0, 10);
 
   // Opening balance prior to startDate
-  const [openRow] = await query(
+  const openRow = await query(
     `SELECT COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS openingCash
      FROM fund_transactions
      WHERE DATE(transaction_date) < ?`,

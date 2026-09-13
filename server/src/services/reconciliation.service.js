@@ -10,7 +10,7 @@ async function performReconciliation({ fundAccountId, actualCash, notes, userId 
   }
 
   // 1. Calculate system cash from ledger
-  const [balanceRow] = await query(
+  const balanceRow = await query(
     `SELECT COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS systemCash
      FROM fund_transactions WHERE fund_account_id = ?`,
     [fundAccountId]
@@ -19,7 +19,7 @@ async function performReconciliation({ fundAccountId, actualCash, notes, userId 
   const discrepancy = Math.round((parsedActual - systemCash) * 100) / 100;
   const status = discrepancy === 0 ? 'BALANCED' : 'DISCREPANCY_PENDING';
 
-  const [result] = await query(
+  const result = await query(
     `INSERT INTO reconciliations 
      (fund_account_id, reconciliation_date, system_cash, actual_cash, discrepancy, status, reconciled_by, notes)
      VALUES (?, NOW(), ?, ?, ?, ?, ?, ?)`,

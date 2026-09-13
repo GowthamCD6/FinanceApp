@@ -729,6 +729,12 @@ export const api = {
           auto_eligibility_check: true,
           grace_period_days: 0,
           currency_symbol: '₹',
+          weekly_collection_days: 'MON,WED,FRI',
+          weekly_collection_grace_days: 2,
+          monthly_collection_start_day: 1,
+          monthly_collection_end_day: 5,
+          monthly_collection_grace_days: 3,
+          daily_operating_days: 'MON,TUE,WED,THU,FRI,SAT',
         };
       }
     }

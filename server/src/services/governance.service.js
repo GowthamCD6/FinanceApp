@@ -47,8 +47,8 @@ const governanceService = {
       ]
     );
 
-    const [created] = await query(`SELECT * FROM default_category_configs WHERE category_code = ?`, [category_code]);
-    return created;
+    const created = await query(`SELECT * FROM default_category_configs WHERE category_code = ?`, [category_code]);
+    return created && created.length > 0 ? created[0] : null;
   },
 
   updateDefaultCategory: async (code, data) => {
@@ -69,8 +69,8 @@ const governanceService = {
        WHERE category_code = ?`,
       [name, customer_type, description, max_users_per_branch, default_min_loan, default_max_loan, default_interest_rate, repayment_frequency, tenure_installments, grace_period_days, status, code]
     );
-    const [updated] = await query(`SELECT * FROM default_category_configs WHERE category_code = ?`, [code]);
-    return updated;
+    const updated = await query(`SELECT * FROM default_category_configs WHERE category_code = ?`, [code]);
+    return updated && updated.length > 0 ? updated[0] : null;
   },
 
   deleteDefaultCategory: async (code) => {
@@ -84,8 +84,8 @@ const governanceService = {
   },
 
   getActivePrivacyPolicy: async () => {
-    const [policy] = await query(`SELECT * FROM privacy_policies WHERE status = 'PUBLISHED_ACTIVE' ORDER BY effective_date DESC LIMIT 1`);
-    return policy || null;
+    const policy = await query(`SELECT * FROM privacy_policies WHERE status = 'PUBLISHED_ACTIVE' ORDER BY effective_date DESC LIMIT 1`);
+    return policy && policy.length > 0 ? policy[0] : null;
   },
 
   updatePrivacyPolicy: async (data) => {
@@ -114,8 +114,8 @@ const governanceService = {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [platform || 'ANDROID', version_name, version_code || 1, release_title, release_notes, download_url, min_supported_version, force_update ? 1 : 0, status || 'ACTIVE']
     );
-    const [created] = await query(`SELECT * FROM app_versions WHERE id = ?`, [res.insertId]);
-    return created;
+    const created = await query(`SELECT * FROM app_versions WHERE id = ?`, [res.insertId]);
+    return created && created.length > 0 ? created[0] : null;
   },
 
   // 4. AUDIT LOGS
@@ -153,8 +153,8 @@ const governanceService = {
         } catch (err) {}
       }
 
-      const [countRow] = await query(`SELECT COUNT(*) as count FROM audit_logs`);
-      if ((countRow?.count || 0) === 0) {
+      const countRow = await query(`SELECT COUNT(*) as count FROM audit_logs`);
+      if ((countRow[0]?.count || 0) === 0) {
         await query(`
           INSERT INTO audit_logs (organization_id, user_id, user_name, user_email, action, entity_type, entity_id, ip_address, reason, status, created_at)
           VALUES
@@ -222,8 +222,8 @@ const governanceService = {
         )
       `);
       
-      const [bCount] = await query(`SELECT COUNT(*) as count FROM broadcast_notifications`);
-      if ((bCount?.count || 0) === 0) {
+      const bCount = await query(`SELECT COUNT(*) as count FROM broadcast_notifications`);
+      if ((bCount[0]?.count || 0) === 0) {
         await query(`
           INSERT INTO broadcast_notifications (title, message, audience, priority, channels, author_name, reach_count, created_at)
           VALUES
@@ -262,8 +262,8 @@ const governanceService = {
       );
     } catch (err) {}
 
-    const [created] = await query(`SELECT * FROM broadcast_notifications WHERE id = ?`, [res.insertId]);
-    return created;
+    const created = await query(`SELECT * FROM broadcast_notifications WHERE id = ?`, [res.insertId]);
+    return created && created.length > 0 ? created[0] : null;
   },
 
   deleteBroadcast: async (id) => {
@@ -291,7 +291,7 @@ const governanceService = {
     }
 
     // 1. Overall Totals in Time Window
-    const [summary] = await query(`
+    const summary = await query(`
       SELECT 
         COUNT(*) as total_requests,
         COALESCE(AVG(response_time_ms), 42.0) as avg_latency,
@@ -427,8 +427,8 @@ const governanceService = {
 
   updateSystemSetting: async (key, value) => {
     await query(`UPDATE system_settings SET setting_value = ? WHERE setting_key = ?`, [value, key]);
-    const [updated] = await query(`SELECT * FROM system_settings WHERE setting_key = ?`, [key]);
-    return updated;
+    const updated = await query(`SELECT * FROM system_settings WHERE setting_key = ?`, [key]);
+    return updated && updated.length > 0 ? updated[0] : null;
   },
 
   // 7. ORG LENDING CONFIG & INTEREST RATES
@@ -447,7 +447,13 @@ const governanceService = {
         "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_min_amount DECIMAL(15,2) DEFAULT 5000.00",
         "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_max_amount DECIMAL(15,2) DEFAULT 150000.00",
         "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_min_amount DECIMAL(15,2) DEFAULT 10000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_max_amount DECIMAL(15,2) DEFAULT 500000.00"
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_max_amount DECIMAL(15,2) DEFAULT 500000.00",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_collection_days VARCHAR(100) DEFAULT 'MON,WED,FRI'",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_collection_grace_days INT DEFAULT 2",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_start_day INT DEFAULT 1",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_end_day INT DEFAULT 5",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_grace_days INT DEFAULT 3",
+        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_operating_days VARCHAR(100) DEFAULT 'MON,TUE,WED,THU,FRI,SAT'"
       ];
       for (const alt of alters) {
         try { await query(alt); } catch (e) {}
@@ -458,12 +464,12 @@ const governanceService = {
 
       await query(
         `INSERT INTO organization_settings 
-         (organization_id, daily_loan_enabled, weekly_loan_enabled, monthly_loan_enabled, daily_interest_rate, daily_tenure_days, weekly_interest_rate, weekly_tenure_weeks, monthly_interest_rate, monthly_tenure_months, max_active_loans_per_customer, auto_eligibility_check, grace_period_days, default_interest_rate, currency_symbol)
-         VALUES (?, 1, 1, 1, 10.00, 100, 10.00, 10, 18.00, 12, 1, 1, 0, 10.00, '₹')`,
+         (organization_id, daily_loan_enabled, weekly_loan_enabled, monthly_loan_enabled, daily_interest_rate, daily_tenure_days, weekly_interest_rate, weekly_tenure_weeks, monthly_interest_rate, monthly_tenure_months, max_active_loans_per_customer, auto_eligibility_check, grace_period_days, default_interest_rate, currency_symbol, weekly_collection_days, weekly_collection_grace_days, monthly_collection_start_day, monthly_collection_end_day, monthly_collection_grace_days, daily_operating_days)
+         VALUES (?, 1, 1, 1, 10.00, 100, 10.00, 10, 18.00, 12, 1, 1, 0, 10.00, '₹', 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT')`,
         [orgId]
       );
-      const [created] = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
-      return created;
+      const created = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
+      return created && created.length > 0 ? created[0] : null;
     } catch (err) {
       return {
         organization_id: parseInt(orgId, 10),
@@ -485,7 +491,13 @@ const governanceService = {
         max_active_loans_per_customer: 1,
         auto_eligibility_check: true,
         grace_period_days: 0,
-        currency_symbol: '₹'
+        currency_symbol: '₹',
+        weekly_collection_days: 'MON,WED,FRI',
+        weekly_collection_grace_days: 2,
+        monthly_collection_start_day: 1,
+        monthly_collection_end_day: 5,
+        monthly_collection_grace_days: 3,
+        daily_operating_days: 'MON,TUE,WED,THU,FRI,SAT',
       };
     }
   },
@@ -510,7 +522,13 @@ const governanceService = {
       max_active_loans_per_customer,
       auto_eligibility_check,
       grace_period_days,
-      currency_symbol
+      currency_symbol,
+      weekly_collection_days,
+      weekly_collection_grace_days,
+      monthly_collection_start_day,
+      monthly_collection_end_day,
+      monthly_collection_grace_days,
+      daily_operating_days,
     } = configData;
 
     try {
@@ -535,7 +553,13 @@ const governanceService = {
            max_active_loans_per_customer = COALESCE(?, max_active_loans_per_customer),
            auto_eligibility_check = COALESCE(?, auto_eligibility_check),
            grace_period_days = COALESCE(?, grace_period_days),
-           currency_symbol = COALESCE(?, currency_symbol)
+           currency_symbol = COALESCE(?, currency_symbol),
+           weekly_collection_days = COALESCE(?, weekly_collection_days),
+           weekly_collection_grace_days = COALESCE(?, weekly_collection_grace_days),
+           monthly_collection_start_day = COALESCE(?, monthly_collection_start_day),
+           monthly_collection_end_day = COALESCE(?, monthly_collection_end_day),
+           monthly_collection_grace_days = COALESCE(?, monthly_collection_grace_days),
+           daily_operating_days = COALESCE(?, daily_operating_days)
          WHERE organization_id = ?`,
         [
           daily_loan_enabled != null ? (daily_loan_enabled ? 1 : 0) : null,
@@ -557,6 +581,12 @@ const governanceService = {
           auto_eligibility_check != null ? (auto_eligibility_check ? 1 : 0) : null,
           grace_period_days,
           currency_symbol,
+          weekly_collection_days,
+          weekly_collection_grace_days,
+          monthly_collection_start_day,
+          monthly_collection_end_day,
+          monthly_collection_grace_days,
+          daily_operating_days,
           orgId
         ]
       );

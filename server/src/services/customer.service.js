@@ -5,7 +5,7 @@ const { query, withTransaction } = require('../config/database');
  */
 async function generateCustomerCode() {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const [rows] = await query(`SELECT COUNT(*) AS total FROM customers WHERE customer_code LIKE ?`, [`CUST-${dateStr}-%`]);
+  const rows = await query(`SELECT COUNT(*) AS total FROM customers WHERE customer_code LIKE ?`, [`CUST-${dateStr}-%`]);
   const seq = String((rows[0]?.total || 0) + 1).padStart(4, '0');
   return `CUST-${dateStr}-${seq}`;
 }
@@ -33,17 +33,33 @@ async function createCustomer(data, userId) {
 
   // Check unique phone
   const existing = await query(`SELECT id FROM customers WHERE phone = ? LIMIT 1`, [phone]);
-  if (existing.length > 0) {
+  if (existing && existing.length > 0) {
     throw new Error(`Customer with phone number ${phone} already exists.`);
   }
 
   const customerCode = await generateCustomerCode();
   const effectiveOrgId = organizationId || 1;
+  const bcrypt = require('bcryptjs');
+  const defaultHash = await bcrypt.hash('Password@123', 10);
+  const cleanEmail = (fullName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '') + Date.now().toString().slice(-4) + '@fundlending.com';
 
-  const [result] = await query(
+  // Create linked user first if not provided
+  let effectiveUserId = userId;
+  try {
+    const userRes = await query(
+      `INSERT INTO users (organization_id, name, email, phone, password_hash, role_type, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', NOW())`,
+      [effectiveOrgId, fullName, cleanEmail, phone, defaultHash, customerType === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER']
+    );
+    effectiveUserId = userRes.insertId;
+  } catch (err) {
+    console.warn('User auto-link fallback:', err.message);
+  }
+
+  const result = await query(
     `INSERT INTO customers 
-     (organization_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
+     (organization_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, user_id, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
     [
       effectiveOrgId,
       customerCode,
@@ -56,11 +72,12 @@ async function createCustomer(data, userId) {
       occupation || null,
       shopName || null,
       registrationDate || new Date().toISOString().slice(0, 10),
+      effectiveUserId,
       userId,
     ]
   );
 
-  return { id: result.insertId, organizationId: effectiveOrgId, customerCode, fullName, phone, customerType };
+  return { id: result.insertId, userId: effectiveUserId, organizationId: effectiveOrgId, customerCode, fullName, phone, customerType };
 }
 
 /**
@@ -96,7 +113,7 @@ async function getCustomers({ search, customerType, status, organizationId, page
 
   const whereSql = whereClauses.join(' AND ');
 
-  const [countRows] = await query(
+  const countRows = await query(
     `SELECT COUNT(*) AS total FROM customers c WHERE ${whereSql}`,
     params
   );
@@ -137,8 +154,8 @@ async function getCustomers({ search, customerType, status, organizationId, page
  * Get detailed customer profile, including complete loan lifecycle tree and repayment history
  */
 async function getCustomerById(customerId) {
-  const [customers] = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
-  if (customers.length === 0) return null;
+  const customers = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
+  if (!customers || customers.length === 0) return null;
   const customer = customers[0];
 
   const loans = await query(
@@ -155,7 +172,7 @@ async function getCustomerById(customerId) {
     [customerId]
   );
 
-  const [eligibility] = await query(
+  const eligibility = await query(
     `SELECT * FROM loan_eligibility WHERE customer_id = ? ORDER BY evaluated_at DESC LIMIT 1`,
     [customerId]
   );
@@ -163,7 +180,7 @@ async function getCustomerById(customerId) {
   return {
     ...customer,
     loans,
-    eligibility: eligibility[0] || null,
+    eligibility: eligibility?.[0] || null,
   };
 }
 
@@ -175,8 +192,8 @@ async function getCustomerById(customerId) {
  * - Repeat Loan Eligibility Engine
  */
 async function getCustomerLifecycle(customerId) {
-  const [customers] = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
-  if (customers.length === 0) throw new Error('Customer not found.');
+  const customers = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
+  if (!customers || customers.length === 0) throw new Error('Customer not found.');
   const customer = customers[0];
 
   // Fetch all loans in chronological order
@@ -270,12 +287,12 @@ async function getCustomerLifecycle(customerId) {
  * Restricts data strictly to logged-in customer's own loans & payments.
  */
 async function getCustomerMeDashboard(userId) {
-  let [custRows] = await query(`SELECT * FROM customers WHERE user_id = ? LIMIT 1`, [userId]);
-  if (custRows.length === 0) {
+  let custRows = await query(`SELECT * FROM customers WHERE user_id = ? LIMIT 1`, [userId]);
+  if (!custRows || custRows.length === 0) {
     // Fallback to Kumar
-    [custRows] = await query(`SELECT * FROM customers WHERE customer_code = 'CUST-001' OR full_name = 'Kumar' LIMIT 1`);
+    custRows = await query(`SELECT * FROM customers WHERE customer_code = 'CUST-001' OR full_name = 'Kumar' LIMIT 1`);
   }
-  if (custRows.length === 0) throw new Error('Customer profile not linked to user account.');
+  if (!custRows || custRows.length === 0) throw new Error('Customer profile not linked to user account.');
   const customer = custRows[0];
 
   // Fetch Kumar's loans

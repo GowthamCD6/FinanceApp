@@ -4,20 +4,32 @@ import { api } from '../../../services/api';
 import {
   Percent,
   Calendar,
-  DollarSign,
-  TrendingUp,
   Save,
   CheckCircle2,
   AlertCircle,
-  HelpCircle,
   Building,
   Clock,
   Layers,
   Sliders,
   ShieldCheck,
-  Calculator,
+  CalendarDays,
+  Check,
+  Info,
+  Store,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import './LendingInterestRates.css';
+
+const ALL_WEEKDAYS = [
+  { key: 'MON', label: 'Mon', full: 'Monday' },
+  { key: 'TUE', label: 'Tue', full: 'Tuesday' },
+  { key: 'WED', label: 'Wed', full: 'Wednesday' },
+  { key: 'THU', label: 'Thu', full: 'Thursday' },
+  { key: 'FRI', label: 'Fri', full: 'Friday' },
+  { key: 'SAT', label: 'Sat', full: 'Saturday' },
+  { key: 'SUN', label: 'Sun', full: 'Sunday' },
+];
 
 export const LendingInterestRates = () => {
   const { activeOrg } = useOrg();
@@ -27,34 +39,37 @@ export const LendingInterestRates = () => {
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Form State for Lending Schemes & Rates
+  // Form State for Lending Schemes, Collection Days & Rates
   const [config, setConfig] = useState({
     daily_loan_enabled: true,
     daily_interest_rate: 10.0,
     daily_tenure_days: 100,
     daily_min_amount: 2000,
     daily_max_amount: 100000,
-    daily_grace_period_days: 0,
+    daily_operating_days: 'MON,TUE,WED,THU,FRI,SAT',
 
     weekly_loan_enabled: true,
     weekly_interest_rate: 10.0,
     weekly_tenure_weeks: 10,
     weekly_min_amount: 5000,
     weekly_max_amount: 150000,
+    weekly_collection_days: 'MON,WED,FRI',
+    weekly_collection_grace_days: 2,
 
     monthly_loan_enabled: true,
     monthly_interest_rate: 18.0,
     monthly_tenure_months: 12,
     monthly_min_amount: 10000,
     monthly_max_amount: 500000,
+    monthly_collection_start_day: 1,
+    monthly_collection_end_day: 5,
+    monthly_collection_grace_days: 3,
 
     max_active_loans_per_customer: 1,
     auto_eligibility_check: true,
+    grace_period_days: 0,
     currency_symbol: '₹',
   });
-
-  // Interactive Loan Calculator Test Principal
-  const [calcPrincipal, setCalcPrincipal] = useState(20000);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -68,22 +83,28 @@ export const LendingInterestRates = () => {
             daily_tenure_days: Number(data.daily_tenure_days || 100),
             daily_min_amount: Number(data.daily_min_amount || 2000),
             daily_max_amount: Number(data.daily_max_amount || 100000),
-            daily_grace_period_days: Number(data.grace_period_days || 0),
+            daily_operating_days: data.daily_operating_days || 'MON,TUE,WED,THU,FRI,SAT',
 
             weekly_loan_enabled: Boolean(data.weekly_loan_enabled ?? true),
             weekly_interest_rate: Number(data.weekly_interest_rate || 10.0),
             weekly_tenure_weeks: Number(data.weekly_tenure_weeks || 10),
             weekly_min_amount: Number(data.weekly_min_amount || 5000),
             weekly_max_amount: Number(data.weekly_max_amount || 150000),
+            weekly_collection_days: data.weekly_collection_days || 'MON,WED,FRI',
+            weekly_collection_grace_days: Number(data.weekly_collection_grace_days ?? 2),
 
             monthly_loan_enabled: Boolean(data.monthly_loan_enabled ?? true),
             monthly_interest_rate: Number(data.monthly_interest_rate || 18.0),
             monthly_tenure_months: Number(data.monthly_tenure_months || 12),
             monthly_min_amount: Number(data.monthly_min_amount || 10000),
             monthly_max_amount: Number(data.monthly_max_amount || 500000),
+            monthly_collection_start_day: Number(data.monthly_collection_start_day || 1),
+            monthly_collection_end_day: Number(data.monthly_collection_end_day || 5),
+            monthly_collection_grace_days: Number(data.monthly_collection_grace_days ?? 3),
 
             max_active_loans_per_customer: Number(data.max_active_loans_per_customer || 1),
             auto_eligibility_check: Boolean(data.auto_eligibility_check ?? true),
+            grace_period_days: Number(data.grace_period_days || 0),
             currency_symbol: data.currency_symbol || '₹',
           });
         }
@@ -103,11 +124,55 @@ export const LendingInterestRates = () => {
     }));
   };
 
+  // Helper for Weekly Collection Day Toggle (Multi-selection: 1 to 5 days)
+  const toggleWeeklyDay = (dayKey) => {
+    const currentDays = config.weekly_collection_days
+      ? config.weekly_collection_days.split(',').map((d) => d.trim()).filter(Boolean)
+      : [];
+
+    if (currentDays.includes(dayKey)) {
+      if (currentDays.length <= 1) {
+        showToast('At least 1 weekly collection day must be selected.');
+        return;
+      }
+      const updated = currentDays.filter((d) => d !== dayKey);
+      handleChange('weekly_collection_days', updated.join(','));
+    } else {
+      if (currentDays.length >= 5) {
+        showToast('Maximum 5 collection days allowed per week.');
+        return;
+      }
+      const updated = [...currentDays, dayKey];
+      const sorted = ALL_WEEKDAYS.filter((w) => updated.includes(w.key)).map((w) => w.key);
+      handleChange('weekly_collection_days', sorted.join(','));
+    }
+  };
+
+  // Helper for Daily Operating Days Toggle
+  const toggleDailyDay = (dayKey) => {
+    const currentDays = config.daily_operating_days
+      ? config.daily_operating_days.split(',').map((d) => d.trim()).filter(Boolean)
+      : [];
+
+    if (currentDays.includes(dayKey)) {
+      if (currentDays.length <= 1) {
+        showToast('At least 1 operating day must be selected.');
+        return;
+      }
+      const updated = currentDays.filter((d) => d !== dayKey);
+      handleChange('daily_operating_days', updated.join(','));
+    } else {
+      const updated = [...currentDays, dayKey];
+      const sorted = ALL_WEEKDAYS.filter((w) => updated.includes(w.key)).map((w) => w.key);
+      handleChange('daily_operating_days', sorted.join(','));
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       await api.updateLendingConfig(orgId, config);
-      showToast('Lending schemes and interest rates updated successfully!');
+      showToast('Lending schemes and collection schedules saved successfully!');
     } catch (err) {
       showToast('Failed to save configuration.');
     } finally {
@@ -120,186 +185,192 @@ export const LendingInterestRates = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const formatCurrency = (amt) =>
-    (config.currency_symbol || '₹') + Number(amt || 0).toLocaleString('en-IN');
+  const parsedWeeklyDays = config.weekly_collection_days
+    ? config.weekly_collection_days.split(',').map((d) => d.trim()).filter(Boolean)
+    : [];
 
-  // Dynamic Calculation Formulas for the Live Calculator
-  // 1. Daily Calculation (e.g. 100 days, 10% flat)
-  const dailyTotalPayable = calcPrincipal * (1 + config.daily_interest_rate / 100);
-  const dailyProfit = dailyTotalPayable - calcPrincipal;
-  const dailyInstallment = config.daily_tenure_days > 0 ? dailyTotalPayable / config.daily_tenure_days : 0;
+  const parsedDailyDays = config.daily_operating_days
+    ? config.daily_operating_days.split(',').map((d) => d.trim()).filter(Boolean)
+    : [];
 
-  // 2. Weekly Calculation (e.g. 10 weeks, 10% flat)
-  const weeklyTotalPayable = calcPrincipal * (1 + config.weekly_interest_rate / 100);
-  const weeklyProfit = weeklyTotalPayable - calcPrincipal;
-  const weeklyInstallment = config.weekly_tenure_weeks > 0 ? weeklyTotalPayable / config.weekly_tenure_weeks : 0;
-
-  // 3. Monthly Calculation (e.g. 12 months, 18% p.a.)
-  const monthlyInterestFactor = (config.monthly_interest_rate / 100) * (config.monthly_tenure_months / 12);
-  const monthlyTotalPayable = calcPrincipal * (1 + monthlyInterestFactor);
-  const monthlyProfit = monthlyTotalPayable - calcPrincipal;
-  const monthlyInstallment = config.monthly_tenure_months > 0 ? monthlyTotalPayable / config.monthly_tenure_months : 0;
-
+  // ==========================================
+  // SKELETON LOADING STATE (Admin Dashboard Style)
+  // ==========================================
   if (loading) {
-    return <div className="page-loading">Loading Lending Scheme Engine...</div>;
+    return (
+      <div className="lir-page">
+        {/* Header Skeleton */}
+        <div className="lir-header">
+          <div className="skeleton-bar" style={{ width: 340, height: 32, borderRadius: 8 }} />
+          <div className="skeleton-bar" style={{ width: 170, height: 42, borderRadius: 10 }} />
+        </div>
+
+        {/* 3 KPI Summary Strip Skeletons */}
+        <div className="lir-kpi-grid">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="lir-kpi-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <div className="skeleton-bar" style={{ width: '45%', height: 14 }} />
+                <div className="skeleton-circle" style={{ width: 36, height: 36, borderRadius: 10 }} />
+              </div>
+              <div className="skeleton-bar" style={{ width: '70%', height: 26, marginBottom: '0.4rem' }} />
+              <div className="skeleton-bar" style={{ width: '55%', height: 12 }} />
+            </div>
+          ))}
+        </div>
+
+        {/* 3 Scheme Cards Skeletons */}
+        <div className="lir-schemes-grid">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="lir-scheme-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.85rem' }}>
+                <div style={{ width: '60%' }}>
+                  <div className="skeleton-bar" style={{ width: '80%', height: 18, marginBottom: 6 }} />
+                  <div className="skeleton-bar" style={{ width: '60%', height: 12 }} />
+                </div>
+                <div className="skeleton-bar" style={{ width: 44, height: 24, borderRadius: 12 }} />
+              </div>
+
+              <div className="lir-form-grid">
+                <div className="lir-field">
+                  <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                </div>
+                <div className="lir-field">
+                  <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                </div>
+                <div className="lir-field">
+                  <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                </div>
+                <div className="lir-field">
+                  <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                </div>
+                <div className="lir-field-full">
+                  <div className="skeleton-bar" style={{ width: '50%', height: 14, marginBottom: 8 }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                    {[1, 2, 3, 4, 5, 6, 7].map((k) => (
+                      <div key={k} className="skeleton-bar" style={{ height: 28, borderRadius: 6 }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8, marginTop: 'auto' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
+  // ==========================================
+  // REAL CONTENT STATE
+  // ==========================================
   return (
     <div className="lir-page">
       {/* Header */}
       <div className="lir-header">
         <div>
-          <div className="lir-pill">
-            <Building size={14} />
-            <span>{activeOrg ? `${activeOrg.name} (${activeOrg.code})` : 'Apex Finance • Lending Schemes'}</span>
-          </div>
-          <h1 className="lir-title">Lending Models & Interest Rate Engine</h1>
-          <p className="lir-subtitle">
-            Configure dynamic interest rates, tenures (100-day daily, 10-week micro, monthly EMI), and repayment rules.
-          </p>
+          <h1 className="lir-title">Lending Models & Collection Schedule</h1>
         </div>
 
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+        <button className="btn btn-primary lir-save-btn" onClick={handleSave} disabled={saving}>
           <Save size={16} />
           <span>{saving ? 'Saving...' : 'Save Configuration'}</span>
         </button>
       </div>
 
-      {/* Banner */}
-      <div className="lir-banner">
-        <div className="lir-banner-text">
-          <h3>
-            <Percent size={20} color="#60a5fa" />
-            Dynamic Interest & Tenures Applied Organization-Wide
-          </h3>
-          <p>
-            Any new loan created for Shopkeepers, Weekly Borrowers, or General Customers will automatically compute installments, total interest profit, and maturity dates using these dynamic parameters.
-          </p>
-        </div>
-      </div>
-
-      {/* Live Interactive Loan Calculator */}
-      <div className="lir-calculator-box">
-        <div className="lir-calc-header">
-          <div className="lir-calc-title">
-            <Calculator size={20} color="#2563eb" />
-            <span>Real-Time Model Simulation & Dues Engine</span>
+      {/* 1. Admin Dashboard-Style 3 KPI Summary Strip */}
+      <div className="lir-kpi-grid">
+        {/* KPI 1: Daily Model */}
+        <div className="lir-kpi-card kpi-daily">
+          <div className="lir-kpi-top">
+            <span className="lir-kpi-label">Daily Merchant Scheme</span>
+            <div className="lir-kpi-icon-wrap icon-daily">
+              <Store size={18} />
+            </div>
           </div>
-          <div className="font-bold text-slate-700">
-            Selected Principal: <span className="text-blue-600 text-lg">{formatCurrency(calcPrincipal)}</span>
+          <div className="lir-kpi-value">
+            {config.daily_tenure_days} Days <span className="lir-kpi-rate">@{config.daily_interest_rate}%</span>
+          </div>
+          <div className="lir-kpi-footer">
+            <span className="lir-kpi-badge badge-daily">
+              {config.daily_loan_enabled ? 'Active' : 'Disabled'}
+            </span>
+            <span className="lir-kpi-subtext">
+              {parsedDailyDays.length} operating days/week
+            </span>
           </div>
         </div>
 
-        <div className="lir-calc-slider-group">
-          <div className="lir-calc-slider-label">
-            <span>Slide to test loan amount</span>
-            <span>{formatCurrency(calcPrincipal)}</span>
+        {/* KPI 2: Weekly Model */}
+        <div className="lir-kpi-card kpi-weekly">
+          <div className="lir-kpi-top">
+            <span className="lir-kpi-label">Weekly Micro-Loan Scheme</span>
+            <div className="lir-kpi-icon-wrap icon-weekly">
+              <Calendar size={18} />
+            </div>
           </div>
-          <input
-            type="range"
-            min="2000"
-            max="100000"
-            step="1000"
-            value={calcPrincipal}
-            onChange={(e) => setCalcPrincipal(Number(e.target.value))}
-            className="lir-calc-slider-input"
-          />
+          <div className="lir-kpi-value">
+            {config.weekly_tenure_weeks} Weeks <span className="lir-kpi-rate">@{config.weekly_interest_rate}%</span>
+          </div>
+          <div className="lir-kpi-footer">
+            <span className="lir-kpi-badge badge-weekly">
+              {config.weekly_loan_enabled ? 'Active' : 'Disabled'}
+            </span>
+            <span className="lir-kpi-subtext">
+              {parsedWeeklyDays.length} days/wk • {config.weekly_collection_grace_days}d grace
+            </span>
+          </div>
         </div>
 
-        <div className="lir-calc-results">
-          {/* Daily Card */}
-          <div className="lir-calc-card card-daily">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-emerald-800 text-sm">DAILY MERCHANT MODEL</span>
-                <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">
-                  {config.daily_tenure_days} Days @ {config.daily_interest_rate}%
-                </span>
-              </div>
-              <div className="text-2xl font-black text-slate-900 mb-1">
-                {formatCurrency(Math.round(dailyInstallment))}/day
-              </div>
-              <div className="text-xs text-slate-500 mb-3">Daily recovery for {config.daily_tenure_days} continuous days</div>
-            </div>
-
-            <div className="border-t border-emerald-100 pt-2 text-xs space-y-1">
-              <div className="flex justify-between text-slate-600">
-                <span>Total Repayment:</span>
-                <span className="font-bold text-slate-900">{formatCurrency(Math.round(dailyTotalPayable))}</span>
-              </div>
-              <div className="flex justify-between text-emerald-700 font-semibold">
-                <span>Net Profit Earned:</span>
-                <span>+{formatCurrency(Math.round(dailyProfit))} ({config.daily_interest_rate}% ROI)</span>
-              </div>
+        {/* KPI 3: Monthly Model */}
+        <div className="lir-kpi-card kpi-monthly">
+          <div className="lir-kpi-top">
+            <span className="lir-kpi-label">Monthly Business Scheme</span>
+            <div className="lir-kpi-icon-wrap icon-monthly">
+              <TrendingUp size={18} />
             </div>
           </div>
-
-          {/* Weekly Card */}
-          <div className="lir-calc-card card-weekly">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-blue-800 text-sm">WEEKLY MICRO-LOAN MODEL</span>
-                <span className="text-xs bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded">
-                  {config.weekly_tenure_weeks} Weeks @ {config.weekly_interest_rate}%
-                </span>
-              </div>
-              <div className="text-2xl font-black text-slate-900 mb-1">
-                {formatCurrency(Math.round(weeklyInstallment))}/week
-              </div>
-              <div className="text-xs text-slate-500 mb-3">Weekly collection for {config.weekly_tenure_weeks} weeks</div>
-            </div>
-
-            <div className="border-t border-blue-100 pt-2 text-xs space-y-1">
-              <div className="flex justify-between text-slate-600">
-                <span>Total Repayment:</span>
-                <span className="font-bold text-slate-900">{formatCurrency(Math.round(weeklyTotalPayable))}</span>
-              </div>
-              <div className="flex justify-between text-blue-700 font-semibold">
-                <span>Net Profit Earned:</span>
-                <span>+{formatCurrency(Math.round(weeklyProfit))} ({config.weekly_interest_rate}% ROI)</span>
-              </div>
-            </div>
+          <div className="lir-kpi-value">
+            {config.monthly_tenure_months} Months <span className="lir-kpi-rate">@{config.monthly_interest_rate}% p.a.</span>
           </div>
-
-          {/* Monthly Card */}
-          <div className="lir-calc-card card-monthly">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-purple-800 text-sm">MONTHLY BUSINESS EMI</span>
-                <span className="text-xs bg-purple-100 text-purple-800 font-semibold px-2 py-0.5 rounded">
-                  {config.monthly_tenure_months} Mo @ {config.monthly_interest_rate}% p.a.
-                </span>
-              </div>
-              <div className="text-2xl font-black text-slate-900 mb-1">
-                {formatCurrency(Math.round(monthlyInstallment))}/month
-              </div>
-              <div className="text-xs text-slate-500 mb-3">Monthly installment for {config.monthly_tenure_months} months</div>
-            </div>
-
-            <div className="border-t border-purple-100 pt-2 text-xs space-y-1">
-              <div className="flex justify-between text-slate-600">
-                <span>Total Repayment:</span>
-                <span className="font-bold text-slate-900">{formatCurrency(Math.round(monthlyTotalPayable))}</span>
-              </div>
-              <div className="flex justify-between text-purple-700 font-semibold">
-                <span>Net Profit Earned:</span>
-                <span>+{formatCurrency(Math.round(monthlyProfit))}</span>
-              </div>
-            </div>
+          <div className="lir-kpi-footer">
+            <span className="lir-kpi-badge badge-monthly">
+              {config.monthly_loan_enabled ? 'Active' : 'Disabled'}
+            </span>
+            <span className="lir-kpi-subtext">
+              Day {config.monthly_collection_start_day}–{config.monthly_collection_end_day} • {config.monthly_collection_grace_days}d grace
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Scheme Configuration Grid */}
+      {/* 2. Scheme Configuration Grid (3 Uniform Cards) */}
       <div className="lir-schemes-grid">
-        {/* 1. Daily Scheme */}
-        <div className="lir-scheme-card">
+        {/* =========================================
+            1. DAILY MERCHANT SCHEME CARD
+            ========================================= */}
+        <div className={`lir-scheme-card ${!config.daily_loan_enabled ? 'lir-scheme-disabled' : ''}`}>
           <div className="lir-sc-header">
             <div>
-              <h3 className="font-bold text-base text-slate-900">1. Daily Merchant Scheme</h3>
-              <p className="text-xs text-slate-500">For daily shopkeepers, tea stalls, street vendors</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-base text-slate-900">1. Daily Merchant Scheme</h3>
+                <span className="lir-sc-badge badge-daily">Daily Cycle</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Daily merchant loan & recovery cycle</p>
             </div>
-            <span className="lir-sc-badge badge-daily">Daily Cycle</span>
+            <label className="lir-switch" title="Toggle Daily Scheme Active/Disabled">
+              <input
+                type="checkbox"
+                checked={config.daily_loan_enabled}
+                onChange={(e) => handleChange('daily_loan_enabled', e.target.checked)}
+              />
+              <span className="lir-slider"></span>
+            </label>
           </div>
 
           <div className="lir-form-grid">
@@ -329,7 +400,7 @@ export const LendingInterestRates = () => {
             </div>
 
             <div className="lir-field">
-              <label>Min Loan Amount (₹)</label>
+              <label>Min Loan Amount ({config.currency_symbol})</label>
               <input
                 type="number"
                 className="lir-input"
@@ -339,13 +410,39 @@ export const LendingInterestRates = () => {
             </div>
 
             <div className="lir-field">
-              <label>Max Loan Amount (₹)</label>
+              <label>Max Loan Amount ({config.currency_symbol})</label>
               <input
                 type="number"
                 className="lir-input"
                 value={config.daily_max_amount}
                 onChange={(e) => handleChange('daily_max_amount', Number(e.target.value))}
               />
+            </div>
+
+            {/* Daily Operating Days Section */}
+            <div className="lir-field-full">
+              <div className="lir-section-label">
+                <CalendarDays size={14} className="text-emerald-600" />
+                <span>Operating Collection Days</span>
+                <span className="lir-count-badge badge-daily">{parsedDailyDays.length} days</span>
+              </div>
+              <div className="lir-days-pills">
+                {ALL_WEEKDAYS.map((day) => {
+                  const isSelected = parsedDailyDays.includes(day.key);
+                  return (
+                    <button
+                      key={day.key}
+                      type="button"
+                      onClick={() => toggleDailyDay(day.key)}
+                      className={`lir-day-chip ${isSelected ? 'chip-active-daily' : ''}`}
+                      title={day.full}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="lir-help-text">Field agents execute collections on these operating days.</p>
             </div>
           </div>
 
@@ -354,14 +451,26 @@ export const LendingInterestRates = () => {
           </div>
         </div>
 
-        {/* 2. Weekly Scheme */}
-        <div className="lir-scheme-card">
+        {/* =========================================
+            2. WEEKLY MICRO-LOAN SCHEME CARD
+            ========================================= */}
+        <div className={`lir-scheme-card ${!config.weekly_loan_enabled ? 'lir-scheme-disabled' : ''}`}>
           <div className="lir-sc-header">
             <div>
-              <h3 className="font-bold text-base text-slate-900">2. Weekly Micro-Loan Scheme</h3>
-              <p className="text-xs text-slate-500">For weekly market traders, self-help groups, community</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-base text-slate-900">2. Weekly Micro-Loan Scheme</h3>
+                <span className="lir-sc-badge badge-weekly">Weekly Cycle</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Weekly micro-lending & group loan cycle</p>
             </div>
-            <span className="lir-sc-badge badge-weekly">Weekly Cycle</span>
+            <label className="lir-switch" title="Toggle Weekly Scheme Active/Disabled">
+              <input
+                type="checkbox"
+                checked={config.weekly_loan_enabled}
+                onChange={(e) => handleChange('weekly_loan_enabled', e.target.checked)}
+              />
+              <span className="lir-slider"></span>
+            </label>
           </div>
 
           <div className="lir-form-grid">
@@ -391,7 +500,7 @@ export const LendingInterestRates = () => {
             </div>
 
             <div className="lir-field">
-              <label>Min Loan Amount (₹)</label>
+              <label>Min Loan Amount ({config.currency_symbol})</label>
               <input
                 type="number"
                 className="lir-input"
@@ -401,7 +510,7 @@ export const LendingInterestRates = () => {
             </div>
 
             <div className="lir-field">
-              <label>Max Loan Amount (₹)</label>
+              <label>Max Loan Amount ({config.currency_symbol})</label>
               <input
                 type="number"
                 className="lir-input"
@@ -409,21 +518,76 @@ export const LendingInterestRates = () => {
                 onChange={(e) => handleChange('weekly_max_amount', Number(e.target.value))}
               />
             </div>
+
+            {/* Weekly Collection Days Selector (1 to 5 Days) */}
+            <div className="lir-field-full">
+              <div className="lir-section-label">
+                <CalendarDays size={14} className="text-blue-600" />
+                <span>Collection Day(s) of Week</span>
+                <span className="lir-count-badge badge-weekly">{parsedWeeklyDays.length} of 5 selected</span>
+              </div>
+              <div className="lir-days-pills">
+                {ALL_WEEKDAYS.map((day) => {
+                  const isSelected = parsedWeeklyDays.includes(day.key);
+                  return (
+                    <button
+                      key={day.key}
+                      type="button"
+                      onClick={() => toggleWeeklyDay(day.key)}
+                      className={`lir-day-chip ${isSelected ? 'chip-active-weekly' : ''}`}
+                      title={day.full}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Grace Period Buffer */}
+              <div className="lir-grace-row">
+                <span className="lir-grace-label">Grace Buffer (Days):</span>
+                <div className="lir-grace-input-wrap">
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    className="lir-input lir-input-sm"
+                    value={config.weekly_collection_grace_days}
+                    onChange={(e) =>
+                      handleChange('weekly_collection_grace_days', Math.min(5, Math.max(1, Number(e.target.value))))
+                    }
+                  />
+                  <span className="lir-grace-unit">Days</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="lir-formula-box">
-            <strong>Formula:</strong> Weekly Installment = [Principal + (Principal × {config.weekly_interest_rate}%)] ÷ {config.weekly_tenure_weeks} Weeks
+            <strong>Formula:</strong> Weekly Due = [Principal + (Principal × {config.weekly_interest_rate}%)] ÷ {config.weekly_tenure_weeks} Weeks
           </div>
         </div>
 
-        {/* 3. Monthly Scheme */}
-        <div className="lir-scheme-card">
+        {/* =========================================
+            3. MONTHLY BUSINESS SCHEME CARD
+            ========================================= */}
+        <div className={`lir-scheme-card ${!config.monthly_loan_enabled ? 'lir-scheme-disabled' : ''}`}>
           <div className="lir-sc-header">
             <div>
-              <h3 className="font-bold text-base text-slate-900">3. Monthly Business Scheme</h3>
-              <p className="text-xs text-slate-500">For enterprise loans, equipment finance, business expansion</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-base text-slate-900">3. Monthly Business Scheme</h3>
+                <span className="lir-sc-badge badge-monthly">Monthly Cycle</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Monthly business EMI & commercial loans</p>
             </div>
-            <span className="lir-sc-badge badge-monthly">Monthly Cycle</span>
+            <label className="lir-switch" title="Toggle Monthly Scheme Active/Disabled">
+              <input
+                type="checkbox"
+                checked={config.monthly_loan_enabled}
+                onChange={(e) => handleChange('monthly_loan_enabled', e.target.checked)}
+              />
+              <span className="lir-slider"></span>
+            </label>
           </div>
 
           <div className="lir-form-grid">
@@ -453,7 +617,7 @@ export const LendingInterestRates = () => {
             </div>
 
             <div className="lir-field">
-              <label>Min Loan Amount (₹)</label>
+              <label>Min Loan Amount ({config.currency_symbol})</label>
               <input
                 type="number"
                 className="lir-input"
@@ -463,13 +627,70 @@ export const LendingInterestRates = () => {
             </div>
 
             <div className="lir-field">
-              <label>Max Loan Amount (₹)</label>
+              <label>Max Loan Amount ({config.currency_symbol})</label>
               <input
                 type="number"
                 className="lir-input"
                 value={config.monthly_max_amount}
                 onChange={(e) => handleChange('monthly_max_amount', Number(e.target.value))}
               />
+            </div>
+
+            {/* Monthly Collection Window & Grace */}
+            <div className="lir-field-full">
+              <div className="lir-section-label">
+                <CalendarDays size={14} className="text-purple-600" />
+                <span>Monthly Collection Window & Grace</span>
+                <span className="lir-count-badge badge-monthly">Day {config.monthly_collection_start_day}–{config.monthly_collection_end_day}</span>
+              </div>
+
+              {/* Start and End Day Inputs */}
+              <div className="lir-monthly-window-row">
+                <span className="lir-window-prefix">Billing Window:</span>
+                <div className="lir-monthly-inputs">
+                  <span className="lir-day-tag">Day</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="28"
+                    className="lir-input lir-input-sm"
+                    value={config.monthly_collection_start_day}
+                    onChange={(e) =>
+                      handleChange('monthly_collection_start_day', Math.min(28, Math.max(1, Number(e.target.value))))
+                    }
+                  />
+                  <span className="lir-window-divider">to</span>
+                  <span className="lir-day-tag">Day</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    className="lir-input lir-input-sm"
+                    value={config.monthly_collection_end_day}
+                    onChange={(e) =>
+                      handleChange('monthly_collection_end_day', Math.min(31, Math.max(1, Number(e.target.value))))
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Monthly Grace Window */}
+              <div className="lir-grace-row">
+                <span className="lir-grace-label">EMI Grace Buffer:</span>
+                <div className="lir-grace-input-wrap">
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    className="lir-input lir-input-sm"
+                    value={config.monthly_collection_grace_days}
+                    onChange={(e) =>
+                      handleChange('monthly_collection_grace_days', Math.min(5, Math.max(1, Number(e.target.value))))
+                    }
+                  />
+                  <span className="lir-grace-unit">Days</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -481,8 +702,12 @@ export const LendingInterestRates = () => {
 
       {/* Save Action Footer */}
       <div className="lir-save-footer">
+        <div className="lir-footer-info">
+          <Info size={15} className="text-blue-500 flex-shrink-0" />
+          <span>Configured terms automatically apply to all newly issued loans and field agent collection rounds.</span>
+        </div>
         {toastMessage && <div className="lir-toast">{toastMessage}</div>}
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+        <button className="btn btn-primary lir-save-btn" onClick={handleSave} disabled={saving}>
           <Save size={16} />
           <span>{saving ? 'Saving...' : 'Save Lending Schemes'}</span>
         </button>

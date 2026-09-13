@@ -5,7 +5,7 @@ const { query, withTransaction } = require('../config/database');
  */
 async function generatePaymentNumber() {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const [rows] = await query(`SELECT COUNT(*) AS total FROM payments WHERE payment_number LIKE ?`, [`RCP-${dateStr}-%`]);
+  const rows = await query(`SELECT COUNT(*) AS total FROM payments WHERE payment_number LIKE ?`, [`RCP-${dateStr}-%`]);
   const seq = String((rows[0]?.total || 0) + 1).padStart(4, '0');
   return `RCP-${dateStr}-${seq}`;
 }
@@ -60,11 +60,14 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
 
     // 3. Create master payment record
     const paymentNumber = await generatePaymentNumber();
+    const orgId = loan.organization_id || 1;
+    const branchId = loan.branch_id || 1;
+
     const [paymentResult] = await conn.query(
       `INSERT INTO payments 
-       (payment_number, customer_id, loan_id, payment_date, amount, payment_method, reference_number, collector_id, status, notes)
-       VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, 'COMPLETED', ?)`,
-      [paymentNumber, loan.customer_id, loanId, parsedAmount, paymentMethod || 'CASH', referenceNumber || null, collectorId, notes || null]
+       (organization_id, branch_id, payment_number, customer_id, loan_id, payment_date, amount, payment_method, reference_number, collector_id, status, notes)
+       VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, 'COMPLETED', ?)`,
+      [orgId, branchId, paymentNumber, loan.customer_id, loanId, parsedAmount, paymentMethod || 'CASH', referenceNumber || null, collectorId, notes || null]
     );
     const paymentId = paymentResult.insertId;
 
@@ -141,9 +144,10 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
     if (totalPrincipalAllocated > 0) {
       await conn.query(
         `INSERT INTO fund_transactions 
-         (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
-         VALUES (?, ?, NOW(), 'PRINCIPAL_COLLECTION', 'IN', ?, 'PAYMENT', ?, ?, ?)`,
+         (organization_id, transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
+         VALUES (?, ?, ?, NOW(), 'PRINCIPAL_COLLECTION', 'IN', ?, 'PAYMENT', ?, ?, ?)`,
         [
+          orgId,
           `TX-PRIN-${paymentNumber}`,
           targetAccountId,
           totalPrincipalAllocated,
@@ -157,9 +161,10 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
     if (totalIncomeAllocated > 0) {
       await conn.query(
         `INSERT INTO fund_transactions 
-         (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
-         VALUES (?, ?, NOW(), 'LENDING_INCOME', 'IN', ?, 'PAYMENT', ?, ?, ?)`,
+         (organization_id, transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
+         VALUES (?, ?, ?, NOW(), 'LENDING_INCOME', 'IN', ?, 'PAYMENT', ?, ?, ?)`,
         [
+          orgId,
           `TX-INC-${paymentNumber}`,
           targetAccountId,
           totalIncomeAllocated,
@@ -173,9 +178,9 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
     // 6. Double-Entry Accounting
     const jeNumber = `JE-PAY-${paymentNumber}`;
     const [jeResult] = await conn.query(
-      `INSERT INTO journal_entries (entry_number, entry_date, reference_type, reference_id, description, created_by)
-       VALUES (?, NOW(), 'PAYMENT_COLLECTION', ?, ?, ?)`,
-      [jeNumber, paymentId, `Collection for ${loan.loan_number}`, collectorId]
+      `INSERT INTO journal_entries (organization_id, entry_number, entry_date, reference_type, reference_id, description, created_by)
+       VALUES (?, ?, NOW(), 'PAYMENT_COLLECTION', ?, ?, ?)`,
+      [orgId, jeNumber, paymentId, `Collection for ${loan.loan_number}`, collectorId]
     );
     const jeId = jeResult.insertId;
 
@@ -334,20 +339,22 @@ async function reversePayment({ paymentId, reason, userId }) {
     );
 
     // 5. Post counter-entries in Central Fund Ledger (OUT)
+    const orgId = payment.organization_id || loan?.organization_id || 1;
+    const branchId = payment.branch_id || loan?.branch_id || 1;
     const revTxNum = `TX-REV-${payment.payment_number}`;
     await conn.query(
       `INSERT INTO fund_transactions
-       (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
-       VALUES (?, 1, NOW(), 'REVERSAL', 'OUT', ?, 'PAYMENT_REVERSAL', ?, ?, ?)`,
-      [revTxNum, payment.amount, paymentId, `Reversal of payment ${payment.payment_number}: ${reason}`, userId]
+       (organization_id, transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
+       VALUES (?, ?, 1, NOW(), 'REVERSAL', 'OUT', ?, 'PAYMENT_REVERSAL', ?, ?, ?)`,
+      [orgId, revTxNum, payment.amount, paymentId, `Reversal of payment ${payment.payment_number}: ${reason}`, userId]
     );
 
     // 6. Reverse Journal Entry
     const revJeNum = `JE-REV-${payment.payment_number}`;
     const [jeResult] = await conn.query(
-      `INSERT INTO journal_entries (entry_number, entry_date, reference_type, reference_id, description, created_by)
-       VALUES (?, NOW(), 'PAYMENT_REVERSAL', ?, ?, ?)`,
-      [revJeNum, paymentId, `Reversal of ${payment.payment_number}`, userId]
+      `INSERT INTO journal_entries (organization_id, entry_number, entry_date, reference_type, reference_id, description, created_by)
+       VALUES (?, ?, NOW(), 'PAYMENT_REVERSAL', ?, ?, ?)`,
+      [orgId, revJeNum, paymentId, `Reversal of ${payment.payment_number}`, userId]
     );
     const jeId = jeResult.insertId;
 
@@ -436,7 +443,7 @@ async function recordCollectionVisit(data, collectorId) {
     notes,
   } = data;
 
-  const [result] = await query(
+  const result = await query(
     `INSERT INTO collection_visits 
      (collector_id, customer_id, loan_id, installment_id, payment_id, expected_amount, collected_amount, pending_amount, latitude, longitude, notes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

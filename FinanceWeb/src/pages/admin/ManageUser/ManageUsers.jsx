@@ -33,6 +33,7 @@ import {
   Printer,
   Sparkles,
   Building,
+  RefreshCw,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
 
@@ -126,7 +127,16 @@ export const ManageUsers = () => {
     setVirtualTab('ONGOING');
     try {
       const fullProfile = await api.getUserById(u.id);
-      setSelectedUser(fullProfile || u);
+      if (fullProfile) {
+        setSelectedUser({
+          ...u,
+          ...fullProfile,
+          activeLoansCount: fullProfile.activeLoansCount ?? fullProfile.financialSummary?.activeLoansCount ?? u.activeLoansCount,
+          outstandingAmount: fullProfile.outstandingAmount ?? fullProfile.financialSummary?.outstanding ?? u.outstandingAmount,
+          totalPaid: fullProfile.totalPaid ?? fullProfile.financialSummary?.totalPaid ?? u.totalPaid,
+          ongoingLoans: fullProfile.ongoingLoans || fullProfile.activeLoans || fullProfile.loans || [],
+        });
+      }
     } catch (err) {
       console.warn('Could not fetch full user profile, using table data:', err);
     } finally {
@@ -245,24 +255,14 @@ export const ManageUsers = () => {
   const totalOutstanding = users.reduce((sum, u) => sum + (u.outstandingAmount || 0), 0);
   const totalActiveBorrowers = users.filter((u) => (u.activeLoansCount || 0) > 0).length;
 
-  if (loading) {
-    return (
-      <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-          Loading Borrower & User Registry...
-        </div>
-        <span>Fetching live records from database</span>
-      </div>
-    );
-  }
-
-  // =========================================================================
-  // VIEW 1: DEDICATED VIRTUAL BORROWER PAGE VIEW
-  // =========================================================================
   if (viewMode === 'VIRTUAL_PAGE' && selectedUser) {
-    const ongoingLoans = selectedUser.ongoingLoans || (selectedUser.loans ? selectedUser.loans.filter((l) => l.status === 'ACTIVE') : []);
-    const completedLoans = selectedUser.completedLoans || [];
+    const ongoingLoans = selectedUser.ongoingLoans || selectedUser.activeLoans || (selectedUser.loans ? selectedUser.loans.filter((l) => ['ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE'].includes(l.status)) : []);
+    const completedLoans = selectedUser.completedLoans || (selectedUser.loans ? selectedUser.loans.filter((l) => l.status === 'COMPLETED') : []);
     const paymentHistory = selectedUser.paymentHistory || [];
+
+    const displayActiveCount = selectedUser.activeLoansCount ?? selectedUser.financialSummary?.activeLoansCount ?? ongoingLoans.length ?? 0;
+    const displayOutstanding = selectedUser.outstandingAmount ?? selectedUser.financialSummary?.outstanding ?? ongoingLoans.reduce((sum, l) => sum + parseFloat(l.outstanding_balance || l.remaining_balance || l.outstanding_amount || 0), 0);
+    const displayTotalPaid = selectedUser.totalPaid ?? selectedUser.financialSummary?.totalPaid ?? 0;
 
     return (
       <div className="virtual-user-page" style={{ padding: '0 0.5rem' }}>
@@ -369,19 +369,19 @@ export const ManageUsers = () => {
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Active Loans</span>
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--emerald)' }}>
-                  {selectedUser.activeLoansCount || ongoingLoans.length || 0}
+                  {displayActiveCount}
                 </div>
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Current Outstanding</span>
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--amber)' }}>
-                  {formatCurrency(selectedUser.outstandingAmount || 0)}
+                  {formatCurrency(displayOutstanding)}
                 </div>
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Repaid</span>
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>
-                  {formatCurrency(selectedUser.totalPaid || 0)}
+                  {formatCurrency(displayTotalPaid)}
                 </div>
               </div>
             </div>
@@ -395,7 +395,7 @@ export const ManageUsers = () => {
             style={{ borderRadius: '8px 8px 0 0', borderBottom: 'none' }}
             onClick={() => setVirtualTab('ONGOING')}
           >
-            <Clock size={15} /> Ongoing Loans ({ongoingLoans.length || selectedUser.activeLoansCount || 0})
+            <Clock size={15} /> Ongoing Loans ({ongoingLoans.length || displayActiveCount || 0})
           </button>
           <button
             className={`btn ${virtualTab === 'COMPLETED' ? 'btn-primary' : 'btn-secondary'}`}
@@ -446,7 +446,7 @@ export const ManageUsers = () => {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Remaining Balance:</span>
-                        <strong style={{ color: 'var(--amber)' }}>{formatCurrency(loan.remaining_balance || loan.outstanding_amount || 14000)}</strong>
+                        <strong style={{ color: 'var(--amber)' }}>{formatCurrency(loan.remaining_balance || loan.outstanding_balance || loan.outstanding_amount || 0)}</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Installments Paid:</span>
@@ -568,8 +568,17 @@ export const ManageUsers = () => {
           </p>
         </div>
 
-        <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => navigate(getOrgPath('users/add'))} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="header-actions" style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={loadUsers}
+            disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 600 }}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate(getOrgPath('users/add'))} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
             <UserPlus size={16} />
             <span>Onboard New Borrower</span>
           </button>
@@ -585,30 +594,69 @@ export const ManageUsers = () => {
 
       {/* KPI Top Strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Enrolled Users</span>
-          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {users.length}
-          </h3>
-        </div>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Active Borrowers</span>
-          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--emerald)' }}>
-            {totalActiveBorrowers}
-          </h3>
-        </div>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Outstanding Portfolio</span>
-          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--amber)' }}>
-            {formatCurrency(totalOutstanding)}
-          </h3>
-        </div>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Completed Loans Archive</span>
-          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--primary)' }}>
-            {users.reduce((sum, u) => sum + (u.completedLoansCount || 0), 0)}
-          </h3>
-        </div>
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card" style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+                <div className="skeleton-bar" style={{ width: '50%', height: 13 }} />
+                <div className="skeleton-circle" style={{ width: 28, height: 28, borderRadius: 6 }} />
+              </div>
+              <div className="skeleton-bar" style={{ width: '65%', height: 28, marginBottom: '0.4rem' }} />
+              <div className="skeleton-bar" style={{ width: '40%', height: 11 }} />
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="card" style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Enrolled Users</span>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Users size={14} color="var(--primary)" />
+                </div>
+              </div>
+              <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                {users.length}
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>All registered accounts</span>
+            </div>
+            <div className="card" style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Active Borrowers</span>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CreditCard size={14} color="var(--emerald)" />
+                </div>
+              </div>
+              <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', fontWeight: 800, color: 'var(--emerald)' }}>
+                {totalActiveBorrowers}
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>With running installment schemes</span>
+            </div>
+            <div className="card" style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Outstanding Portfolio</span>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <DollarSign size={14} color="var(--amber)" />
+                </div>
+              </div>
+              <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', fontWeight: 800, color: 'var(--amber)' }}>
+                {formatCurrency(totalOutstanding)}
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>Pending recovery balance</span>
+            </div>
+            <div className="card" style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Completed Loans Archive</span>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle2 size={14} color="var(--purple)" />
+                </div>
+              </div>
+              <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary)' }}>
+                {users.reduce((sum, u) => sum + (u.completedLoansCount || 0), 0)}
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>Fully settled micro-loans</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Search & Filter Bar */}
@@ -667,7 +715,48 @@ export const ManageUsers = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '0.95rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div className="skeleton-circle" style={{ width: 38, height: 38 }} />
+                        <div>
+                          <div className="skeleton-bar" style={{ width: 130, height: 14, marginBottom: '0.35rem' }} />
+                          <div className="skeleton-bar" style={{ width: 80, height: 10 }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.95rem 1rem' }}>
+                      <div className="skeleton-bar" style={{ width: 105, height: 20, borderRadius: 4, marginBottom: 4 }} />
+                      <div className="skeleton-bar" style={{ width: 75, height: 10 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1rem' }}>
+                      <div className="skeleton-bar" style={{ width: 95, height: 14, marginBottom: 4 }} />
+                      <div className="skeleton-bar" style={{ width: 120, height: 11 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1rem' }}>
+                      <div className="skeleton-bar" style={{ width: 85, height: 13 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1rem' }}>
+                      <div className="skeleton-bar" style={{ width: 60, height: 16, borderRadius: 4 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1rem' }}>
+                      <div className="skeleton-bar" style={{ width: 80, height: 16 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1rem' }}>
+                      <div className="skeleton-bar" style={{ width: 65, height: 20, borderRadius: 4 }} />
+                    </td>
+                    <td style={{ padding: '0.95rem 1rem', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <div className="skeleton-bar" style={{ width: 85, height: 28, borderRadius: 6 }} />
+                        <div className="skeleton-bar" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                        <div className="skeleton-bar" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
                     <Users size={36} style={{ opacity: 0.4, marginBottom: '0.5rem' }} />

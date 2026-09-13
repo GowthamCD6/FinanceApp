@@ -28,12 +28,12 @@ function idempotencyMiddleware(options = { required: false }) {
 
     try {
       // 1. Check existing record
-      const [existing] = await query(
+      const existing = await query(
         `SELECT * FROM idempotency_keys WHERE idempotency_key = ? LIMIT 1`,
         [key]
       );
 
-      if (existing.length > 0) {
+      if (existing && existing.length > 0) {
         const record = existing[0];
 
         if (record.status === 'COMPLETED') {

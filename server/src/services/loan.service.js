@@ -5,7 +5,7 @@ const { query, withTransaction } = require('../config/database');
  */
 async function generateLoanNumber() {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const [rows] = await query(`SELECT COUNT(*) AS total FROM loans WHERE loan_number LIKE ?`, [`LN-${dateStr}-%`]);
+  const rows = await query(`SELECT COUNT(*) AS total FROM loans WHERE loan_number LIKE ?`, [`LN-${dateStr}-%`]);
   const seq = String((rows[0]?.total || 0) + 1).padStart(4, '0');
   return `LN-${dateStr}-${seq}`;
 }
@@ -23,37 +23,37 @@ async function createLoanApplication(data, userId) {
   const parsedPrincipal = parseFloat(principalAmount);
 
   // 1. Verify customer exists and is not blocked
-  const [customer] = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
-  if (customer.length === 0) throw new Error('Customer not found.');
+  const customer = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
+  if (!customer || customer.length === 0) throw new Error('Customer not found.');
   if (customer[0].status === 'BLOCKED') throw new Error('Customer is blocked from receiving loans.');
 
   // 2. Check if customer already has an active or overdue loan
-  const [activeLoans] = await query(
+  const activeLoans = await query(
     `SELECT id, loan_number, status FROM loans 
      WHERE customer_id = ? AND status IN ('PENDING', 'APPROVED', 'DISBURSED', 'ACTIVE', 'PARTIALLY_PAID', 'OVERDUE')
      LIMIT 1`,
     [customerId]
   );
-  if (activeLoans.length > 0) {
+  if (activeLoans && activeLoans.length > 0) {
     throw new Error(`Customer already has an ongoing loan (${activeLoans[0].loan_number}) in status ${activeLoans[0].status}.`);
   }
 
   // 3. Find the customer's most recent completed loan to link parent_loan_id
-  const [lastLoan] = await query(
+  const lastLoan = await query(
     `SELECT id FROM loans WHERE customer_id = ? AND status = 'COMPLETED' ORDER BY id DESC LIMIT 1`,
     [customerId]
   );
-  const parentLoanId = lastLoan.length > 0 ? lastLoan[0].id : null;
+  const parentLoanId = lastLoan && lastLoan.length > 0 ? lastLoan[0].id : null;
 
   // 4. Fetch loan product and active policy
-  const [product] = await query(`SELECT * FROM loan_products WHERE id = ? AND status = 'ACTIVE' LIMIT 1`, [productId]);
-  if (product.length === 0) throw new Error('Loan product not found or inactive.');
+  const product = await query(`SELECT * FROM loan_products WHERE id = ? AND status = 'ACTIVE' LIMIT 1`, [productId]);
+  if (!product || product.length === 0) throw new Error('Loan product not found or inactive.');
 
-  const [policy] = await query(
+  const policy = await query(
     `SELECT * FROM loan_policies WHERE product_id = ? AND status = 'ACTIVE' ORDER BY effective_from DESC LIMIT 1`,
     [productId]
   );
-  if (policy.length === 0) throw new Error('No active policy found for this loan product.');
+  if (!policy || policy.length === 0) throw new Error('No active policy found for this loan product.');
 
   const p = policy[0];
   if (parsedPrincipal < parseFloat(p.minimum_amount) || parsedPrincipal > parseFloat(p.maximum_amount)) {
@@ -71,7 +71,7 @@ async function createLoanApplication(data, userId) {
   const totalRepaymentAmount = parsedPrincipal + contractedIncome;
   const loanNumber = await generateLoanNumber();
 
-  const [result] = await query(
+  const result = await query(
     `INSERT INTO loans 
      (loan_number, customer_id, product_id, policy_id, parent_loan_id, principal_amount, contracted_income_amount, total_repayment_amount, total_installments, repayment_frequency, status, application_date, notes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_DATE, ?)`,
@@ -133,8 +133,8 @@ async function createLoanApplication(data, userId) {
  * Approve a pending loan
  */
 async function approveLoan(loanId, userId) {
-  const [loans] = await query(`SELECT * FROM loans WHERE id = ? LIMIT 1`, [loanId]);
-  if (loans.length === 0) throw new Error('Loan not found.');
+  const loans = await query(`SELECT * FROM loans WHERE id = ? LIMIT 1`, [loanId]);
+  if (!loans || loans.length === 0) throw new Error('Loan not found.');
   if (loans[0].status !== 'PENDING') throw new Error(`Loan cannot be approved from status ${loans[0].status}.`);
 
   await query(
@@ -352,7 +352,7 @@ async function getLoans({ status, customerId, frequency, organizationId, page = 
 
   const whereSql = whereClauses.join(' AND ');
 
-  const [countRows] = await query(`SELECT COUNT(*) AS total FROM loans l WHERE ${whereSql}`, params);
+  const countRows = await query(`SELECT COUNT(*) AS total FROM loans l WHERE ${whereSql}`, params);
   const total = countRows[0]?.total || 0;
 
   const loans = await query(
@@ -380,7 +380,7 @@ async function getLoans({ status, customerId, frequency, organizationId, page = 
  * Get single loan details with installment schedules and payment allocations
  */
 async function getLoanById(loanId) {
-  const [loans] = await query(
+  const loans = await query(
     `SELECT 
        l.*,
        c.full_name AS customer_name,
@@ -396,7 +396,7 @@ async function getLoanById(loanId) {
     [loanId]
   );
 
-  if (loans.length === 0) return null;
+  if (!loans || loans.length === 0) return null;
   const loan = loans[0];
 
   // Fetch installments
@@ -427,15 +427,15 @@ async function getLoanById(loanId) {
  * Preserves lending lifecycle tree: #001 -> #002 -> #003 -> #004
  */
 async function createRepeatLoan({ customerId, requestedAmount = 15000, notes, userId }) {
-  const [customer] = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
-  if (customer.length === 0) throw new Error('Customer not found.');
+  const customer = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
+  if (!customer || customer.length === 0) throw new Error('Customer not found.');
 
   // Find previous completed loan to link parent_loan_id
-  const [lastCompleted] = await query(
+  const lastCompleted = await query(
     `SELECT * FROM loans WHERE customer_id = ? AND status = 'COMPLETED' ORDER BY id DESC LIMIT 1`,
     [customerId]
   );
-  if (lastCompleted.length === 0) {
+  if (!lastCompleted || lastCompleted.length === 0) {
     throw new Error('Customer has no previous completed loans to initiate a repeat loan.');
   }
 

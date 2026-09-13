@@ -411,6 +411,12 @@ async function getUserById(userId) {
           }
         : null,
     },
+    activeLoansCount: activeLoans.length,
+    outstandingAmount: outstanding,
+    totalPaid,
+    totalBorrowed,
+    ongoingLoans: activeLoans,
+    loans,
     activeLoan: activeLoan || null,
     activeLoans,
     completedLoans,

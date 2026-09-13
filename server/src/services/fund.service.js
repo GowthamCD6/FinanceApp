@@ -27,7 +27,7 @@ async function getAccountBalance(fundAccountId = null, connection = null) {
  */
 async function getFundSummary() {
   // 1. Total Capital Injected
-  const [capResults] = await query(`
+  const capResults = await query(`
     SELECT COALESCE(SUM(amount), 0) AS totalCapital
     FROM fund_transactions
     WHERE transaction_type = 'CAPITAL_IN'
@@ -35,7 +35,7 @@ async function getFundSummary() {
   const totalCapital = Number(capResults[0]?.totalCapital || 1200000);
 
   // 2. Available Cash across all fund accounts
-  const [cashResults] = await query(`
+  const cashResults = await query(`
     SELECT 
       fa.id,
       fa.account_code,
@@ -48,10 +48,10 @@ async function getFundSummary() {
     GROUP BY fa.id, fa.account_code, fa.account_name, fa.account_type
   `);
 
-  const totalAvailableCash = cashResults.reduce((acc, row) => acc + Number(row.currentBalance), 0);
+  const totalAvailableCash = (cashResults || []).reduce((acc, row) => acc + Number(row.currentBalance), 0);
 
   // 3. Principal Disbursed vs Principal Recovered
-  const [loanMetrics] = await query(`
+  const loanMetrics = await query(`
     SELECT 
       COALESCE(SUM(CASE WHEN ft.transaction_type = 'LOAN_DISBURSEMENT' THEN ft.amount ELSE 0 END), 0) AS totalDisbursed,
       COALESCE(SUM(CASE WHEN ft.transaction_type = 'PRINCIPAL_COLLECTION' THEN ft.amount ELSE 0 END), 0) AS totalPrincipalRecovered,
@@ -70,7 +70,7 @@ async function getFundSummary() {
   const netProfit = totalLendingIncome - totalExpenses;
 
   // Active & Overdue loans count
-  const [loanCounts] = await query(`
+  const loanCounts = await query(`
     SELECT 
       COUNT(CASE WHEN status IN ('ACTIVE', 'PARTIALLY_PAID', 'DISBURSED') THEN 1 END) AS activeLoans,
       COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS completedLoans,
