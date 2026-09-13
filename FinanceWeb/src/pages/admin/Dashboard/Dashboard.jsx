@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
-import { StatCard } from '../../components/common/StatCard';
-import { StatusBadge } from '../../components/common/Badge';
+import { api } from '../../../services/api';
+import { StatCard } from '../../../components/common/StatCard';
+import { StatusBadge } from '../../../components/common/Badge';
 import {
   Users,
   UserPlus,
@@ -22,7 +22,7 @@ import {
   Percent,
 } from 'lucide-react';
 
-import { useOrg } from '../../context/OrgContext';
+import { useOrg } from '../../../context/OrgContext';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();

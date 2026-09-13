@@ -1,0 +1,189 @@
+.admin-profile-page {
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  font-family: inherit;
+  color: var(--text-primary, #1e293b);
+  box-sizing: border-box;
+}
+
+.admin-profile-page *,
+.admin-profile-page *::before,
+.admin-profile-page *::after {
+  box-sizing: border-box;
+}
+
+/* 1. Profile Hero Card */
+.prof-hero-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 1rem);
+  padding: 1.5rem 1.75rem;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.prof-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.prof-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-lg, 1rem);
+  background: var(--primary-gradient, linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%));
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+  flex-shrink: 0;
+}
+
+.prof-name {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.prof-role-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  text-transform: uppercase;
+}
+
+.prof-meta-sub {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #64748b);
+  margin-top: 0.35rem;
+}
+
+.prof-hero-stats {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.prof-stat-pill {
+  background: #f8fafc;
+  padding: 0.75rem 1.15rem;
+  border-radius: var(--radius-md, 0.6rem);
+  border: 1px solid var(--border-color, #e2e8f0);
+  text-align: center;
+  min-width: 140px;
+}
+
+.prof-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.prof-stat-val {
+  font-size: 1.35rem;
+  font-weight: 900;
+  margin-top: 2px;
+}
+
+/* 2. Grid Cards */
+.prof-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  font-size: 0.875rem;
+}
+
+.prof-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.prof-detail-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.prof-detail-label {
+  color: var(--text-secondary, #64748b);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prof-detail-val {
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+/* 3. Security & Permission Items */
+.prof-perm-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.95rem;
+  background: #f8fafc;
+  border-radius: var(--radius-md, 0.5rem);
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.prof-perm-title {
+  font-size: 0.825rem;
+  font-weight: 750;
+  color: var(--text-primary, #0f172a);
+}
+
+.prof-perm-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #64748b);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* 4. Activity Log Items */
+.prof-activity-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.85rem;
+}
+
+.prof-activity-item:last-child {
+  border-bottom: none;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .prof-hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .prof-hero-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

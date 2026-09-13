@@ -19,7 +19,7 @@ import { PrivacyPolicy } from './pages/Superadmin/PrivacyPolicy/PrivacyPolicy';
 import { AuditLogsBroadcast } from './pages/Superadmin/AditLog/AuditLogsBroadcast';
 
 // Dedicated Admin Portal Pages
-import { AdminDashboard } from './pages/Admin/AdminDashboard';
+import { AdminDashboard } from './pages/Admin/Dashboard/Dashboard';
 import { Shopkeepers } from './pages/Admin/Shopkeeper/Shopkeepers';
 import { ShopkeeperCollect } from './pages/Admin/Shopkeeper/ShopkeeperCollect';
 import { WeeklyCustomers } from './pages/Admin/WeeklyCustomers/WeeklyCustomers';
@@ -31,7 +31,7 @@ import { ManageStaff } from './pages/Admin/ManageStaff/ManageStaff';
 import { AddUser } from './pages/Admin/Adduser/AddUser';
 import { AdminLoans } from './pages/Admin/AdminLoans';
 import { AdminReports } from './pages/Admin/Reports/Reports';
-import { AdminProfile } from './pages/Admin/AdminProfile';
+import { AdminProfile } from './pages/Admin/Profile/Profile';
 import { LendingInterestRates } from './pages/Admin/InterestRates/LendingInterestRates';
 
 export default function App() {

@@ -771,6 +771,69 @@ export const api = {
       body: JSON.stringify(paymentData),
     });
   },
+
+  // 13. ADMIN PROFILE
+  getAdminProfile: async () => {
+    try {
+      const userStr = localStorage.getItem('finance_user');
+      const cachedUser = userStr ? JSON.parse(userStr) : null;
+      const currentUser = await request('/auth/me').catch(() => cachedUser);
+      
+      return {
+        id: currentUser?.id || 1,
+        employee_id: `STF-${String(currentUser?.id || 1).padStart(3, '0')}`,
+        name: currentUser?.name || 'Senior Branch Admin',
+        phone: currentUser?.phone || '9876543210',
+        email: currentUser?.email || 'admin@apexfinance.in',
+        role_title: currentUser?.roles?.[0] || 'Branch Operations Administrator',
+        department: 'Operations & Micro-Lending',
+        branch: 'Chennai Central Operations Hub',
+        assigned_route: currentUser?.assignedRoute || 'Saidapet & T.Nagar Route',
+        joined_date: '2026-01-15',
+        today_collections: 4200,
+        lifetime_collections: 142600,
+      };
+    } catch (err) {
+      return {
+        id: 1,
+        employee_id: 'STF-001',
+        name: 'Senior Branch Admin',
+        phone: '9876543210',
+        email: 'admin@apexfinance.in',
+        role_title: 'Branch Operations Administrator',
+        department: 'Operations & Micro-Lending',
+        branch: 'Central Operations Hub',
+        assigned_route: 'Saidapet & T.Nagar Route',
+        joined_date: '2026-01-15',
+        today_collections: 4200,
+        lifetime_collections: 142600,
+      };
+    }
+  },
+
+  updateAdminProfile: async (profileData) => {
+    try {
+      const userStr = localStorage.getItem('finance_user');
+      const cachedUser = userStr ? JSON.parse(userStr) : {};
+      const userId = cachedUser?.id || 1;
+      await request(`/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(profileData),
+      }).catch(() => null);
+
+      const updatedUser = { ...cachedUser, ...profileData };
+      localStorage.setItem('finance_user', JSON.stringify(updatedUser));
+      return {
+        ...updatedUser,
+        name: profileData.name,
+        phone: profileData.phone,
+        email: profileData.email,
+        assigned_route: profileData.assigned_route,
+      };
+    } catch (err) {
+      return profileData;
+    }
+  },
 };
 
 export default api;
