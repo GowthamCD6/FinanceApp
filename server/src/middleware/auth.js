@@ -16,7 +16,7 @@ async function authenticate(req, res, next) {
 
     // Fetch user details
     const users = await query(
-      `SELECT id, name, email, phone, status FROM users WHERE id = ? AND status = 'ACTIVE' LIMIT 1`,
+      `SELECT id, organization_id, branch_id, name, email, phone, status FROM users WHERE id = ? AND status = 'ACTIVE' LIMIT 1`,
       [decoded.userId]
     );
 
@@ -44,6 +44,7 @@ async function authenticate(req, res, next) {
     user.permissions = permissions.map(p => p.name);
 
     req.user = user;
+    req.organizationId = req.headers['x-organization-id'] || req.query.organizationId || user.organization_id || null;
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

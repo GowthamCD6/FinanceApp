@@ -42,11 +42,13 @@ async function disburseLoan(req, res) {
 
 async function getLoans(req, res) {
   try {
-    const { status, customerId, frequency, page, limit } = req.query;
+    const { status, customerId, frequency, page, limit, organizationId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
     const result = await loanService.getLoans({
       status,
       customerId,
       frequency,
+      organizationId: orgId,
       page: parseInt(page || '1', 10),
       limit: parseInt(limit || '20', 10),
     });

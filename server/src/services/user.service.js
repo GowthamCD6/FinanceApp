@@ -139,16 +139,22 @@ async function createUser(data, creatorId = null) {
 /**
  * List users with live financial aggregates
  */
-async function getUsers({ search, role, status, organizationId, page = 1, limit = 50 }) {
+async function getUsers({ search, role, status, organizationId, scope, page = 1, limit = 50 }) {
   const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.max(1, parseInt(limit, 10) || 50);
   const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
 
-  if (organizationId) {
-    whereClauses.push('(u.organization_id = ? OR c.organization_id = ?)');
+  if (organizationId && organizationId !== 'ALL') {
+    whereClauses.push('(u.organization_id = ? OR (c.organization_id = ? AND u.role_type NOT IN ("SUPER_ADMIN")))');
     params.push(organizationId, organizationId);
+  }
+
+  if (scope === 'BORROWERS') {
+    whereClauses.push("(u.role_type IN ('COMMON_CUSTOMER', 'SHOPKEEPER', 'USER') AND u.role_type NOT IN ('ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT'))");
+  } else if (scope === 'STAFF') {
+    whereClauses.push("(u.role_type IN ('ADMIN', 'FIELD_AGENT', 'COLLECTOR', 'BRANCH_ADMIN') OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = u.id AND r.name IN ('ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT', 'COLLECTOR')))");
   }
 
   if (search) {
@@ -184,6 +190,10 @@ async function getUsers({ search, role, status, organizationId, page = 1, limit 
        u.name,
        u.phone,
        u.email,
+       u.role_type,
+       u.assigned_route,
+       u.daily_target,
+       u.designation,
        u.status,
        u.created_at AS date_joined,
        c.id AS customer_id,
@@ -225,9 +235,11 @@ async function getUsers({ search, role, status, organizationId, page = 1, limit 
 
   // Map display role and structure
   const formatted = users.map((u) => {
-    let effectiveRole = 'COMMON_CUSTOMER';
+    let effectiveRole = u.role_type || 'COMMON_CUSTOMER';
     if (u.system_role === 'ADMIN' || u.system_role === 'SUPER_ADMIN') {
       effectiveRole = u.system_role;
+    } else if (u.role_type === 'FIELD_AGENT') {
+      effectiveRole = 'FIELD_AGENT';
     } else if (u.customer_type === 'SHOPKEEPER') {
       effectiveRole = 'SHOPKEEPER';
     } else if (u.customer_type === 'COMMON_CUSTOMER') {
@@ -244,6 +256,10 @@ async function getUsers({ search, role, status, organizationId, page = 1, limit 
       address: u.address || '',
       city: u.city || '',
       role: effectiveRole,
+      roleType: u.role_type,
+      assignedRoute: u.assigned_route || 'Main Branch Route',
+      dailyTarget: parseFloat(u.daily_target || 0),
+      designation: u.designation || (effectiveRole === 'FIELD_AGENT' ? 'Route Field Collector' : (effectiveRole === 'ADMIN' ? 'Branch Administrator' : 'Staff')),
       status: u.status,
       notes: u.notes || '',
       occupation: u.occupation || '',

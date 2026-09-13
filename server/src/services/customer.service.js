@@ -24,6 +24,7 @@ async function createCustomer(data, userId) {
     occupation,
     shopName,
     registrationDate,
+    organizationId,
   } = data;
 
   if (!fullName || !phone || !customerType) {
@@ -37,12 +38,14 @@ async function createCustomer(data, userId) {
   }
 
   const customerCode = await generateCustomerCode();
+  const effectiveOrgId = organizationId || 1;
 
   const [result] = await query(
     `INSERT INTO customers 
-     (customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
+     (organization_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
     [
+      effectiveOrgId,
       customerCode,
       fullName,
       phone,
@@ -57,18 +60,23 @@ async function createCustomer(data, userId) {
     ]
   );
 
-  return { id: result.insertId, customerCode, fullName, phone, customerType };
+  return { id: result.insertId, organizationId: effectiveOrgId, customerCode, fullName, phone, customerType };
 }
 
 /**
  * List customers with financial aggregates
  */
-async function getCustomers({ search, customerType, status, page = 1, limit = 20 }) {
+async function getCustomers({ search, customerType, status, organizationId, page = 1, limit = 20 }) {
   const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
   const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
+
+  if (organizationId && organizationId !== 'ALL') {
+    whereClauses.push('c.organization_id = ?');
+    params.push(organizationId);
+  }
 
   if (search) {
     whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ? OR c.shop_name LIKE ?)');
@@ -340,9 +348,14 @@ async function updateCustomerStatus(id, status, reason, updatedBy) {
 /**
  * Get Weekly Customers with live active weekly loans, schedule, and installment KPIs
  */
-async function getWeeklyCustomers({ search, status, area } = {}) {
+async function getWeeklyCustomers({ search, status, area, organizationId } = {}) {
   let whereClauses = ["c.customer_type IN ('COMMON_CUSTOMER', 'WEEKLY_BORROWER')"];
   const params = [];
+
+  if (organizationId && organizationId !== 'ALL') {
+    whereClauses.push('c.organization_id = ?');
+    params.push(organizationId);
+  }
 
   if (search) {
     whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ? OR c.address LIKE ?)');
@@ -473,9 +486,14 @@ async function getWeeklyCustomers({ search, status, area } = {}) {
 /**
  * Get Shopkeepers with live multi-loan registry and daily collection targets
  */
-async function getShopkeepers({ search, status, route } = {}) {
+async function getShopkeepers({ search, status, route, organizationId } = {}) {
   let whereClauses = ["(c.customer_type = 'SHOPKEEPER' OR c.shop_name IS NOT NULL)"];
   const params = [];
+
+  if (organizationId && organizationId !== 'ALL') {
+    whereClauses.push('c.organization_id = ?');
+    params.push(organizationId);
+  }
 
   if (search) {
     whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ? OR c.shop_name LIKE ?)');
@@ -598,6 +616,108 @@ async function getShopkeepers({ search, status, route } = {}) {
   return result;
 }
 
+/**
+ * Get Monthly Customers with active monthly loans and EMI data
+ */
+async function getMonthlyCustomers({ search, status, organizationId } = {}) {
+  let whereClauses = ["c.customer_type = 'COMMON_CUSTOMER'"];
+  const params = [];
+
+  if (organizationId && organizationId !== 'ALL') {
+    whereClauses.push('c.organization_id = ?');
+    params.push(organizationId);
+  }
+
+  if (search) {
+    whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ?)');
+    const q = `%${search}%`;
+    params.push(q, q, q);
+  }
+
+  const customers = await query(
+    `SELECT DISTINCT
+       c.id,
+       c.customer_code,
+       c.full_name AS name,
+       c.phone,
+       c.address,
+       c.city,
+       c.occupation,
+       c.status AS customer_status
+     FROM customers c
+     INNER JOIN loans l ON l.customer_id = c.id
+     INNER JOIN loan_products lp ON l.product_id = lp.id
+     WHERE ${whereClauses.join(' AND ')}
+       AND lp.repayment_frequency = 'MONTHLY'
+       AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')
+     ORDER BY c.id DESC`,
+    params
+  );
+
+  const result = [];
+  for (const cust of customers) {
+    const loans = await query(
+      `SELECT l.*, lp.repayment_frequency, lp.product_name
+       FROM loans l
+       LEFT JOIN loan_products lp ON l.product_id = lp.id
+       WHERE l.customer_id = ? AND lp.repayment_frequency = 'MONTHLY'
+         AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')
+       ORDER BY l.id DESC LIMIT 1`,
+      [cust.id]
+    );
+
+    const loan = loans[0] || null;
+    let paidInstallments = 0;
+    let totalInstallments = loan ? (loan.total_installments || 12) : 12;
+    let outstandingBalance = loan ? Number(loan.total_repayment_amount || loan.principal_amount || 50000) : 0;
+    let monthlyEmi = loan ? Math.ceil(Number(loan.total_repayment_amount || loan.principal_amount * 1.18) / totalInstallments) : 5000;
+    let currentMonthStatus = 'UNPAID';
+
+    if (loan) {
+      const installments = await query(
+        `SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`,
+        [loan.id]
+      );
+
+      if (installments.length > 0) {
+        totalInstallments = installments.length;
+        paidInstallments = installments.filter(i => i.status === 'PAID').length;
+        const currentInst = installments.find(i => i.status !== 'PAID') || installments[installments.length - 1];
+        if (currentInst) {
+          monthlyEmi = Number(currentInst.installment_amount || monthlyEmi);
+          currentMonthStatus = currentInst.status === 'PAID' ? 'PAID' : (new Date(currentInst.due_date) < new Date() ? 'OVERDUE' : 'UNPAID');
+        }
+        const paidAmt = installments.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || monthlyEmi), 0);
+        outstandingBalance = Math.max(0, Number(loan.total_repayment_amount || loan.principal_amount) - paidAmt);
+      }
+    }
+
+    result.push({
+      id: cust.id,
+      customer_code: cust.customer_code,
+      name: cust.name,
+      phone: cust.phone,
+      address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
+      occupation: cust.occupation || 'Self Employed',
+      active_loan: loan ? {
+        id: loan.id,
+        loan_code: loan.loan_number,
+        principal: Number(loan.principal_amount),
+        total_installments: totalInstallments,
+        status: loan.status,
+      } : null,
+      paid_installments: paidInstallments,
+      total_installments: totalInstallments,
+      monthly_emi: monthlyEmi,
+      current_month_due_date: new Date().toISOString().slice(0, 10),
+      current_month_status: currentMonthStatus,
+      outstanding_balance: outstandingBalance,
+    });
+  }
+
+  return result;
+}
+
 module.exports = {
   createCustomer,
   getCustomers,
@@ -607,5 +727,5 @@ module.exports = {
   updateCustomerStatus,
   getWeeklyCustomers,
   getShopkeepers,
+  getMonthlyCustomers,
 };
-

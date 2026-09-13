@@ -5,7 +5,9 @@ const OrgContext = createContext(null);
 
 export const OrgProvider = ({ children }) => {
   const [organizations, setOrganizations] = useState([]);
-  const [activeOrgId, setActiveOrgId] = useState(null);
+  const [activeOrgId, setActiveOrgId] = useState(() => {
+    return localStorage.getItem('finance_active_org_id') || null;
+  });
   const [loading, setLoading] = useState(true);
 
   // Load live organizations from Backend on mount
@@ -30,8 +32,19 @@ export const OrgProvider = ({ children }) => {
     [organizations, activeOrgId]
   );
 
-  const setActiveOrg = (orgId) => setActiveOrgId(orgId);
-  const clearActiveOrg = () => setActiveOrgId(null);
+  const setActiveOrg = (orgId) => {
+    setActiveOrgId(orgId);
+    if (orgId) {
+      localStorage.setItem('finance_active_org_id', String(orgId));
+    } else {
+      localStorage.removeItem('finance_active_org_id');
+    }
+  };
+
+  const clearActiveOrg = () => {
+    setActiveOrgId(null);
+    localStorage.removeItem('finance_active_org_id');
+  };
 
   const addOrganization = async (data) => {
     try {

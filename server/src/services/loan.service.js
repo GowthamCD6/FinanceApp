@@ -325,12 +325,17 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
 /**
  * List loans with optional filters
  */
-async function getLoans({ status, customerId, frequency, page = 1, limit = 20 }) {
+async function getLoans({ status, customerId, frequency, organizationId, page = 1, limit = 20 }) {
   const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
   const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
+
+  if (organizationId && organizationId !== 'ALL') {
+    whereClauses.push('(l.organization_id = ? OR c.organization_id = ?)');
+    params.push(organizationId, organizationId);
+  }
 
   if (status) {
     whereClauses.push('l.status = ?');

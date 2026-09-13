@@ -32,10 +32,7 @@ import {
   ArrowLeft,
   Printer,
   Sparkles,
-  ShieldAlert,
-  Save,
-  ChevronRight,
-  Award,
+  Building,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
 
@@ -88,8 +85,11 @@ export const ManageUsers = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const data = await api.getUsers();
-      setUsers(data);
+      const data = await api.getBorrowers(activeOrg ? { organizationId: activeOrg.id } : {});
+      setUsers(Array.isArray(data) ? data : (data?.users || []));
+    } catch (err) {
+      console.error('Failed to load borrowers:', err);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ export const ManageUsers = () => {
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [activeOrg?.id]);
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
 
@@ -126,7 +126,9 @@ export const ManageUsers = () => {
     setVirtualTab('ONGOING');
     try {
       const fullProfile = await api.getUserById(u.id);
-      setSelectedUser(fullProfile);
+      setSelectedUser(fullProfile || u);
+    } catch (err) {
+      console.warn('Could not fetch full user profile, using table data:', err);
     } finally {
       setDetailLoading(false);
     }
@@ -163,16 +165,15 @@ export const ManageUsers = () => {
     setSavingEdit(true);
     try {
       const updatedUser = await api.updateUser(editFormData.id, editFormData);
-      setStatusFeedback(`User "${updatedUser.name}" updated successfully!`);
+      setStatusFeedback(`User "${updatedUser.name || editFormData.name}" updated successfully!`);
       setTimeout(() => setStatusFeedback(null), 3500);
 
-      // In-place state update
       setUsers((prev) =>
-        prev.map((u) => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
+        prev.map((u) => (u.id === editFormData.id ? { ...u, ...editFormData } : u))
       );
 
-      if (selectedUser && selectedUser.id === updatedUser.id) {
-        setSelectedUser((prev) => ({ ...prev, ...updatedUser }));
+      if (selectedUser && selectedUser.id === editFormData.id) {
+        setSelectedUser((prev) => ({ ...prev, ...editFormData }));
       }
 
       setIsEditModalOpen(false);
@@ -201,6 +202,7 @@ export const ManageUsers = () => {
     setSubmittingLoan(true);
     try {
       await api.createLoan({
+        organizationId: activeOrg?.id || 1,
         userId: quickLoanTarget.id,
         customerId: quickLoanTarget.customerId || quickLoanTarget.id,
         loan_name: quickLoanForm.loan_name,
@@ -214,7 +216,7 @@ export const ManageUsers = () => {
 
       if (viewMode === 'VIRTUAL_PAGE' && selectedUser?.id === quickLoanTarget.id) {
         const fullProfile = await api.getUserById(quickLoanTarget.id);
-        setSelectedUser(fullProfile);
+        setSelectedUser(fullProfile || selectedUser);
       }
       await loadUsers();
     } catch (err) {
@@ -243,7 +245,16 @@ export const ManageUsers = () => {
   const totalOutstanding = users.reduce((sum, u) => sum + (u.outstandingAmount || 0), 0);
   const totalActiveBorrowers = users.filter((u) => (u.activeLoansCount || 0) > 0).length;
 
-  if (loading) return <div className="page-loading">Loading Borrower Registry...</div>;
+  if (loading) {
+    return (
+      <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+          Loading Borrower & User Registry...
+        </div>
+        <span>Fetching live records from database</span>
+      </div>
+    );
+  }
 
   // =========================================================================
   // VIEW 1: DEDICATED VIRTUAL BORROWER PAGE VIEW
@@ -254,7 +265,7 @@ export const ManageUsers = () => {
     const paymentHistory = selectedUser.paymentHistory || [];
 
     return (
-      <div className="virtual-user-page">
+      <div className="virtual-user-page" style={{ padding: '0 0.5rem' }}>
         {/* Top Navigation & Breadcrumbs */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
           <button
@@ -263,7 +274,7 @@ export const ManageUsers = () => {
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             <ArrowLeft size={16} />
-            <span>Back to All Users Directory</span>
+            <span>Back to Borrower Directory</span>
           </button>
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -272,15 +283,15 @@ export const ManageUsers = () => {
               onClick={() => window.print()}
             >
               <Printer size={15} />
-              <span>Print Ledger Statement</span>
+              <span>Print Statement</span>
             </button>
 
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => openEditModal(selectedUser)}
             >
-              <Edit2 size={15} color="var(--accent-primary)" />
-              <span>Edit User Details</span>
+              <Edit2 size={15} color="var(--primary)" />
+              <span>Edit Details</span>
             </button>
 
             <button
@@ -300,364 +311,220 @@ export const ManageUsers = () => {
           </div>
         )}
 
-        {/* User Hero Header Card */}
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        {/* User Hero Banner */}
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div
                 style={{
-                  width: 58,
-                  height: 58,
+                  width: 60,
+                  height: 60,
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                  color: '#ffffff',
+                  background: 'rgba(79, 70, 229, 0.12)',
+                  color: 'var(--primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontWeight: 800,
                   fontSize: '1.5rem',
-                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
+                  fontWeight: 700,
                 }}
               >
                 {selectedUser.name?.charAt(0) || 'U'}
               </div>
-
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#fff' }}>{selectedUser.name}</h2>
-                  <span className="badge badge-emerald" style={{ fontSize: '0.72rem' }}>
-                    Credit Rating: {selectedUser.financialSummary?.creditRating || selectedUser.credit_rating || 'A+'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {selectedUser.name}
+                  </h2>
+                  <StatusBadge status={selectedUser.status || 'ACTIVE'} />
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: 4,
+                      background: 'rgba(79, 70, 229, 0.08)',
+                      color: 'var(--primary)',
+                    }}
+                  >
+                    {selectedUser.role === 'SHOPKEEPER' ? 'Daily Merchant' : (selectedUser.role === 'COMMON_CUSTOMER' ? 'Weekly Borrower' : selectedUser.role)}
                   </span>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: 6, flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  <span><strong>Code:</strong> {selectedUser.customerCode || selectedUser.customer_code || `CUST-00${selectedUser.id}`}</span>
-                  <span>•</span>
-                  <span><Phone size={13} style={{ display: 'inline', marginRight: 3 }} /> {selectedUser.phone}</span>
-                  <span>•</span>
-                  <span><MapPin size={13} style={{ display: 'inline', marginRight: 3 }} /> {selectedUser.address || 'Chennai, Tamil Nadu'}</span>
-                  <span>•</span>
-                  <span><strong>Enrolled:</strong> {selectedUser.dateJoined || selectedUser.joined_date || '2025-05-12'}</span>
+                <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Phone size={14} color="var(--text-muted)" /> {selectedUser.phone}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <MapPin size={14} color="var(--text-muted)" /> {selectedUser.address || selectedUser.city || 'Chennai'}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Calendar size={14} color="var(--text-muted)" /> Joined: {selectedUser.dateJoined || '2026-09-11'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-              <StatusBadge status={selectedUser.status} />
-              <span className={`badge ${selectedUser.role === 'SHOPKEEPER' ? 'badge-purple' : 'badge-blue'}`}>
-                {selectedUser.role === 'SHOPKEEPER' ? 'Merchant (Daily)' : 'Borrower (Weekly)'}
-              </span>
+            {/* Quick Metrics */}
+            <div style={{ display: 'flex', gap: '1.5rem', background: 'var(--bg-primary)', padding: '0.85rem 1.25rem', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Active Loans</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--emerald)' }}>
+                  {selectedUser.activeLoansCount || ongoingLoans.length || 0}
+                </div>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Current Outstanding</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--amber)' }}>
+                  {formatCurrency(selectedUser.outstandingAmount || 0)}
+                </div>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Repaid</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>
+                  {formatCurrency(selectedUser.totalPaid || 0)}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Lifetime Financial Metrics Strip */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lifetime Borrowed</span>
-            <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.5rem', color: '#fff' }}>
-              {formatCurrency(selectedUser.financialSummary?.totalBorrowed || selectedUser.totalBorrowed || 0)}
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Across all loan cycles</span>
-          </div>
-
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lifetime Repaid</span>
-            <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.5rem', color: 'var(--emerald)' }}>
-              {formatCurrency(selectedUser.financialSummary?.totalRepaid || selectedUser.totalPaid || 0)}
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--emerald)' }}>100% Verified Ledger</span>
-          </div>
-
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current Active Due</span>
-            <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.5rem', color: (selectedUser.outstandingAmount || 0) > 0 ? '#fbbf24' : 'var(--emerald)' }}>
-              {formatCurrency(selectedUser.financialSummary?.outstanding || selectedUser.outstandingAmount || 0)}
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: (selectedUser.outstandingAmount || 0) > 0 ? '#fbbf24' : 'var(--emerald)' }}>
-              {(selectedUser.outstandingAmount || 0) > 0 ? 'Active Obligations' : 'All Clear / Settled'}
-            </span>
-          </div>
-
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Settled Loan Cycles</span>
-            <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.5rem', color: 'var(--accent-primary)' }}>
-              {completedLoans.length || selectedUser.completedLoansCount || 0} Cycles
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--emerald)' }}>Flawless repayment score</span>
-          </div>
-        </div>
-
-        {/* Tabbed Navigation: Ongoing vs Completed History vs Ledger */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+        {/* Tab Navigation */}
+        <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
           <button
-            className={`filter-chip ${virtualTab === 'ONGOING' ? 'active' : ''}`}
+            className={`btn ${virtualTab === 'ONGOING' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ borderRadius: '8px 8px 0 0', borderBottom: 'none' }}
             onClick={() => setVirtualTab('ONGOING')}
-            style={{ fontSize: '0.88rem', padding: '0.5rem 1rem' }}
           >
-            <CreditCard size={15} />
-            <span>Ongoing Loans ({ongoingLoans.length})</span>
+            <Clock size={15} /> Ongoing Loans ({ongoingLoans.length || selectedUser.activeLoansCount || 0})
           </button>
-
           <button
-            className={`filter-chip ${virtualTab === 'COMPLETED' ? 'active' : ''}`}
+            className={`btn ${virtualTab === 'COMPLETED' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ borderRadius: '8px 8px 0 0', borderBottom: 'none' }}
             onClick={() => setVirtualTab('COMPLETED')}
-            style={{ fontSize: '0.88rem', padding: '0.5rem 1rem' }}
           >
-            <Award size={15} />
-            <span>Completed Loans History ({completedLoans.length})</span>
+            <CheckCircle2 size={15} /> Settled Archive ({completedLoans.length})
           </button>
-
           <button
-            className={`filter-chip ${virtualTab === 'LEDGER' ? 'active' : ''}`}
+            className={`btn ${virtualTab === 'LEDGER' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ borderRadius: '8px 8px 0 0', borderBottom: 'none' }}
             onClick={() => setVirtualTab('LEDGER')}
-            style={{ fontSize: '0.88rem', padding: '0.5rem 1rem' }}
           >
-            <History size={15} />
-            <span>Permanent Payment Ledger ({paymentHistory.length})</span>
-          </button>
-
-          <button
-            className={`filter-chip ${virtualTab === 'KYC' ? 'active' : ''}`}
-            onClick={() => setVirtualTab('KYC')}
-            style={{ fontSize: '0.88rem', padding: '0.5rem 1rem' }}
-          >
-            <FileText size={15} />
-            <span>KYC & Account Details</span>
+            <Receipt size={15} /> Payment Ledger
           </button>
         </div>
 
-        {/* TAB 1: ONGOING LOANS */}
+        {/* Tab 1: Ongoing Loans */}
         {virtualTab === 'ONGOING' && (
-          <div className="tab-pane">
+          <div>
             {ongoingLoans.length === 0 ? (
-              <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <CheckCircle2 size={42} color="var(--emerald)" style={{ margin: '0 auto 0.75rem auto' }} />
-                <h3 style={{ color: '#fff', margin: '0 0 0.5rem 0' }}>No Active Loans Outstanding</h3>
-                <p style={{ maxWidth: 450, margin: '0 auto 1.25rem auto' }}>
-                  This borrower currently has zero active financial obligations. All past loans are completed.
-                </p>
+              <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                <CreditCard size={36} style={{ opacity: 0.5, marginBottom: '0.75rem' }} />
+                <p style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 600 }}>No Active Loans Currently</p>
+                <p style={{ fontSize: '0.85rem', margin: '0.5rem 0 1.25rem 0' }}>This borrower has completed all previous obligations or is newly enrolled.</p>
                 <button className="btn btn-primary" onClick={() => handleOpenQuickLoan(selectedUser)}>
-                  <Plus size={15} />
-                  <span>Assign New Loan Cycle</span>
+                  <Plus size={16} /> Assign New Loan
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.25rem' }}>
-                {ongoingLoans.map((loan, idx) => {
-                  const progressPct =
-                    loan.total_installments > 0
-                      ? Math.round(((loan.paid_installments || 0) / loan.total_installments) * 100)
-                      : 0;
-
-                  return (
-                    <div className="card" key={idx} style={{ padding: '1.25rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <div>
-                          <strong style={{ color: '#fff', fontSize: '1.05rem' }}>
-                            {loan.loan_code || loan.loanNumber || `Loan #${idx + 1}`}
-                          </strong>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                            {loan.loan_name || `${loan.frequency || 'WEEKLY'} Cycle`}
-                          </div>
-                        </div>
-                        <StatusBadge status={loan.status || 'ACTIVE'} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+                {ongoingLoans.map((loan, idx) => (
+                  <div key={loan.id || idx} className="card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--emerald)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                          {loan.loan_name || loan.product_name || `Loan #${loan.loan_number || idx + 1}`}
+                        </h4>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{loan.loan_code || loan.loan_number}</span>
                       </div>
+                      <StatusBadge status={loan.status || 'ACTIVE'} />
+                    </div>
 
-                      {/* Financial Numbers Matrix */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: 'rgba(255,255,255,0.02)', padding: '0.85rem', borderRadius: 8, marginBottom: '1rem' }}>
-                        <div>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Principal Disbursed:</span>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>
-                            {formatCurrency(loan.principal || loan.principal_amount)}
-                          </div>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Total Repayable:</span>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>
-                            {formatCurrency(loan.total_repayable || loan.total_repayment_amount)}
-                          </div>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Installment Amount:</span>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
-                            {formatCurrency(loan.installment_amount)} / {loan.frequency || 'Wk'}
-                          </div>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Remaining Balance:</span>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24' }}>
-                            {formatCurrency(loan.remaining_balance || 0)}
-                          </div>
-                        </div>
+                    <div style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem', border: '1px solid var(--border-color)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Principal:</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(loan.principal_amount || loan.principal || 20000)}</strong>
                       </div>
-
-                      {/* Repayment Progress Bar */}
-                      <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: 4 }}>
-                          <span style={{ color: '#fff' }}>
-                            Progress: <strong>{loan.paid_installments || 0}</strong> of <strong>{loan.total_installments || 10}</strong> installments
-                          </span>
-                          <span style={{ color: 'var(--emerald)', fontWeight: 700 }}>{progressPct}%</span>
-                        </div>
-                        <div style={{ width: '100%', height: 8, background: '#334155', borderRadius: 4, overflow: 'hidden' }}>
-                          <div style={{ width: `${progressPct}%`, height: '100%', background: 'var(--emerald)', borderRadius: 4 }} />
-                        </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Remaining Balance:</span>
+                        <strong style={{ color: 'var(--amber)' }}>{formatCurrency(loan.remaining_balance || loan.outstanding_amount || 14000)}</strong>
                       </div>
-
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Disbursed: {loan.disbursed_date || '2026-08-15'}</span>
-                        <span>Next Due: <strong>{loan.next_due_date || '2026-09-15'}</strong></span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Installments Paid:</span>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                          {loan.paid_installments || 0} / {loan.total_installments || 10}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 2: COMPLETED LOANS HISTORY */}
+        {/* Tab 2: Settled Archive */}
         {virtualTab === 'COMPLETED' && (
-          <div className="tab-pane">
-            <div className="table-card">
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Loan Cycle</th>
-                      <th>Principal Disbursed</th>
-                      <th>Total Repaid</th>
-                      <th>Tenure & Frequency</th>
-                      <th>Settled Date</th>
-                      <th>Discipline Rating</th>
-                      <th>Status</th>
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Settled Loan History</h4>
+            {completedLoans.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>No archived or completed loans recorded yet.</p>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Loan Number</th>
+                    <th>Principal</th>
+                    <th>Total Repaid</th>
+                    <th>Settlement Date</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {completedLoans.map((cl, i) => (
+                    <tr key={i}>
+                      <td><strong>{cl.loan_number}</strong></td>
+                      <td>{formatCurrency(cl.principal_amount)}</td>
+                      <td style={{ color: 'var(--emerald)', fontWeight: 600 }}>{formatCurrency(cl.total_repayment_amount)}</td>
+                      <td>{cl.completed_at || 'Settled'}</td>
+                      <td><StatusBadge status="COMPLETED" /></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {completedLoans.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                          No completed loan cycles recorded for this borrower yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      completedLoans.map((cl, cIdx) => (
-                        <tr key={cIdx}>
-                          <td>
-                            <strong style={{ color: '#fff' }}>{cl.loan_code || `LN-2025-00${cIdx + 1}`}</strong>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cl.loan_name || `Cycle #${cIdx + 1}`}</div>
-                          </td>
-                          <td>{formatCurrency(cl.principal || cl.principal_amount || 10000)}</td>
-                          <td><strong style={{ color: 'var(--emerald)' }}>{formatCurrency(cl.total_repaid || cl.total_repayable || 11000)}</strong></td>
-                          <td>{cl.total_installments || 10} Installments ({cl.frequency || 'WEEKLY'})</td>
-                          <td>{cl.settled_date || '2025-08-20'}</td>
-                          <td>
-                            <span className="badge badge-emerald" style={{ fontSize: '0.72rem' }}>
-                              ✓ {cl.rating || '100% On-Time (Flawless)'}
-                            </span>
-                          </td>
-                          <td><StatusBadge status="COMPLETED" /></td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
-        {/* TAB 3: PERMANENT PAYMENT LEDGER */}
+        {/* Tab 3: Payment Ledger */}
         {virtualTab === 'LEDGER' && (
-          <div className="tab-pane">
-            <div className="table-card">
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Receipt #</th>
-                      <th>Date & Time</th>
-                      <th>Amount Paid</th>
-                      <th>Payment Mode</th>
-                      <th>Loan Ref</th>
-                      <th>Notes / Description</th>
-                      <th>Status</th>
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Live Payment Receipts & Circulation Ledger</h4>
+            {paymentHistory.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>No payment entries found for this borrower.</p>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Receipt No</th>
+                    <th>Date</th>
+                    <th>Amount Paid</th>
+                    <th>Payment Mode</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentHistory.map((p, i) => (
+                    <tr key={i}>
+                      <td><strong>{p.receipt_number || `REC-${i + 1}`}</strong></td>
+                      <td>{p.payment_date || new Date().toISOString().slice(0, 10)}</td>
+                      <td style={{ color: 'var(--emerald)', fontWeight: 600 }}>{formatCurrency(p.amount)}</td>
+                      <td>{p.payment_mode || 'UPI'}</td>
+                      <td><StatusBadge status="COMPLETED" /></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {paymentHistory.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                          No transactions recorded in ledger. Payments collected via reports or field officer will permanently appear here.
-                        </td>
-                      </tr>
-                    ) : (
-                      paymentHistory.map((p, pIdx) => (
-                        <tr key={pIdx}>
-                          <td>
-                            <code>{p.receiptNumber || p.receipt_number || p.payment_number || `RCP-${p.id}`}</code>
-                          </td>
-                          <td>{p.payment_date ? String(p.payment_date).slice(0, 10) : '2026-09-10'}</td>
-                          <td><strong style={{ color: 'var(--emerald)', fontSize: '0.95rem' }}>{formatCurrency(p.amount)}</strong></td>
-                          <td><span className="badge badge-blue">{p.payment_method || p.payment_mode || 'UPI'}</span></td>
-                          <td>{p.loan_code || p.loan_number || 'LN-2026-004'}</td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{p.notes || 'Periodic installment repayment'}</td>
-                          <td><span className="badge badge-emerald">VERIFIED</span></td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: KYC & DETAILS */}
-        {virtualTab === 'KYC' && (
-          <div className="tab-pane card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem' }}>Borrower KYC & Account Profile</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Full Name</span>
-                <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem' }}>{selectedUser.name}</div>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Customer Code</span>
-                <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem' }}>
-                  {selectedUser.customerCode || selectedUser.customer_code || `CUST-00${selectedUser.id}`}
-                </div>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Phone Number</span>
-                <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem' }}>{selectedUser.phone}</div>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Email</span>
-                <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem' }}>{selectedUser.email || 'Not provided'}</div>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Occupation / Business</span>
-                <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem' }}>{selectedUser.occupation || 'Self Employed'}</div>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Credit Limit Approved</span>
-                <div style={{ color: 'var(--emerald)', fontWeight: 700, fontSize: '0.95rem' }}>
-                  {formatCurrency(selectedUser.credit_limit || 50000)}
-                </div>
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Residential / Business Address</span>
-                <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem' }}>{selectedUser.address || 'Chennai, Tamil Nadu'}</div>
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Internal Remarks & Notes</span>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: 6 }}>
-                  {selectedUser.notes || 'No administrative notes recorded.'}
-                </div>
-              </div>
-            </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
@@ -665,24 +532,46 @@ export const ManageUsers = () => {
   }
 
   // =========================================================================
-  // VIEW 2: STANDARD USERS DIRECTORY TABLE
+  // VIEW 2: STANDARD USERS DIRECTORY TABLE (LIGHT FINTECH AESTHETIC)
   // =========================================================================
   return (
-    <div className="manage-users-page">
+    <div className="manage-users-page" style={{ padding: '0 0.5rem' }}>
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div className="welcome-tag">CENTRAL BORROWER & USER MANAGEMENT</div>
-          <h1 className="page-title">Borrower & User Directory</h1>
-          <p className="page-subtitle">
-            Database of all borrowers, merchants, and staff accounts with live financial summaries and complete payment history.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h1 className="page-title" style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Borrower & User Directory
+            </h1>
+            {activeOrg && (
+              <span
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: 6,
+                  background: 'rgba(79, 70, 229, 0.08)',
+                  color: 'var(--primary)',
+                  border: '1px solid rgba(79, 70, 229, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <Building size={14} />
+                {activeOrg.name} ({activeOrg.code || `ORG-${activeOrg.id}`})
+              </span>
+            )}
+          </div>
+          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Central database of active borrowers, shopkeepers, and field staff under this organization
           </p>
         </div>
 
         <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => navigate(getOrgPath('users/add'))}>
+          <button className="btn btn-primary" onClick={() => navigate(getOrgPath('users/add'))} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <UserPlus size={16} />
-            Onboard New Borrower
+            <span>Onboard New Borrower</span>
           </button>
         </div>
       </div>
@@ -695,22 +584,28 @@ export const ManageUsers = () => {
       )}
 
       {/* KPI Top Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Enrolled Users</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.5rem', color: '#fff' }}>{users.length}</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Enrolled Users</span>
+          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            {users.length}
+          </h3>
         </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Active Borrowers</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.5rem', color: 'var(--emerald)' }}>{totalActiveBorrowers}</h3>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Active Borrowers</span>
+          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--emerald)' }}>
+            {totalActiveBorrowers}
+          </h3>
         </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Outstanding Portfolio</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.5rem', color: '#fbbf24' }}>{formatCurrency(totalOutstanding)}</h3>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Outstanding Portfolio</span>
+          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--amber)' }}>
+            {formatCurrency(totalOutstanding)}
+          </h3>
         </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Completed Loans Archive</span>
-          <h3 style={{ margin: '0.35rem 0 0 0', fontSize: '1.5rem', color: 'var(--accent-primary)' }}>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Completed Loans Archive</span>
+          <h3 style={{ margin: '0.4rem 0 0 0', fontSize: '1.6rem', fontWeight: 700, color: 'var(--primary)' }}>
             {users.reduce((sum, u) => sum + (u.completedLoansCount || 0), 0)}
           </h3>
         </div>
@@ -718,11 +613,11 @@ export const ManageUsers = () => {
 
       {/* Search & Filter Bar */}
       <div className="table-controls" style={{ marginBottom: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div className="search-box" style={{ flex: 1, minWidth: 240 }}>
-          <Search size={18} />
+        <div className="search-box" style={{ flex: 1, minWidth: 260 }}>
+          <Search size={18} color="var(--text-muted)" />
           <input
             type="text"
-            placeholder="Search by name, phone, customer code, or shop..."
+            placeholder="Search by name, phone, customer code, or shop name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -731,7 +626,7 @@ export const ManageUsers = () => {
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <select
             className="form-input"
-            style={{ width: 160 }}
+            style={{ width: 180 }}
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -739,7 +634,7 @@ export const ManageUsers = () => {
             <option value="COMMON_CUSTOMER">Borrowers (Weekly)</option>
             <option value="SHOPKEEPER">Merchants (Daily)</option>
             <option value="FIELD_AGENT">Field Agents</option>
-            <option value="ADMIN">Admins</option>
+            <option value="ADMIN">Admins / Staff</option>
           </select>
 
           <select
@@ -774,133 +669,156 @@ export const ManageUsers = () => {
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                    No borrowers match the selected filters.
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                    <Users size={36} style={{ opacity: 0.4, marginBottom: '0.5rem' }} />
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>No borrowers or users found</div>
+                    <span style={{ fontSize: '0.85rem' }}>Try adjusting your search terms or filter selections.</span>
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: '50%',
-                            background: u.role === 'SHOPKEEPER' ? 'rgba(168, 85, 247, 0.15)' : 'rgba(99, 102, 241, 0.15)',
-                            color: u.role === 'SHOPKEEPER' ? 'var(--purple)' : 'var(--accent-primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: '0.9rem',
-                          }}
-                        >
-                          {u.name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{u.name}</strong>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {u.customerCode || u.customer_code || `CUST-00${u.id}`}
+                filteredUsers.map((u) => {
+                  const isShop = u.role === 'SHOPKEEPER';
+                  const isWeekly = u.role === 'COMMON_CUSTOMER';
+                  const isAdmin = u.role === 'ADMIN' || u.role === 'SUPER_ADMIN';
+
+                  return (
+                    <tr key={u.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div
+                            style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: '50%',
+                              background: isShop ? 'rgba(124, 58, 237, 0.12)' : isWeekly ? 'rgba(79, 70, 229, 0.12)' : 'rgba(5, 150, 105, 0.12)',
+                              color: isShop ? 'var(--purple)' : isWeekly ? 'var(--primary)' : 'var(--emerald)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '0.95rem',
+                            }}
+                          >
+                            {u.name?.charAt(0) || 'U'}
+                          </div>
+                          <div>
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem', display: 'block' }}>
+                              {u.name}
+                            </strong>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {u.customerCode || u.customer_code || `CUST-${u.id}`}
+                            </span>
                           </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td>
-                      <span className={`badge ${u.role === 'SHOPKEEPER' ? 'badge-purple' : 'badge-blue'}`}>
-                        {u.role === 'SHOPKEEPER' ? 'Merchant (Daily)' : (u.role === 'COMMON_CUSTOMER' ? 'Borrower (Weekly)' : u.role)}
-                      </span>
-                      {u.shopName && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                          {u.shopName}
+                      <td>
+                        <span
+                          className="badge"
+                          style={{
+                            background: isShop ? 'rgba(124, 58, 237, 0.1)' : isWeekly ? 'rgba(79, 70, 229, 0.1)' : 'rgba(5, 150, 105, 0.1)',
+                            color: isShop ? 'var(--purple)' : isWeekly ? 'var(--primary)' : 'var(--emerald)',
+                            fontWeight: 600,
+                            padding: '0.25rem 0.6rem',
+                            borderRadius: 4,
+                            fontSize: '0.75rem',
+                          }}
+                        >
+                          {isShop ? 'Merchant (Daily)' : isWeekly ? 'Borrower (Weekly)' : u.role}
+                        </span>
+                        {u.shopName && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                            {u.shopName}
+                          </div>
+                        )}
+                      </td>
+
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                          <Phone size={13} color="var(--text-muted)" />
+                          {u.phone}
                         </div>
-                      )}
-                    </td>
-
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: '#fff' }}>
-                        <Phone size={13} color="var(--text-muted)" />
-                        {u.phone}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                        📍 {u.address || u.city || 'Chennai'}
-                      </div>
-                    </td>
-
-                    <td>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        {u.dateJoined || u.joined_date || '2025-05-12'}
-                      </span>
-                    </td>
-
-                    <td>
-                      <span style={{ fontWeight: 600, color: (u.activeLoansCount || 0) > 0 ? 'var(--emerald)' : 'var(--text-muted)' }}>
-                        {u.activeLoansCount || 0} active
-                      </span>
-                      {(u.completedLoansCount || 0) > 0 && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          ({u.completedLoansCount} settled)
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          📍 {u.address || u.city || 'Chennai'}
                         </div>
-                      )}
-                    </td>
+                      </td>
 
-                    <td>
-                      <strong style={{ color: (u.outstandingAmount || 0) > 0 ? '#fbbf24' : 'var(--emerald)' }}>
-                        {formatCurrency(u.outstandingAmount || 0)}
-                      </strong>
-                    </td>
+                      <td>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {u.dateJoined || '2026-09-11'}
+                        </span>
+                      </td>
 
-                    <td>
-                      <StatusBadge status={u.status} />
-                    </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: (u.activeLoansCount || 0) > 0 ? 'var(--emerald)' : 'var(--text-muted)' }}>
+                          {u.activeLoansCount || 0} active
+                        </span>
+                        {(u.completedLoansCount || 0) > 0 && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            ({u.completedLoansCount} settled)
+                          </div>
+                        )}
+                      </td>
 
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        {/* Open Virtual Page View */}
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          title="Open Virtual Profile & Full History"
-                          onClick={() => openVirtualUserPage(u)}
-                          style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
-                        >
-                          <Eye size={14} />
-                          <span>View History</span>
-                        </button>
+                      <td>
+                        <strong style={{ color: (u.outstandingAmount || 0) > 0 ? 'var(--amber)' : 'var(--emerald)' }}>
+                          {formatCurrency(u.outstandingAmount || 0)}
+                        </strong>
+                      </td>
 
-                        {/* Edit User Details */}
-                        <button
-                          className="btn-icon"
-                          title="Edit User Details"
-                          onClick={() => openEditModal(u)}
-                        >
-                          <Edit2 size={15} color="var(--accent-primary)" />
-                        </button>
+                      <td>
+                        <StatusBadge status={u.status || 'ACTIVE'} />
+                      </td>
 
-                        {/* Quick Loan Issuance */}
-                        <button
-                          className="btn-icon"
-                          title="Assign Loan / Obligation"
-                          onClick={() => handleOpenQuickLoan(u)}
-                        >
-                          <Plus size={15} color="var(--emerald)" />
-                        </button>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {/* Open Virtual Page View */}
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            title="Open Virtual Profile & Full History"
+                            onClick={() => openVirtualUserPage(u)}
+                            style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                          >
+                            <Eye size={14} color="var(--primary)" />
+                            <span>View History</span>
+                          </button>
 
-                        {/* Activate / Deactivate Toggle */}
-                        <button
-                          className="btn-icon"
-                          title={u.status === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
-                          onClick={() =>
-                            handleStatusChange(u.id, u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE', u.name)
-                          }
-                        >
-                          <Power size={15} color={u.status === 'ACTIVE' ? 'var(--red)' : 'var(--emerald)'} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {/* Edit User Details */}
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            title="Edit User Details"
+                            onClick={() => openEditModal(u)}
+                            style={{ padding: '0.35rem 0.55rem' }}
+                          >
+                            <Edit2 size={14} color="var(--primary)" />
+                          </button>
+
+                          {/* Quick Loan Issuance */}
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            title="Assign Loan / Obligation"
+                            onClick={() => handleOpenQuickLoan(u)}
+                            style={{ padding: '0.35rem 0.55rem' }}
+                          >
+                            <Plus size={14} color="var(--emerald)" />
+                          </button>
+
+                          {/* Activate / Deactivate Toggle */}
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            title={u.status === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
+                            onClick={() =>
+                              handleStatusChange(u.id, u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE', u.name)
+                            }
+                            style={{ padding: '0.35rem 0.55rem' }}
+                          >
+                            <Power size={14} color={u.status === 'ACTIVE' ? 'var(--rose)' : 'var(--emerald)'} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -914,17 +832,16 @@ export const ManageUsers = () => {
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title={`Edit Borrower / User: ${editFormData.name}`}
+          title={`Edit Borrower: ${editFormData.name}`}
         >
           <form onSubmit={handleEditSubmit}>
             {editError && (
-              <div className="feedback-banner" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'var(--red)', marginBottom: '1rem' }}>
-                <AlertTriangle size={16} color="var(--red)" />
-                <span style={{ color: '#fca5a5' }}>{editError}</span>
+              <div style={{ padding: '0.75rem', background: 'rgba(225,29,72,0.1)', color: 'var(--rose)', borderRadius: 6, marginBottom: '1rem', fontSize: '0.85rem' }}>
+                {editError}
               </div>
             )}
 
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label">Full Name *</label>
               <input
                 type="text"
@@ -935,7 +852,7 @@ export const ManageUsers = () => {
               />
             </div>
 
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Phone Number *</label>
                 <input
@@ -946,33 +863,31 @@ export const ManageUsers = () => {
                   required
                 />
               </div>
-
               <div className="form-group">
-                <label className="form-label">Role / Category</label>
+                <label className="form-label">Status</label>
                 <select
                   className="form-input"
-                  value={editFormData.role}
-                  onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                  value={editFormData.status}
+                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
                 >
-                  <option value="COMMON_CUSTOMER">Borrower (Weekly)</option>
-                  <option value="SHOPKEEPER">Merchant (Daily)</option>
-                  <option value="FIELD_AGENT">Field Agent</option>
-                  <option value="ADMIN">Admin Staff</option>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                  <option value="SUSPENDED">SUSPENDED</option>
                 </select>
               </div>
             </div>
 
-            {editFormData.role === 'SHOPKEEPER' ? (
-              <div className="form-group">
-                <label className="form-label">Shop / Business Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editFormData.shopName}
-                  onChange={(e) => setEditFormData({ ...editFormData, shopName: e.target.value })}
-                />
-              </div>
-            ) : (
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Residential / Shop Address</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editFormData.address}
+                onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label">Occupation / Trade</label>
                 <input
@@ -982,70 +897,23 @@ export const ManageUsers = () => {
                   onChange={(e) => setEditFormData({ ...editFormData, occupation: e.target.value })}
                 />
               </div>
-            )}
-
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Credit Limit (₹)</label>
+                <label className="form-label">Shop / Enterprise Name</label>
                 <input
-                  type="number"
+                  type="text"
                   className="form-input"
-                  value={editFormData.credit_limit}
-                  onChange={(e) => setEditFormData({ ...editFormData, credit_limit: e.target.value })}
+                  value={editFormData.shopName}
+                  onChange={(e) => setEditFormData({ ...editFormData, shopName: e.target.value })}
                 />
               </div>
-
-              <div className="form-group">
-                <label className="form-label">Account Status</label>
-                <select
-                  className="form-input"
-                  value={editFormData.status}
-                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
-                >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="INACTIVE">INACTIVE</option>
-                  <option value="SUSPENDED">SUSPENDED</option>
-                  <option value="DEFAULTER">DEFAULTER</option>
-                </select>
-              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Residential / Stall Address</label>
-              <textarea
-                className="form-input"
-                rows={2}
-                value={editFormData.address}
-                onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Internal Remarks / Notes</label>
-              <input
-                type="text"
-                className="form-input"
-                value={editFormData.notes}
-                onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsEditModalOpen(false)}
-              >
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)}>
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={savingEdit}
-                className="btn btn-primary"
-                style={{ minWidth: 150, justifyContent: 'center' }}
-              >
-                <Save size={15} />
-                <span>{savingEdit ? 'Saving...' : 'Save Changes'}</span>
+              <button type="submit" className="btn btn-primary" disabled={savingEdit}>
+                {savingEdit ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -1053,17 +921,17 @@ export const ManageUsers = () => {
       )}
 
       {/* ========================================== */}
-      {/* 3. ASSIGN LOAN MODAL                       */}
+      {/* 3. QUICK LOAN ASSIGNMENT MODAL             */}
       {/* ========================================== */}
       {isQuickLoanModalOpen && quickLoanTarget && (
         <Modal
           isOpen={isQuickLoanModalOpen}
           onClose={() => setIsQuickLoanModalOpen(false)}
-          title={`Assign Loan to ${quickLoanTarget.name}`}
+          title={`Assign Loan to: ${quickLoanTarget.name}`}
         >
           <form onSubmit={handleQuickLoanSubmit}>
-            <div className="form-group">
-              <label className="form-label">Loan Purpose / Description</label>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Loan Title / Product Name</label>
               <input
                 type="text"
                 className="form-input"
@@ -1073,7 +941,7 @@ export const ManageUsers = () => {
               />
             </div>
 
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label">Principal Amount (₹)</label>
                 <input
@@ -1081,6 +949,7 @@ export const ManageUsers = () => {
                   className="form-input"
                   value={quickLoanForm.principal}
                   onChange={(e) => setQuickLoanForm({ ...quickLoanForm, principal: e.target.value })}
+                  min="1000"
                   required
                 />
               </div>
@@ -1092,38 +961,19 @@ export const ManageUsers = () => {
                   value={quickLoanForm.frequency}
                   onChange={(e) => setQuickLoanForm({ ...quickLoanForm, frequency: e.target.value })}
                 >
-                  <option value="WEEKLY">WEEKLY (10 Weeks @ 10% Interest)</option>
-                  <option value="DAILY">DAILY (25 Days @ 12.5% Interest)</option>
+                  <option value="WEEKLY">Weekly Installments</option>
+                  <option value="DAILY">Daily Collection (Shopkeeper)</option>
+                  <option value="MONTHLY">Monthly EMI</option>
                 </select>
               </div>
             </div>
 
-            <div style={{ padding: '0.85rem', background: 'rgba(99, 102, 241, 0.08)', borderRadius: 8, marginBottom: '1.25rem' }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <strong>Calculated Obligation:</strong> Total Repayable: ₹
-                {Math.round(parseFloat(quickLoanForm.principal || 0) * (quickLoanForm.frequency === 'DAILY' ? 1.125 : 1.1))} |
-                Installment: ₹
-                {Math.round(
-                  (parseFloat(quickLoanForm.principal || 0) * (quickLoanForm.frequency === 'DAILY' ? 1.125 : 1.1)) /
-                    (quickLoanForm.frequency === 'DAILY' ? 25 : 10)
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsQuickLoanModalOpen(false)}
-              >
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsQuickLoanModalOpen(false)}>
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={submittingLoan}
-                className="btn btn-primary"
-              >
-                {submittingLoan ? 'Generating Schedule...' : 'Disburse & Generate Schedule'}
+              <button type="submit" className="btn btn-primary" disabled={submittingLoan}>
+                {submittingLoan ? 'Generating Schedule...' : 'Disburse & Assign Loan'}
               </button>
             </div>
           </form>

@@ -18,6 +18,7 @@ import {
   Bell,
   Store,
   Calendar,
+  Clock,
   UserPlus,
   CreditCard,
   Receipt,
@@ -182,6 +183,11 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         icon: Calendar,
       },
       {
+        path: `${orgPrefix}/monthly-customers`,
+        label: "Monthly Customers",
+        icon: Clock,
+      },
+      {
         path: `${orgPrefix}/users`,
         label: "Manage Borrowers",
         icon: Users,
@@ -208,6 +214,11 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         icon: Receipt,
       },
       { label: "Administration", section: true },
+      {
+        path: `${orgPrefix}/staff`,
+        label: "Staff & Collectors",
+        icon: ShieldCheck,
+      },
       {
         path: `${orgPrefix}/profile`,
         label: "Branch Profile",

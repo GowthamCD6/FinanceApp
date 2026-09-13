@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS loan_products (
     product_code VARCHAR(50) NOT NULL,
     product_name VARCHAR(150) NOT NULL,
     customer_type ENUM('COMMON_CUSTOMER', 'SHOPKEEPER', 'BOTH') NOT NULL,
-    repayment_frequency ENUM('DAILY', 'WEEKLY') NOT NULL,
+    repayment_frequency ENUM('DAILY', 'WEEKLY', 'MONTHLY') NOT NULL,
     status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
     description TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS loans (
     total_repayment_amount DECIMAL(15,2) NOT NULL,
     total_installments INT UNSIGNED NOT NULL,
     paid_installments INT UNSIGNED NOT NULL DEFAULT 0,
-    repayment_frequency ENUM('DAILY', 'WEEKLY') NOT NULL,
+    repayment_frequency ENUM('DAILY', 'WEEKLY', 'MONTHLY') NOT NULL,
     disbursement_method ENUM('CASH', 'BANK_TRANSFER', 'UPI') NOT NULL DEFAULT 'CASH',
     status ENUM(
         'PENDING',

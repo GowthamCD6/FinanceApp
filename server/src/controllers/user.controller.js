@@ -2,7 +2,8 @@ const userService = require('../services/user.service');
 
 async function createUser(req, res) {
   try {
-    const user = await userService.createUser(req.body, req.user?.id || null);
+    const orgId = req.body.organizationId || req.body.organization_id || req.headers['x-organization-id'] || req.user?.organization_id || 1;
+    const user = await userService.createUser({ ...req.body, organizationId: orgId }, req.user?.id || null);
     return res.status(201).json({
       success: true,
       message: 'User created successfully.',
@@ -16,11 +17,14 @@ async function createUser(req, res) {
 
 async function getUsers(req, res) {
   try {
-    const { search, role, status, page, limit } = req.query;
+    const { search, role, status, scope, page, limit, organizationId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
     const result = await userService.getUsers({
       search,
       role,
       status,
+      scope,
+      organizationId: orgId,
       page: parseInt(page || '1', 10),
       limit: parseInt(limit || '50', 10),
     });

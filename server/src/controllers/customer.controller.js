@@ -2,7 +2,8 @@ const customerService = require('../services/customer.service');
 
 async function createCustomer(req, res) {
   try {
-    const result = await customerService.createCustomer(req.body, req.user.id);
+    const orgId = req.body.organizationId || req.body.organization_id || req.headers['x-organization-id'] || req.user?.organization_id || 1;
+    const result = await customerService.createCustomer({ ...req.body, organizationId: orgId }, req.user.id);
     return res.status(201).json({ success: true, message: 'Customer created successfully.', data: result });
   } catch (error) {
     console.error('Create customer error:', error);
@@ -12,11 +13,13 @@ async function createCustomer(req, res) {
 
 async function getCustomers(req, res) {
   try {
-    const { search, customerType, status, page, limit } = req.query;
+    const { search, customerType, status, page, limit, organizationId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
     const result = await customerService.getCustomers({
       search,
       customerType,
       status,
+      organizationId: orgId,
       page: parseInt(page || '1', 10),
       limit: parseInt(limit || '20', 10),
     });
@@ -81,8 +84,9 @@ async function updateCustomerStatus(req, res) {
 
 async function getWeeklyCustomers(req, res) {
   try {
-    const { search, status, area } = req.query;
-    const result = await customerService.getWeeklyCustomers({ search, status, area });
+    const { search, status, area, organizationId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
+    const result = await customerService.getWeeklyCustomers({ search, status, area, organizationId: orgId });
     return res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get weekly customers error:', error);
@@ -92,11 +96,24 @@ async function getWeeklyCustomers(req, res) {
 
 async function getShopkeepers(req, res) {
   try {
-    const { search, status, route } = req.query;
-    const result = await customerService.getShopkeepers({ search, status, route });
+    const { search, status, route, organizationId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
+    const result = await customerService.getShopkeepers({ search, status, route, organizationId: orgId });
     return res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get shopkeepers error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function getMonthlyCustomers(req, res) {
+  try {
+    const { search, status, organizationId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
+    const result = await customerService.getMonthlyCustomers({ search, status, organizationId: orgId });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Get monthly customers error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 }
@@ -110,5 +127,5 @@ module.exports = {
   updateCustomerStatus,
   getWeeklyCustomers,
   getShopkeepers,
+  getMonthlyCustomers,
 };
-

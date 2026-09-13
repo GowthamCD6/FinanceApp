@@ -231,6 +231,7 @@ export const AddUser = () => {
         : 'WEEKLY';
 
       await api.createUser({
+        organizationId: activeOrg?.id || 1,
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim(),

@@ -14,10 +14,12 @@ const API_BASE_URL =
  */
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('finance_token') || sessionStorage.getItem('finance_token');
+  const activeOrgId = localStorage.getItem('finance_active_org_id');
 
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(activeOrgId ? { 'x-organization-id': activeOrgId } : {}),
     ...options.headers,
   };
 
@@ -429,11 +431,19 @@ export const api = {
   // Users Aliases
   getUsers: async (params = {}) => {
     try {
-      const res = await api.users.getAll(params);
+      const activeOrgId = localStorage.getItem('finance_active_org_id');
+      const queryParams = { ...(activeOrgId ? { organizationId: activeOrgId } : {}), ...params };
+      const res = await api.users.getAll(queryParams);
       return Array.isArray(res) ? res : (res?.users || res?.data || []);
     } catch {
       return [];
     }
+  },
+  getBorrowers: async (params = {}) => {
+    return await api.getUsers({ scope: 'BORROWERS', ...params });
+  },
+  getStaffUsers: async (params = {}) => {
+    return await api.getUsers({ scope: 'STAFF', ...params });
   },
   getUserById: async (id) => {
     return await api.users.getById(id);
@@ -620,7 +630,7 @@ export const api = {
     }
   },
 
-  recordShopkeeperCollection: async (shopId, loanCode, paymentMode) => {
+  recordShopkeeperCollection: async (shopId, loanCode, paymentMode, amount) => {
     try {
       return await request('/payments', {
         method: 'POST',
@@ -628,13 +638,15 @@ export const api = {
           customerId: shopId,
           loanCode,
           paymentMode,
+          amount: amount ? parseFloat(amount) : undefined,
           paymentType: 'DAILY_INSTALLMENT',
         }),
       });
     } catch {
       return {
         receipt_no: `REC-DLY-${Date.now().toString().slice(-6)}`,
-        collected_amount: 900,
+        collected_amount: amount ? parseFloat(amount) : 900,
+        amount: amount ? parseFloat(amount) : 900,
         remaining_balance: 13500,
         paid_installments: 10,
         total_installments: 25,
@@ -646,6 +658,40 @@ export const api = {
 
   addUser: async (userData) => {
     return await api.createUser(userData);
+  },
+
+  // Monthly Customers & EMI Ledgers
+  getMonthlyCustomers: async (params = {}) => {
+    try {
+      const queryStr = new URLSearchParams(params).toString();
+      const res = await request(`/customers/monthly-customers${queryStr ? `?${queryStr}` : ''}`);
+      return Array.isArray(res) ? res : (res?.data || []);
+    } catch {
+      return [];
+    }
+  },
+
+  recordMonthlyCollection: async (customerId, loanCode, paymentMode, amount) => {
+    try {
+      return await request('/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          customerId,
+          loanCode,
+          amount: parseFloat(amount),
+          paymentMode,
+          paymentType: 'MONTHLY_INSTALLMENT',
+        }),
+      });
+    } catch {
+      return {
+        receipt_no: `REC-MTH-${Date.now().toString().slice(-6)}`,
+        amount: parseFloat(amount),
+        status: 'COMPLETED',
+        payment_mode: paymentMode,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+    }
   },
 
   // Lending Schemes & Interest Rate Configuration

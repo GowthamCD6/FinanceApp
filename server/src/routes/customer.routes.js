@@ -14,6 +14,7 @@ router.get('/:id/lifecycle', requirePermission('CUSTOMER_READ'), customerControl
 // Specialized Division Collections
 router.get('/weekly-customers', requirePermission('CUSTOMER_READ'), customerController.getWeeklyCustomers);
 router.get('/shopkeepers', requirePermission('CUSTOMER_READ'), customerController.getShopkeepers);
+router.get('/monthly-customers', requirePermission('CUSTOMER_READ'), customerController.getMonthlyCustomers);
 
 // Standard Customer CRUD
 router.post('/', requirePermission('CUSTOMER_CREATE'), customerController.createCustomer);
@@ -23,4 +24,5 @@ router.get('/:id', requirePermission('CUSTOMER_READ'), customerController.getCus
 router.patch('/:id/status', requirePermission('CUSTOMER_UPDATE'), customerController.updateCustomerStatus);
 
 module.exports = router;
+
 
