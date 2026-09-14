@@ -64,8 +64,9 @@ export const ProtectedRoute = ({ allowedRoles = null, children = null }) => {
       // Redirect to their default dashboard
       if (userRoles.includes('FIELD_AGENT')) {
         return <Navigate to="/staff/dashboard" replace />;
-      } else if (userRoles.includes('ADMIN')) {
-        return <Navigate to="/admin/dashboard" replace />;
+      } else if (userRoles.includes('BRANCH_ADMIN') || userRoles.includes('ADMIN') || userRoles.includes('ORG_ADMIN')) {
+        const orgPath = user?.organization_id ? `/org/${user.organization_id}/dashboard` : '/admin/dashboard';
+        return <Navigate to={orgPath} replace />;
       } else {
         return <Navigate to="/login" replace />;
       }

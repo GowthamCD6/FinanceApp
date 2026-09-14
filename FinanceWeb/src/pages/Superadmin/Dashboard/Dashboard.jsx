@@ -492,6 +492,19 @@ export const SuperAdminDashboard = () => {
 
                   <button
                     type="button"
+                    className="btn-card-edit"
+                    title="Manage Branches"
+                    onClick={() => {
+                      setActiveOrg(org.id);
+                      navigate(`/org/${org.id}/branches`);
+                    }}
+                  >
+                    <Building size={14} />
+                    <span>Branches</span>
+                  </button>
+
+                  <button
+                    type="button"
                     className={`btn-card-power ${org.status === 'ACTIVE' ? 'power-suspend' : 'power-activate'}`}
                     title={org.status === 'ACTIVE' ? 'Suspend Organization' : 'Activate Organization'}
                     onClick={() => handleToggleStatus(org)}

@@ -16,18 +16,25 @@ async function login(req, res) {
     );
 
     if (users.length === 0) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+      const isEmail = identifier.includes('@');
+      return res.status(404).json({
+        success: false,
+        message: isEmail ? 'This email is not registered.' : 'This phone number is not registered.',
+      });
     }
 
     const user = users[0];
 
     if (user.status !== 'ACTIVE') {
-      return res.status(403).json({ success: false, message: 'Account is deactivated or suspended.' });
+      return res.status(403).json({ success: false, message: 'Account is deactivated or suspended. Please contact administrator.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+      return res.status(401).json({
+        success: false,
+        message: 'Either the password or email is wrong.',
+      });
     }
 
     // Update last login
@@ -57,8 +64,20 @@ async function login(req, res) {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
+    // Fetch organization and branch metadata if assigned
+    let orgName = null;
+    let branchName = null;
+    if (user.organization_id) {
+      const orgRows = await query(`SELECT name FROM organizations WHERE id = ? LIMIT 1`, [user.organization_id]);
+      if (orgRows.length > 0) orgName = orgRows[0].name;
+    }
+    if (user.branch_id) {
+      const branchRows = await query(`SELECT branch_name FROM branches WHERE id = ? LIMIT 1`, [user.branch_id]);
+      if (branchRows.length > 0) branchName = branchRows[0].branch_name;
+    }
+
     let customerInfo = null;
-    if (roleNames.includes('USER')) {
+    if (roleNames.includes('USER') || user.role_type === 'USER' || user.role_type === 'SHOPKEEPER' || user.role_type === 'COMMON_CUSTOMER') {
       const custRows = await query(`SELECT id, customer_code, full_name, customer_type FROM customers WHERE user_id = ? LIMIT 1`, [user.id]);
       if (custRows.length > 0) customerInfo = custRows[0];
     }
@@ -73,6 +92,11 @@ async function login(req, res) {
           email: user.email,
           phone: user.phone,
           roles: roleNames,
+          role_type: user.role_type || (roleNames[0] || 'USER'),
+          organization_id: user.organization_id,
+          organization_name: orgName,
+          branch_id: user.branch_id,
+          branch_name: branchName,
           permissions: permissionNames,
           customer: customerInfo,
         },
@@ -99,42 +123,14 @@ async function googleLogin(req, res) {
       [email, google_id || '']
     );
 
-    let user = null;
-    if (users.length > 0) {
-      user = users[0];
-    } else {
-      // If user doesn't exist yet, check requested role criteria:
-      // Allowed: SUPER_ADMIN, ADMIN (Lender), FIELD_AGENT (Route Staff).
-      // NOT allowed for USER (borrower) or SHOPKEEPER through Google OAuth.
-      const targetRole = (role || 'ADMIN').toUpperCase();
-      if (!['SUPER_ADMIN', 'ADMIN', 'FIELD_AGENT'].includes(targetRole)) {
-        return res.status(403).json({
-          success: false,
-          message: 'Google Sign-In is restricted to SuperAdmin Authority, Lenders (Admins), and Route Staff.',
-        });
-      }
-
-      // Create new staff/admin user with Google credentials
-      const defaultOrgId = targetRole === 'SUPER_ADMIN' ? null : 1;
-      const defaultBranchId = targetRole === 'SUPER_ADMIN' ? null : 1;
-      const randomPhone = `98${Math.floor(10000000 + Math.random() * 90000000)}`;
-
-      const insertRes = await query(
-        `INSERT INTO users (organization_id, branch_id, name, email, phone, password_hash, role_type, status, google_id, avatar_url)
-         VALUES (?, ?, ?, ?, ?, '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', ?, 'ACTIVE', ?, ?)`,
-        [defaultOrgId, defaultBranchId, name || 'Google User', email, randomPhone, targetRole, google_id || email, avatar_url || null]
-      );
-
-      const newId = insertRes.insertId;
-      // Assign role in user_roles
-      const roleRow = await query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [targetRole]);
-      if (roleRow.length > 0) {
-        await query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [newId, roleRow[0].id]);
-      }
-
-      const created = await query(`SELECT * FROM users WHERE id = ?`, [newId]);
-      user = created[0];
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'This email is not registered. Please contact your administrator or sign in with registered credentials.',
+      });
     }
+
+    let user = users[0];
 
     if (user.status !== 'ACTIVE') {
       return res.status(403).json({ success: false, message: 'Account is deactivated or suspended.' });
@@ -205,10 +201,35 @@ async function googleLogin(req, res) {
 }
 
 async function getProfile(req, res) {
-  return res.json({
-    success: true,
-    data: req.user,
-  });
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthenticated.' });
+
+    let orgName = null;
+    let branchName = null;
+    if (user.organization_id) {
+      const orgRows = await query(`SELECT name FROM organizations WHERE id = ? LIMIT 1`, [user.organization_id]);
+      if (orgRows.length > 0) orgName = orgRows[0].name;
+    }
+    if (user.branch_id) {
+      const branchRows = await query(`SELECT branch_name FROM branches WHERE id = ? LIMIT 1`, [user.branch_id]);
+      if (branchRows.length > 0) branchName = branchRows[0].branch_name;
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        user: {
+          ...user,
+          organization_name: orgName,
+          branch_name: branchName,
+          role_type: user.role_type || (user.roles?.[0] || 'USER'),
+        },
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
 }
 
 module.exports = {

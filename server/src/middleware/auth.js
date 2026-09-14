@@ -44,7 +44,31 @@ async function authenticate(req, res, next) {
     user.permissions = permissions.map(p => p.name);
 
     req.user = user;
-    req.organizationId = req.headers['x-organization-id'] || req.query.organizationId || user.organization_id || null;
+
+    const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
+    const isOrgAdmin = user.roles.includes('ORG_ADMIN') || user.roles.includes('ADMIN');
+    const isBranchAdmin = user.roles.includes('BRANCH_ADMIN');
+    const isFieldAgent = user.roles.includes('FIELD_AGENT');
+
+    // Organization Scoping
+    if (isSuperAdmin) {
+      req.organizationId = req.headers['x-organization-id'] || req.query.organizationId || null;
+    } else {
+      req.organizationId = user.organization_id || req.headers['x-organization-id'] || null;
+    }
+
+    // Branch Scoping:
+    // If user is Branch Admin or Field Agent assigned to a branch, lock to their assigned branch_id unconditionally.
+    if (isBranchAdmin || isFieldAgent) {
+      req.branchId = user.branch_id || null;
+    } else if (isOrgAdmin || isSuperAdmin) {
+      // Org Admins and Super Admins can filter by specific branch or view all branches (null)
+      const requestedBranch = req.headers['x-branch-id'] || req.query.branchId;
+      req.branchId = (requestedBranch && requestedBranch !== 'ALL') ? requestedBranch : null;
+    } else {
+      req.branchId = user.branch_id || null;
+    }
+
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

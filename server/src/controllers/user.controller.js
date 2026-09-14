@@ -3,7 +3,8 @@ const userService = require('../services/user.service');
 async function createUser(req, res) {
   try {
     const orgId = req.body.organizationId || req.body.organization_id || req.headers['x-organization-id'] || req.user?.organization_id || 1;
-    const user = await userService.createUser({ ...req.body, organizationId: orgId }, req.user?.id || null);
+    const branchId = req.body.branchId || req.body.branch_id || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
+    const user = await userService.createUser({ ...req.body, organizationId: orgId, branchId }, req.user?.id || null);
     return res.status(201).json({
       success: true,
       message: 'User created successfully.',
@@ -17,14 +18,16 @@ async function createUser(req, res) {
 
 async function getUsers(req, res) {
   try {
-    const { search, role, status, scope, page, limit, organizationId } = req.query;
-    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
+    const { search, role, status, scope, page, limit, organizationId, branchId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
+    const effectiveBranchId = branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
     const result = await userService.getUsers({
       search,
       role,
       status,
       scope,
       organizationId: orgId,
+      branchId: effectiveBranchId,
       page: parseInt(page || '1', 10),
       limit: parseInt(limit || '50', 10),
     });

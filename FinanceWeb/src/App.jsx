@@ -36,6 +36,10 @@ import { AdminLoans } from './pages/Admin/AdminLoans';
 import { AdminReports } from './pages/Admin/Reports/Reports';
 import { AdminProfile } from './pages/Admin/Profile/Profile';
 import { LendingInterestRates } from './pages/Admin/InterestRates/LendingInterestRates';
+import { ManageBranches } from './pages/Admin/Branch/ManageBranches';
+
+// Dedicated Branch Officer / Branch Admin Portal Pages
+import { BranchAdminDashboard } from './pages/BranchAdmin/BranchAdminDashboard';
 
 export default function App() {
   return (
@@ -79,10 +83,11 @@ export default function App() {
                 </Route>
 
                 {/* Dedicated Branch & Organization Admin Portal (Direct Routes) */}
-                <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT']} />}>
                   <Route path="/admin">
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="branch-dashboard" element={<BranchAdminDashboard />} />
                     <Route path="shopkeepers" element={<Shopkeepers />} />
                     <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
                     <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
@@ -99,15 +104,21 @@ export default function App() {
                     <Route path="staff" element={<ManageStaff />} />
                     <Route path="users/add" element={<AddUser />} />
                     <Route path="loans" element={<AdminLoans />} />
-                    <Route path="interest-rates" element={<LendingInterestRates />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="profile" element={<AdminProfile />} />
+
+                    {/* Org-Level Governance Routes (Strictly for Org Admin & Super Admin) */}
+                    <Route element={<ProtectedRoute allowedRoles={['ORG_ADMIN', 'ADMIN', 'SUPER_ADMIN']} />}>
+                      <Route path="branches" element={<ManageBranches />} />
+                      <Route path="interest-rates" element={<LendingInterestRates />} />
+                    </Route>
                   </Route>
 
                   {/* Multi-Tenant Org-Scoped Routes (SuperAdmin & Tenant Admins) */}
                   <Route path="/org/:orgId">
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="branch-dashboard" element={<BranchAdminDashboard />} />
                     <Route path="shopkeepers" element={<Shopkeepers />} />
                     <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
                     <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
@@ -124,9 +135,14 @@ export default function App() {
                     <Route path="staff" element={<ManageStaff />} />
                     <Route path="users/add" element={<AddUser />} />
                     <Route path="loans" element={<AdminLoans />} />
-                    <Route path="interest-rates" element={<LendingInterestRates />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="profile" element={<AdminProfile />} />
+
+                    {/* Org-Level Governance Routes (Strictly for Org Admin & Super Admin) */}
+                    <Route element={<ProtectedRoute allowedRoles={['ORG_ADMIN', 'ADMIN', 'SUPER_ADMIN']} />}>
+                      <Route path="branches" element={<ManageBranches />} />
+                      <Route path="interest-rates" element={<LendingInterestRates />} />
+                    </Route>
                   </Route>
 
                   {/* Top-Level Collect Routes */}
@@ -140,12 +156,13 @@ export default function App() {
                   <Route path="/monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
                   <Route path="/monthly-collect/:customerId" element={<MonthlyCollect />} />
 
-                  {/* Top-Level Aliases */}
+                  <Route path="/branch-admin/dashboard" element={<Navigate to="/admin/branch-dashboard" replace />} />
                   <Route path="/shopkeepers" element={<Navigate to="/admin/shopkeepers" replace />} />
                   <Route path="/weekly-customers" element={<Navigate to="/admin/weekly-customers" replace />} />
                   <Route path="/monthly-customers" element={<Navigate to="/admin/monthly-customers" replace />} />
                   <Route path="/users" element={<Navigate to="/admin/users" replace />} />
                   <Route path="/staff" element={<Navigate to="/admin/staff" replace />} />
+                  <Route path="/branches" element={<Navigate to="/admin/branches" replace />} />
                   <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />
                   <Route path="/loans" element={<Navigate to="/admin/loans" replace />} />
                   <Route path="/interest-rates" element={<Navigate to="/admin/interest-rates" replace />} />

@@ -70,12 +70,16 @@ async function createLoanApplication(data, userId) {
 
   const totalRepaymentAmount = parsedPrincipal + contractedIncome;
   const loanNumber = await generateLoanNumber();
+  const effectiveOrgId = data.organizationId || data.organization_id || customer[0].organization_id || 1;
+  const effectiveBranchId = data.branchId || data.branch_id || customer[0].branch_id || null;
 
   const result = await query(
     `INSERT INTO loans 
-     (loan_number, customer_id, product_id, policy_id, parent_loan_id, principal_amount, contracted_income_amount, total_repayment_amount, total_installments, repayment_frequency, status, application_date, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_DATE, ?)`,
+     (organization_id, branch_id, loan_number, customer_id, product_id, policy_id, parent_loan_id, principal_amount, contracted_income_amount, total_repayment_amount, total_installments, repayment_frequency, status, application_date, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_DATE, ?)`,
     [
+      effectiveOrgId,
+      effectiveBranchId,
       loanNumber,
       customerId,
       productId,
@@ -325,7 +329,7 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
 /**
  * List loans with optional filters
  */
-async function getLoans({ status, customerId, frequency, organizationId, page = 1, limit = 20 }) {
+async function getLoans({ status, customerId, frequency, organizationId, branchId, page = 1, limit = 20 }) {
   const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
   const offset = (safePage - 1) * safeLimit;
@@ -335,6 +339,11 @@ async function getLoans({ status, customerId, frequency, organizationId, page = 
   if (organizationId && organizationId !== 'ALL') {
     whereClauses.push('(l.organization_id = ? OR c.organization_id = ?)');
     params.push(organizationId, organizationId);
+  }
+
+  if (branchId && branchId !== 'ALL') {
+    whereClauses.push('(l.branch_id = ? OR c.branch_id = ?)');
+    params.push(branchId, branchId);
   }
 
   if (status) {

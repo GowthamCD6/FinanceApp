@@ -113,6 +113,61 @@ const organizationController = {
       });
     }
   },
+
+  // PUT /api/organizations/:id/branches/:branchId
+  updateBranch: async (req, res, next) => {
+    try {
+      const { id, branchId } = req.params;
+      const data = await organizationService.updateBranch(id, branchId, req.body);
+      res.json({
+        success: true,
+        message: 'Branch updated successfully',
+        data,
+      });
+    } catch (err) {
+      res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  },
+
+  // PATCH /api/organizations/:id/branches/:branchId/status
+  updateBranchStatus: async (req, res, next) => {
+    try {
+      const { id, branchId } = req.params;
+      const { status } = req.body;
+      const data = await organizationService.updateBranchStatus(id, branchId, status);
+      res.json({
+        success: true,
+        message: `Branch status updated to ${status}`,
+        data,
+      });
+    } catch (err) {
+      res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  },
+
+  // POST /api/organizations/:id/branches/:branchId/assign-admin
+  assignBranchAdmin: async (req, res, next) => {
+    try {
+      const { id, branchId } = req.params;
+      const data = await organizationService.assignBranchAdmin(id, branchId, req.body);
+      res.json({
+        success: true,
+        message: 'Branch Admin assigned successfully',
+        data,
+      });
+    } catch (err) {
+      res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  },
   // GET /api/organizations/:id/lending-config
   getLendingConfig: async (req, res, next) => {
     try {

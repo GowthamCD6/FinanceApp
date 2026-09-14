@@ -1,74 +1,24 @@
 -- ==============================================================================
--- Fund Circulation & Lending Management Engine — Multi-Tenant Seed Data
+-- Fund Circulation & Lending Management Engine — Clean Base Seed Data
+-- Retains System Roles, Granular Permissions, System Settings & Super Admin
 -- ==============================================================================
 
--- 1. ORGANIZATIONS (TENANTS)
-INSERT INTO organizations (id, code, name, plan, status, currency, initial_capital, available_cash, total_lent, admin_name, admin_email, phone, address, city, state)
-VALUES 
-(1, 'ORG-APEX', 'Apex Finance Ltd', 'ENTERPRISE', 'ACTIVE', 'INR', 1000000.00, 222000.00, 760000.00, 'Rajesh Kumar', 'rajesh@apexfinance.com', '9876543210', '14, Financial District', 'Chennai', 'Tamil Nadu'),
-(2, 'ORG-HORIZON', 'Horizon Microcredit', 'PRO', 'ACTIVE', 'INR', 500000.00, 185000.00, 315000.00, 'Priya Sharma', 'priya@horizoncredit.in', '9840123456', '88, Gandhi Road', 'Coimbatore', 'Tamil Nadu'),
-(3, 'ORG-DELTA', 'Delta Rural Lending', 'STARTER', 'ACTIVE', 'INR', 300000.00, 120000.00, 180000.00, 'Suresh Babu', 'suresh@deltarural.in', '9443277890', '22, Bazaar Street', 'Madurai', 'Tamil Nadu')
-ON DUPLICATE KEY UPDATE 
-name=VALUES(name), plan=VALUES(plan), status=VALUES(status), 
-initial_capital=VALUES(initial_capital), available_cash=VALUES(available_cash), total_lent=VALUES(total_lent),
-admin_name=VALUES(admin_name), admin_email=VALUES(admin_email), phone=VALUES(phone);
-
--- 2. BRANCHES
-INSERT INTO branches (id, organization_id, branch_code, branch_name, location, phone, manager_name, status)
-VALUES
-(1, 1, 'BR-APX-01', 'Chennai Central Hub', 'Financial District, Chennai', '9876543210', 'Rajesh Kumar', 'ACTIVE'),
-(2, 1, 'BR-APX-02', 'Tambaram Field Office', 'Tambaram Market, Chennai', '9876543211', 'Venkatesh S', 'ACTIVE'),
-(3, 2, 'BR-HRZ-01', 'Coimbatore Main Branch', 'Gandhi Road, Coimbatore', '9840123456', 'Priya Sharma', 'ACTIVE'),
-(4, 3, 'BR-DLT-01', 'Madurai Rural Desk', 'Bazaar Street, Madurai', '9443277890', 'Suresh Babu', 'ACTIVE')
-ON DUPLICATE KEY UPDATE branch_name=VALUES(branch_name), location=VALUES(location);
-
--- 3. ORGANIZATION SETTINGS
-INSERT INTO organization_settings (
-    organization_id, 
-    daily_loan_enabled, 
-    weekly_loan_enabled, 
-    monthly_loan_enabled,
-    daily_interest_rate, 
-    daily_tenure_days, 
-    weekly_interest_rate, 
-    weekly_tenure_weeks, 
-    monthly_interest_rate, 
-    monthly_tenure_months,
-    daily_min_amount,
-    daily_max_amount,
-    weekly_min_amount,
-    weekly_max_amount,
-    monthly_min_amount,
-    monthly_max_amount,
-    weekly_collection_days,
-    weekly_collection_grace_days,
-    monthly_collection_start_day,
-    monthly_collection_end_day,
-    monthly_collection_grace_days,
-    daily_operating_days,
-    max_active_loans_per_customer, 
-    auto_eligibility_check, 
-    default_interest_rate, 
-    currency_symbol
-)
-VALUES
-(1, TRUE, TRUE, TRUE, 12.50, 25, 10.00, 10, 15.00, 12, 15000.00, 100000.00, 10000.00, 50000.00, 25000.00, 500000.00, 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT,SUN', 2, TRUE, 10.00, '₹'),
-(2, TRUE, TRUE, TRUE, 12.50, 25, 12.00, 10, 15.00, 12, 15000.00, 100000.00, 10000.00, 50000.00, 25000.00, 500000.00, 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT,SUN', 1, TRUE, 12.00, '₹'),
-(3, FALSE, TRUE, TRUE, 12.50, 25, 10.00, 10, 15.00, 12, 15000.00, 100000.00, 10000.00, 50000.00, 25000.00, 500000.00, 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT,SUN', 1, TRUE, 10.00, '₹')
-ON DUPLICATE KEY UPDATE default_interest_rate=VALUES(default_interest_rate);
-
--- 4. ROLES & PERMISSIONS
+-- 1. SYSTEM ROLES
 INSERT INTO roles (name, description) VALUES
 ('SUPER_ADMIN', 'Complete platform administration across all organizations'),
+('ORG_ADMIN', 'Organization Master Administrator managing all branches, staff, loans, and settings'),
 ('ADMIN', 'Organization Administrator managing branches, loans, and users'),
+('BRANCH_ADMIN', 'Branch Administrator strictly managing operations, staff, borrowers, and collections for their assigned branch only'),
 ('FIELD_AGENT', 'Field executive managing routes, disbursements, and physical collections'),
 ('SHOPKEEPER', 'Merchant borrower with daily micro-credit facility'),
 ('USER', 'Borrower / Customer with loan portfolio and schedule visibility')
 ON DUPLICATE KEY UPDATE description=VALUES(description);
 
+-- 2. GRANULAR SYSTEM PERMISSIONS
 INSERT INTO permissions (name, description) VALUES
 ('SYSTEM_ALL', 'Full system administration and configuration'),
 ('ORG_MANAGE', 'Create, edit, suspend, and view tenant organizations'),
+('BRANCH_MANAGE', 'Create and configure organizational branches'),
 ('CUSTOMER_CREATE', 'Create and register new borrowers and shopkeepers'),
 ('CUSTOMER_READ', 'View customer details and lending lifecycles'),
 ('CUSTOMER_UPDATE', 'Modify borrower information'),
@@ -85,18 +35,30 @@ INSERT INTO permissions (name, description) VALUES
 ('USER_MANAGE', 'Manage employee credentials and access levels')
 ON DUPLICATE KEY UPDATE description=VALUES(description);
 
+-- 3. ROLE PERMISSION MAPPINGS
 -- Super Admin: ALL permissions
 INSERT IGNORE INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r CROSS JOIN permissions p WHERE r.name = 'SUPER_ADMIN';
 
--- Admin: Org level operations
+-- Org Admin: All Org and Branch operations
 INSERT IGNORE INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r CROSS JOIN permissions p 
-WHERE r.name = 'ADMIN' AND p.name IN (
+WHERE r.name IN ('ORG_ADMIN', 'ADMIN') AND p.name IN (
+    'ORG_MANAGE', 'BRANCH_MANAGE',
     'CUSTOMER_CREATE', 'CUSTOMER_READ', 'CUSTOMER_UPDATE',
     'LOAN_CREATE', 'LOAN_APPROVE', 'LOAN_DISBURSE', 'LOAN_READ',
     'PAYMENT_CREATE', 'PAYMENT_READ',
     'FUND_READ', 'EXPENSE_CREATE', 'REPORT_VIEW', 'USER_MANAGE'
+);
+
+-- Branch Admin: Branch-scoped operations
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r CROSS JOIN permissions p 
+WHERE r.name = 'BRANCH_ADMIN' AND p.name IN (
+    'CUSTOMER_CREATE', 'CUSTOMER_READ', 'CUSTOMER_UPDATE',
+    'LOAN_CREATE', 'LOAN_APPROVE', 'LOAN_DISBURSE', 'LOAN_READ',
+    'PAYMENT_CREATE', 'PAYMENT_READ',
+    'FUND_READ', 'REPORT_VIEW', 'USER_MANAGE'
 );
 
 -- Field Agent: Collections and Customer Creation
@@ -114,75 +76,7 @@ WHERE r.name IN ('USER', 'SHOPKEEPER') AND p.name IN (
     'CUSTOMER_READ', 'LOAN_READ', 'PAYMENT_READ'
 );
 
--- 5. LOAN PRODUCTS
-INSERT INTO loan_products (id, organization_id, product_code, product_name, customer_type, repayment_frequency, description) VALUES
-(1, NULL, 'WEEKLY_STANDARD', 'Weekly Loan - Common Customers', 'COMMON_CUSTOMER', 'WEEKLY', '10-week installment loans designed for common borrowers with weekly collections'),
-(2, NULL, 'DAILY_SHOP', 'Daily Loan - Shopkeepers', 'SHOPKEEPER', 'DAILY', '25-day rapid installment loans tailored for retail merchants with daily collections'),
-(3, NULL, 'MONTHLY_SALARIED', 'Monthly Loan - Salaried Borrowers', 'COMMON_CUSTOMER', 'MONTHLY', '12-month structured EMI micro-loans for salaried individuals')
-ON DUPLICATE KEY UPDATE product_name=VALUES(product_name), description=VALUES(description);
-
--- 6. LOAN POLICIES
-INSERT INTO loan_policies (product_id, minimum_amount, maximum_amount, number_of_installments, waiting_period_days, income_type, income_value, effective_from)
-SELECT 1, 10000.00, 50000.00, 10, 0, 'PERCENTAGE', 0.1000, CURRENT_DATE
-WHERE NOT EXISTS (SELECT 1 FROM loan_policies WHERE product_id = 1);
-
-INSERT INTO loan_policies (product_id, minimum_amount, maximum_amount, number_of_installments, waiting_period_days, income_type, income_value, effective_from)
-SELECT 2, 15000.00, 100000.00, 25, 0, 'PERCENTAGE', 0.1250, CURRENT_DATE
-WHERE NOT EXISTS (SELECT 1 FROM loan_policies WHERE product_id = 2);
-
-INSERT INTO loan_policies (product_id, minimum_amount, maximum_amount, number_of_installments, waiting_period_days, income_type, income_value, effective_from)
-SELECT 3, 25000.00, 500000.00, 12, 0, 'PERCENTAGE', 0.1500, CURRENT_DATE
-WHERE NOT EXISTS (SELECT 1 FROM loan_policies WHERE product_id = 3);
-
--- 7. CENTRAL FUND ACCOUNTS
-INSERT INTO fund_accounts (id, organization_id, account_code, account_name, account_type, current_balance) VALUES
-(1, 1, 'CASH_MAIN_APX', 'Apex Central Cash Vault', 'CASH', 222000.00),
-(2, 1, 'BANK_MAIN_APX', 'Apex Primary Current Account', 'BANK', 500000.00),
-(3, 1, 'UPI_MAIN_APX', 'Apex Merchant UPI QR', 'UPI', 50000.00),
-(4, 2, 'CASH_MAIN_HRZ', 'Horizon Field Cash Vault', 'CASH', 185000.00),
-(5, 3, 'CASH_MAIN_DLT', 'Delta Rural Cash Box', 'CASH', 120000.00)
-ON DUPLICATE KEY UPDATE account_name=VALUES(account_name);
-
--- 8. EXPENSE CATEGORIES
-INSERT INTO expense_categories (id, organization_id, name, description) VALUES
-(1, NULL, 'Office', 'Office rent, utilities, stationery and paperwork'),
-(2, NULL, 'Transport', 'Fuel, transit costs, and field route maintenance'),
-(3, NULL, 'Salary', 'Operational employee and administrative staff salary'),
-(4, NULL, 'Other', 'Tea, refreshments, and miscellaneous daily overhead')
-ON DUPLICATE KEY UPDATE description=VALUES(description);
-
--- 9. CHART OF ACCOUNTS (DOUBLE-ENTRY)
-INSERT INTO accounting_accounts (organization_id, account_code, account_name, account_type) VALUES
-(1, '1000', 'Available Cash Vault', 'ASSET'),
-(1, '1010', 'Bank Operating Account', 'ASSET'),
-(1, '1100', 'Loan Principal Receivables', 'ASSET'),
-(1, '3000', 'Central Fund Capital', 'EQUITY'),
-(1, '4000', 'Lending Contract Income', 'INCOME'),
-(1, '5000', 'Operational Expenses', 'EXPENSE')
-ON DUPLICATE KEY UPDATE account_name=VALUES(account_name);
-
--- 10. PRIVACY POLICY & COMPLIANCE
-INSERT INTO privacy_policies (id, version, title, content, effective_date, status, author_name) VALUES
-(1, 'v2.1', 'FinanceFlow Platform Privacy & Financial Data Governance Policy', 
-'1. DATA COLLECTION & CONSENT\nFinanceFlow operates as a fund circulation and microfinance ledger platform. We collect borrower identifying data (Full Name, Phone, Aadhaar / Voter ID KYC, Residential Address, Shop / Stall Location) solely for loan underwriting, repayment schedule monitoring, and receipt generation.\n\n2. IMMUTABLE TRANSACTION AUDITABILITY\nAll payment transactions, principal recoveries, and lending fee allocations are stored as permanent, immutable ledger records.\n\n3. FIELD COLLECTION & GEO-VISIT DATA\nWhen field agents perform on-site merchant collections, GPS coordinates and visit timestamps may be recorded to verify route compliance.\n\n4. DATA ENCRYPTION & MULTI-TENANT ISOLATION\nAll records are isolated by tenant identifier (organization_id). Data in transit is protected using TLS 1.3 encryption.\n\n5. RETENTION PERIOD\nFinancial transaction history is retained for a mandatory minimum of 7 (seven) years.', 
-'2026-09-01', 'PUBLISHED_ACTIVE', 'Priya Narayanan (Compliance Head)')
-ON DUPLICATE KEY UPDATE title=VALUES(title), content=VALUES(content), status=VALUES(status);
-
--- 11. MOBILE APP RELEASES
-INSERT INTO app_versions (id, platform, version_name, version_code, release_title, release_notes, download_url, min_supported_version, force_update, status) VALUES
-(1, 'ANDROID', 'v2.4.0', 24, 'v2.4.0 Production Build', 'Enhanced offline payment queue with automatic background sync when reconnected.', 'https://downloads.fundlending.com/builds/financeflow-v2.4.0.apk', 'v2.2.0', FALSE, 'ACTIVE'),
-(2, 'IOS', 'v2.3.8', 23, 'v2.3.8 App Store Release', 'Biometric login and QR scanner performance upgrades.', 'https://apps.apple.com/app/financeflow-agent/id123456789', 'v2.1.0', FALSE, 'ACTIVE')
-ON DUPLICATE KEY UPDATE release_title=VALUES(release_title), release_notes=VALUES(release_notes), status=VALUES(status);
-
--- 12. SYSTEM SETTINGS
-INSERT INTO system_settings (setting_key, setting_value, setting_group, description) VALUES
-('PLATFORM_NAME', 'FinanceFlow Microfinance Engine', 'GENERAL', 'Platform branding name'),
-('DEFAULT_CURRENCY', 'INR', 'FINANCIAL', 'Default system currency'),
-('MAX_CONCURRENT_LOANS_DEFAULT', '2', 'LENDING', 'Default maximum active loans per borrower'),
-('MAINTENANCE_MODE', 'false', 'SYSTEM', 'Platform-wide maintenance toggle')
-ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value), description=VALUES(description);
-
--- 13. DEFAULT CATEGORIES (WEB & MOBILE MAPPING)
+-- 4. DEFAULT CATEGORIES (WEB & MOBILE CONFIG)
 INSERT INTO default_category_configs 
 (category_code, name, customer_type, description, max_users_per_branch, default_min_loan, default_max_loan, default_interest_rate, repayment_frequency, tenure_installments, grace_period_days, status) 
 VALUES
@@ -191,46 +85,27 @@ VALUES
 ('CAT-FIELD-AGENT', 'Field Collection Agent', 'FIELD_AGENT', 'Mobile route officers equipped with mobile app for daily & weekly cash/UPI recovery.', 15, 0.00, 0.00, 0.00, 'N/A', 0, 0, 'ACTIVE'),
 ('CAT-BRANCH-ADMIN', 'Branch Manager / Staff', 'ADMIN', 'Branch operational staff managing customer KYC, disbursements, and reconciliation.', 5, 0.00, 0.00, 0.00, 'N/A', 0, 0, 'ACTIVE'),
 ('CAT-BORROWER-MO', 'Monthly Salaried Borrower (EMI)', 'COMMON_CUSTOMER', '12-Month structured EMI micro-loans for salaried individuals and established businesses (15% flat interest).', 300, 25000.00, 500000.00, 15.00, 'MONTHLY', 12, 5, 'ACTIVE')
-ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), default_min_loan=VALUES(default_min_loan), default_max_loan=VALUES(default_max_loan), default_interest_rate=VALUES(default_interest_rate);
+ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description);
 
--- 14. KUBERNETES & CLUSTER INFRASTRUCTURE
-INSERT INTO cluster_nodes 
-(node_name, cluster_name, role, region, zone, status, cpu_cores, cpu_usage_percent, memory_total_gb, memory_usage_gb, active_pods, max_pods, disk_usage_percent, kubelet_version, uptime_days) 
-VALUES 
-('k8s-control-plane-01', 'k8s-prod-cluster-01', 'CONTROL_PLANE', 'ap-southeast-1', 'ap-southeast-1a', 'HEALTHY', 16, 18.4, 64.0, 22.8, 28, 110, 32.0, 'v1.30.2', 84),
-('k8s-worker-apx-01', 'k8s-prod-cluster-01', 'WORKER', 'ap-southeast-1', 'ap-southeast-1a', 'HEALTHY', 32, 42.1, 128.0, 58.4, 64, 250, 44.5, 'v1.30.2', 62),
-('k8s-worker-apx-02', 'k8s-prod-cluster-01', 'WORKER', 'ap-southeast-1', 'ap-southeast-1b', 'HEALTHY', 32, 38.6, 128.0, 52.1, 58, 250, 41.2, 'v1.30.2', 62),
-('k8s-db-replica-01', 'k8s-prod-cluster-01', 'DATABASE_REPLICA', 'ap-southeast-1', 'ap-southeast-1c', 'HEALTHY', 16, 29.0, 64.0, 34.5, 12, 110, 51.0, 'v1.30.2', 95),
-('k8s-ingress-gw-01', 'k8s-prod-cluster-01', 'INGRESS_GATEWAY', 'ap-southeast-1', 'ap-southeast-1a', 'HEALTHY', 8, 14.8, 32.0, 9.6, 16, 110, 25.0, 'v1.30.2', 45)
-ON DUPLICATE KEY UPDATE 
-  status=VALUES(status), 
-  cpu_usage_percent=VALUES(cpu_usage_percent), 
-  memory_usage_gb=VALUES(memory_usage_gb), 
-  active_pods=VALUES(active_pods);
+-- 5. SYSTEM SETTINGS
+INSERT INTO system_settings (setting_key, setting_value, setting_group, description) VALUES
+('PLATFORM_NAME', 'FinanceFlow Microfinance Engine', 'GENERAL', 'Platform branding name'),
+('DEFAULT_CURRENCY', 'INR', 'FINANCIAL', 'Default system currency'),
+('MAX_CONCURRENT_LOANS_DEFAULT', '2', 'LENDING', 'Default maximum active loans per borrower'),
+('MAINTENANCE_MODE', 'false', 'SYSTEM', 'Platform-wide maintenance toggle')
+ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value), description=VALUES(description);
 
--- 15. INITIAL SYSTEM USERS & ROLES
--- Bcrypt hash for 'Admin@123': $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
+-- 6. PRIMARY SUPER ADMIN USER
+-- Password hash for 'Admin@123'
 INSERT INTO users (id, organization_id, branch_id, name, phone, email, password_hash, role_type, status)
 VALUES
-(1, NULL, NULL, 'GOWTHAM', '9999999999', 'gowthamnaveen124@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SUPER_ADMIN', 'ACTIVE'),
-(2, 1, 1, 'Rajesh Kumar', '9876543210', 'rajesh@apexfinance.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ADMIN', 'ACTIVE'),
-(3, 1, 1, 'Venkatesh S', '9876543212', 'agent@apexfinance.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'FIELD_AGENT', 'ACTIVE'),
-(4, 1, 1, 'Kumar', '9876543213', 'kumar@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'USER', 'ACTIVE'),
-(5, 1, 1, 'Murugan Store', '9876543214', 'murugan@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SHOPKEEPER', 'ACTIVE')
-ON DUPLICATE KEY UPDATE name=VALUES(name), email=VALUES(email), status=VALUES(status), role_type=VALUES(role_type);
+(1, NULL, NULL, 'GOWTHAM', '9999999999', 'gowthamnaveen124@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SUPER_ADMIN', 'ACTIVE')
+ON DUPLICATE KEY UPDATE 
+  name=VALUES(name), 
+  phone=VALUES(phone), 
+  email=VALUES(email), 
+  role_type=VALUES(role_type), 
+  status=VALUES(status);
 
 INSERT IGNORE INTO user_roles (user_id, role_id)
 SELECT 1, id FROM roles WHERE name = 'SUPER_ADMIN';
-
-INSERT IGNORE INTO user_roles (user_id, role_id)
-SELECT 2, id FROM roles WHERE name = 'ADMIN';
-
-INSERT IGNORE INTO user_roles (user_id, role_id)
-SELECT 3, id FROM roles WHERE name = 'FIELD_AGENT';
-
-INSERT IGNORE INTO user_roles (user_id, role_id)
-SELECT 4, id FROM roles WHERE name = 'USER';
-
-INSERT IGNORE INTO user_roles (user_id, role_id)
-SELECT 5, id FROM roles WHERE name = 'SHOPKEEPER';
-

@@ -53,24 +53,53 @@ async function createUser(data, creatorId = null) {
   return await withTransaction(async (conn) => {
     // 1. Determine role ID
     let mappedRoleName = 'USER';
-    if (['ADMIN', 'BRANCH_ADMIN'].includes(role)) mappedRoleName = 'ADMIN';
+    if (['ORG_ADMIN', 'ADMIN'].includes(role)) mappedRoleName = 'ORG_ADMIN';
+    else if (['BRANCH_ADMIN'].includes(role)) mappedRoleName = 'BRANCH_ADMIN';
     else if (['SUPER_ADMIN'].includes(role)) mappedRoleName = 'SUPER_ADMIN';
-    else if (['FIELD_AGENT', 'COLLECTOR'].includes(role)) mappedRoleName = 'USER';
+    else if (['FIELD_AGENT', 'COLLECTOR'].includes(role)) mappedRoleName = 'FIELD_AGENT';
 
-    const [roleRows] = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [mappedRoleName]);
-    const roleId = roleRows.length > 0 ? roleRows[0].id : null;
+    let roleRows = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [mappedRoleName]);
+    if (!roleRows[0] || roleRows[0].length === 0) {
+      // Fallback to ADMIN or USER if specific role row doesn't exist
+      const fallbackName = ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(mappedRoleName) ? 'ADMIN' : 'USER';
+      roleRows = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [fallbackName]);
+    }
+    const roleId = roleRows[0]?.[0]?.id || null;
 
     // 2. Hash default password
     const plainPwd = password || `${rawPhone}@123`;
     const passwordHash = await bcrypt.hash(plainPwd, 10);
     const userEmail = email || `${rawPhone}@financeflow.local`;
 
-    // 3. Insert into users
-    const effectiveOrgId = organizationId || 1;
+    // 3. Verify organization and branch existence
+    let effectiveOrgId = organizationId ? parseInt(organizationId, 10) : null;
+    if (['SUPER_ADMIN'].includes(role)) {
+      effectiveOrgId = null;
+    } else if (effectiveOrgId) {
+      const [orgCheck] = await conn.query(`SELECT id FROM organizations WHERE id = ? LIMIT 1`, [effectiveOrgId]);
+      if (!orgCheck || orgCheck.length === 0) {
+        // Look up first active organization as fallback or null
+        const [anyOrg] = await conn.query(`SELECT id FROM organizations LIMIT 1`);
+        effectiveOrgId = anyOrg?.[0]?.id || null;
+      }
+    } else {
+      const [anyOrg] = await conn.query(`SELECT id FROM organizations LIMIT 1`);
+      effectiveOrgId = anyOrg?.[0]?.id || null;
+    }
+
+    let effectiveBranchId = data.branchId ? parseInt(data.branchId, 10) : null;
+    if (effectiveBranchId) {
+      const [branchCheck] = await conn.query(`SELECT id FROM branches WHERE id = ? LIMIT 1`, [effectiveBranchId]);
+      if (!branchCheck || branchCheck.length === 0) {
+        effectiveBranchId = null;
+      }
+    }
+
+    // Insert into users
     const [userRes] = await conn.query(
       `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, role_type, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [effectiveOrgId, data.branchId || null, displayName, rawPhone, userEmail, passwordHash, role, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', dateJoined || new Date()]
+      [effectiveOrgId, effectiveBranchId, displayName, rawPhone, userEmail, passwordHash, role, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', dateJoined || new Date()]
     );
     const userId = userRes.insertId;
 
@@ -78,11 +107,11 @@ async function createUser(data, creatorId = null) {
       await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [userId, roleId]);
     }
 
-    // 4. Create customer record ONLY for borrowers / shopkeepers (skip for SuperAdmin/Admin)
+    // 4. Create customer record ONLY for borrowers / shopkeepers (skip for SuperAdmin/OrgAdmin/BranchAdmin/Staff)
     let customerCode = null;
     let custId = null;
 
-    if (!['SUPER_ADMIN', 'ADMIN', 'AUDITOR', 'FIELD_AGENT'].includes(role)) {
+    if (!['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR', 'FIELD_AGENT'].includes(role)) {
       customerCode = await generateCustomerCode();
       const custType = role === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER';
       const stallVal = data.stall_no || data.stallNo || null;
@@ -178,22 +207,27 @@ async function createUser(data, creatorId = null) {
 /**
  * List users with live financial aggregates
  */
-async function getUsers({ search, role, status, organizationId, scope, page = 1, limit = 50 }) {
+async function getUsers({ search, role, status, organizationId, branchId, scope, page = 1, limit = 50 }) {
   const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.max(1, parseInt(limit, 10) || 50);
   const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
 
-  if (organizationId && organizationId !== 'ALL') {
-    whereClauses.push('(u.organization_id = ? OR (c.organization_id = ? AND u.role_type NOT IN ("SUPER_ADMIN")))');
+  if (organizationId && organizationId !== 'ALL' && role !== 'SUPER_ADMIN') {
+    whereClauses.push('(u.organization_id = ? OR c.organization_id = ?)');
     params.push(organizationId, organizationId);
   }
 
+  if (branchId && branchId !== 'ALL') {
+    whereClauses.push('(u.branch_id = ? OR c.branch_id = ?)');
+    params.push(branchId, branchId);
+  }
+
   if (scope === 'BORROWERS') {
-    whereClauses.push("(u.role_type IN ('COMMON_CUSTOMER', 'SHOPKEEPER', 'USER') AND u.role_type NOT IN ('ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT'))");
+    whereClauses.push("(u.role_type IN ('COMMON_CUSTOMER', 'SHOPKEEPER', 'USER') AND u.role_type NOT IN ('SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'FIELD_AGENT'))");
   } else if (scope === 'STAFF') {
-    whereClauses.push("(u.role_type IN ('ADMIN', 'FIELD_AGENT', 'COLLECTOR', 'BRANCH_ADMIN') OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = u.id AND r.name IN ('ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT', 'COLLECTOR')))");
+    whereClauses.push("(u.role_type IN ('ORG_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'FIELD_AGENT', 'COLLECTOR') OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = u.id AND r.name IN ('ORG_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT', 'COLLECTOR')))");
   }
 
   if (search) {

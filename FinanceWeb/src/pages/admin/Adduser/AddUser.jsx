@@ -15,12 +15,13 @@ import {
   Calendar,
   TrendingUp,
   Receipt,
+  Building,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
 
 export const AddUser = () => {
   const navigate = useNavigate();
-  const { activeOrg } = useOrg();
+  const { activeOrg, branches } = useOrg();
   const orgId = activeOrg?.id || 1;
 
   // Dynamic Lending Config fetched from DB (interest rates page table)
@@ -227,6 +228,7 @@ export const AddUser = () => {
 
       await api.createUser({
         organizationId: activeOrg?.id || 1,
+        branchId: formData.branch_id || (branches[0]?.id || null),
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         role: isShop ? 'SHOPKEEPER' : 'COMMON_CUSTOMER',
@@ -548,12 +550,12 @@ export const AddUser = () => {
                 )}
               </div>
 
-              {/* Address & City */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+              {/* Address, City & Branch */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.9fr 1.1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
                     <MapPin size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                    Residential / Business Address *
+                    Address *
                   </label>
                   <input
                     type="text"
@@ -580,6 +582,29 @@ export const AddUser = () => {
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     style={{ fontSize: '0.86rem', borderRadius: 8 }}
                   />
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                    <Building size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                    Operating Branch
+                  </label>
+                  <select
+                    className="form-select"
+                    value={formData.branch_id || (branches[0]?.id || '')}
+                    onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
+                    style={{ fontSize: '0.86rem', borderRadius: 8, width: '100%', padding: '0.45rem 0.6rem', border: '1px solid #CBD5E1' }}
+                  >
+                    {branches.length === 0 ? (
+                      <option value="">Main Hub (Default)</option>
+                    ) : (
+                      branches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.branch_name} ({b.branch_code})
+                        </option>
+                      ))
+                    )}
+                  </select>
                 </div>
               </div>
             </div>

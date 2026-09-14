@@ -184,8 +184,15 @@ export const AuthProvider = ({ children }) => {
     : [];
 
   const isSuperAdmin = userRoles.includes('SUPER_ADMIN');
-  const isAdmin = isSuperAdmin || userRoles.includes('ADMIN');
+  const isBranchAdmin = userRoles.includes('BRANCH_ADMIN');
+  const isOrgAdmin = isSuperAdmin || userRoles.includes('ORG_ADMIN') || (userRoles.includes('ADMIN') && !isBranchAdmin);
+  const isAdmin = isSuperAdmin || isOrgAdmin || isBranchAdmin;
   const isFieldAgent = userRoles.includes('FIELD_AGENT');
+
+  const userOrgId = user?.organization_id || null;
+  const userBranchId = user?.branch_id || null;
+  const userBranchName = user?.branch_name || null;
+  const userOrgName = user?.organization_name || null;
 
   return (
     <AuthContext.Provider
@@ -202,8 +209,14 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token && !!user && !isTokenExpired(token),
         userRoles,
         isAdmin,
+        isOrgAdmin,
+        isBranchAdmin,
         isSuperAdmin,
         isFieldAgent,
+        userOrgId,
+        userBranchId,
+        userBranchName,
+        userOrgName,
       }}
     >
       {children}

@@ -180,6 +180,12 @@
   color: #059669;
 }
 
+.staff-avatar.avatar-branch {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
 .staff-avatar.avatar-admin {
   background: #eff6ff;
   color: #2563eb;
@@ -217,6 +223,12 @@
   border: 1px solid #a7f3d0;
 }
 
+.staff-role-badge.role-branch {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
 .staff-role-badge.role-admin {
   background: #eff6ff;
   color: #2563eb;
@@ -251,6 +263,18 @@
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+}
+
+.staff-card-item.card-branch {
+  border-top: 3px solid #16a34a;
+}
+
+.staff-card-item.card-admin {
+  border-top: 3px solid #2563eb;
+}
+
+.staff-card-item.card-agent {
+  border-top: 3px solid #059669;
 }
 
 .staff-card-item:hover {

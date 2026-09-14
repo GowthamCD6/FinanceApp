@@ -8,21 +8,35 @@ const { query } = require('../config/database');
  * 4. Expenses
  * 5. Net Profit
  */
-async function getDashboardMetrics() {
+async function getDashboardMetrics({ organizationId, branchId } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     .toISOString()
     .slice(0, 10);
 
+  let txWhere = ['1=1'];
+  const txParams = [];
+  if (organizationId && organizationId !== 'ALL') {
+    txWhere.push('organization_id = ?');
+    txParams.push(organizationId);
+  }
+  if (branchId && branchId !== 'ALL') {
+    txWhere.push('branch_id = ?');
+    txParams.push(branchId);
+  }
+  const txWhereSql = txWhere.join(' AND ');
+
   // 1. Available Cash & Total Capital
   const capRow = await query(
-    `SELECT COALESCE(SUM(amount), 0) AS totalCapital FROM fund_transactions WHERE transaction_type = 'CAPITAL_IN'`
+    `SELECT COALESCE(SUM(amount), 0) AS totalCapital FROM fund_transactions WHERE ${txWhereSql} AND transaction_type = 'CAPITAL_IN'`,
+    txParams
   );
   const totalCapital = parseFloat(capRow[0]?.totalCapital || 0);
 
   const cashRow = await query(
     `SELECT COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS availableCash 
-     FROM fund_transactions`
+     FROM fund_transactions WHERE ${txWhereSql}`,
+    txParams
   );
   const availableCash = parseFloat(cashRow[0]?.availableCash || 0);
 
@@ -32,7 +46,8 @@ async function getDashboardMetrics() {
       COALESCE(SUM(CASE WHEN transaction_type = 'LOAN_DISBURSEMENT' THEN amount ELSE 0 END), 0) AS totalDisbursed,
       COALESCE(SUM(CASE WHEN transaction_type = 'PRINCIPAL_COLLECTION' THEN amount ELSE 0 END), 0) AS totalPrincipalRecovered
     FROM fund_transactions
-  `);
+    WHERE ${txWhereSql}
+  `, txParams);
   const moneyCurrentlyLent = parseFloat(loanMetrics[0]?.totalDisbursed || 0);
   const principalRecovered = parseFloat(loanMetrics[0]?.totalPrincipalRecovered || 0);
   const outstandingPrincipal = Math.max(0, moneyCurrentlyLent - principalRecovered);
@@ -43,8 +58,8 @@ async function getDashboardMetrics() {
        COALESCE(SUM(amount), 0) AS todayTotalCollection,
        COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS todayLendingIncome
      FROM fund_transactions
-     WHERE DATE(transaction_date) = ? AND transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME')`,
-    [today]
+     WHERE ${txWhereSql} AND DATE(transaction_date) = ? AND transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME')`,
+    [...txParams, today]
   );
   const todayCollection = parseFloat(todayRows[0]?.todayTotalCollection || 0);
   const todayLendingIncome = parseFloat(todayRows[0]?.todayLendingIncome || 0);
@@ -56,8 +71,8 @@ async function getDashboardMetrics() {
        COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS monthlyIncome,
        COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0) AS monthlyExpenses
      FROM fund_transactions
-     WHERE DATE(transaction_date) >= ?`,
-    [startOfMonth]
+     WHERE ${txWhereSql} AND DATE(transaction_date) >= ?`,
+    [...txParams, startOfMonth]
   );
   const monthlyCollection = parseFloat(monthRows[0]?.monthlyCollection || 0);
   const monthlyIncome = parseFloat(monthRows[0]?.monthlyIncome || 0);
@@ -65,6 +80,18 @@ async function getDashboardMetrics() {
   const netProfit = monthlyIncome - monthlyExpenses;
 
   // 5. Loan Counts
+  let loanWhere = ['1=1'];
+  const loanParams = [];
+  if (organizationId && organizationId !== 'ALL') {
+    loanWhere.push('organization_id = ?');
+    loanParams.push(organizationId);
+  }
+  if (branchId && branchId !== 'ALL') {
+    loanWhere.push('branch_id = ?');
+    loanParams.push(branchId);
+  }
+  const loanWhereSql = loanWhere.join(' AND ');
+
   const loanStats = await query(`
     SELECT 
       COUNT(CASE WHEN status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID') THEN 1 END) AS activeLoans,
@@ -72,7 +99,8 @@ async function getDashboardMetrics() {
       COUNT(CASE WHEN status = 'OVERDUE' THEN 1 END) AS overdueLoans,
       (SELECT COUNT(*) FROM loan_eligibility WHERE status = 'ELIGIBLE') AS eligibleCustomers
     FROM loans
-  `);
+    WHERE ${loanWhereSql}
+  `, loanParams);
 
   return {
     totalCapital,

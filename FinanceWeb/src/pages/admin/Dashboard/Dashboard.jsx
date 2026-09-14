@@ -23,10 +23,13 @@ import {
 } from 'lucide-react';
 
 import { useOrg } from '../../../context/OrgContext';
+import { useAuth } from '../../../context/AuthContext';
+import { BranchAdminDashboard } from '../../BranchAdmin/BranchAdminDashboard';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { activeOrg } = useOrg();
+  const { isBranchAdmin } = useAuth();
+  const { activeOrg, activeBranchId, activeBranch } = useOrg();
   const [metrics, setMetrics] = useState(null);
   const [weeklyDues, setWeeklyDues] = useState([]);
   const [dailyCollections, setDailyCollections] = useState([]);
@@ -76,9 +79,13 @@ export const AdminDashboard = () => {
       }
     };
     load();
-  }, []);
+  }, [activeOrg?.id, activeBranchId]);
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
+
+  if (isBranchAdmin) {
+    return <BranchAdminDashboard />;
+  }
 
   if (loading || !metrics) return <div className="page-loading">Loading Field Operations Hub...</div>;
 

@@ -45,9 +45,13 @@ export const SuperAdminUsers = () => {
 
       const res = await api.users.getAll({ role: 'SUPER_ADMIN' });
       const userList = Array.isArray(res) ? res : res?.users || res?.data || [];
-      // If userList has mixed roles or empty, fallback/filter
       const superAdmins = userList.filter(
-        (u) => u.role_type === 'SUPER_ADMIN' || u.role === 'SUPER_ADMIN' || u.system_role === 'SUPER_ADMIN'
+        (u) =>
+          u.role_type === 'SUPER_ADMIN' ||
+          u.roleType === 'SUPER_ADMIN' ||
+          u.role === 'SUPER_ADMIN' ||
+          u.system_role === 'SUPER_ADMIN' ||
+          (u.roles && u.roles.includes('SUPER_ADMIN'))
       );
       setAdmins(superAdmins.length > 0 ? superAdmins : userList);
     } catch (err) {

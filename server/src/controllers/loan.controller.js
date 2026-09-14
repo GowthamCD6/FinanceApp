@@ -3,7 +3,9 @@ const { query } = require('../config/database');
 
 async function createLoan(req, res) {
   try {
-    const result = await loanService.createLoanApplication(req.body, req.user.id);
+    const orgId = req.body.organizationId || req.body.organization_id || req.headers['x-organization-id'] || req.user?.organization_id || 1;
+    const branchId = req.body.branchId || req.body.branch_id || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
+    const result = await loanService.createLoanApplication({ ...req.body, organizationId: orgId, branchId }, req.user.id);
     return res.status(201).json({ success: true, message: 'Loan application created.', data: result });
   } catch (error) {
     console.error('Create loan error:', error);
@@ -42,13 +44,15 @@ async function disburseLoan(req, res) {
 
 async function getLoans(req, res) {
   try {
-    const { status, customerId, frequency, page, limit, organizationId } = req.query;
-    const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
+    const { status, customerId, frequency, page, limit, organizationId, branchId } = req.query;
+    const orgId = organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
+    const effectiveBranchId = branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
     const result = await loanService.getLoans({
       status,
       customerId,
       frequency,
       organizationId: orgId,
+      branchId: effectiveBranchId,
       page: parseInt(page || '1', 10),
       limit: parseInt(limit || '20', 10),
     });

@@ -272,20 +272,28 @@ const organizationService = {
           [orgId, `CASH_MAIN_${formattedCode}`, `${name.trim()} Central Cash Vault`, parseFloat(initial_capital) || 500000]
         );
 
-        // 4. Create Initial Admin User
+        // 4. Create Initial Org Admin User
         if (effectivePhone) {
-          const [roles] = await conn.query(`SELECT id FROM roles WHERE name = 'ADMIN' LIMIT 1`);
+          const [roles] = await conn.query(`SELECT id FROM roles WHERE name IN ('ORG_ADMIN', 'ADMIN') ORDER BY id ASC LIMIT 1`);
           const adminRoleId = roles?.[0]?.id || 2;
           const defaultPassHash = await bcrypt.hash('Admin@123', 10);
           
           const [userExists] = await conn.query(`SELECT id FROM users WHERE phone = ? LIMIT 1`, [effectivePhone]);
+          let adminUserId = null;
           if (userExists.length === 0) {
             const [uRes] = await conn.query(
               `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, role_type, status)
-               VALUES (?, ?, ?, ?, ?, ?, 'ADMIN', 'ACTIVE')`,
+               VALUES (?, ?, ?, ?, ?, ?, 'ORG_ADMIN', 'ACTIVE')`,
               [orgId, branchId, effectiveAdminName, effectivePhone, admin_email || `${effectivePhone}@fundflow.in`, defaultPassHash]
             );
-            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [uRes.insertId, adminRoleId]);
+            adminUserId = uRes.insertId;
+            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [adminUserId, adminRoleId]);
+          } else {
+            adminUserId = userExists[0].id;
+          }
+
+          if (adminUserId) {
+            await conn.query(`UPDATE branches SET manager_user_id = ? WHERE id = ?`, [adminUserId, branchId]);
           }
         }
 
@@ -402,42 +410,235 @@ const organizationService = {
     return org;
   },
 
-  // Get branches for an organization
+  // Get branches for an organization with live metrics and assigned branch admin info
   getBranches: async (orgId) => {
     try {
-      const branches = await query(`SELECT * FROM branches WHERE organization_id = ? ORDER BY id ASC`, [orgId]);
+      // Ensure manager_user_id column exists
+      try {
+        await query("ALTER TABLE branches ADD COLUMN IF NOT EXISTS manager_user_id BIGINT UNSIGNED NULL");
+      } catch (e) {}
+
+      const branches = await query(
+        `SELECT 
+           b.*,
+           u.id AS admin_user_id,
+           u.name AS admin_user_name,
+           u.phone AS admin_user_phone,
+           u.email AS admin_user_email,
+           u.role_type AS admin_role_type,
+           (SELECT COUNT(*) FROM customers c WHERE c.branch_id = b.id) AS borrower_count,
+           (SELECT COUNT(*) FROM users u2 WHERE u2.branch_id = b.id AND u2.role_type IN ('ADMIN', 'BRANCH_ADMIN', 'FIELD_AGENT', 'COLLECTOR')) AS staff_count,
+           (SELECT COUNT(*) FROM loans l JOIN customers c ON l.customer_id = c.id WHERE c.branch_id = b.id AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')) AS active_loans_count
+         FROM branches b
+         LEFT JOIN users u ON b.manager_user_id = u.id
+         WHERE b.organization_id = ? 
+         ORDER BY b.id ASC`,
+        [orgId]
+      );
       return branches || [];
     } catch (err) {
-      return [
-        {
-          id: 1,
-          organization_id: parseInt(orgId, 10),
-          branch_code: `BR-01`,
-          branch_name: 'Main Hub',
-          location: 'Chennai Central',
-          status: 'ACTIVE',
-        },
-      ];
+      console.warn('Database fallback in getBranches:', err.message);
+      return [];
     }
   },
 
-  // Create branch under an organization
+  // Create branch under an organization and optionally provision a Branch Admin user
   createBranch: async (orgId, branchData) => {
-    const { branch_code, branch_name, location, phone, manager_name } = branchData;
+    const {
+      branch_code,
+      branch_name,
+      location,
+      phone,
+      manager_name,
+      manager_phone,
+      manager_email,
+      manager_password,
+      create_branch_admin
+    } = branchData;
+
     if (!branch_name) throw new Error('Branch name is required.');
 
     const bCode = branch_code || `BR-${orgId}-${Date.now().toString().slice(-4)}`;
+    const effectiveMgrName = (manager_name || '').trim();
+    const effectiveMgrPhone = (manager_phone || phone || '').trim();
 
     try {
-      const res = await query(
-        `INSERT INTO branches (organization_id, branch_code, branch_name, location, phone, manager_name, status)
-         VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')`,
-        [orgId, bCode, branch_name.trim(), location || '', phone || '', manager_name || '']
-      );
-      return { id: res.insertId, organization_id: orgId, branch_code: bCode, branch_name, location, phone, manager_name, status: 'ACTIVE' };
+      return await withTransaction(async (conn) => {
+        const [res] = await conn.query(
+          `INSERT INTO branches (organization_id, branch_code, branch_name, location, phone, manager_name, manager_phone, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
+          [orgId, bCode, branch_name.trim(), location || '', phone || '', effectiveMgrName, effectiveMgrPhone]
+        );
+        const branchId = res.insertId;
+        let adminUserId = null;
+
+        // Optionally create Branch Admin user immediately
+        if ((create_branch_admin || manager_password) && effectiveMgrPhone) {
+          const [roleRows] = await conn.query(`SELECT id FROM roles WHERE name = 'BRANCH_ADMIN' LIMIT 1`);
+          const branchAdminRoleId = roleRows?.[0]?.id || 2;
+          const passwordHash = await bcrypt.hash(manager_password || 'Admin@123', 10);
+          const emailVal = manager_email || `${effectiveMgrPhone}@fundflow.in`;
+
+          const [existingUsers] = await conn.query(`SELECT id FROM users WHERE phone = ? LIMIT 1`, [effectiveMgrPhone]);
+          if (existingUsers.length === 0) {
+            const [uRes] = await conn.query(
+              `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, role_type, status)
+               VALUES (?, ?, ?, ?, ?, ?, 'BRANCH_ADMIN', 'ACTIVE')`,
+              [orgId, branchId, effectiveMgrName || `${branch_name} Admin`, effectiveMgrPhone, emailVal, passwordHash]
+            );
+            adminUserId = uRes.insertId;
+            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [adminUserId, branchAdminRoleId]);
+          } else {
+            adminUserId = existingUsers[0].id;
+            await conn.query(`UPDATE users SET branch_id = ?, organization_id = ?, role_type = 'BRANCH_ADMIN' WHERE id = ?`, [branchId, orgId, adminUserId]);
+            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [adminUserId, branchAdminRoleId]);
+          }
+
+          if (adminUserId) {
+            await conn.query(`UPDATE branches SET manager_user_id = ? WHERE id = ?`, [adminUserId, branchId]);
+          }
+        }
+
+        const [createdBranch] = await conn.query(`SELECT * FROM branches WHERE id = ?`, [branchId]);
+        return createdBranch[0];
+      });
     } catch (err) {
-      console.warn('Database fallback in createBranch:', err.message);
-      return { id: Date.now(), organization_id: orgId, branch_code: bCode, branch_name, location, phone, manager_name, status: 'ACTIVE' };
+      console.warn('Database error in createBranch:', err.message);
+      throw err;
+    }
+  },
+
+  // Assign or Provision a Branch Admin for a branch
+  assignBranchAdmin: async (orgId, branchId, adminData) => {
+    const { userId, name, phone, email, password } = adminData;
+
+    try {
+      return await withTransaction(async (conn) => {
+        // Verify branch belongs to organization
+        const [branches] = await conn.query(`SELECT * FROM branches WHERE id = ? AND organization_id = ? LIMIT 1`, [branchId, orgId]);
+        if (branches.length === 0) {
+          throw new Error(`Branch with ID ${branchId} does not belong to organization ${orgId}.`);
+        }
+
+        const [roleRows] = await conn.query(`SELECT id FROM roles WHERE name = 'BRANCH_ADMIN' LIMIT 1`);
+        const branchAdminRoleId = roleRows?.[0]?.id || 2;
+        let assignedUserId = userId;
+        let adminName = name;
+        let adminPhone = phone;
+
+        if (userId) {
+          // Link existing user
+          const [userRows] = await conn.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [userId]);
+          if (userRows.length === 0) throw new Error(`User with ID ${userId} not found.`);
+          const targetUser = userRows[0];
+          adminName = targetUser.name;
+          adminPhone = targetUser.phone;
+
+          await conn.query(
+            `UPDATE users SET organization_id = ?, branch_id = ?, role_type = 'BRANCH_ADMIN' WHERE id = ?`,
+            [orgId, branchId, userId]
+          );
+          await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [userId, branchAdminRoleId]);
+        } else {
+          // Create new Branch Admin user
+          if (!name || !phone) {
+            throw new Error('Name and phone number are required to create a new Branch Admin.');
+          }
+          const rawPhone = phone.trim();
+          const [userExists] = await conn.query(`SELECT id FROM users WHERE phone = ? LIMIT 1`, [rawPhone]);
+          
+          if (userExists.length > 0) {
+            assignedUserId = userExists[0].id;
+            await conn.query(
+              `UPDATE users SET organization_id = ?, branch_id = ?, role_type = 'BRANCH_ADMIN' WHERE id = ?`,
+              [orgId, branchId, assignedUserId]
+            );
+            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [assignedUserId, branchAdminRoleId]);
+          } else {
+            const passwordHash = await bcrypt.hash(password || 'Admin@123', 10);
+            const userEmail = email || `${rawPhone}@fundflow.in`;
+            const [uRes] = await conn.query(
+              `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, role_type, status)
+               VALUES (?, ?, ?, ?, ?, ?, 'BRANCH_ADMIN', 'ACTIVE')`,
+              [orgId, branchId, name.trim(), rawPhone, userEmail, passwordHash]
+            );
+            assignedUserId = uRes.insertId;
+            await conn.query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [assignedUserId, branchAdminRoleId]);
+          }
+        }
+
+        // Update branch with assigned manager
+        await conn.query(
+          `UPDATE branches SET manager_user_id = ?, manager_name = ?, manager_phone = ?, updated_at = NOW() WHERE id = ?`,
+          [assignedUserId, adminName, adminPhone, branchId]
+        );
+
+        const [updatedBranch] = await conn.query(
+          `SELECT 
+             b.*,
+             u.id AS admin_user_id,
+             u.name AS admin_user_name,
+             u.phone AS admin_user_phone,
+             u.email AS admin_user_email
+           FROM branches b
+           LEFT JOIN users u ON b.manager_user_id = u.id
+           WHERE b.id = ?`,
+          [branchId]
+        );
+
+        return updatedBranch[0];
+      });
+    } catch (err) {
+      console.error('Error assigning branch admin:', err.message);
+      throw err;
+    }
+  },
+
+  // Update branch details
+  updateBranch: async (orgId, branchId, data) => {
+    const { branch_name, location, phone, manager_name, manager_phone, status } = data;
+    try {
+      await query(
+        `UPDATE branches SET 
+           branch_name = COALESCE(?, branch_name),
+           location = COALESCE(?, location),
+           phone = COALESCE(?, phone),
+           manager_name = COALESCE(?, manager_name),
+           manager_phone = COALESCE(?, manager_phone),
+           status = COALESCE(?, status),
+           updated_at = NOW()
+         WHERE id = ? AND organization_id = ?`,
+        [
+          branch_name ? branch_name.trim() : null,
+          location || null,
+          phone || null,
+          manager_name || null,
+          manager_phone || null,
+          status ? status.toUpperCase() : null,
+          branchId,
+          orgId,
+        ]
+      );
+      const rows = await query(`SELECT * FROM branches WHERE id = ? AND organization_id = ?`, [branchId, orgId]);
+      return rows[0];
+    } catch (err) {
+      console.warn('Database error in updateBranch:', err.message);
+      throw err;
+    }
+  },
+
+  // Update branch status (ACTIVE / INACTIVE)
+  updateBranchStatus: async (orgId, branchId, status) => {
+    try {
+      await query(
+        `UPDATE branches SET status = ?, updated_at = NOW() WHERE id = ? AND organization_id = ?`,
+        [status.toUpperCase(), branchId, orgId]
+      );
+      const rows = await query(`SELECT * FROM branches WHERE id = ? AND organization_id = ?`, [branchId, orgId]);
+      return rows[0];
+    } catch (err) {
+      console.warn('Database error in updateBranchStatus:', err.message);
+      throw err;
     }
   },
   // Get organization lending & interest rate schemes

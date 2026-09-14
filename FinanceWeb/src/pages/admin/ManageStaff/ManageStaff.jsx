@@ -28,7 +28,7 @@ import {
 import './ManageStaff.css';
 
 export const ManageStaff = () => {
-  const { activeOrg } = useOrg();
+  const { activeOrg, branches, activeBranchId } = useOrg();
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +45,7 @@ export const ManageStaff = () => {
     email: '',
     password: '',
     role: 'FIELD_AGENT',
+    branch_id: '',
     assigned_route: 'Saidapet Bazaar Route',
     daily_quota: 25000,
     designation: 'Route Field Collector',
@@ -61,6 +62,7 @@ export const ManageStaff = () => {
     phone: '',
     email: '',
     role: 'FIELD_AGENT',
+    branch_id: '',
     assigned_route: '',
     daily_target: 25000,
     designation: '',
@@ -72,7 +74,10 @@ export const ManageStaff = () => {
   const loadStaff = async () => {
     setLoading(true);
     try {
-      const data = await api.getStaffUsers(activeOrg ? { organizationId: activeOrg.id } : {});
+      const params = {};
+      if (activeOrg) params.organizationId = activeOrg.id;
+      if (activeBranchId && activeBranchId !== 'ALL') params.branchId = activeBranchId;
+      const data = await api.getStaffUsers(params);
       setStaffList(Array.isArray(data) ? data : (data?.users || []));
     } catch (err) {
       console.error('Failed to load staff list:', err);
@@ -84,7 +89,7 @@ export const ManageStaff = () => {
 
   useEffect(() => {
     loadStaff();
-  }, [activeOrg?.id]);
+  }, [activeOrg?.id, activeBranchId]);
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
 
@@ -115,6 +120,7 @@ export const ManageStaff = () => {
       phone: staff.phone || '',
       email: staff.email || '',
       role: staff.roleType || staff.role || 'FIELD_AGENT',
+      branch_id: staff.branchId || staff.branch_id || '',
       assigned_route: staff.assignedRoute || 'Saidapet Bazaar Route',
       daily_target: staff.dailyTarget || 25000,
       designation: staff.designation || '',
@@ -140,6 +146,7 @@ export const ManageStaff = () => {
         prev.map((s) => (s.id === editFormData.id ? { ...s, ...editFormData, assignedRoute: editFormData.assigned_route, dailyTarget: editFormData.daily_target } : s))
       );
       setIsEditModalOpen(false);
+      await loadStaff();
     } catch (err) {
       setEditError(err.message || 'Failed to update staff member.');
     } finally {
@@ -158,8 +165,10 @@ export const ManageStaff = () => {
 
     setSubmittingAdd(true);
     try {
+      const selectedBranchId = addFormData.branch_id || (branches.length > 0 ? branches[0].id : null);
       await api.createUser({
         organizationId: activeOrg?.id || 1,
+        branchId: selectedBranchId,
         name: addFormData.name.trim(),
         phone: addFormData.phone.trim(),
         email: addFormData.email.trim() || `${addFormData.phone.trim()}@staff.local`,
@@ -167,7 +176,7 @@ export const ManageStaff = () => {
         role: addFormData.role,
         assigned_route: addFormData.role === 'FIELD_AGENT' ? addFormData.assigned_route : null,
         daily_target: addFormData.role === 'FIELD_AGENT' ? parseFloat(addFormData.daily_quota || 0) : 0,
-        designation: addFormData.designation || (addFormData.role === 'ADMIN' ? 'Branch Administrator' : 'Route Collector'),
+        designation: addFormData.designation || (addFormData.role === 'BRANCH_ADMIN' ? 'Branch Administrator' : addFormData.role === 'ORG_ADMIN' ? 'Organization Admin' : 'Route Collector'),
         status: 'ACTIVE',
       });
 
@@ -179,6 +188,7 @@ export const ManageStaff = () => {
         email: '',
         password: '',
         role: 'FIELD_AGENT',
+        branch_id: branches.length > 0 ? branches[0].id : '',
         assigned_route: 'Saidapet Bazaar Route',
         daily_quota: 25000,
         designation: 'Route Field Collector',
@@ -199,20 +209,24 @@ export const ManageStaff = () => {
       s.phone?.includes(q) ||
       s.email?.toLowerCase().includes(q) ||
       s.assignedRoute?.toLowerCase().includes(q) ||
+      s.branchName?.toLowerCase().includes(q) ||
       s.designation?.toLowerCase().includes(q);
 
+    const sRole = (s.role || s.roleType || '').toUpperCase();
     const matchRole =
       roleFilter === 'ALL' ||
-      (roleFilter === 'ADMIN' && (s.role === 'ADMIN' || s.roleType === 'ADMIN')) ||
-      (roleFilter === 'FIELD_AGENT' && (s.role === 'FIELD_AGENT' || s.roleType === 'FIELD_AGENT'));
+      (roleFilter === 'BRANCH_ADMIN' && sRole === 'BRANCH_ADMIN') ||
+      (roleFilter === 'ORG_ADMIN' && (sRole === 'ORG_ADMIN' || sRole === 'ADMIN')) ||
+      (roleFilter === 'FIELD_AGENT' && sRole === 'FIELD_AGENT');
 
     const matchStatus = statusFilter === 'ALL' || s.status === statusFilter;
 
     return matchSearch && matchRole && matchStatus;
   });
 
-  const totalCollectors = staffList.filter((s) => s.role === 'FIELD_AGENT' || s.roleType === 'FIELD_AGENT').length;
-  const totalAdmins = staffList.filter((s) => s.role === 'ADMIN' || s.roleType === 'ADMIN').length;
+  const totalCollectors = staffList.filter((s) => (s.role || s.roleType) === 'FIELD_AGENT').length;
+  const totalBranchAdmins = staffList.filter((s) => (s.role || s.roleType) === 'BRANCH_ADMIN').length;
+  const totalOrgAdmins = staffList.filter((s) => (s.role || s.roleType) === 'ORG_ADMIN' || (s.role || s.roleType) === 'ADMIN').length;
   const totalDailyTarget = staffList.reduce((sum, s) => sum + (s.dailyTarget || 0), 0);
 
   return (
@@ -270,7 +284,7 @@ export const ManageStaff = () => {
               icon={Users}
               trend="Registered Staff"
               trendDirection="up"
-              meta="Full branch team"
+              meta="Full team count"
               accentColor="#4F46E5"
               accentBg="#EEF2FF"
             />
@@ -286,11 +300,11 @@ export const ManageStaff = () => {
             />
             <StatCard
               label="BRANCH ADMINISTRATORS"
-              value={totalAdmins}
+              value={totalBranchAdmins}
               icon={ShieldCheck}
-              trend="Operations Control"
+              trend="Branch Managers"
               trendDirection="up"
-              meta="System managers"
+              meta="Branch isolations"
               accentColor="#2563EB"
               accentBg="#EFF6FF"
             />
@@ -315,7 +329,7 @@ export const ManageStaff = () => {
           <input
             type="text"
             className="staff-search-input"
-            placeholder="Search by staff name, phone, email, or route..."
+            placeholder="Search by staff name, phone, email, branch or route..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -329,7 +343,8 @@ export const ManageStaff = () => {
           >
             <option value="ALL">All Roles</option>
             <option value="FIELD_AGENT">Field Collectors</option>
-            <option value="ADMIN">Branch Admins</option>
+            <option value="BRANCH_ADMIN">Branch Admins</option>
+            <option value="ORG_ADMIN">Org Admins</option>
           </select>
 
           <select
@@ -370,6 +385,7 @@ export const ManageStaff = () => {
                 <tr>
                   <th>Staff Member</th>
                   <th>Role & Designation</th>
+                  <th>Assigned Branch</th>
                   <th>Contact Info</th>
                   <th>Assigned Territory</th>
                   <th>Daily Quota</th>
@@ -390,6 +406,7 @@ export const ManageStaff = () => {
                       </div>
                     </td>
                     <td><div className="skeleton-bar" style={{ width: 110, height: 14 }} /></td>
+                    <td><div className="skeleton-bar" style={{ width: 90, height: 14 }} /></td>
                     <td><div className="skeleton-bar" style={{ width: 100, height: 14 }} /></td>
                     <td><div className="skeleton-bar" style={{ width: 120, height: 14 }} /></td>
                     <td><div className="skeleton-bar" style={{ width: 80, height: 14 }} /></td>
@@ -440,6 +457,7 @@ export const ManageStaff = () => {
               <tr>
                 <th>Staff Member</th>
                 <th>Role & Designation</th>
+                <th>Assigned Branch</th>
                 <th>Contact Info</th>
                 <th>Assigned Route</th>
                 <th>Daily Quota</th>
@@ -449,7 +467,9 @@ export const ManageStaff = () => {
             </thead>
             <tbody>
               {filteredStaff.map((staff) => {
-                const isAgent = staff.role === 'FIELD_AGENT' || staff.roleType === 'FIELD_AGENT';
+                const sRole = (staff.role || staff.roleType || '').toUpperCase();
+                const isAgent = sRole === 'FIELD_AGENT';
+                const isBranchAdmin = sRole === 'BRANCH_ADMIN';
                 const initials = staff.name
                   ? staff.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
                   : 'ST';
@@ -459,7 +479,7 @@ export const ManageStaff = () => {
                     {/* Staff Member */}
                     <td>
                       <div className="staff-member-cell">
-                        <div className={`staff-avatar ${isAgent ? 'avatar-agent' : 'avatar-admin'}`}>
+                        <div className={`staff-avatar ${isAgent ? 'avatar-agent' : isBranchAdmin ? 'avatar-branch' : 'avatar-admin'}`}>
                           {initials}
                         </div>
                         <div>
@@ -474,12 +494,20 @@ export const ManageStaff = () => {
                     {/* Role & Designation */}
                     <td>
                       <div>
-                        <span className={`staff-role-badge ${isAgent ? 'role-agent' : 'role-admin'}`}>
-                          {isAgent ? 'FIELD COLLECTOR' : 'BRANCH ADMIN'}
+                        <span className={`staff-role-badge ${isAgent ? 'role-agent' : isBranchAdmin ? 'role-branch' : 'role-admin'}`}>
+                          {isAgent ? 'FIELD COLLECTOR' : isBranchAdmin ? 'BRANCH ADMIN' : 'ORG ADMIN'}
                         </span>
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 3 }}>
-                          {staff.designation || (isAgent ? 'Route Collector' : 'Administrator')}
+                          {staff.designation || (isAgent ? 'Route Collector' : isBranchAdmin ? 'Branch Administrator' : 'Administrator')}
                         </div>
+                      </div>
+                    </td>
+
+                    {/* Assigned Branch */}
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+                        <Building size={13} color="var(--primary)" />
+                        <span>{staff.branchName || staff.branch_name || 'Main Branch'}</span>
                       </div>
                     </td>
 
@@ -501,7 +529,7 @@ export const ManageStaff = () => {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--text-primary)' }}>
                         <Navigation size={14} color="var(--primary)" />
-                        <span>{staff.assignedRoute || 'General Branch Territory'}</span>
+                        <span>{staff.assignedRoute || 'General Territory'}</span>
                       </div>
                     </td>
 
@@ -512,7 +540,7 @@ export const ManageStaff = () => {
                           {formatCurrency(staff.dailyTarget || 25000)}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>N/A (Admin)</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>N/A</span>
                       )}
                     </td>
 
@@ -561,7 +589,9 @@ export const ManageStaff = () => {
            ======================== */
         <div className="staff-cards-grid">
           {filteredStaff.map((staff) => {
-            const isAgent = staff.role === 'FIELD_AGENT' || staff.roleType === 'FIELD_AGENT';
+            const sRole = (staff.role || staff.roleType || '').toUpperCase();
+            const isAgent = sRole === 'FIELD_AGENT';
+            const isBranchAdmin = sRole === 'BRANCH_ADMIN';
             const initials = staff.name
               ? staff.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
               : 'ST';
@@ -569,20 +599,24 @@ export const ManageStaff = () => {
             return (
               <div
                 key={staff.id}
-                className={`staff-card-item ${isAgent ? 'card-agent' : 'card-admin'}`}
+                className={`staff-card-item ${isAgent ? 'card-agent' : isBranchAdmin ? 'card-branch' : 'card-admin'}`}
               >
                 <div>
                   {/* Card Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.85rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div className={`staff-avatar ${isAgent ? 'avatar-agent' : 'avatar-admin'}`}>
+                      <div className={`staff-avatar ${isAgent ? 'avatar-agent' : isBranchAdmin ? 'avatar-branch' : 'avatar-admin'}`}>
                         {initials}
                       </div>
                       <div>
                         <div className="staff-name">{staff.name}</div>
                         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          {staff.designation || (isAgent ? 'Route Field Collector' : 'Administrator')}
+                          {staff.designation || (isAgent ? 'Route Field Collector' : isBranchAdmin ? 'Branch Administrator' : 'Administrator')}
                         </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: '#1976d2', fontWeight: 600, marginTop: 2 }}>
+                          <Building size={12} />
+                          <span>{staff.branchName || staff.branch_name || 'Main Branch'}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -591,8 +625,8 @@ export const ManageStaff = () => {
 
                   {/* Role Badge */}
                   <div style={{ marginBottom: '0.85rem' }}>
-                    <span className={`staff-role-badge ${isAgent ? 'role-agent' : 'role-admin'}`}>
-                      {isAgent ? 'ROUTE FIELD COLLECTOR' : 'BRANCH ADMINISTRATOR'}
+                    <span className={`staff-role-badge ${isAgent ? 'role-agent' : isBranchAdmin ? 'role-branch' : 'role-admin'}`}>
+                      {isAgent ? 'ROUTE FIELD COLLECTOR' : isBranchAdmin ? 'BRANCH ADMINISTRATOR' : 'ORG ADMIN'}
                     </span>
                   </div>
 
@@ -617,7 +651,7 @@ export const ManageStaff = () => {
                       <span>Assigned Territory Route:</span>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      {staff.assignedRoute || 'Main Branch Route'}
+                      {staff.assignedRoute || 'Branch Operations'}
                     </div>
 
                     {isAgent && (
@@ -718,20 +752,37 @@ export const ManageStaff = () => {
                   onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                 >
                   <option value="FIELD_AGENT">Field Agent (Collector)</option>
-                  <option value="ADMIN">Branch Administrator</option>
+                  <option value="BRANCH_ADMIN">Branch Administrator (Isolated)</option>
+                  <option value="ORG_ADMIN">Organization Admin</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Job Title / Designation</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Senior Route Collector"
-                  value={editFormData.designation}
-                  onChange={(e) => setEditFormData({ ...editFormData, designation: e.target.value })}
-                />
+                <label className="form-label">Allocated Branch</label>
+                <select
+                  className="form-select"
+                  value={editFormData.branch_id || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, branch_id: e.target.value })}
+                >
+                  <option value="">-- Main Branch --</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.code})
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Job Title / Designation</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Senior Route Collector"
+                value={editFormData.designation}
+                onChange={(e) => setEditFormData({ ...editFormData, designation: e.target.value })}
+              />
             </div>
 
             {editFormData.role === 'FIELD_AGENT' && (
@@ -838,20 +889,37 @@ export const ManageStaff = () => {
                   onChange={(e) => setAddFormData({ ...addFormData, role: e.target.value })}
                 >
                   <option value="FIELD_AGENT">Field Agent (Collector)</option>
-                  <option value="ADMIN">Branch Administrator</option>
+                  <option value="BRANCH_ADMIN">Branch Administrator (Isolated)</option>
+                  <option value="ORG_ADMIN">Organization Admin</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Designation</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Route Field Collector"
-                  value={addFormData.designation}
-                  onChange={(e) => setAddFormData({ ...addFormData, designation: e.target.value })}
-                />
+                <label className="form-label">Allocated Branch *</label>
+                <select
+                  className="form-select"
+                  value={addFormData.branch_id || ''}
+                  onChange={(e) => setAddFormData({ ...addFormData, branch_id: e.target.value })}
+                >
+                  <option value="">-- Main Branch --</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.code})
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Job Title / Designation</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Senior Route Collector"
+                value={addFormData.designation}
+                onChange={(e) => setAddFormData({ ...addFormData, designation: e.target.value })}
+              />
             </div>
 
             {addFormData.role === 'FIELD_AGENT' && (

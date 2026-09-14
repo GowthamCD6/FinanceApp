@@ -28,17 +28,34 @@ import {
   Percent,
   ExternalLink,
   Server,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useOrg } from "../../context/OrgContext";
 import { api } from "../../services/api";
-import { SuperAdminOrgSwitcher } from "./SuperAdminOrgSwitcher";
 import "./Sidebar.css";
-import "./SidebarUserProfile.css";
 
 export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogout: propOnLogout }) => {
-  const { user, logout } = useAuth();
-  const { activeOrg, organizations, setActiveOrg, clearActiveOrg } = useOrg();
+  const {
+    user,
+    logout,
+    isSuperAdmin,
+    isOrgAdmin,
+    isBranchAdmin,
+    userBranchName,
+    userBranchId,
+    userOrgName,
+  } = useAuth();
+  const {
+    activeOrg,
+    organizations,
+    setActiveOrg,
+    clearActiveOrg,
+    branches,
+    activeBranchId,
+    setActiveBranchId,
+    activeBranch,
+  } = useOrg();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [governanceOpen, setGovernanceOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -80,7 +97,7 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         })
         .catch(() => {});
     }
-  }, [isInsideOrg, activeOrg]);
+  }, [isInsideOrg, activeOrg, activeBranchId]);
 
   const formatCurrency = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
@@ -101,6 +118,8 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     propUserRole ||
     (isFieldStaff
       ? "field_agent"
+      : isBranchAdmin
+      ? "branch_admin"
       : isInsideOrg || isDirectAdmin
       ? "admin"
       : userRoleStr === "admin"
@@ -113,9 +132,11 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
       : "/admin";
 
   const effectiveUserData = propUserData || {
-    username: user?.name || (effectiveRole === "superadmin" ? "Super Admin" : effectiveRole === "field_agent" ? "Route Staff" : "Branch Admin"),
+    username: user?.name || (isSuperAdmin ? "Super Admin" : isBranchAdmin ? "Branch Admin" : isFieldStaff ? "Route Staff" : "Org Admin"),
     roleName:
-      isInsideOrg && activeOrg
+      isBranchAdmin
+        ? `Branch Admin • ${userBranchName || activeBranch?.name || 'Local Branch'}`
+        : isInsideOrg && activeOrg
         ? `${activeOrg.name} (${activeOrg.code})`
         : isFieldStaff
         ? "Field Route Officer"
@@ -134,9 +155,14 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
   };
 
   const handleBrandClick = () => {
-    clearActiveOrg();
-    setMobileOpen(false);
-    navigate("/dashboard");
+    if (isBranchAdmin || (!isSuperAdmin && activeOrg)) {
+      setMobileOpen(false);
+      navigate(`${orgPrefix}/dashboard`);
+    } else {
+      clearActiveOrg();
+      setMobileOpen(false);
+      navigate("/dashboard");
+    }
   };
 
   const roleMenus = {
@@ -237,20 +263,81 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
       },
       { label: "Administration", section: true },
       {
+        path: `${orgPrefix}/branches`,
+        label: "Manage Branches",
+        icon: Building,
+      },
+      {
         path: `${orgPrefix}/staff`,
         label: "Staff & Collectors",
         icon: ShieldCheck,
       },
       {
         path: `${orgPrefix}/profile`,
-        label: "Branch Profile",
+        label: "Organization Profile",
         icon: User,
       },
+      ...(isSuperAdmin
+        ? [
+            {
+              path: "/dashboard",
+              label: "SuperAdmin Portal",
+              icon: ArrowLeft,
+              onClick: () => clearActiveOrg(),
+            },
+          ]
+        : []),
+    ],
+    branch_admin: [
+      { label: "Branch Overview", section: true },
+      { path: `${orgPrefix}/dashboard`, label: "Branch Dashboard", icon: LayoutDashboard },
+      { label: "Customer Ledger", section: true },
       {
-        path: "/dashboard",
-        label: "SuperAdmin Portal",
-        icon: ArrowLeft,
-        onClick: () => clearActiveOrg(),
+        path: `${orgPrefix}/shopkeepers`,
+        label: "Shopkeeper Ledger",
+        icon: Store,
+      },
+      {
+        path: `${orgPrefix}/weekly-customers`,
+        label: "Weekly Customers",
+        icon: Calendar,
+      },
+      {
+        path: `${orgPrefix}/monthly-customers`,
+        label: "Monthly Customers",
+        icon: Clock,
+      },
+      {
+        path: `${orgPrefix}/users`,
+        label: "Branch Borrowers",
+        icon: Users,
+      },
+      {
+        path: `${orgPrefix}/users/add`,
+        label: "Onboard Borrower",
+        icon: UserPlus,
+      },
+      { label: "Loan Operations", section: true },
+      {
+        path: `${orgPrefix}/loans`,
+        label: "Branch Loans",
+        icon: CreditCard,
+      },
+      {
+        path: `${orgPrefix}/reports`,
+        label: "Reports & Recovery",
+        icon: Receipt,
+      },
+      { label: "Branch Team", section: true },
+      {
+        path: `${orgPrefix}/staff`,
+        label: "Field Staff & Collectors",
+        icon: ShieldCheck,
+      },
+      {
+        path: `${orgPrefix}/profile`,
+        label: "Branch Profile",
+        icon: User,
       },
     ],
     field_agent: [
@@ -336,7 +423,7 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
           </div>
         </div>
 
-        {/* Active Org Context & Field Collection Progress */}
+        {/* Active Org Context & Branch Scoping & Progress */}
         {isInsideOrg && activeOrg && (
           <div className="sidebar-org-card">
             <div className="sidebar-org-badge-row">
@@ -346,6 +433,39 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
               </span>
               <span className="sidebar-org-code">{activeOrg.code}</span>
             </div>
+
+            {/* Branch Context Indicator / Selector */}
+            {isBranchAdmin ? (
+              <div className="sidebar-branch-pill">
+                <MapPin size={12} color="#059669" />
+                <span className="sidebar-branch-name">
+                  {userBranchName || activeBranch?.name || 'Allocated Branch'}
+                </span>
+                <span className="sidebar-branch-tag">Locked</span>
+              </div>
+            ) : (
+              <div className="sidebar-branch-selector-wrap">
+                <div className="sidebar-branch-label-row">
+                  <span className="sidebar-branch-lbl">
+                    <MapPin size={11} /> Branch Scope:
+                  </span>
+                </div>
+                <select
+                  className="sidebar-branch-select"
+                  value={activeBranchId || 'ALL'}
+                  onChange={(e) => setActiveBranchId(e.target.value)}
+                  title="Filter all ledger, loans & collections by branch"
+                >
+                  <option value="ALL">🏢 All Branches (Aggregated)</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={String(b.id)}>
+                      📍 {b.name} ({b.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="sidebar-ticker-stat">
               <span>Daily Recoveries:</span>
               <span className="val-green">
@@ -518,104 +638,10 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
 
       {/* Main Content Area */}
       <div className="layout-content-wrapper">
-        <SuperAdminOrgSwitcher />
         <main className="layout-main">
           <Outlet />
         </main>
       </div>
-
-      <style>{`
-        .layout-root {
-          min-height: 100vh;
-          display: flex;
-          background: #F8FAFC;
-        }
-
-        .mobile-top-bar {
-          display: none;
-        }
-
-        .layout-content-wrapper {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          margin-left: var(--sidebar-width, 260px);
-          min-width: 0;
-          min-height: 100vh;
-        }
-
-        .layout-main {
-          flex: 1;
-          padding: 1.5rem 2rem;
-          max-width: 100%;
-          width: 100%;
-          margin: 0;
-          box-sizing: border-box;
-        }
-
-        @media (max-width: 768px) {
-          .layout-root {
-            flex-direction: column;
-          }
-
-          .mobile-top-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 56px;
-            padding: 0 16px;
-            background: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-          }
-
-          .mobile-menu-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            color: #1e293b;
-            cursor: pointer;
-          }
-
-          .mobile-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          }
-
-          .mobile-brand-icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
-            background: #1976d2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .mobile-brand-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #1e293b;
-          }
-
-          .layout-content-wrapper {
-            margin-left: 0 !important;
-          }
-
-          .layout-main {
-            padding: 1.25rem 1rem;
-          }
-        }
-      `}</style>
     </div>
   );
 };

@@ -55,6 +55,7 @@ async function createCustomer(data, userId) {
 
   const customerCode = await generateCustomerCode();
   const effectiveOrgId = organizationId || organization_id || 1;
+  const effectiveBranchId = data.branchId || data.branch_id || null;
   const bcrypt = require('bcryptjs');
   const defaultHash = await bcrypt.hash('Password@123', 10);
   const cleanEmail = (resolvedName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '') + Date.now().toString().slice(-4) + '@fundlending.com';
@@ -63,9 +64,9 @@ async function createCustomer(data, userId) {
   let effectiveUserId = userId;
   try {
     const userRes = await query(
-      `INSERT INTO users (organization_id, name, email, phone, password_hash, role_type, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', NOW())`,
-      [effectiveOrgId, resolvedName, cleanEmail, resolvedPhone, defaultHash, resolvedType === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER']
+      `INSERT INTO users (organization_id, branch_id, name, email, phone, password_hash, role_type, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', NOW())`,
+      [effectiveOrgId, effectiveBranchId, resolvedName, cleanEmail, resolvedPhone, defaultHash, resolvedType === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER']
     );
     effectiveUserId = userRes.insertId;
   } catch (err) {
@@ -79,10 +80,11 @@ async function createCustomer(data, userId) {
 
   const result = await query(
     `INSERT INTO customers 
-     (organization_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
+     (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
     [
       effectiveOrgId,
+      effectiveBranchId,
       customerCode,
       resolvedName,
       resolvedPhone,
@@ -101,13 +103,13 @@ async function createCustomer(data, userId) {
     ]
   );
 
-  return { id: result.insertId, userId: effectiveUserId, organizationId: effectiveOrgId, customerCode, fullName: resolvedName, phone: resolvedPhone, customerType: resolvedType };
+  return { id: result.insertId, userId: effectiveUserId, organizationId: effectiveOrgId, branchId: effectiveBranchId, customerCode, fullName: resolvedName, phone: resolvedPhone, customerType: resolvedType };
 }
 
 /**
  * List customers with financial aggregates
  */
-async function getCustomers({ search, customerType, status, organizationId, page = 1, limit = 20 }) {
+async function getCustomers({ search, customerType, status, organizationId, branchId, page = 1, limit = 20 }) {
   const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
   const offset = (safePage - 1) * safeLimit;
@@ -117,6 +119,11 @@ async function getCustomers({ search, customerType, status, organizationId, page
   if (organizationId && organizationId !== 'ALL') {
     whereClauses.push('c.organization_id = ?');
     params.push(organizationId);
+  }
+
+  if (branchId && branchId !== 'ALL') {
+    whereClauses.push('c.branch_id = ?');
+    params.push(branchId);
   }
 
   if (search) {
@@ -389,13 +396,18 @@ async function updateCustomerStatus(id, status, reason, updatedBy) {
 /**
  * Get Weekly Customers with live active weekly loans, schedule, and installment KPIs
  */
-async function getWeeklyCustomers({ search, status, area, organizationId } = {}) {
+async function getWeeklyCustomers({ search, status, area, organizationId, branchId } = {}) {
   let whereClauses = ["c.customer_type IN ('COMMON_CUSTOMER', 'WEEKLY_BORROWER')"];
   const params = [];
 
   if (organizationId && organizationId !== 'ALL') {
     whereClauses.push('c.organization_id = ?');
     params.push(organizationId);
+  }
+
+  if (branchId && branchId !== 'ALL') {
+    whereClauses.push('c.branch_id = ?');
+    params.push(branchId);
   }
 
   if (search) {
@@ -527,7 +539,7 @@ async function getWeeklyCustomers({ search, status, area, organizationId } = {})
 /**
  * Get Shopkeepers with live multi-loan registry, day-by-day installment schedule, and date-aware collection status
  */
-async function getShopkeepers({ search, status, route, organizationId, date } = {}) {
+async function getShopkeepers({ search, status, route, organizationId, branchId, date } = {}) {
   const targetDate = (date && typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/))
     ? date
     : new Date().toISOString().slice(0, 10);
@@ -538,6 +550,11 @@ async function getShopkeepers({ search, status, route, organizationId, date } = 
   if (organizationId && organizationId !== 'ALL') {
     whereClauses.push('c.organization_id = ?');
     params.push(organizationId);
+  }
+
+  if (branchId && branchId !== 'ALL') {
+    whereClauses.push('c.branch_id = ?');
+    params.push(branchId);
   }
 
   if (search) {
@@ -765,13 +782,18 @@ async function getShopkeepers({ search, status, route, organizationId, date } = 
 /**
  * Get Monthly Customers with active monthly loans and EMI data
  */
-async function getMonthlyCustomers({ search, status, organizationId } = {}) {
+async function getMonthlyCustomers({ search, status, organizationId, branchId } = {}) {
   let whereClauses = ["(c.customer_type IN ('COMMON_CUSTOMER', 'MONTHLY_BORROWER') OR c.customer_type IS NULL)"];
   const params = [];
 
   if (organizationId && organizationId !== 'ALL') {
     whereClauses.push('c.organization_id = ?');
     params.push(organizationId);
+  }
+
+  if (branchId && branchId !== 'ALL') {
+    whereClauses.push('c.branch_id = ?');
+    params.push(branchId);
   }
 
   if (search) {

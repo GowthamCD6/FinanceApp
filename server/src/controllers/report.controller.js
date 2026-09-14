@@ -2,7 +2,12 @@ const reportService = require('../services/report.service');
 
 async function getDashboard(req, res) {
   try {
-    const data = await reportService.getDashboardMetrics();
+    const orgId = req.query.organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
+    const branchId = req.query.branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
+    const data = await reportService.getDashboardMetrics({
+      organizationId: orgId,
+      branchId: branchId,
+    });
     return res.json({ success: true, data });
   } catch (error) {
     console.error('Dashboard report error:', error);

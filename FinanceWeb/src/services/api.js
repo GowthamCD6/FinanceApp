@@ -49,6 +49,7 @@ export function triggerSessionExpired(reason = 'Your session has expired. Please
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('finance_token') || sessionStorage.getItem('finance_token');
   const activeOrgId = localStorage.getItem('finance_active_org_id');
+  const activeBranchId = localStorage.getItem('finance_active_branch_id');
 
   // Check token expiration before sending if not a public login endpoint
   if (token && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google')) {
@@ -62,6 +63,7 @@ async function request(endpoint, options = {}) {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(activeOrgId ? { 'x-organization-id': activeOrgId } : {}),
+    ...(activeBranchId && activeBranchId !== 'ALL' ? { 'x-branch-id': activeBranchId } : {}),
     ...options.headers,
   };
 
@@ -160,6 +162,24 @@ export const api = {
       return await request(`/organizations/${orgId}/branches`, {
         method: 'POST',
         body: JSON.stringify(branchData),
+      });
+    },
+    updateBranch: async (orgId, branchId, branchData) => {
+      return await request(`/organizations/${orgId}/branches/${branchId}`, {
+        method: 'PUT',
+        body: JSON.stringify(branchData),
+      });
+    },
+    updateBranchStatus: async (orgId, branchId, status) => {
+      return await request(`/organizations/${orgId}/branches/${branchId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+    },
+    assignBranchAdmin: async (orgId, branchId, adminData) => {
+      return await request(`/organizations/${orgId}/branches/${branchId}/assign-admin`, {
+        method: 'POST',
+        body: JSON.stringify(adminData),
       });
     },
   },

@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS branches (
     phone VARCHAR(20),
     manager_name VARCHAR(150),
     manager_phone VARCHAR(20),
+    manager_user_id BIGINT UNSIGNED NULL,
     status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -156,7 +157,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20) UNIQUE,
     email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role_type ENUM('SUPER_ADMIN', 'ADMIN', 'FIELD_AGENT', 'SHOPKEEPER', 'COMMON_CUSTOMER', 'USER') NOT NULL DEFAULT 'USER',
+    role_type ENUM('SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'FIELD_AGENT', 'SHOPKEEPER', 'COMMON_CUSTOMER', 'USER') NOT NULL DEFAULT 'USER',
     status ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED') NOT NULL DEFAULT 'ACTIVE',
     credit_limit DECIMAL(15,2) DEFAULT 0.00,
     occupation VARCHAR(150),
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT fk_users_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL,
     CONSTRAINT fk_users_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
     INDEX idx_users_org (organization_id),
+    INDEX idx_users_branch (branch_id),
     INDEX idx_users_phone (phone),
     INDEX idx_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

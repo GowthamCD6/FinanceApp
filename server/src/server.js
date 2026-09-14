@@ -2,8 +2,12 @@ const http = require('http');
 const { execSync } = require('child_process');
 const dotenv = require('dotenv');
 const app = require('./app');
+const { bootstrapDatabase } = require('./database/bootstrap');
 
 dotenv.config();
+
+// Auto-bootstrap schema & roles
+bootstrapDatabase();
 
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
