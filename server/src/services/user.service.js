@@ -82,14 +82,18 @@ async function createUser(data, creatorId = null) {
     let customerCode = null;
     let custId = null;
 
-    if (!['SUPER_ADMIN', 'ADMIN', 'AUDITOR'].includes(role)) {
+    if (!['SUPER_ADMIN', 'ADMIN', 'AUDITOR', 'FIELD_AGENT'].includes(role)) {
       customerCode = await generateCustomerCode();
       const custType = role === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER';
+      const stallVal = data.stall_no || data.stallNo || null;
+      const marketVal = data.market_location || data.marketLocation || address || null;
+      const creditVal = parseFloat(data.credit_limit || data.creditLimit || 50000);
+      const shopVal = shopName || data.shop_name || (role === 'SHOPKEEPER' ? `${displayName}'s Store` : null);
 
       const [custRes] = await conn.query(
         `INSERT INTO customers 
-         (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, user_id, assigned_agent_id, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, assigned_agent_id, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           effectiveOrgId,
           data.branchId || null,
@@ -101,7 +105,10 @@ async function createUser(data, creatorId = null) {
           city || null,
           custType,
           occupation || null,
-          shopName || null,
+          shopVal,
+          stallVal,
+          marketVal,
+          creditVal,
           status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
           dateJoined ? String(dateJoined).slice(0, 10) : new Date().toISOString().slice(0, 10),
           userId,
@@ -117,6 +124,38 @@ async function createUser(data, creatorId = null) {
           `INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)`,
           [custId, notes, creatorId || null]
         );
+      }
+
+      // Originate Initial Loan if requested
+      if (data.initial_loan || data.initialLoan) {
+        const initLoan = data.initial_loan || data.initialLoan;
+        const principal = parseFloat(initLoan.principal || 20000);
+        const freq = initLoan.frequency || (role === 'SHOPKEEPER' ? 'DAILY' : 'WEEKLY');
+        const instCount = parseInt(initLoan.total_installments || (freq === 'DAILY' ? 25 : (freq === 'MONTHLY' ? 12 : 10)), 10);
+        const rate = parseFloat(initLoan.interest_rate || (freq === 'DAILY' ? 12.5 : (freq === 'MONTHLY' ? 15.0 : 10.0)));
+        const incomeAmt = Math.round(((principal * rate) / 100) * 100) / 100;
+        const totalRepay = principal + incomeAmt;
+        const loanNum = `LN-${freq.slice(0, 2)}-${customerCode || custId}`;
+
+        const [prodRows] = await conn.query(`SELECT id FROM loan_products WHERE repayment_frequency = ? LIMIT 1`, [freq]);
+        const prodId = prodRows.length > 0 ? prodRows[0].id : 1;
+
+        const [loanRes] = await conn.query(
+          `INSERT INTO loans (organization_id, branch_id, loan_number, customer_id, product_id, loan_title, principal_amount, contracted_income_amount, interest_rate, total_repayment_amount, total_installments, repayment_frequency, status, application_date, approval_date, disbursement_date)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', CURRENT_DATE, CURRENT_DATE, CURRENT_DATE)`,
+          [effectiveOrgId, data.branchId || null, loanNum, custId, prodId, `${freq} Micro-Loan (₹${principal})`, principal, incomeAmt, rate, totalRepay, instCount, freq]
+        );
+        const newLoanId = loanRes.insertId;
+
+        const instAmount = Math.ceil(totalRepay / instCount);
+        const stepDays = freq === 'DAILY' ? 1 : (freq === 'MONTHLY' ? 30 : 7);
+        for (let i = 1; i <= instCount; i++) {
+          await conn.query(
+            `INSERT INTO loan_installments (loan_id, installment_number, due_date, scheduled_amount, principal_component, income_component, paid_amount, outstanding_amount, status)
+             VALUES (?, ?, DATE_ADD(CURRENT_DATE, INTERVAL ? DAY), ?, ?, ?, 0, ?, 'PENDING')`,
+            [newLoanId, i, i * stepDays, instAmount, principal / instCount, incomeAmt / instCount, instAmount]
+          );
+        }
       }
     }
 

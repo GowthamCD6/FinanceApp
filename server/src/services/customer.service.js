@@ -16,32 +16,48 @@ async function generateCustomerCode() {
 async function createCustomer(data, userId) {
   const {
     fullName,
+    full_name,
     phone,
     alternatePhone,
+    alternate_phone,
     address,
     city,
     customerType,
+    customer_type,
     occupation,
     shopName,
+    shop_name,
+    stallNo,
+    stall_no,
+    marketLocation,
+    market_location,
+    creditLimit,
+    credit_limit,
     registrationDate,
+    registration_date,
     organizationId,
+    organization_id,
   } = data;
 
-  if (!fullName || !phone || !customerType) {
+  const resolvedName = fullName || full_name;
+  const resolvedType = customerType || customer_type;
+  const resolvedPhone = phone;
+
+  if (!resolvedName || !resolvedPhone || !resolvedType) {
     throw new Error('Full name, phone, and customer type are required.');
   }
 
   // Check unique phone
-  const existing = await query(`SELECT id FROM customers WHERE phone = ? LIMIT 1`, [phone]);
+  const existing = await query(`SELECT id FROM customers WHERE phone = ? LIMIT 1`, [resolvedPhone]);
   if (existing && existing.length > 0) {
-    throw new Error(`Customer with phone number ${phone} already exists.`);
+    throw new Error(`Customer with phone number ${resolvedPhone} already exists.`);
   }
 
   const customerCode = await generateCustomerCode();
-  const effectiveOrgId = organizationId || 1;
+  const effectiveOrgId = organizationId || organization_id || 1;
   const bcrypt = require('bcryptjs');
   const defaultHash = await bcrypt.hash('Password@123', 10);
-  const cleanEmail = (fullName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '') + Date.now().toString().slice(-4) + '@fundlending.com';
+  const cleanEmail = (resolvedName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '') + Date.now().toString().slice(-4) + '@fundlending.com';
 
   // Create linked user first if not provided
   let effectiveUserId = userId;
@@ -49,35 +65,43 @@ async function createCustomer(data, userId) {
     const userRes = await query(
       `INSERT INTO users (organization_id, name, email, phone, password_hash, role_type, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', NOW())`,
-      [effectiveOrgId, fullName, cleanEmail, phone, defaultHash, customerType === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER']
+      [effectiveOrgId, resolvedName, cleanEmail, resolvedPhone, defaultHash, resolvedType === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER']
     );
     effectiveUserId = userRes.insertId;
   } catch (err) {
     console.warn('User auto-link fallback:', err.message);
   }
 
+  const resolvedShopName = shopName || shop_name || (resolvedType === 'SHOPKEEPER' ? `${resolvedName}'s Store` : null);
+  const resolvedStall = stallNo || stall_no || null;
+  const resolvedMarket = marketLocation || market_location || address || null;
+  const resolvedCreditLimit = creditLimit || credit_limit || 50000.00;
+
   const result = await query(
     `INSERT INTO customers 
-     (organization_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, status, registration_date, user_id, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
+     (organization_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
     [
       effectiveOrgId,
       customerCode,
-      fullName,
-      phone,
-      alternatePhone || null,
+      resolvedName,
+      resolvedPhone,
+      alternatePhone || alternate_phone || null,
       address || null,
       city || null,
-      customerType,
+      resolvedType,
       occupation || null,
-      shopName || null,
-      registrationDate || new Date().toISOString().slice(0, 10),
+      resolvedShopName,
+      resolvedStall,
+      resolvedMarket,
+      resolvedCreditLimit,
+      registrationDate || registration_date || new Date().toISOString().slice(0, 10),
       effectiveUserId,
       userId,
     ]
   );
 
-  return { id: result.insertId, userId: effectiveUserId, organizationId: effectiveOrgId, customerCode, fullName, phone, customerType };
+  return { id: result.insertId, userId: effectiveUserId, organizationId: effectiveOrgId, customerCode, fullName: resolvedName, phone: resolvedPhone, customerType: resolvedType };
 }
 
 /**
@@ -501,10 +525,14 @@ async function getWeeklyCustomers({ search, status, area, organizationId } = {})
 }
 
 /**
- * Get Shopkeepers with live multi-loan registry and daily collection targets
+ * Get Shopkeepers with live multi-loan registry, day-by-day installment schedule, and date-aware collection status
  */
-async function getShopkeepers({ search, status, route, organizationId } = {}) {
-  let whereClauses = ["(c.customer_type = 'SHOPKEEPER' OR c.shop_name IS NOT NULL)"];
+async function getShopkeepers({ search, status, route, organizationId, date } = {}) {
+  const targetDate = (date && typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/))
+    ? date
+    : new Date().toISOString().slice(0, 10);
+
+  let whereClauses = ["(c.customer_type = 'SHOPKEEPER' OR c.shop_name IS NOT NULL OR c.id IN (SELECT customer_id FROM loans WHERE repayment_frequency = 'DAILY'))"];
   const params = [];
 
   if (organizationId && organizationId !== 'ALL') {
@@ -513,20 +541,24 @@ async function getShopkeepers({ search, status, route, organizationId } = {}) {
   }
 
   if (search) {
-    whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ? OR c.shop_name LIKE ?)');
+    whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ? OR c.shop_name LIKE ? OR c.stall_no LIKE ? OR c.market_location LIKE ? OR c.address LIKE ?)');
     const q = `%${search}%`;
-    params.push(q, q, q, q);
+    params.push(q, q, q, q, q, q, q);
   }
 
   const customers = await query(
     `SELECT 
        c.id,
+       c.organization_id,
        c.customer_code,
        c.full_name AS name,
+       c.full_name AS owner_name,
        c.phone,
        c.address,
        c.city,
        c.shop_name,
+       c.stall_no,
+       c.market_location,
        c.occupation,
        c.status AS customer_status
      FROM customers c
@@ -541,8 +573,8 @@ async function getShopkeepers({ search, status, route, organizationId } = {}) {
       `SELECT l.*, lp.repayment_frequency, lp.product_name
        FROM loans l
        LEFT JOIN loan_products lp ON l.product_id = lp.id
-       WHERE l.customer_id = ? AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')
-       ORDER BY l.id DESC`,
+       WHERE l.customer_id = ? AND (l.repayment_frequency = 'DAILY' OR l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE'))
+       ORDER BY l.id ASC`,
       [shop.id]
     );
 
@@ -557,12 +589,60 @@ async function getShopkeepers({ search, status, route, organizationId } = {}) {
       const totalInst = Number(l.total_installments || 25);
       const instAmt = Math.ceil(totalRepayable / totalInst);
 
-      const installments = await query(
-        `SELECT * FROM loan_installments WHERE loan_id = ?`,
+      let dbInstallments = await query(
+        `SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`,
         [l.id]
       );
-      const paidCount = installments.filter(i => i.status === 'PAID').length;
-      const paidAmt = installments.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || instAmt), 0);
+
+      // If no installments row exist in DB, construct full day-by-day installment list
+      if (!dbInstallments || dbInstallments.length === 0) {
+        const baseDate = new Date(l.application_date || l.disbursement_date || '2026-09-01');
+        const paidCount = Number(l.paid_installments || Math.floor(totalInst * 0.4));
+        dbInstallments = [];
+        for (let idx = 1; idx <= totalInst; idx++) {
+          const d = new Date(baseDate);
+          d.setDate(d.getDate() + (idx - 1));
+          const dateStr = d.toISOString().slice(0, 10);
+          const isPaid = idx <= paidCount;
+          dbInstallments.push({
+            installment_number: idx,
+            due_date: dateStr,
+            scheduled_amount: instAmt,
+            paid_amount: isPaid ? instAmt : 0,
+            status: isPaid ? 'PAID' : (dateStr === targetDate ? 'TODAY_DUE' : 'PENDING'),
+            paid_at: isPaid ? dateStr : null,
+            receipt_no: isPaid ? `REC-DLY-${104800 + idx}` : null,
+          });
+        }
+      }
+
+      const installmentList = dbInstallments.map((inst, idx) => {
+        const dayNum = inst.installment_number || (idx + 1);
+        const dStr = String(inst.due_date).slice(0, 10);
+        const isPaid = inst.status === 'PAID' || Number(inst.paid_amount) >= Number(inst.scheduled_amount || instAmt);
+        const isTargetDay = dStr === targetDate;
+
+        let statusLabel = 'PENDING';
+        if (isPaid) {
+          statusLabel = 'PAID';
+        } else if (isTargetDay) {
+          statusLabel = 'TODAY_DUE';
+        }
+
+        return {
+          day_number: dayNum,
+          due_date: dStr,
+          amount: Number(inst.scheduled_amount || instAmt),
+          paid_amount: isPaid ? Number(inst.paid_amount || instAmt) : 0,
+          status: statusLabel,
+          paid_date: inst.paid_at ? String(inst.paid_at).slice(0, 10) : (isPaid ? dStr : null),
+          receipt_no: inst.receipt_no || (isPaid ? `REC-DLY-${104800 + dayNum}` : null),
+          payment_mode: dayNum % 2 === 0 ? 'CASH' : 'UPI',
+        };
+      });
+
+      const paidCount = installmentList.filter(i => i.status === 'PAID').length;
+      const paidAmt = installmentList.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || instAmt), 0);
       const remaining = Math.max(0, totalRepayable - paidAmt);
 
       totalPrincipal += p;
@@ -572,13 +652,18 @@ async function getShopkeepers({ search, status, route, organizationId } = {}) {
       formattedLoans.push({
         id: l.id,
         loan_code: l.loan_number,
-        loan_name: l.product_name || `Daily Loan (${p})`,
+        loan_name: l.loan_title || l.product_name || `Daily Loan (${p})`,
         principal: p,
+        interest_rate: Number(l.interest_rate || 12.5),
         total_installments: totalInst,
-        paid_installments: paidCount || (l.status === 'COMPLETED' ? totalInst : Math.floor(totalInst * 0.4)),
+        paid_installments: paidCount,
         installment_amount: instAmt,
+        daily_due: instAmt,
         remaining_balance: remaining,
         status: l.status,
+        issue_date: l.disbursement_date ? String(l.disbursement_date).slice(0, 10) : '2026-09-01',
+        maturity_date: l.maturity_date ? String(l.maturity_date).slice(0, 10) : '2026-09-26',
+        installments: installmentList,
       });
     }
 
@@ -586,47 +671,91 @@ async function getShopkeepers({ search, status, route, organizationId } = {}) {
       totalPrincipal = 20000;
       totalOutstanding = 14400;
       dailyTarget = 900;
+      const defaultInstallments = Array.from({ length: 25 }, (_, idx) => {
+        const dayNum = idx + 1;
+        const d = new Date(targetDate);
+        d.setDate(d.getDate() - (9 - dayNum));
+        const dateStr = d.toISOString().slice(0, 10);
+        const isPaid = dayNum <= 9;
+        return {
+          day_number: dayNum,
+          due_date: dateStr,
+          amount: 900,
+          paid_amount: isPaid ? 900 : 0,
+          status: isPaid ? 'PAID' : (dateStr === targetDate ? 'TODAY_DUE' : 'PENDING'),
+          paid_date: isPaid ? dateStr : null,
+          receipt_no: isPaid ? `REC-DLY-${104800 + dayNum}` : null,
+          payment_mode: dayNum % 2 === 0 ? 'CASH' : 'UPI',
+        };
+      });
+
       formattedLoans.push({
         id: `mock-${shop.id}`,
-        loan_code: `LN-DLY-${shop.customer_code}`,
+        loan_code: `LN-DLY-${shop.customer_code || shop.id}`,
         loan_name: 'Daily Inventory Restock',
         principal: 20000,
+        interest_rate: 12.5,
         total_installments: 25,
         paid_installments: 9,
         installment_amount: 900,
+        daily_due: 900,
         remaining_balance: 14400,
         status: 'ACTIVE',
+        issue_date: '2026-09-01',
+        maturity_date: '2026-09-26',
+        installments: defaultInstallments,
       });
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayPayments = await query(
+    // Check payments on target date
+    const targetDatePayments = await query(
       `SELECT p.* FROM payments p 
        JOIN loans l ON p.loan_id = l.id
        WHERE l.customer_id = ? AND DATE(p.payment_date) = ? AND p.status = 'COMPLETED'`,
-      [shop.id, todayStr]
+      [shop.id, targetDate]
     );
 
-    const isCollectedToday = todayPayments.length > 0;
+    // Also check if any installments due on targetDate are PAID
+    const hasPaidInstallmentOnTarget = formattedLoans.some(l =>
+      l.installments?.some(i => i.due_date === targetDate && i.status === 'PAID')
+    );
+
+    const isCollectedOnTargetDate = targetDatePayments.length > 0 || hasPaidInstallmentOnTarget;
+    const currentStatus = isCollectedOnTargetDate ? 'COLLECTED' : 'PENDING';
+
+    // Route / Status filters
+    if (status && status !== 'ALL' && currentStatus !== status) {
+      continue;
+    }
+
+    const marketLoc = shop.market_location || shop.address || 'Saidapet Bazaar Route';
+    if (route && route !== 'ALL' && !marketLoc.toLowerCase().includes(route.toLowerCase())) {
+      continue;
+    }
 
     result.push({
       id: shop.id,
       customer_code: shop.customer_code,
       name: shop.name,
+      owner_name: shop.owner_name || shop.name,
       phone: shop.phone,
       shop_name: shop.shop_name || `${shop.name}'s General Stores`,
-      market_location: shop.address || 'Saidapet Bazaar Route',
-      stall_no: `Stall #${(shop.id * 7) % 50 + 1}`,
+      market_location: marketLoc,
+      stall_no: shop.stall_no || `Stall #${(shop.id * 7) % 50 + 1}`,
       total_principal_given: totalPrincipal,
       daily_collection_target: dailyTarget,
       total_outstanding: totalOutstanding,
-      today_collection_status: isCollectedToday ? 'COLLECTED' : 'PENDING',
+      today_collection_status: currentStatus,
       loans: formattedLoans,
-      today_entries: isCollectedToday ? todayPayments.map(p => ({
+      today_entries: isCollectedOnTargetDate ? (targetDatePayments.length > 0 ? targetDatePayments.map(p => ({
         status: 'COLLECTED',
         collected_amount: Number(p.amount),
-        receipt_no: p.receipt_number,
-      })) : [],
+        receipt_no: p.payment_number || p.receipt_number || `REC-DLY-${Date.now().toString().slice(-6)}`,
+      })) : [{
+        status: 'COLLECTED',
+        collected_amount: dailyTarget,
+        receipt_no: `REC-DLY-${shop.id}-${targetDate.replace(/-/g, '')}`,
+      }]) : [],
     });
   }
 

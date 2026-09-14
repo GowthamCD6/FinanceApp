@@ -89,79 +89,53 @@ export const ShopkeeperCollect = () => {
     }
   };
 
-  useEffect(() => {
-    if (initialShop) {
-      initializeLoanState(initialShop);
-    } else if (shopId) {
-      setLoading(true);
-      api.getShopkeepers({ date: collectionDate, ...(activeOrg ? { organizationId: activeOrg.id } : {}) })
-        .then((shops) => {
-          const found = Array.isArray(shops)
-            ? shops.find((s) => String(s.id) === String(shopId) || String(s.customer_code) === String(shopId))
-            : null;
+  const fetchShopData = async (targetDate = collectionDate) => {
+    if (!shopId) return;
+    setLoading(true);
+    try {
+      const shops = await api.getShopkeepers({
+        date: targetDate,
+        ...(activeOrg ? { organizationId: activeOrg.id } : {}),
+      });
+      const found = Array.isArray(shops)
+        ? shops.find((s) => String(s.id) === String(shopId) || String(s.customer_code) === String(shopId))
+        : null;
 
-          if (found) {
-            setShop(found);
-            initializeLoanState(found);
-          } else {
-            // Direct fetch fallback
-            return api.getCustomerById(shopId).then((cust) => {
-              if (cust) {
-                const fallbackShop = {
-                  id: cust.id,
-                  customer_code: cust.customer_code || `SHP-${cust.id}`,
-                  name: cust.name || cust.full_name,
-                  shop_name: cust.shop_name || `${cust.name || cust.full_name}'s Store`,
-                  owner_name: cust.name || cust.full_name,
-                  phone: cust.phone,
-                  address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
-                  stall_no: `Stall #${(cust.id * 7) % 50 + 1}`,
-                  market_location: cust.address || 'Saidapet Bazaar Route',
-                  daily_collection_target: cust.daily_due || 1470,
-                  total_outstanding: cust.totalOutstanding || 27000,
-                  loans: [
-                    {
-                      id: `loan-1-${cust.id}`,
-                      loan_code: `LN-DLY-A${cust.id}`,
-                      loan_name: 'Daily Inventory Restock',
-                      principal: 25000,
-                      interest_rate: 12.5,
-                      total_installments: 25,
-                      paid_installments: 10,
-                      installment_amount: 1125,
-                      daily_due: 1125,
-                      remaining_balance: 16875,
-                      status: 'ACTIVE',
-                      issue_date: '2026-09-01',
-                      maturity_date: '2026-09-26',
-                    },
-                    {
-                      id: `loan-2-${cust.id}`,
-                      loan_code: `LN-DLY-B${cust.id}`,
-                      loan_name: 'Festival Stock Advance',
-                      principal: 15000,
-                      interest_rate: 15.0,
-                      total_installments: 50,
-                      paid_installments: 18,
-                      installment_amount: 345,
-                      daily_due: 345,
-                      remaining_balance: 11040,
-                      status: 'ACTIVE',
-                      issue_date: '2026-08-20',
-                      maturity_date: '2026-10-09',
-                    },
-                  ],
-                };
-                setShop(fallbackShop);
-                initializeLoanState(fallbackShop);
-              }
-            });
-          }
-        })
-        .catch((err) => console.error('Error retrieving merchant collection record:', err))
-        .finally(() => setLoading(false));
+      if (found) {
+        setShop(found);
+        initializeLoanState(found);
+      } else {
+        // Direct fetch fallback
+        const cust = await api.getCustomerById(shopId);
+        if (cust) {
+          const fallbackShop = {
+            id: cust.id,
+            customer_code: cust.customer_code || `SHP-${cust.id}`,
+            name: cust.name || cust.full_name,
+            shop_name: cust.shop_name || `${cust.name || cust.full_name}'s Store`,
+            owner_name: cust.name || cust.full_name,
+            phone: cust.phone,
+            address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
+            stall_no: cust.stall_no || `Stall #${(cust.id * 7) % 50 + 1}`,
+            market_location: cust.market_location || cust.address || 'Saidapet Bazaar Route',
+            daily_collection_target: cust.daily_due || 900,
+            total_outstanding: cust.totalOutstanding || 14400,
+            loans: cust.loans || [],
+          };
+          setShop(fallbackShop);
+          initializeLoanState(fallbackShop);
+        }
+      }
+    } catch (err) {
+      console.error('Error retrieving merchant collection record:', err);
+    } finally {
+      setLoading(false);
     }
-  }, [shopId]);
+  };
+
+  useEffect(() => {
+    fetchShopData(collectionDate);
+  }, [shopId, activeOrg?.id, collectionDate]);
 
   const activeLoans = shop?.loans || shop?.active_loans || [];
 
@@ -278,17 +252,18 @@ export const ShopkeeperCollect = () => {
           paymentMode,
           amt
         );
+        const receiptNo = res?.paymentNumber || res?.receipt_no || res?.receiptNumber || `REC-DLY-${Date.now().toString().slice(-6)}`;
         collectedItems.push({
           loan_id: loan.id,
           loan_code: loan.loan_code,
           loan_name: loan.loan_name,
           amount: amt,
-          receipt_no: res?.receipt_no || `REC-DLY-${Date.now().toString().slice(-6)}`,
+          receipt_no: receiptNo,
         });
       }
 
       setReceiptData({
-        receipt_master_no: `REC-DLY-BATCH-${Date.now().toString().slice(-6)}`,
+        receipt_master_no: collectedItems[0]?.receipt_no || `REC-DLY-BATCH-${Date.now().toString().slice(-6)}`,
         shop_name: shop.shop_name || shop.name,
         owner_name: shop.owner_name || shop.name,
         customer_code: shop.customer_code,

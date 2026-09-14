@@ -4,8 +4,6 @@ import { api } from '../../../services/api';
 import {
   UserPlus,
   ArrowRight,
-  ShieldCheck,
-  Building,
   CheckCircle2,
   Phone,
   Briefcase,
@@ -14,107 +12,49 @@ import {
   MapPin,
   AlertCircle,
   Store,
-  CreditCard,
-  DollarSign,
   Calendar,
-  Sparkles,
-  ArrowLeft,
-  Navigation,
-  Mail,
-  Shield,
-  Award,
-  Clock,
-  Layers,
+  TrendingUp,
+  Receipt,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
-
-const DEFAULT_FALLBACK_ROLES = [
-  {
-    category_code: 'CAT-BORROWER-WK',
-    name: 'Weekly Customer / Borrower',
-    customer_type: 'COMMON_CUSTOMER',
-    repayment_frequency: 'WEEKLY',
-    default_min_loan: 10000,
-    default_max_loan: 50000,
-    default_interest_rate: 10.0,
-    tenure_installments: 10,
-    description: '10-Week personal & trade loan cycles with weekly installments (10% flat interest)',
-    status: 'ACTIVE',
-  },
-  {
-    category_code: 'CAT-MERCHANT-DLY',
-    name: 'Shopkeeper / Daily Merchant',
-    customer_type: 'SHOPKEEPER',
-    repayment_frequency: 'DAILY',
-    default_min_loan: 15000,
-    default_max_loan: 100000,
-    default_interest_rate: 12.5,
-    tenure_installments: 25,
-    description: '25-Day daily market collections for stall owners & shopkeepers (12.5% flat interest)',
-    status: 'ACTIVE',
-  },
-  {
-    category_code: 'CAT-LENDER-MO',
-    name: 'Monthly Lender / Borrower',
-    customer_type: 'COMMON_CUSTOMER',
-    repayment_frequency: 'MONTHLY',
-    default_min_loan: 25000,
-    default_max_loan: 500000,
-    default_interest_rate: 15.0,
-    tenure_installments: 12,
-    description: 'Long term monthly installment loans over 12 months (15% flat interest)',
-    status: 'ACTIVE',
-  },
-  {
-    category_code: 'CAT-FIELD-COLLECTOR',
-    name: 'Collector from Users (Field Agent)',
-    customer_type: 'FIELD_AGENT',
-    repayment_frequency: 'N/A',
-    default_min_loan: 0,
-    default_max_loan: 0,
-    default_interest_rate: 0,
-    tenure_installments: 0,
-    description: 'Field collection officer assigned to market routes and daily cash recovery',
-    status: 'ACTIVE',
-  },
-  {
-    category_code: 'CAT-BRANCH-ADMIN',
-    name: 'Admin (Branch Staff)',
-    customer_type: 'ADMIN',
-    repayment_frequency: 'N/A',
-    default_min_loan: 0,
-    default_max_loan: 0,
-    default_interest_rate: 0,
-    tenure_installments: 0,
-    description: 'Branch operational staff, loan underwriter, cashier, or administrative officer',
-    status: 'ACTIVE',
-  },
-];
 
 export const AddUser = () => {
   const navigate = useNavigate();
   const { activeOrg } = useOrg();
+  const orgId = activeOrg?.id || 1;
 
-  // Dynamic Categories from Super Admin
-  const [categories, setCategories] = useState(DEFAULT_FALLBACK_ROLES);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  // Dynamic Lending Config fetched from DB (interest rates page table)
+  const [lendingConfig, setLendingConfig] = useState({
+    daily_interest_rate: 12.5,
+    daily_tenure_days: 25,
+    daily_min_amount: 15000,
+    daily_max_amount: 100000,
+
+    weekly_interest_rate: 10.0,
+    weekly_tenure_weeks: 10,
+    weekly_min_amount: 10000,
+    weekly_max_amount: 50000,
+
+    monthly_interest_rate: 15.0,
+    monthly_tenure_months: 12,
+    monthly_min_amount: 25000,
+    monthly_max_amount: 500000,
+  });
+
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('CAT-BORROWER-WK');
 
-  // Form State
+  // Streamlined Form State (Only essential fields)
   const [formData, setFormData] = useState({
-    role: 'COMMON_CUSTOMER',
     name: '',
     phone: '',
-    email: '',
     address: '',
+    city: 'Chennai',
     occupation: '',
     shop_name: '',
-    assigned_route: 'Saidapet Bazaar Route',
-    daily_quota: 25000,
-    designation: 'Operations Officer',
+    work_profession: '',
     credit_limit: 50000,
     issue_initial_loan: true,
-    initial_loan_amount: 20000,
+    initial_loan_amount: 10000,
     tenure: '10',
     frequency: 'WEEKLY',
   });
@@ -124,29 +64,79 @@ export const AddUser = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Fetch Super Admin Categories
+  // Dynamically build the 3 core borrower categories from the DB lending config
+  const categories = useMemo(() => {
+    return [
+      {
+        category_code: 'CAT-BORROWER-WK',
+        name: 'Borrower (Weekly Installment)',
+        customer_type: 'COMMON_CUSTOMER',
+        repayment_frequency: 'WEEKLY',
+        default_min_loan: Number(lendingConfig.weekly_min_amount) || 10000,
+        default_max_loan: Number(lendingConfig.weekly_max_amount) || 50000,
+        default_interest_rate: Number(lendingConfig.weekly_interest_rate) || 10.0,
+        tenure_installments: Number(lendingConfig.weekly_tenure_weeks) || 10,
+        description: `Standard individual and worker micro-loans with ${lendingConfig.weekly_tenure_weeks || 10}-week recurring repayments.`,
+        color: '#4F46E5',
+      },
+      {
+        category_code: 'CAT-MERCHANT-DLY',
+        name: 'Merchant (Daily Installment)',
+        customer_type: 'SHOPKEEPER',
+        repayment_frequency: 'DAILY',
+        default_min_loan: Number(lendingConfig.daily_min_amount) || 15000,
+        default_max_loan: Number(lendingConfig.daily_max_amount) || 100000,
+        default_interest_rate: Number(lendingConfig.daily_interest_rate) || 12.5,
+        tenure_installments: Number(lendingConfig.daily_tenure_days) || 25,
+        description: `Retail shopkeepers and stall merchants with ${lendingConfig.daily_tenure_days || 25}-day rapid daily collections.`,
+        color: '#7C3AED',
+      },
+      {
+        category_code: 'CAT-BORROWER-MO',
+        name: 'Monthly Salaried Borrower (EMI)',
+        customer_type: 'COMMON_CUSTOMER',
+        repayment_frequency: 'MONTHLY',
+        default_min_loan: Number(lendingConfig.monthly_min_amount) || 25000,
+        default_max_loan: Number(lendingConfig.monthly_max_amount) || 500000,
+        default_interest_rate: Number(lendingConfig.monthly_interest_rate) || 15.0,
+        tenure_installments: Number(lendingConfig.monthly_tenure_months) || 12,
+        description: `${lendingConfig.monthly_tenure_months || 12}-Month structured EMI micro-loans for salaried individuals (${lendingConfig.monthly_interest_rate || 15}% flat interest).`,
+        color: '#0891B2',
+      },
+    ];
+  }, [lendingConfig]);
+
+  // Fetch Live Interest Rates & Lending Config from DB on mount & org change
   useEffect(() => {
-    const fetchSuperAdminCategories = async () => {
+    const fetchLendingAndCategoryConfig = async () => {
       try {
-        setLoadingCategories(true);
-        const data = await api.governance.getDefaultCategories();
-        if (Array.isArray(data) && data.length > 0) {
-          const activeOnly = data.filter((c) => c.status === 'ACTIVE');
-          const catsToUse = activeOnly.length > 0 ? activeOnly : data;
-          setCategories(catsToUse);
-          // Set initial selected category
-          if (catsToUse.length > 0) {
-            handleSelectCategory(catsToUse[0]);
-          }
+        const configData = await api.getLendingConfig(orgId);
+        if (configData) {
+          setLendingConfig((prev) => ({
+            ...prev,
+            daily_interest_rate: Number(configData.daily_interest_rate ?? prev.daily_interest_rate),
+            daily_tenure_days: Number(configData.daily_tenure_days ?? prev.daily_tenure_days),
+            daily_min_amount: Number(configData.daily_min_amount ?? prev.daily_min_amount),
+            daily_max_amount: Number(configData.daily_max_amount ?? prev.daily_max_amount),
+
+            weekly_interest_rate: Number(configData.weekly_interest_rate ?? prev.weekly_interest_rate),
+            weekly_tenure_weeks: Number(configData.weekly_tenure_weeks ?? prev.weekly_tenure_weeks),
+            weekly_min_amount: Number(configData.weekly_min_amount ?? prev.weekly_min_amount),
+            weekly_max_amount: Number(configData.weekly_max_amount ?? prev.weekly_max_amount),
+
+            monthly_interest_rate: Number(configData.monthly_interest_rate ?? prev.monthly_interest_rate),
+            monthly_tenure_months: Number(configData.monthly_tenure_months ?? prev.monthly_tenure_months),
+            monthly_min_amount: Number(configData.monthly_min_amount ?? prev.monthly_min_amount),
+            monthly_max_amount: Number(configData.monthly_max_amount ?? prev.monthly_max_amount),
+          }));
         }
       } catch (err) {
-        console.warn('Could not fetch Super Admin categories, using presets:', err);
-      } finally {
-        setLoadingCategories(false);
+        console.warn('Could not load live lending config from database:', err);
       }
     };
-    fetchSuperAdminCategories();
-  }, []);
+
+    fetchLendingAndCategoryConfig();
+  }, [orgId]);
 
   const getOrgPath = (sub) => (activeOrg ? `/org/${activeOrg.id}/${sub}` : `/admin/${sub}`);
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
@@ -155,44 +145,38 @@ export const AddUser = () => {
   const activeCategory = useMemo(() => {
     return (
       categories.find((c) => c.category_code === selectedCategoryCode) ||
-      categories[0] ||
-      DEFAULT_FALLBACK_ROLES[0]
+      categories[0]
     );
   }, [categories, selectedCategoryCode]);
 
-  const isShop = activeCategory?.customer_type === 'SHOPKEEPER';
-  const isFieldMan = activeCategory?.customer_type === 'FIELD_AGENT';
-  const isAdmin = activeCategory?.customer_type === 'ADMIN';
-  const isLending = activeCategory?.repayment_frequency && activeCategory.repayment_frequency !== 'N/A';
+  const isShop = activeCategory?.customer_type === 'SHOPKEEPER' || activeCategory?.repayment_frequency === 'DAILY';
   const isWeekly = activeCategory?.repayment_frequency === 'WEEKLY';
-  const isDaily = activeCategory?.repayment_frequency === 'DAILY';
   const isMonthly = activeCategory?.repayment_frequency === 'MONTHLY';
+
+  // Synchronize form defaults when activeCategory or lendingConfig changes
+  useEffect(() => {
+    if (activeCategory) {
+      setFormData((prev) => ({
+        ...prev,
+        frequency: activeCategory.repayment_frequency,
+        tenure: String(activeCategory.tenure_installments),
+        credit_limit: activeCategory.default_max_loan,
+        initial_loan_amount: activeCategory.default_min_loan,
+      }));
+    }
+  }, [selectedCategoryCode, lendingConfig]);
 
   // Handle Category Click
   const handleSelectCategory = (cat) => {
     setSelectedCategoryCode(cat.category_code);
-    const hasLoanTerms = cat.repayment_frequency && cat.repayment_frequency !== 'N/A';
-    const minLoan = Number(cat.default_min_loan) || 10000;
-    const maxLoan = Number(cat.default_max_loan) || 50000;
-    const tenure = String(cat.tenure_installments || (cat.customer_type === 'SHOPKEEPER' ? 25 : 10));
-
-    setFormData((prev) => ({
-      ...prev,
-      role: cat.customer_type || 'COMMON_CUSTOMER',
-      frequency: cat.repayment_frequency || (cat.customer_type === 'SHOPKEEPER' ? 'DAILY' : 'WEEKLY'),
-      tenure,
-      credit_limit: maxLoan > 0 ? maxLoan : 50000,
-      initial_loan_amount: minLoan > 0 ? minLoan : 20000,
-      issue_initial_loan: hasLoanTerms,
-    }));
   };
 
-  // Live Loan Calculation Preview
+  // Live Loan Calculation Preview (Dynamically calculated from DB rates & days)
   const principalAmount = parseFloat(formData.initial_loan_amount) || 0;
   const flatRate = Number(activeCategory?.default_interest_rate) || (isShop ? 12.5 : isMonthly ? 15.0 : 10.0);
   const interestAmount = (principalAmount * flatRate) / 100;
   const totalRepayable = principalAmount + interestAmount;
-  const installmentCount = parseInt(formData.tenure, 10) || (isShop ? 25 : isMonthly ? 12 : 10);
+  const installmentCount = parseInt(formData.tenure, 10) || activeCategory.tenure_installments || (isShop ? 25 : isMonthly ? 12 : 10);
   const installmentAmount = installmentCount > 0 ? Math.ceil(totalRepayable / installmentCount) : 0;
 
   const validate = () => {
@@ -204,12 +188,20 @@ export const AddUser = () => {
       errs.phone = 'Please enter a valid 10-digit mobile number';
     }
 
-    if (isAdmin && (!formData.email || !formData.email.includes('@'))) {
-      errs.email = 'Valid official email address is required for admin staff';
+    if (isShop && !formData.shop_name.trim()) {
+      errs.shop_name = 'Shop / Stall Name is required for daily merchants';
     }
 
-    if ((isWeekly || isShop || isMonthly) && !formData.address.trim()) {
-      errs.address = 'Residential or stall address is required';
+    if (isWeekly && !formData.occupation.trim()) {
+      errs.occupation = 'User Occupation / Trade is required for weekly borrowers';
+    }
+
+    if (isMonthly && !formData.work_profession.trim()) {
+      errs.work_profession = 'Work / Profession is required for monthly salaried borrowers';
+    }
+
+    if (!formData.address.trim()) {
+      errs.address = 'Address is required';
     }
 
     setErrors(errs);
@@ -223,35 +215,29 @@ export const AddUser = () => {
 
     setSubmitting(true);
     try {
-      const principal = parseFloat(formData.initial_loan_amount) || 20000;
-      const freq = activeCategory.repayment_frequency !== 'N/A'
-        ? activeCategory.repayment_frequency
-        : isShop
-        ? 'DAILY'
-        : 'WEEKLY';
+      const principal = parseFloat(formData.initial_loan_amount) || activeCategory.default_min_loan;
+      const freq = activeCategory.repayment_frequency || (isShop ? 'DAILY' : isMonthly ? 'MONTHLY' : 'WEEKLY');
+
+      // Resolve final occupation value cleanly based on category
+      const resolvedOccupation = isShop
+        ? 'Market Shopkeeper'
+        : isMonthly
+        ? formData.work_profession.trim()
+        : formData.occupation.trim();
 
       await api.createUser({
         organizationId: activeOrg?.id || 1,
         name: formData.name.trim(),
         phone: formData.phone.trim(),
-        email: formData.email.trim(),
-        role: activeCategory.customer_type || formData.role,
+        role: isShop ? 'SHOPKEEPER' : 'COMMON_CUSTOMER',
         category_code: activeCategory.category_code,
         status: 'ACTIVE',
         address: formData.address.trim(),
-        occupation: isShop
-          ? 'Market Shopkeeper'
-          : isFieldMan
-          ? 'Route Field Collector'
-          : isAdmin
-          ? formData.designation
-          : (formData.occupation.trim() || 'Self Employed'),
-        shopName: isShop ? (formData.shop_name.trim() || `${formData.name}'s Store`) : null,
-        assigned_route: isFieldMan ? formData.assigned_route : null,
-        daily_target: isFieldMan ? parseFloat(formData.daily_quota) : null,
-        designation: isAdmin ? formData.designation : null,
-        credit_limit: isLending ? (parseFloat(formData.credit_limit) || 50000) : 0,
-        initial_loan: isLending && formData.issue_initial_loan
+        city: formData.city.trim() || 'Chennai',
+        occupation: resolvedOccupation,
+        shop_name: isShop ? formData.shop_name.trim() : null,
+        credit_limit: parseFloat(formData.credit_limit) || activeCategory.default_max_loan,
+        initial_loan: formData.issue_initial_loan
           ? {
               principal,
               total_installments: installmentCount,
@@ -261,126 +247,180 @@ export const AddUser = () => {
           : null,
       });
 
-      setSuccessMsg(`User "${formData.name}" successfully onboarded under category "${activeCategory.name}"!`);
+      setSuccessMsg(`Borrower "${formData.name}" successfully onboarded!`);
 
       setTimeout(() => {
         if (isShop) navigate(getOrgPath('shopkeepers'));
-        else if (isWeekly) navigate(getOrgPath('weekly-customers'));
-        else navigate(getOrgPath('users'));
-      }, 1000);
+        else if (isMonthly) navigate(getOrgPath('monthly-customers'));
+        else navigate(getOrgPath('weekly-customers'));
+      }, 900);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to onboard user. Please check phone number or connection.');
+      setErrorMsg(err.message || 'Failed to onboard borrower. Please check mobile number or connection.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Get icon for category
-  const getCategoryIcon = (cat) => {
-    if (cat.customer_type === 'FIELD_AGENT') return Navigation;
-    if (cat.customer_type === 'ADMIN') return ShieldCheck;
-    if (cat.repayment_frequency === 'DAILY' || cat.customer_type === 'SHOPKEEPER') return Store;
-    if (cat.repayment_frequency === 'MONTHLY') return Calendar;
-    return Users;
-  };
-
-  const getCategoryColor = (cat) => {
-    if (cat.customer_type === 'FIELD_AGENT') return 'var(--emerald)';
-    if (cat.customer_type === 'ADMIN') return '#fbbf24';
-    if (cat.repayment_frequency === 'DAILY' || cat.customer_type === 'SHOPKEEPER') return 'var(--purple)';
-    if (cat.repayment_frequency === 'MONTHLY') return '#06b6d4';
-    return 'var(--accent-primary)';
-  };
-
   return (
-    <div className="add-user-page">
+    <div className="add-user-page" style={{ width: '100%', maxWidth: '100%', padding: '0 0.5rem' }}>
       {/* Page Header */}
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+      <div className="page-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <button
-            className="btn btn-secondary"
-            onClick={() => navigate(getOrgPath('users'))}
-            style={{ marginBottom: '0.75rem', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
-          >
-            <ArrowLeft size={14} /> Back to User Directory
-          </button>
-          <div className="welcome-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Sparkles size={14} /> DYNAMIC CATEGORY & POLICY ENROLMENT
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '8px',
+                background: '#EEF2FF',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <UserPlus size={20} />
+            </div>
+            <div>
+              <h1 className="page-title" style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                Onboard New Borrower
+              </h1>
+            </div>
           </div>
-          <h1 className="page-title">Onboard New Customer / Staff</h1>
-          <p className="page-subtitle">
-            Register weekly customers, daily lenders, monthly borrowers, or field collectors governed by Super Admin categories.
-          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => navigate(getOrgPath('staff'))}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600 }}
+          >
+            <Users size={14} /> Manage Staff & Collectors →
+          </button>
         </div>
       </div>
 
-      {/* Feedback Messages */}
+      {/* Feedback Banners */}
       {successMsg && (
-        <div className="feedback-banner" style={{ marginBottom: '1.5rem' }}>
-          <CheckCircle2 size={18} color="var(--emerald)" />
+        <div
+          style={{
+            background: '#ECFDF5',
+            border: '1.5px solid #A7F3D0',
+            color: '#047857',
+            padding: '0.85rem 1.25rem',
+            borderRadius: 10,
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+          }}
+        >
+          <CheckCircle2 size={18} color="#059669" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div className="feedback-banner" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'var(--red)', marginBottom: '1.5rem' }}>
-          <AlertCircle size={18} color="var(--red)" />
-          <span style={{ color: '#fca5a5' }}>{errorMsg}</span>
+        <div
+          style={{
+            background: '#FEF2F2',
+            border: '1.5px solid #FECACA',
+            color: '#B91C1C',
+            padding: '0.85rem 1.25rem',
+            borderRadius: 10,
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+          }}
+        >
+          <AlertCircle size={18} color="#DC2626" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-        {/* Streamlined Form Card */}
-        <div className="card" style={{ padding: '1.5rem' }}>
+      {/* Main 2-Column Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)', gap: '1.25rem', alignItems: 'start' }}>
+        {/* Left Column: Form Card */}
+        <div className="card" style={{ padding: '1.5rem', background: '#FFFFFF', border: '1.5px solid #E2E8F0', borderRadius: 12, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
           <form onSubmit={handleSubmit}>
-            {/* 1. Dynamic Category Selector from Super Admin */}
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.88rem', margin: 0 }}>
-                  Select Onboarding Category & Policy *
+            {/* 1. Borrower Category Selection Tabs (Live Rates & Tenures from DB) */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <label style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)', margin: 0 }}>
+                  Select Borrower Lending Division *
                 </label>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {categories.length} Super Admin Categories Available
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  Live Policy Configured in DB
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                 {categories.map((cat) => {
-                  const Icon = getCategoryIcon(cat);
-                  const color = getCategoryColor(cat);
                   const isSelected = selectedCategoryCode === cat.category_code;
+                  const isShopCategory = cat.repayment_frequency === 'DAILY' || cat.customer_type === 'SHOPKEEPER';
+                  const isMonthlyCategory = cat.repayment_frequency === 'MONTHLY';
+                  const Icon = isShopCategory ? Store : isMonthlyCategory ? Calendar : Users;
+                  const themeColor = isShopCategory ? '#7C3AED' : isMonthlyCategory ? '#0891B2' : '#4F46E5';
+
                   return (
                     <div
-                      key={cat.id || cat.category_code}
+                      key={cat.category_code}
                       onClick={() => handleSelectCategory(cat)}
                       style={{
-                        padding: '0.85rem',
+                        padding: '0.95rem 1rem',
                         borderRadius: 10,
                         cursor: 'pointer',
-                        border: isSelected ? `2px solid ${color}` : '1px solid var(--border-color)',
-                        background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-card)',
-                        transition: 'all 0.2s ease',
+                        border: isSelected ? `2px solid ${themeColor}` : '1.5px solid #E2E8F0',
+                        background: isSelected ? '#F8FAFC' : '#FFFFFF',
+                        boxShadow: isSelected ? '0 4px 12px rgba(79, 70, 229, 0.08)' : 'none',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <Icon size={17} color={isSelected ? color : 'var(--text-muted)'} />
-                          <strong style={{ fontSize: '0.88rem', color: isSelected ? '#fff' : 'var(--text-secondary)' }}>
-                            {cat.name}
-                          </strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 6 }}>
+                        <div
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 6,
+                            background: isSelected ? themeColor : '#F1F5F9',
+                            color: isSelected ? '#FFFFFF' : themeColor,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Icon size={16} />
                         </div>
+                        <strong style={{ fontSize: '0.86rem', color: 'var(--text-primary)', fontWeight: 800 }}>
+                          {cat.name.split('/')[0].trim()}
+                        </strong>
                       </div>
+
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 4 }}>
-                        <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: color, background: 'rgba(255,255,255,0.05)', padding: '1px 5px', borderRadius: 3 }}>
-                          {cat.repayment_frequency !== 'N/A' ? `${cat.repayment_frequency} CYCLE` : cat.customer_type}
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            color: themeColor,
+                            background: isSelected ? '#EEF2FF' : '#F1F5F9',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            letterSpacing: '0.03em',
+                          }}
+                        >
+                          {cat.repayment_frequency}
                         </span>
-                        {Number(cat.default_interest_rate) > 0 && (
-                          <span style={{ fontSize: '0.68rem', color: 'var(--emerald)' }}>
-                            {cat.default_interest_rate}% Flat
-                          </span>
-                        )}
+                        <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 800 }}>
+                          {cat.default_interest_rate}% Flat
+                        </span>
                       </div>
-                      <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+
+                      <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.35 }}>
                         {cat.description}
                       </p>
                     </div>
@@ -389,34 +429,38 @@ export const AddUser = () => {
               </div>
             </div>
 
-            {/* 2. Common Required Identity */}
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginBottom: '1.25rem' }}>
-              <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Personal Identification
+            {/* 2. Simplified Borrower Contact & Profile Section */}
+            <div style={{ borderTop: '1.5px solid #E2E8F0', paddingTop: '1.25rem', marginBottom: '1.25rem' }}>
+              <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>
+                1. Borrower Details
               </h4>
 
-              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">
-                    <User size={14} style={{ display: 'inline', marginRight: 4 }} /> Full Name *
+              {/* Name & Phone */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                    <User size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                    Borrower Full Name *
                   </label>
                   <input
                     type="text"
                     className={`form-input ${errors.name ? 'input-error' : ''}`}
-                    placeholder="e.g. Suresh Kumar"
+                    placeholder="e.g. Ramesh Krishnan"
                     value={formData.name}
                     onChange={(e) => {
                       setFormData({ ...formData, name: e.target.value });
                       if (errors.name) setErrors({ ...errors, name: null });
                     }}
+                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
                     required
                   />
-                  {errors.name && <span style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{errors.name}</span>}
+                  {errors.name && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.name}</span>}
                 </div>
 
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">
-                    <Phone size={14} style={{ display: 'inline', marginRight: 4 }} /> Mobile Phone Number *
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                    <Phone size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                    Mobile Phone Number *
                   </label>
                   <input
                     type="tel"
@@ -428,204 +472,198 @@ export const AddUser = () => {
                       setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') });
                       if (errors.phone) setErrors({ ...errors, phone: null });
                     }}
+                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
                     required
                   />
-                  {errors.phone && <span style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{errors.phone}</span>}
+                  {errors.phone && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.phone}</span>}
                 </div>
               </div>
 
-              {/* Conditional Field: Admin Email */}
-              {isAdmin && (
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">
-                    <Mail size={14} style={{ display: 'inline', marginRight: 4 }} /> Official Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    className={`form-input ${errors.email ? 'input-error' : ''}`}
-                    placeholder="e.g. suresh.ops@apexfinance.com"
-                    value={formData.email}
-                    onChange={(e) => {
-                      setFormData({ ...formData, email: e.target.value });
-                      if (errors.email) setErrors({ ...errors, email: null });
-                    }}
-                    required
-                  />
-                  {errors.email && <span style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{errors.email}</span>}
-                </div>
-              )}
-
-              {/* Conditional Field: Shop Name (For Shopkeeper) */}
-              {isShop && (
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">
-                    <Store size={14} style={{ display: 'inline', marginRight: 4 }} /> Shop / Stall Name *
-                  </label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Sri Balaji Sweets & Provisions (Stall #12)"
-                    value={formData.shop_name}
-                    onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
-                    required
-                  />
-                </div>
-              )}
-
-              {/* Conditional Field: Occupation (For Borrowers) */}
-              {(isWeekly || isMonthly) && (
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">
-                    <Briefcase size={14} style={{ display: 'inline', marginRight: 4 }} /> Trade / Occupation
-                  </label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Fabrication Technician / Tailor / Wholesale Trader"
-                    value={formData.occupation}
-                    onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                  />
-                </div>
-              )}
-
-              {/* Conditional Field: Assigned Route & Quota (For Field Collector) */}
-              {isFieldMan && (
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">
-                      <Navigation size={14} style={{ display: 'inline', marginRight: 4 }} /> Assigned Collection Route
+              {/* Dynamic Single Category Field: Weekly -> Occupation | Daily -> Shop Name | Monthly -> Work */}
+              <div style={{ marginBottom: '1rem' }}>
+                {isWeekly && (
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                      <Briefcase size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                      User Occupation / Trade *
                     </label>
-                    <select
-                      className="form-input"
-                      value={formData.assigned_route}
-                      onChange={(e) => setFormData({ ...formData, assigned_route: e.target.value })}
-                    >
-                      <option value="Saidapet Bazaar Route">Saidapet Bazaar Route</option>
-                      <option value="T. Nagar Market Corridor">T. Nagar Market Corridor</option>
-                      <option value="Triplicane High Road">Triplicane High Road</option>
-                      <option value="Mylapore Tank Area">Mylapore Tank Area</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Daily Target Quota (₹)</label>
                     <input
-                      type="number"
-                      className="form-input"
-                      value={formData.daily_quota}
-                      onChange={(e) => setFormData({ ...formData, daily_quota: e.target.value })}
+                      type="text"
+                      className={`form-input ${errors.occupation ? 'input-error' : ''}`}
+                      placeholder="e.g. Tailor, Fabrication Worker, Driver, Electrician"
+                      value={formData.occupation}
+                      onChange={(e) => {
+                        setFormData({ ...formData, occupation: e.target.value });
+                        if (errors.occupation) setErrors({ ...errors, occupation: null });
+                      }}
+                      style={{ fontSize: '0.86rem', borderRadius: 8 }}
+                      required
                     />
+                    {errors.occupation && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.occupation}</span>}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Conditional Field: Designation (For Admin) */}
-              {isAdmin && (
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Branch Designation / Role</label>
-                  <select
-                    className="form-input"
-                    value={formData.designation}
-                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                  >
-                    <option value="Branch Operations Manager">Branch Operations Manager</option>
-                    <option value="Credit & Underwriting Officer">Credit & Underwriting Officer</option>
-                    <option value="Head Cashier & Vault Auditor">Head Cashier & Vault Auditor</option>
-                    <option value="Borrower KYC Verifier">Borrower KYC Verifier</option>
-                  </select>
-                </div>
-              )}
+                {isShop && (
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                      <Store size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                      Shop / Stall Name *
+                    </label>
+                    <input
+                      type="text"
+                      className={`form-input ${errors.shop_name ? 'input-error' : ''}`}
+                      placeholder="e.g. Sri Balaji Sweets & Provisions"
+                      value={formData.shop_name}
+                      onChange={(e) => {
+                        setFormData({ ...formData, shop_name: e.target.value });
+                        if (errors.shop_name) setErrors({ ...errors, shop_name: null });
+                      }}
+                      style={{ fontSize: '0.86rem', borderRadius: 8 }}
+                      required
+                    />
+                    {errors.shop_name && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.shop_name}</span>}
+                  </div>
+                )}
 
-              {/* Address (For Borrowers & Shopkeepers) */}
-              {(isWeekly || isShop || isMonthly) && (
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">
-                    <MapPin size={14} style={{ display: 'inline', marginRight: 4 }} /> Residential / Stall Address *
+                {isMonthly && (
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                      <Briefcase size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                      User Work / Profession *
+                    </label>
+                    <input
+                      type="text"
+                      className={`form-input ${errors.work_profession ? 'input-error' : ''}`}
+                      placeholder="e.g. Software Engineer at Infosys / Store Manager / Corporate Executive"
+                      value={formData.work_profession}
+                      onChange={(e) => {
+                        setFormData({ ...formData, work_profession: e.target.value });
+                        if (errors.work_profession) setErrors({ ...errors, work_profession: null });
+                      }}
+                      style={{ fontSize: '0.86rem', borderRadius: 8 }}
+                      required
+                    />
+                    {errors.work_profession && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.work_profession}</span>}
+                  </div>
+                )}
+              </div>
+
+              {/* Address & City */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                    <MapPin size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                    Residential / Business Address *
                   </label>
                   <input
                     type="text"
                     className={`form-input ${errors.address ? 'input-error' : ''}`}
-                    placeholder="e.g. 42 Bazaar Road, Saidapet, Chennai"
+                    placeholder="e.g. 42 Bazaar Road, Saidapet"
                     value={formData.address}
                     onChange={(e) => {
                       setFormData({ ...formData, address: e.target.value });
                       if (errors.address) setErrors({ ...errors, address: null });
                     }}
+                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
                     required
                   />
-                  {errors.address && <span style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{errors.address}</span>}
+                  {errors.address && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.address}</span>}
                 </div>
-              )}
+
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>City</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Chennai"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* 3. Credit Limit & Optional Initial Loan (For Lending Categories) */}
-            {isLending && (
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h4 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Credit Limit & Loan Origination ({activeCategory.repayment_frequency} Policy)
-                  </h4>
+            {/* 3. Loan Origination & Credit Limit Card */}
+            <div style={{ borderTop: '1.5px solid #E2E8F0', paddingTop: '1.25rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>
+                  2. Credit Policy & Loan Origination ({activeCategory.repayment_frequency} Cycle)
+                </h4>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', color: '#fff' }}>
-                    <input
-                      type="checkbox"
-                      checked={formData.issue_initial_loan}
-                      onChange={(e) => setFormData({ ...formData, issue_initial_loan: e.target.checked })}
-                      style={{ accentColor: 'var(--emerald)', width: 16, height: 16 }}
-                    />
-                    <span>Originate 1st Loan Now</span>
-                  </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700, color: 'var(--primary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.issue_initial_loan}
+                    onChange={(e) => setFormData({ ...formData, issue_initial_loan: e.target.checked })}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span>Originate 1st Loan Immediately</span>
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>Approved Credit Limit (₹)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={formData.credit_limit}
+                    onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
+                    step={1000}
+                    min={activeCategory.default_min_loan}
+                    style={{ fontSize: '0.9rem', fontWeight: 700, borderRadius: 8 }}
+                  />
                 </div>
 
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Credit Limit (₹)</label>
+                {formData.issue_initial_loan && (
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>Initial Loan Principal (₹) *</label>
                     <input
                       type="number"
                       className="form-input"
-                      value={formData.credit_limit}
-                      onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
-                      step={5000}
-                      min={activeCategory.default_min_loan || 10000}
+                      value={formData.initial_loan_amount}
+                      onChange={(e) => setFormData({ ...formData, initial_loan_amount: e.target.value })}
+                      step={1000}
+                      min={1000}
+                      max={formData.credit_limit}
+                      style={{ fontSize: '0.9rem', fontWeight: 700, borderRadius: 8 }}
+                      required
                     />
                   </div>
-
-                  {formData.issue_initial_loan && (
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Initial Loan Principal (₹) *</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={formData.initial_loan_amount}
-                        onChange={(e) => setFormData({ ...formData, initial_loan_amount: e.target.value })}
-                        step={1000}
-                        min={activeCategory.default_min_loan || 2000}
-                        max={formData.credit_limit}
-                        required
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
-            {/* Submit Actions */}
-            <div style={{ display: 'flex', gap: '1rem', marginTop: (isFieldMan || isAdmin) ? '1.5rem' : 0 }}>
+            {/* Submit Action Buttons */}
+            <div style={{ display: 'flex', gap: '0.85rem' }}>
               <button
                 type="submit"
                 disabled={submitting}
                 className="btn btn-primary"
-                style={{ flex: 1, justifyContent: 'center', padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '0.92rem',
+                  fontWeight: 800,
+                  borderRadius: 8,
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                }}
               >
-                <UserPlus size={17} />
-                <span>{submitting ? 'Onboarding User...' : `Save & Onboard ${activeCategory.name}`}</span>
-                <ArrowRight size={17} />
+                <UserPlus size={16} />
+                <span>{submitting ? 'Onboarding Borrower...' : `Save & Onboard ${activeCategory.name.split('/')[0].trim()}`}</span>
+                <ArrowRight size={16} />
               </button>
 
               <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => navigate(getOrgPath('users'))}
+                style={{ padding: '0.75rem 1.25rem', fontSize: '0.86rem', fontWeight: 600, borderRadius: 8 }}
               >
                 Cancel
               </button>
@@ -633,14 +671,36 @@ export const AddUser = () => {
           </form>
         </div>
 
-        {/* Live Profile Card Preview */}
+        {/* Right Column: Live Borrower Policy & Loan Obligation Preview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card" style={{ padding: '1.25rem' }}>
+          {/* 1. Borrower Identity Live Card */}
+          <div
+            className="card"
+            style={{
+              padding: '1.35rem',
+              background: '#FFFFFF',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: 12,
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Live User Policy Card
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Live Borrower Card Preview
               </span>
-              <span className="badge badge-emerald">STATUS: ACTIVE</span>
+              <span
+                style={{
+                  background: '#ECFDF5',
+                  color: '#047857',
+                  border: '1px solid #A7F3D0',
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                }}
+              >
+                ACTIVE
+              </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
@@ -648,105 +708,135 @@ export const AddUser = () => {
                 style={{
                   width: 46,
                   height: 46,
-                  borderRadius: '50%',
-                  background: `${getCategoryColor(activeCategory)}22`,
-                  color: getCategoryColor(activeCategory),
+                  borderRadius: 10,
+                  background: isShop ? '#F5F3FF' : isMonthly ? '#ECFEFF' : '#EEF2FF',
+                  color: isShop ? '#7C3AED' : isMonthly ? '#0891B2' : '#4F46E5',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontWeight: 800,
-                  fontSize: '1.2rem',
+                  fontSize: '1.25rem',
                 }}
               >
-                {formData.name ? formData.name.charAt(0).toUpperCase() : 'U'}
+                {formData.name ? formData.name.charAt(0).toUpperCase() : 'B'}
               </div>
               <div>
-                <strong style={{ fontSize: '1.05rem', color: '#fff', display: 'block' }}>
-                  {formData.name || 'Full Name'}
+                <strong style={{ fontSize: '1.1rem', color: 'var(--text-primary)', display: 'block', fontWeight: 800 }}>
+                  {formData.name || 'Borrower Name'}
                 </strong>
-                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                   {formData.phone ? `+91 ${formData.phone}` : '+91 9XXXXXXXXX'}
                 </span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
               <span
                 style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
                   padding: '2px 8px',
-                  borderRadius: 12,
-                  background: `${getCategoryColor(activeCategory)}22`,
-                  color: getCategoryColor(activeCategory),
+                  borderRadius: 6,
+                  background: isShop ? '#F5F3FF' : isMonthly ? '#ECFEFF' : '#EEF2FF',
+                  color: isShop ? '#7C3AED' : isMonthly ? '#0891B2' : '#4F46E5',
+                  border: `1px solid ${isShop ? '#DDD6FE' : isMonthly ? '#A5F3FC' : '#C7D2FE'}`,
                 }}
               >
                 {activeCategory.name}
               </span>
+
               {isShop && formData.shop_name && (
-                <span className="badge badge-yellow">{formData.shop_name}</span>
+                <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
+                  {formData.shop_name}
+                </span>
               )}
-              {isFieldMan && (
-                <span className="badge badge-blue">Route: {formData.assigned_route.split(' ')[0]}</span>
+
+              {isWeekly && formData.occupation && (
+                <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE' }}>
+                  {formData.occupation}
+                </span>
               )}
-              {isAdmin && (
-                <span className="badge badge-purple">{formData.designation}</span>
+
+              {isMonthly && formData.work_profession && (
+                <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#ECFEFF', color: '#0891B2', border: '1px solid #A5F3FC' }}>
+                  {formData.work_profession}
+                </span>
               )}
             </div>
 
-            {(isWeekly || isShop || isMonthly) && (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <MapPin size={13} color="var(--text-muted)" />
-                <span>{formData.address || 'Address pending input'}</span>
-              </div>
-            )}
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MapPin size={13} color="var(--text-muted)" />
+              <span>{formData.address ? `${formData.address}, ${formData.city}` : 'Address pending input'}</span>
+            </div>
 
-            {isLending && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Approved Credit Limit:</span>
-                <strong style={{ color: 'var(--emerald)' }}>{formatCurrency(formData.credit_limit)}</strong>
-              </div>
-            )}
-
-            {isFieldMan && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Daily Recovery Quota:</span>
-                <strong style={{ color: 'var(--emerald)' }}>{formatCurrency(formData.daily_quota)}</strong>
-              </div>
-            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', paddingTop: '0.75rem', borderTop: '1px solid #E2E8F0', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Approved Credit Line:</span>
+              <strong style={{ color: '#047857', fontWeight: 900, fontSize: '1.05rem' }}>{formatCurrency(formData.credit_limit)}</strong>
+            </div>
           </div>
 
-          {/* Loan Breakdown Preview (For Lending Categories) */}
-          {isLending && formData.issue_initial_loan && principalAmount > 0 && (
-            <div className="card" style={{ padding: '1.25rem', background: 'rgba(99, 102, 241, 0.05)', borderColor: 'rgba(99, 102, 241, 0.25)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
-                  Super Admin Configured Loan Obligation
+          {/* 2. Loan Breakdown Live Card */}
+          {formData.issue_initial_loan && principalAmount > 0 && (
+            <div
+              className="card"
+              style={{
+                padding: '1.35rem',
+                background: '#FFFFFF',
+                border: '1.5px solid #C7D2FE',
+                borderRadius: 12,
+                boxShadow: '0 2px 6px rgba(79, 70, 229, 0.04)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Receipt size={16} color="var(--primary)" />
+                  <span style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Originated Loan Obligation
+                  </span>
+                </div>
+                <span
+                  style={{
+                    background: '#EEF2FF',
+                    color: 'var(--primary)',
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  {activeCategory.repayment_frequency} #{installmentCount}
                 </span>
-                <span className="badge badge-emerald">{activeCategory.repayment_frequency} #{installmentCount}</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.82rem' }}>
-                <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Principal:</span>
-                  <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{formatCurrency(principalAmount)}</strong>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
+                <div style={{ background: '#F8FAFC', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Principal Given</span>
+                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 900 }}>{formatCurrency(principalAmount)}</strong>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Total Repayable ({flatRate}%):</span>
-                  <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{formatCurrency(totalRepayable)}</strong>
+
+                <div style={{ background: '#F8FAFC', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Repayable ({flatRate}%)</span>
+                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 900 }}>{formatCurrency(totalRepayable)}</strong>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Installment:</span>
-                  <strong style={{ color: 'var(--accent-primary)', fontSize: '0.95rem' }}>
-                    {formatCurrency(installmentAmount)} / {activeCategory.repayment_frequency?.toLowerCase() === 'daily' ? 'Day' : activeCategory.repayment_frequency?.toLowerCase() === 'monthly' ? 'Month' : 'Week'}
+
+                <div style={{ background: '#EEF2FF', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #C7D2FE' }}>
+                  <span style={{ color: 'var(--primary)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Installment Due</span>
+                  <strong style={{ color: 'var(--primary)', fontSize: '1.15rem', fontWeight: 900 }}>
+                    {formatCurrency(installmentAmount)} / {isShop ? 'Day' : isMonthly ? 'Month' : 'Week'}
                   </strong>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Tenure:</span>
-                  <strong style={{ color: '#fff', fontSize: '0.95rem' }}>
-                    {installmentCount} {activeCategory.repayment_frequency?.toLowerCase() === 'daily' ? 'Days' : activeCategory.repayment_frequency?.toLowerCase() === 'monthly' ? 'Months' : 'Weeks'}
+
+                <div style={{ background: '#F8FAFC', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Tenure Duration</span>
+                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 900 }}>
+                    {installmentCount} {isShop ? 'Days' : isMonthly ? 'Months' : 'Weeks'}
                   </strong>
                 </div>
+              </div>
+
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', background: '#F8FAFC', padding: '0.55rem 0.75rem', borderRadius: 6, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <TrendingUp size={13} color="#059669" />
+                <span>Contracted Lending Income: <strong>{formatCurrency(interestAmount)}</strong></span>
               </div>
             </div>
           )}

@@ -59,6 +59,19 @@ export const api = {
       }
       return data;
     },
+    googleLogin: async (googlePayload) => {
+      const data = await request('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify(googlePayload),
+      });
+      if (data?.token) {
+        localStorage.setItem('finance_token', data.token);
+        if (data.user) {
+          localStorage.setItem('finance_user', JSON.stringify(data.user));
+        }
+      }
+      return data;
+    },
     logout: () => {
       localStorage.removeItem('finance_token');
       localStorage.removeItem('finance_user');
@@ -371,6 +384,18 @@ export const api = {
       return await request(`/governance/settings/${key}`, {
         method: 'PUT',
         body: JSON.stringify({ value }),
+      });
+    },
+    getClusterNodes: async () => {
+      return await request('/governance/cluster-nodes');
+    },
+    getClusterTelemetry: async () => {
+      return await request('/governance/cluster-telemetry');
+    },
+    actionClusterNode: async (nodeId, action) => {
+      return await request(`/governance/cluster-nodes/${nodeId}/action`, {
+        method: 'POST',
+        body: JSON.stringify({ action }),
       });
     },
   },

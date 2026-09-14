@@ -96,9 +96,9 @@ async function getWeeklyCustomers(req, res) {
 
 async function getShopkeepers(req, res) {
   try {
-    const { search, status, route, organizationId } = req.query;
+    const { search, status, route, organizationId, date } = req.query;
     const orgId = organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
-    const result = await customerService.getShopkeepers({ search, status, route, organizationId: orgId });
+    const result = await customerService.getShopkeepers({ search, status, route, organizationId: orgId, date });
     return res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get shopkeepers error:', error);

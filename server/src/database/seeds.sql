@@ -23,11 +23,38 @@ VALUES
 ON DUPLICATE KEY UPDATE branch_name=VALUES(branch_name), location=VALUES(location);
 
 -- 3. ORGANIZATION SETTINGS
-INSERT INTO organization_settings (organization_id, daily_loan_enabled, weekly_loan_enabled, max_active_loans_per_customer, auto_eligibility_check, default_interest_rate, currency_symbol)
+INSERT INTO organization_settings (
+    organization_id, 
+    daily_loan_enabled, 
+    weekly_loan_enabled, 
+    monthly_loan_enabled,
+    daily_interest_rate, 
+    daily_tenure_days, 
+    weekly_interest_rate, 
+    weekly_tenure_weeks, 
+    monthly_interest_rate, 
+    monthly_tenure_months,
+    daily_min_amount,
+    daily_max_amount,
+    weekly_min_amount,
+    weekly_max_amount,
+    monthly_min_amount,
+    monthly_max_amount,
+    weekly_collection_days,
+    weekly_collection_grace_days,
+    monthly_collection_start_day,
+    monthly_collection_end_day,
+    monthly_collection_grace_days,
+    daily_operating_days,
+    max_active_loans_per_customer, 
+    auto_eligibility_check, 
+    default_interest_rate, 
+    currency_symbol
+)
 VALUES
-(1, TRUE, TRUE, 2, TRUE, 10.00, '₹'),
-(2, TRUE, TRUE, 1, TRUE, 12.00, '₹'),
-(3, FALSE, TRUE, 1, TRUE, 10.00, '₹')
+(1, TRUE, TRUE, TRUE, 12.50, 25, 10.00, 10, 15.00, 12, 15000.00, 100000.00, 10000.00, 50000.00, 25000.00, 500000.00, 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT,SUN', 2, TRUE, 10.00, '₹'),
+(2, TRUE, TRUE, TRUE, 12.50, 25, 12.00, 10, 15.00, 12, 15000.00, 100000.00, 10000.00, 50000.00, 25000.00, 500000.00, 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT,SUN', 1, TRUE, 12.00, '₹'),
+(3, FALSE, TRUE, TRUE, 12.50, 25, 10.00, 10, 15.00, 12, 15000.00, 100000.00, 10000.00, 50000.00, 25000.00, 500000.00, 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT,SUN', 1, TRUE, 10.00, '₹')
 ON DUPLICATE KEY UPDATE default_interest_rate=VALUES(default_interest_rate);
 
 -- 4. ROLES & PERMISSIONS
@@ -90,17 +117,22 @@ WHERE r.name IN ('USER', 'SHOPKEEPER') AND p.name IN (
 -- 5. LOAN PRODUCTS
 INSERT INTO loan_products (id, organization_id, product_code, product_name, customer_type, repayment_frequency, description) VALUES
 (1, NULL, 'WEEKLY_STANDARD', 'Weekly Loan - Common Customers', 'COMMON_CUSTOMER', 'WEEKLY', '10-week installment loans designed for common borrowers with weekly collections'),
-(2, NULL, 'DAILY_SHOP', 'Daily Loan - Shopkeepers', 'SHOPKEEPER', 'DAILY', '25-day rapid installment loans tailored for retail merchants with daily collections')
+(2, NULL, 'DAILY_SHOP', 'Daily Loan - Shopkeepers', 'SHOPKEEPER', 'DAILY', '25-day rapid installment loans tailored for retail merchants with daily collections'),
+(3, NULL, 'MONTHLY_SALARIED', 'Monthly Loan - Salaried Borrowers', 'COMMON_CUSTOMER', 'MONTHLY', '12-month structured EMI micro-loans for salaried individuals')
 ON DUPLICATE KEY UPDATE product_name=VALUES(product_name), description=VALUES(description);
 
 -- 6. LOAN POLICIES
 INSERT INTO loan_policies (product_id, minimum_amount, maximum_amount, number_of_installments, waiting_period_days, income_type, income_value, effective_from)
-SELECT 1, 5000.00, 50000.00, 10, 0, 'PERCENTAGE', 0.1000, CURRENT_DATE
+SELECT 1, 10000.00, 50000.00, 10, 0, 'PERCENTAGE', 0.1000, CURRENT_DATE
 WHERE NOT EXISTS (SELECT 1 FROM loan_policies WHERE product_id = 1);
 
 INSERT INTO loan_policies (product_id, minimum_amount, maximum_amount, number_of_installments, waiting_period_days, income_type, income_value, effective_from)
-SELECT 2, 10000.00, 100000.00, 25, 0, 'PERCENTAGE', 0.1250, CURRENT_DATE
+SELECT 2, 15000.00, 100000.00, 25, 0, 'PERCENTAGE', 0.1250, CURRENT_DATE
 WHERE NOT EXISTS (SELECT 1 FROM loan_policies WHERE product_id = 2);
+
+INSERT INTO loan_policies (product_id, minimum_amount, maximum_amount, number_of_installments, waiting_period_days, income_type, income_value, effective_from)
+SELECT 3, 25000.00, 500000.00, 12, 0, 'PERCENTAGE', 0.1500, CURRENT_DATE
+WHERE NOT EXISTS (SELECT 1 FROM loan_policies WHERE product_id = 3);
 
 -- 7. CENTRAL FUND ACCOUNTS
 INSERT INTO fund_accounts (id, organization_id, account_code, account_name, account_type, current_balance) VALUES
@@ -157,7 +189,48 @@ VALUES
 ('CAT-BORROWER-WK', 'Borrower (Weekly Installment)', 'COMMON_CUSTOMER', 'Standard individual and worker micro-loans with 10-week recurring repayments.', 500, 10000.00, 50000.00, 10.00, 'WEEKLY', 10, 3, 'ACTIVE'),
 ('CAT-MERCHANT-DLY', 'Merchant (Daily Installment)', 'SHOPKEEPER', 'Retail shopkeepers and stall merchants with 25-day rapid daily collections.', 200, 15000.00, 100000.00, 12.50, 'DAILY', 25, 1, 'ACTIVE'),
 ('CAT-FIELD-AGENT', 'Field Collection Agent', 'FIELD_AGENT', 'Mobile route officers equipped with mobile app for daily & weekly cash/UPI recovery.', 15, 0.00, 0.00, 0.00, 'N/A', 0, 0, 'ACTIVE'),
-('CAT-BRANCH-ADMIN', 'Branch Manager / Staff', 'ADMIN', 'Branch operational staff managing customer KYC, disbursements, and reconciliation.', 5, 0.00, 0.00, 0.00, 'N/A', 0, 0, 'ACTIVE')
+('CAT-BRANCH-ADMIN', 'Branch Manager / Staff', 'ADMIN', 'Branch operational staff managing customer KYC, disbursements, and reconciliation.', 5, 0.00, 0.00, 0.00, 'N/A', 0, 0, 'ACTIVE'),
+('CAT-BORROWER-MO', 'Monthly Salaried Borrower (EMI)', 'COMMON_CUSTOMER', '12-Month structured EMI micro-loans for salaried individuals and established businesses (15% flat interest).', 300, 25000.00, 500000.00, 15.00, 'MONTHLY', 12, 5, 'ACTIVE')
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), default_min_loan=VALUES(default_min_loan), default_max_loan=VALUES(default_max_loan), default_interest_rate=VALUES(default_interest_rate);
 
+-- 14. KUBERNETES & CLUSTER INFRASTRUCTURE
+INSERT INTO cluster_nodes 
+(node_name, cluster_name, role, region, zone, status, cpu_cores, cpu_usage_percent, memory_total_gb, memory_usage_gb, active_pods, max_pods, disk_usage_percent, kubelet_version, uptime_days) 
+VALUES 
+('k8s-control-plane-01', 'k8s-prod-cluster-01', 'CONTROL_PLANE', 'ap-southeast-1', 'ap-southeast-1a', 'HEALTHY', 16, 18.4, 64.0, 22.8, 28, 110, 32.0, 'v1.30.2', 84),
+('k8s-worker-apx-01', 'k8s-prod-cluster-01', 'WORKER', 'ap-southeast-1', 'ap-southeast-1a', 'HEALTHY', 32, 42.1, 128.0, 58.4, 64, 250, 44.5, 'v1.30.2', 62),
+('k8s-worker-apx-02', 'k8s-prod-cluster-01', 'WORKER', 'ap-southeast-1', 'ap-southeast-1b', 'HEALTHY', 32, 38.6, 128.0, 52.1, 58, 250, 41.2, 'v1.30.2', 62),
+('k8s-db-replica-01', 'k8s-prod-cluster-01', 'DATABASE_REPLICA', 'ap-southeast-1', 'ap-southeast-1c', 'HEALTHY', 16, 29.0, 64.0, 34.5, 12, 110, 51.0, 'v1.30.2', 95),
+('k8s-ingress-gw-01', 'k8s-prod-cluster-01', 'INGRESS_GATEWAY', 'ap-southeast-1', 'ap-southeast-1a', 'HEALTHY', 8, 14.8, 32.0, 9.6, 16, 110, 25.0, 'v1.30.2', 45)
+ON DUPLICATE KEY UPDATE 
+  status=VALUES(status), 
+  cpu_usage_percent=VALUES(cpu_usage_percent), 
+  memory_usage_gb=VALUES(memory_usage_gb), 
+  active_pods=VALUES(active_pods);
+
+-- 15. INITIAL SYSTEM USERS & ROLES
+-- Bcrypt hash for 'Admin@123': $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
+INSERT INTO users (id, organization_id, branch_id, name, phone, email, password_hash, role_type, status)
+VALUES
+(1, NULL, NULL, 'GOWTHAM', '9999999999', 'gowthamnaveen124@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SUPER_ADMIN', 'ACTIVE'),
+(2, 1, 1, 'Rajesh Kumar', '9876543210', 'rajesh@apexfinance.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ADMIN', 'ACTIVE'),
+(3, 1, 1, 'Venkatesh S', '9876543212', 'agent@apexfinance.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'FIELD_AGENT', 'ACTIVE'),
+(4, 1, 1, 'Kumar', '9876543213', 'kumar@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'USER', 'ACTIVE'),
+(5, 1, 1, 'Murugan Store', '9876543214', 'murugan@gmail.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SHOPKEEPER', 'ACTIVE')
+ON DUPLICATE KEY UPDATE name=VALUES(name), email=VALUES(email), status=VALUES(status), role_type=VALUES(role_type);
+
+INSERT IGNORE INTO user_roles (user_id, role_id)
+SELECT 1, id FROM roles WHERE name = 'SUPER_ADMIN';
+
+INSERT IGNORE INTO user_roles (user_id, role_id)
+SELECT 2, id FROM roles WHERE name = 'ADMIN';
+
+INSERT IGNORE INTO user_roles (user_id, role_id)
+SELECT 3, id FROM roles WHERE name = 'FIELD_AGENT';
+
+INSERT IGNORE INTO user_roles (user_id, role_id)
+SELECT 4, id FROM roles WHERE name = 'USER';
+
+INSERT IGNORE INTO user_roles (user_id, role_id)
+SELECT 5, id FROM roles WHERE name = 'SHOPKEEPER';
 

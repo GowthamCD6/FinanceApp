@@ -162,6 +162,35 @@ const governanceController = {
       next(err);
     }
   },
+
+  getClusterNodes: async (req, res, next) => {
+    try {
+      const data = await governanceService.getClusterNodes();
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  getClusterTelemetry: async (req, res, next) => {
+    try {
+      const data = await governanceService.getClusterTelemetry();
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  actionClusterNode: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { action } = req.body;
+      const data = await governanceService.actionClusterNode(id, action);
+      res.json({ success: true, message: `Node action '${action}' applied successfully`, data });
+    } catch (err) {
+      next(err);
+    }
+  },
 };
 
 module.exports = governanceController;

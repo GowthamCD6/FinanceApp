@@ -27,6 +27,7 @@ import {
   User,
   Percent,
   ExternalLink,
+  Server,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useOrg } from "../../context/OrgContext";
@@ -86,11 +87,24 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     setMobileOpen(false);
   };
 
+  const userRoleStr = (
+    user?.role_type ||
+    user?.role ||
+    (user?.roles && user?.roles[0]) ||
+    ""
+  ).toLowerCase();
+
+  const isFieldStaff = userRoleStr === "field_agent" || (user?.roles || []).includes("FIELD_AGENT");
+
   const effectiveRole =
     propUserRole ||
-    (isInsideOrg || isDirectAdmin
+    (isFieldStaff
+      ? "field_agent"
+      : isInsideOrg || isDirectAdmin
       ? "admin"
-      : user?.role?.toLowerCase() || "superadmin");
+      : userRoleStr === "admin"
+      ? "admin"
+      : "superadmin");
 
   const orgPrefix =
     isInsideOrg && (activeOrg || pathOrgId)
@@ -98,10 +112,12 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
       : "/admin";
 
   const effectiveUserData = propUserData || {
-    username: user?.name || (effectiveRole === "superadmin" ? "Super Admin" : "Branch Admin"),
+    username: user?.name || (effectiveRole === "superadmin" ? "Super Admin" : effectiveRole === "field_agent" ? "Route Staff" : "Branch Admin"),
     roleName:
       isInsideOrg && activeOrg
         ? `${activeOrg.name} (${activeOrg.code})`
+        : isFieldStaff
+        ? "Field Route Officer"
         : isDirectAdmin
         ? "Branch Operations"
         : "Platform SuperAdmin",
@@ -139,6 +155,11 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
             path: "/superadmin/analytics",
             label: "API Analytics",
             icon: Activity,
+          },
+          {
+            path: "/superadmin/kubernetes",
+            label: "Kubernetes & Infra",
+            icon: Server,
           },
           {
             path: "/superadmin/users",
@@ -230,6 +251,15 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         icon: ArrowLeft,
         onClick: () => clearActiveOrg(),
       },
+    ],
+    field_agent: [
+      { label: "Field Operations", section: true },
+      { path: "/staff/dashboard", label: "Route Staff Portal", icon: LayoutDashboard },
+      { label: "Daily Collections", section: true },
+      { path: "/admin/shopkeepers", label: "Shopkeeper Collections", icon: Store },
+      { path: "/admin/weekly-customers", label: "Weekly Collections", icon: Calendar },
+      { label: "Ledger & Reports", section: true },
+      { path: "/admin/reports", label: "Collection Reports", icon: Receipt },
     ],
   };
 

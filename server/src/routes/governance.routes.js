@@ -34,4 +34,9 @@ router.get('/lending-config', governanceController.getLendingConfig);
 router.get('/lending-config/:orgId', governanceController.getLendingConfig);
 router.put('/lending-config/:orgId', governanceController.updateLendingConfig);
 
+// Kubernetes & Cloud Infrastructure Telemetry
+router.get('/cluster-nodes', governanceController.getClusterNodes);
+router.get('/cluster-telemetry', governanceController.getClusterTelemetry);
+router.post('/cluster-nodes/:id/action', governanceController.actionClusterNode);
+
 module.exports = router;

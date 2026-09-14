@@ -4,6 +4,50 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- ==============================================================================
+-- 0. CLEAN RESET: DROP ALL EXISTING TABLES BEFORE RECREATION
+-- ==============================================================================
+DROP TABLE IF EXISTS
+    accounting_accounts,
+    api_metrics,
+    app_versions,
+    audit_logs,
+    branches,
+    broadcast_notifications,
+    collection_visits,
+    customer_documents,
+    customer_notes,
+    customers,
+    default_category_configs,
+    expense_categories,
+    expenses,
+    fund_accounts,
+    fund_transactions,
+    idempotency_keys,
+    journal_entries,
+    journal_entry_lines,
+    loan_eligibility,
+    loan_events,
+    loan_installments,
+    loan_policies,
+    loan_products,
+    loan_status_history,
+    loans,
+    notifications,
+    organization_settings,
+    organizations,
+    payment_allocations,
+    payments,
+    permissions,
+    privacy_policies,
+    reconciliation_adjustments,
+    reconciliations,
+    role_permissions,
+    roles,
+    system_settings,
+    user_roles,
+    users;
+
 -- 1. ORGANIZATIONS & TENANT MANAGEMENT
 CREATE TABLE IF NOT EXISTS organizations (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -52,7 +96,26 @@ CREATE TABLE IF NOT EXISTS organization_settings (
     organization_id BIGINT UNSIGNED NOT NULL UNIQUE,
     daily_loan_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     weekly_loan_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    max_active_loans_per_customer INT UNSIGNED NOT NULL DEFAULT 1,
+    monthly_loan_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    daily_interest_rate DECIMAL(5,2) NOT NULL DEFAULT 12.50,
+    daily_tenure_days INT NOT NULL DEFAULT 25,
+    weekly_interest_rate DECIMAL(5,2) NOT NULL DEFAULT 10.00,
+    weekly_tenure_weeks INT NOT NULL DEFAULT 10,
+    monthly_interest_rate DECIMAL(5,2) NOT NULL DEFAULT 15.00,
+    monthly_tenure_months INT NOT NULL DEFAULT 12,
+    daily_min_amount DECIMAL(15,2) NOT NULL DEFAULT 15000.00,
+    daily_max_amount DECIMAL(15,2) NOT NULL DEFAULT 100000.00,
+    weekly_min_amount DECIMAL(15,2) NOT NULL DEFAULT 10000.00,
+    weekly_max_amount DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
+    monthly_min_amount DECIMAL(15,2) NOT NULL DEFAULT 25000.00,
+    monthly_max_amount DECIMAL(15,2) NOT NULL DEFAULT 500000.00,
+    weekly_collection_days VARCHAR(100) DEFAULT 'MON,WED,FRI',
+    weekly_collection_grace_days INT DEFAULT 2,
+    monthly_collection_start_day INT DEFAULT 1,
+    monthly_collection_end_day INT DEFAULT 5,
+    monthly_collection_grace_days INT DEFAULT 3,
+    daily_operating_days VARCHAR(100) DEFAULT 'MON,TUE,WED,THU,FRI,SAT,SUN',
+    max_active_loans_per_customer INT UNSIGNED NOT NULL DEFAULT 2,
     auto_eligibility_check BOOLEAN NOT NULL DEFAULT TRUE,
     grace_period_days INT UNSIGNED NOT NULL DEFAULT 0,
     default_interest_rate DECIMAL(5,2) NOT NULL DEFAULT 10.00,
@@ -99,6 +162,7 @@ CREATE TABLE IF NOT EXISTS users (
     occupation VARCHAR(150),
     designation VARCHAR(100),
     avatar_url VARCHAR(500),
+    google_id VARCHAR(255) NULL,
     address TEXT,
     assigned_route VARCHAR(150),
     daily_target DECIMAL(15,2) DEFAULT 0.00,
@@ -704,6 +768,31 @@ CREATE TABLE IF NOT EXISTS default_category_configs (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_cat_code (category_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. KUBERNETES & CLOUD INFRASTRUCTURE TELEMETRY
+CREATE TABLE IF NOT EXISTS cluster_nodes (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    node_name VARCHAR(100) NOT NULL UNIQUE,
+    cluster_name VARCHAR(100) NOT NULL DEFAULT 'k8s-prod-cluster-01',
+    role ENUM('CONTROL_PLANE', 'WORKER', 'DATABASE_REPLICA', 'INGRESS_GATEWAY') NOT NULL DEFAULT 'WORKER',
+    region VARCHAR(50) NOT NULL DEFAULT 'ap-southeast-1',
+    zone VARCHAR(50) NOT NULL DEFAULT 'ap-southeast-1a',
+    status ENUM('HEALTHY', 'READY', 'WARNING', 'DRAINING', 'OFFLINE') NOT NULL DEFAULT 'HEALTHY',
+    cpu_cores INT UNSIGNED NOT NULL DEFAULT 8,
+    cpu_usage_percent DECIMAL(5,2) NOT NULL DEFAULT 24.50,
+    memory_total_gb DECIMAL(6,2) NOT NULL DEFAULT 32.00,
+    memory_usage_gb DECIMAL(6,2) NOT NULL DEFAULT 14.20,
+    active_pods INT UNSIGNED NOT NULL DEFAULT 18,
+    max_pods INT UNSIGNED NOT NULL DEFAULT 110,
+    disk_usage_percent DECIMAL(5,2) NOT NULL DEFAULT 38.00,
+    kubelet_version VARCHAR(50) NOT NULL DEFAULT 'v1.30.2',
+    container_runtime VARCHAR(50) NOT NULL DEFAULT 'containerd://1.7.15',
+    uptime_days INT UNSIGNED NOT NULL DEFAULT 45,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_node_cluster (cluster_name),
+    INDEX idx_node_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

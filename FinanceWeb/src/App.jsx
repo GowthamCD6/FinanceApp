@@ -17,6 +17,8 @@ import { DefaultCategories } from './pages/Superadmin/DefaultCategories/DefaultC
 import { MobileAppUpdates } from './pages/Superadmin/MobileUpdates/MobileAppUpdates';
 import { PrivacyPolicy } from './pages/Superadmin/PrivacyPolicy/PrivacyPolicy';
 import { AuditLogsBroadcast } from './pages/Superadmin/AditLog/AuditLogsBroadcast';
+import { KubernetesCluster } from './pages/Superadmin/Kubernetes/KubernetesCluster';
+import { RouteStaffDashboard } from './pages/Staff/RouteStaffDashboard';
 
 // Dedicated Admin Portal Pages
 import { AdminDashboard } from './pages/Admin/Dashboard/Dashboard';
@@ -52,11 +54,15 @@ export default function App() {
               <Route path="/org/create" element={<CreateOrganization />} />
               <Route path="/superadmin/payments" element={<UserPaymentOverview />} />
               <Route path="/superadmin/analytics" element={<ApiAnalytics />} />
+              <Route path="/superadmin/kubernetes" element={<KubernetesCluster />} />
               <Route path="/superadmin/users" element={<SuperAdminUsers />} />
               <Route path="/superadmin/categories" element={<DefaultCategories />} />
               <Route path="/superadmin/app-updates" element={<MobileAppUpdates />} />
               <Route path="/superadmin/privacy" element={<PrivacyPolicy />} />
               <Route path="/superadmin/audit" element={<AuditLogsBroadcast />} />
+
+              {/* Route Staff & Field Collector Portal */}
+              <Route path="/staff/dashboard" element={<RouteStaffDashboard />} />
 
               {/* Dedicated Admin Portal (Direct Routes) */}
               <Route path="/admin">

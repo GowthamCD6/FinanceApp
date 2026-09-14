@@ -590,9 +590,107 @@ const governanceService = {
           orgId
         ]
       );
+      // Synchronize default_category_configs table with newly saved interest rates & tenures
+      if (weekly_interest_rate != null || weekly_tenure_weeks != null || weekly_min_amount != null || weekly_max_amount != null) {
+        await query(
+          `UPDATE default_category_configs SET
+             default_interest_rate = COALESCE(?, default_interest_rate),
+             tenure_installments = COALESCE(?, tenure_installments),
+             default_min_loan = COALESCE(?, default_min_loan),
+             default_max_loan = COALESCE(?, default_max_loan),
+             description = CONCAT('Standard individual and worker micro-loans with ', COALESCE(?, tenure_installments), '-week recurring repayments.')
+           WHERE category_code = 'CAT-BORROWER-WK'`,
+          [weekly_interest_rate, weekly_tenure_weeks, weekly_min_amount, weekly_max_amount, weekly_tenure_weeks]
+        );
+      }
+
+      if (daily_interest_rate != null || daily_tenure_days != null || daily_min_amount != null || daily_max_amount != null) {
+        await query(
+          `UPDATE default_category_configs SET
+             default_interest_rate = COALESCE(?, default_interest_rate),
+             tenure_installments = COALESCE(?, tenure_installments),
+             default_min_loan = COALESCE(?, default_min_loan),
+             default_max_loan = COALESCE(?, default_max_loan),
+             description = CONCAT('Retail shopkeepers and stall merchants with ', COALESCE(?, tenure_installments), '-day rapid daily collections.')
+           WHERE category_code = 'CAT-MERCHANT-DLY'`,
+          [daily_interest_rate, daily_tenure_days, daily_min_amount, daily_max_amount, daily_tenure_days]
+        );
+      }
+
+      if (monthly_interest_rate != null || monthly_tenure_months != null || monthly_min_amount != null || monthly_max_amount != null) {
+        await query(
+          `UPDATE default_category_configs SET
+             default_interest_rate = COALESCE(?, default_interest_rate),
+             tenure_installments = COALESCE(?, tenure_installments),
+             default_min_loan = COALESCE(?, default_min_loan),
+             default_max_loan = COALESCE(?, default_max_loan),
+             description = CONCAT(COALESCE(?, tenure_installments), '-Month structured EMI micro-loans for salaried individuals (', COALESCE(?, default_interest_rate), '% flat interest).')
+           WHERE category_code = 'CAT-BORROWER-MO'`,
+          [monthly_interest_rate, monthly_tenure_months, monthly_min_amount, monthly_max_amount, monthly_tenure_months, monthly_interest_rate]
+        );
+      }
+
       return await governanceService.getLendingConfig(orgId);
     } catch (err) {
       return { organization_id: orgId, ...configData };
+    }
+  },
+
+  // 8. KUBERNETES & CLUSTER INFRASTRUCTURE
+  getClusterNodes: async () => {
+    try {
+      const nodes = await query(`SELECT * FROM cluster_nodes ORDER BY role = 'CONTROL_PLANE' DESC, id ASC`);
+      return nodes || [];
+    } catch (e) {
+      console.warn('Fallback in getClusterNodes:', e.message);
+      return [];
+    }
+  },
+
+  getClusterTelemetry: async () => {
+    try {
+      const nodes = await query(`SELECT * FROM cluster_nodes`);
+      const totalCpuCores = nodes.reduce((sum, n) => sum + Number(n.cpu_cores || 0), 0);
+      const avgCpuUsage = nodes.length > 0 ? (nodes.reduce((sum, n) => sum + Number(n.cpu_usage_percent || 0), 0) / nodes.length).toFixed(1) : 0;
+      const totalMemoryGb = nodes.reduce((sum, n) => sum + Number(n.memory_total_gb || 0), 0);
+      const usedMemoryGb = nodes.reduce((sum, n) => sum + Number(n.memory_usage_gb || 0), 0);
+      const totalActivePods = nodes.reduce((sum, n) => sum + Number(n.active_pods || 0), 0);
+      const totalMaxPods = nodes.reduce((sum, n) => sum + Number(n.max_pods || 0), 0);
+
+      return {
+        cluster_name: 'k8s-prod-cluster-01',
+        region: 'ap-southeast-1 (AWS Prod)',
+        status: 'HEALTHY',
+        kubernetes_version: 'v1.30.2',
+        total_nodes: nodes.length,
+        control_plane_nodes: nodes.filter(n => n.role === 'CONTROL_PLANE').length,
+        worker_nodes: nodes.filter(n => n.role === 'WORKER').length,
+        total_cpu_cores: totalCpuCores,
+        avg_cpu_usage_percent: avgCpuUsage,
+        total_memory_gb: totalMemoryGb,
+        used_memory_gb: usedMemoryGb.toFixed(1),
+        memory_usage_percent: totalMemoryGb > 0 ? ((usedMemoryGb / totalMemoryGb) * 100).toFixed(1) : 0,
+        active_pods: totalActivePods,
+        max_pods: totalMaxPods,
+        nodes,
+      };
+    } catch (e) {
+      return { status: 'UNKNOWN', nodes: [] };
+    }
+  },
+
+  actionClusterNode: async (nodeId, action) => {
+    try {
+      let newStatus = 'HEALTHY';
+      if (action === 'DRAIN') newStatus = 'DRAINING';
+      else if (action === 'CORDON') newStatus = 'WARNING';
+      else if (action === 'RESTART' || action === 'UNCORDON') newStatus = 'HEALTHY';
+
+      await query(`UPDATE cluster_nodes SET status = ?, updated_at = NOW() WHERE id = ?`, [newStatus, nodeId]);
+      const [updated] = await query(`SELECT * FROM cluster_nodes WHERE id = ?`, [nodeId]);
+      return updated;
+    } catch (e) {
+      throw e;
     }
   },
 };

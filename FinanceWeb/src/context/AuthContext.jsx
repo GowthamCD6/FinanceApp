@@ -29,6 +29,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (googlePayload) => {
+    setLoading(true);
+    try {
+      const data = await api.auth.googleLogin(googlePayload);
+      setUser(data.user);
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateProfile = (updatedData) => {
     setUser((prev) => {
       const updated = { ...prev, ...updatedData };
@@ -48,9 +59,12 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         login,
+        googleLogin,
         logout,
         updateProfile,
         isAdmin: user?.role_type === 'SUPER_ADMIN' || user?.role_type === 'ADMIN',
+        isSuperAdmin: user?.role_type === 'SUPER_ADMIN' || (user?.roles || []).includes('SUPER_ADMIN'),
+        isFieldAgent: user?.role_type === 'FIELD_AGENT' || (user?.roles || []).includes('FIELD_AGENT'),
       }}
     >
       {children}

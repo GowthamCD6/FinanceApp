@@ -601,6 +601,46 @@ const organizationService = {
           orgId
         ]
       );
+      // Synchronize default_category_configs table with newly saved interest rates & tenures
+      if (weekly_interest_rate != null || weekly_tenure_weeks != null || weekly_min_amount != null || weekly_max_amount != null) {
+        await query(
+          `UPDATE default_category_configs SET
+             default_interest_rate = COALESCE(?, default_interest_rate),
+             tenure_installments = COALESCE(?, tenure_installments),
+             default_min_loan = COALESCE(?, default_min_loan),
+             default_max_loan = COALESCE(?, default_max_loan),
+             description = CONCAT('Standard individual and worker micro-loans with ', COALESCE(?, tenure_installments), '-week recurring repayments.')
+           WHERE category_code = 'CAT-BORROWER-WK'`,
+          [weekly_interest_rate, weekly_tenure_weeks, weekly_min_amount, weekly_max_amount, weekly_tenure_weeks]
+        );
+      }
+
+      if (daily_interest_rate != null || daily_tenure_days != null || daily_min_amount != null || daily_max_amount != null) {
+        await query(
+          `UPDATE default_category_configs SET
+             default_interest_rate = COALESCE(?, default_interest_rate),
+             tenure_installments = COALESCE(?, tenure_installments),
+             default_min_loan = COALESCE(?, default_min_loan),
+             default_max_loan = COALESCE(?, default_max_loan),
+             description = CONCAT('Retail shopkeepers and stall merchants with ', COALESCE(?, tenure_installments), '-day rapid daily collections.')
+           WHERE category_code = 'CAT-MERCHANT-DLY'`,
+          [daily_interest_rate, daily_tenure_days, daily_min_amount, daily_max_amount, daily_tenure_days]
+        );
+      }
+
+      if (monthly_interest_rate != null || monthly_tenure_months != null || monthly_min_amount != null || monthly_max_amount != null) {
+        await query(
+          `UPDATE default_category_configs SET
+             default_interest_rate = COALESCE(?, default_interest_rate),
+             tenure_installments = COALESCE(?, tenure_installments),
+             default_min_loan = COALESCE(?, default_min_loan),
+             default_max_loan = COALESCE(?, default_max_loan),
+             description = CONCAT(COALESCE(?, tenure_installments), '-Month structured EMI micro-loans for salaried individuals (', COALESCE(?, default_interest_rate), '% flat interest).')
+           WHERE category_code = 'CAT-BORROWER-MO'`,
+          [monthly_interest_rate, monthly_tenure_months, monthly_min_amount, monthly_max_amount, monthly_tenure_months, monthly_interest_rate]
+        );
+      }
+
       return await organizationService.getLendingConfig(orgId);
     } catch (err) {
       console.warn('Update fallback in updateLendingConfig:', err.message);

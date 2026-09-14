@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Users,
+  UserPlus,
   ArrowRight,
   Clock,
   Calendar,
@@ -340,6 +341,15 @@ export const Shopkeepers = () => {
           >
             <Users size={15} />
             <span>Manage Borrowers</span>
+          </button>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate(getOrgPath('users/add'))}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem', fontWeight: 700 }}
+          >
+            <UserPlus size={15} />
+            <span>Onboard Merchant</span>
           </button>
         </div>
       </div>
@@ -1939,9 +1949,11 @@ export const Shopkeepers = () => {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const shopId = selectedShopForModal.id;
+                                    const shopObj = selectedShopForModal;
                                     setSelectedShopForModal(null);
-                                    navigate(getOrgPath(`shopkeepers/collect/${shopId}`));
+                                    navigate(getOrgPath(`shopkeepers/${shopObj.id}/collect`), {
+                                      state: { shop: shopObj, selectedDate },
+                                    });
                                   }}
                                   style={{
                                     padding: '4px 10px',
