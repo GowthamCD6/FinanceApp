@@ -304,15 +304,16 @@ const governanceService = {
       WHERE ${intervalCondition}
     `);
 
-    const totalRequests = Number(summary?.total_requests || 0);
-    const count2xx = Number(summary?.count_2xx || 0);
-    const count4xx = Number(summary?.count_4xx || 0);
-    const count5xx = Number(summary?.count_5xx || 0);
+    const summaryRow = summary && summary.length > 0 ? summary[0] : {};
+    const totalRequests = Number(summaryRow?.total_requests || 0);
+    const count2xx = Number(summaryRow?.count_2xx || 0);
+    const count4xx = Number(summaryRow?.count_4xx || 0);
+    const count5xx = Number(summaryRow?.count_5xx || 0);
     const totalErrors = count4xx + count5xx;
 
     const successRate = totalRequests > 0 ? ((count2xx / totalRequests) * 100).toFixed(1) : '100.0';
     const errorRate = totalRequests > 0 ? ((totalErrors / totalRequests) * 100).toFixed(1) : '0.0';
-    const avgLatencyMs = Number(summary?.avg_latency || 38.5).toFixed(1);
+    const avgLatencyMs = Number(summaryRow?.avg_latency || 38.5).toFixed(1);
 
     // 2. Approximate P95 Latency
     const p95Rows = await query(`

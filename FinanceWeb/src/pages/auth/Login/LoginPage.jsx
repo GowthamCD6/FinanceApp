@@ -29,15 +29,24 @@ export const LoginPage = () => {
 
   // Dynamic role router based on backend returned user roles
   const routeByRoles = (userData) => {
-    if (redirectTarget && redirectTarget !== '/login') {
+    const roles = userData?.roles || [userData?.role_type || 'ADMIN'];
+    const isSuperAdmin = roles.includes('SUPER_ADMIN');
+
+    // SuperAdmin must ALWAYS navigate to the central SuperAdmin Hub (/dashboard) first
+    if (isSuperAdmin) {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
+    if (redirectTarget && redirectTarget !== '/login' && !redirectTarget.startsWith('/dashboard')) {
       navigate(redirectTarget, { replace: true });
       return;
     }
-    const roles = userData?.roles || [userData?.role_type || 'ADMIN'];
-    if (roles.includes('SUPER_ADMIN')) {
-      navigate('/dashboard', { replace: true });
-    } else if (roles.includes('ADMIN') || roles.includes('ORG_ADMIN')) {
-      navigate('/admin/dashboard', { replace: true });
+
+    if (roles.includes('ADMIN') || roles.includes('ORG_ADMIN')) {
+      const orgId = userData?.organization_id;
+      const target = orgId ? `/org/${orgId}/dashboard` : '/admin/dashboard';
+      navigate(target, { replace: true });
     } else if (roles.includes('FIELD_AGENT')) {
       navigate('/staff/dashboard', { replace: true });
     } else {

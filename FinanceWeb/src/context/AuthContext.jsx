@@ -143,6 +143,11 @@ export const AuthProvider = ({ children }) => {
       if (data?.token) {
         setToken(data.token);
         setUser(data.user);
+        const roles = data.user?.roles || [data.user?.role_type || 'ADMIN'];
+        if (roles.includes('SUPER_ADMIN')) {
+          localStorage.removeItem('finance_active_org_id');
+          localStorage.removeItem('finance_active_branch_id');
+        }
         lastActivityRef.current = Date.now();
       }
       return data;
@@ -159,6 +164,11 @@ export const AuthProvider = ({ children }) => {
       if (data?.token) {
         setToken(data.token);
         setUser(data.user);
+        const roles = data.user?.roles || [data.user?.role_type || 'ADMIN'];
+        if (roles.includes('SUPER_ADMIN')) {
+          localStorage.removeItem('finance_active_org_id');
+          localStorage.removeItem('finance_active_branch_id');
+        }
         lastActivityRef.current = Date.now();
       }
       return data;
