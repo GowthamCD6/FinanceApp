@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import {
   Landmark,
@@ -7,30 +7,47 @@ import {
   Lock,
   Mail,
   AlertCircle,
+  Clock,
+  X,
 } from 'lucide-react';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, googleLogin, loading } = useAuth();
+  const location = useLocation();
+  const { login, googleLogin, loading, isAuthenticated, user, sessionNotice, clearSessionNotice } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Determine redirect target path
+  const redirectTarget = location.state?.from?.pathname;
+
   // Dynamic role router based on backend returned user roles
-  const routeByRoles = (user) => {
-    const roles = user?.roles || [user?.role_type || 'ADMIN'];
+  const routeByRoles = (userData) => {
+    if (redirectTarget && redirectTarget !== '/login') {
+      navigate(redirectTarget, { replace: true });
+      return;
+    }
+    const roles = userData?.roles || [userData?.role_type || 'ADMIN'];
     if (roles.includes('SUPER_ADMIN')) {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } else if (roles.includes('ADMIN')) {
-      navigate('/admin/dashboard');
+      navigate('/admin/dashboard', { replace: true });
     } else if (roles.includes('FIELD_AGENT')) {
-      navigate('/staff/dashboard');
+      navigate('/staff/dashboard', { replace: true });
     } else {
-      navigate('/admin/dashboard');
+      navigate('/admin/dashboard', { replace: true });
     }
   };
+
+  // If already authenticated on load, redirect immediately
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      routeByRoles(user);
+    }
+  }, [isAuthenticated, user]);
 
   // 1. Standard Form Authentication (Backend Verification)
   const handleStandardLogin = async (e) => {
@@ -122,6 +139,24 @@ export const LoginPage = () => {
             Enterprise Multi-Tenant Lending & Governance Engine
           </p>
         </div>
+
+        {/* Session Timeout / Expiry Alert */}
+        {sessionNotice && (
+          <div className="login-session-alert">
+            <div className="session-alert-left">
+              <Clock size={16} />
+              <span>{sessionNotice}</span>
+            </div>
+            <button
+              type="button"
+              className="btn-dismiss-alert"
+              onClick={clearSessionNotice}
+              aria-label="Dismiss alert"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* Error Alert */}
         {error && (
@@ -276,6 +311,44 @@ export const LoginPage = () => {
           color: #64748b;
           margin: 0;
           line-height: 1.4;
+        }
+
+        /* Session Expiry Alert */
+        .login-session-alert {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #fffbeb;
+          border: 1px solid #fde68a;
+          color: #92400e;
+          padding: 10px 14px;
+          border-radius: 8px;
+          font-size: 13px;
+          margin-bottom: 16px;
+        }
+
+        .session-alert-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-dismiss-alert {
+          background: transparent;
+          border: none;
+          color: #92400e;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          padding: 2px;
+          border-radius: 4px;
+          opacity: 0.8;
+          transition: opacity 0.2s;
+        }
+
+        .btn-dismiss-alert:hover {
+          opacity: 1;
+          background: rgba(146, 64, 14, 0.1);
         }
 
         /* Error Alert */

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { OrgProvider } from './context/OrgContext';
 import { Sidebar } from './components/layout/Sidebar';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Auth Page
 import { LoginPage } from './pages/auth/Login/LoginPage';
@@ -42,107 +43,116 @@ export default function App() {
       <OrgProvider>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
-            {/* 1. Public Authentication */}
+            {/* 1. Public Authentication Portal */}
             <Route path="/login" element={<LoginPage />} />
 
-            {/* 2. Authenticated App Layout directly hosted by Sidebar */}
-            <Route element={<Sidebar />}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* 2. Guarded Private App Routes (Session & Token Validated) */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Sidebar />}>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-              {/* SuperAdmin Portal: Governance, Analytics & System Modules */}
-              <Route path="/dashboard" element={<SuperAdminDashboard />} />
-              <Route path="/org/create" element={<CreateOrganization />} />
-              <Route path="/superadmin/payments" element={<UserPaymentOverview />} />
-              <Route path="/superadmin/analytics" element={<ApiAnalytics />} />
-              <Route path="/superadmin/kubernetes" element={<KubernetesCluster />} />
-              <Route path="/superadmin/users" element={<SuperAdminUsers />} />
-              <Route path="/superadmin/categories" element={<DefaultCategories />} />
-              <Route path="/superadmin/app-updates" element={<MobileAppUpdates />} />
-              <Route path="/superadmin/privacy" element={<PrivacyPolicy />} />
-              <Route path="/superadmin/audit" element={<AuditLogsBroadcast />} />
+                {/* SuperAdmin Tier: Governance, Multi-Tenant Hub, Analytics & Infra */}
+                <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+                  <Route path="/dashboard" element={<SuperAdminDashboard />} />
+                  <Route path="/org/create" element={<CreateOrganization />} />
+                  <Route path="/superadmin/payments" element={<UserPaymentOverview />} />
+                  <Route path="/superadmin/analytics" element={<ApiAnalytics />} />
+                  <Route path="/superadmin/kubernetes" element={<KubernetesCluster />} />
+                  <Route path="/superadmin/users" element={<SuperAdminUsers />} />
+                  <Route path="/superadmin/categories" element={<DefaultCategories />} />
+                  <Route path="/superadmin/app-updates" element={<MobileAppUpdates />} />
+                  <Route path="/superadmin/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/superadmin/audit" element={<AuditLogsBroadcast />} />
 
-              {/* Route Staff & Field Collector Portal */}
-              <Route path="/staff/dashboard" element={<RouteStaffDashboard />} />
+                  {/* SuperAdmin Top-Level Shortcut Aliases */}
+                  <Route path="/payments-overview" element={<Navigate to="/superadmin/payments" replace />} />
+                  <Route path="/analytics" element={<Navigate to="/superadmin/analytics" replace />} />
+                  <Route path="/categories" element={<Navigate to="/superadmin/categories" replace />} />
+                  <Route path="/app-updates" element={<Navigate to="/superadmin/app-updates" replace />} />
+                  <Route path="/privacy" element={<Navigate to="/superadmin/privacy" replace />} />
+                  <Route path="/audit" element={<Navigate to="/superadmin/audit" replace />} />
+                </Route>
 
-              {/* Dedicated Admin Portal (Direct Routes) */}
-              <Route path="/admin">
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="shopkeepers" element={<Shopkeepers />} />
-                <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
-                <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
-                <Route path="shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
-                <Route path="weekly-customers" element={<WeeklyCustomers />} />
-                <Route path="weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
-                <Route path="weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
-                <Route path="weekly-collect/:customerId" element={<WeeklyCollect />} />
-                <Route path="monthly-customers" element={<MonthlyCustomers />} />
-                <Route path="monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
-                <Route path="monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
-                <Route path="monthly-collect/:customerId" element={<MonthlyCollect />} />
-                <Route path="users" element={<ManageUsers />} />
-                <Route path="staff" element={<ManageStaff />} />
-                <Route path="users/add" element={<AddUser />} />
-                <Route path="loans" element={<AdminLoans />} />
-                <Route path="interest-rates" element={<LendingInterestRates />} />
-                <Route path="reports" element={<AdminReports />} />
-                <Route path="profile" element={<AdminProfile />} />
+                {/* Route Staff / Field Agent Portal */}
+                <Route element={<ProtectedRoute allowedRoles={['FIELD_AGENT', 'ADMIN', 'SUPER_ADMIN']} />}>
+                  <Route path="/staff/dashboard" element={<RouteStaffDashboard />} />
+                </Route>
+
+                {/* Dedicated Branch & Organization Admin Portal (Direct Routes) */}
+                <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'FIELD_AGENT']} />}>
+                  <Route path="/admin">
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="shopkeepers" element={<Shopkeepers />} />
+                    <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
+                    <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
+                    <Route path="shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
+                    <Route path="weekly-customers" element={<WeeklyCustomers />} />
+                    <Route path="weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
+                    <Route path="weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
+                    <Route path="weekly-collect/:customerId" element={<WeeklyCollect />} />
+                    <Route path="monthly-customers" element={<MonthlyCustomers />} />
+                    <Route path="monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
+                    <Route path="monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
+                    <Route path="monthly-collect/:customerId" element={<MonthlyCollect />} />
+                    <Route path="users" element={<ManageUsers />} />
+                    <Route path="staff" element={<ManageStaff />} />
+                    <Route path="users/add" element={<AddUser />} />
+                    <Route path="loans" element={<AdminLoans />} />
+                    <Route path="interest-rates" element={<LendingInterestRates />} />
+                    <Route path="reports" element={<AdminReports />} />
+                    <Route path="profile" element={<AdminProfile />} />
+                  </Route>
+
+                  {/* Multi-Tenant Org-Scoped Routes (SuperAdmin & Tenant Admins) */}
+                  <Route path="/org/:orgId">
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="shopkeepers" element={<Shopkeepers />} />
+                    <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
+                    <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
+                    <Route path="shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
+                    <Route path="weekly-customers" element={<WeeklyCustomers />} />
+                    <Route path="weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
+                    <Route path="weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
+                    <Route path="weekly-collect/:customerId" element={<WeeklyCollect />} />
+                    <Route path="monthly-customers" element={<MonthlyCustomers />} />
+                    <Route path="monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
+                    <Route path="monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
+                    <Route path="monthly-collect/:customerId" element={<MonthlyCollect />} />
+                    <Route path="users" element={<ManageUsers />} />
+                    <Route path="staff" element={<ManageStaff />} />
+                    <Route path="users/add" element={<AddUser />} />
+                    <Route path="loans" element={<AdminLoans />} />
+                    <Route path="interest-rates" element={<LendingInterestRates />} />
+                    <Route path="reports" element={<AdminReports />} />
+                    <Route path="profile" element={<AdminProfile />} />
+                  </Route>
+
+                  {/* Top-Level Collect Routes */}
+                  <Route path="/shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
+                  <Route path="/shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
+                  <Route path="/shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
+                  <Route path="/weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
+                  <Route path="/weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
+                  <Route path="/weekly-collect/:customerId" element={<WeeklyCollect />} />
+                  <Route path="/monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
+                  <Route path="/monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
+                  <Route path="/monthly-collect/:customerId" element={<MonthlyCollect />} />
+
+                  {/* Top-Level Aliases */}
+                  <Route path="/shopkeepers" element={<Navigate to="/admin/shopkeepers" replace />} />
+                  <Route path="/weekly-customers" element={<Navigate to="/admin/weekly-customers" replace />} />
+                  <Route path="/monthly-customers" element={<Navigate to="/admin/monthly-customers" replace />} />
+                  <Route path="/users" element={<Navigate to="/admin/users" replace />} />
+                  <Route path="/staff" element={<Navigate to="/admin/staff" replace />} />
+                  <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />
+                  <Route path="/loans" element={<Navigate to="/admin/loans" replace />} />
+                  <Route path="/interest-rates" element={<Navigate to="/admin/interest-rates" replace />} />
+                  <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
+                  <Route path="/profile" element={<Navigate to="/admin/profile" replace />} />
+                </Route>
               </Route>
-
-              {/* Org-Scoped Admin Portal (Branch Specific Workspace) */}
-              <Route path="/org/:orgId">
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="shopkeepers" element={<Shopkeepers />} />
-                <Route path="shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
-                <Route path="shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
-                <Route path="shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
-                <Route path="weekly-customers" element={<WeeklyCustomers />} />
-                <Route path="weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
-                <Route path="weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
-                <Route path="weekly-collect/:customerId" element={<WeeklyCollect />} />
-                <Route path="monthly-customers" element={<MonthlyCustomers />} />
-                <Route path="monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
-                <Route path="monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
-                <Route path="monthly-collect/:customerId" element={<MonthlyCollect />} />
-                <Route path="users" element={<ManageUsers />} />
-                <Route path="staff" element={<ManageStaff />} />
-                <Route path="users/add" element={<AddUser />} />
-                <Route path="loans" element={<AdminLoans />} />
-                <Route path="interest-rates" element={<LendingInterestRates />} />
-                <Route path="reports" element={<AdminReports />} />
-                <Route path="profile" element={<AdminProfile />} />
-              </Route>
-
-              {/* Top-Level Direct Collect Routes */}
-              <Route path="/shopkeepers/:shopId/collect" element={<ShopkeeperCollect />} />
-              <Route path="/shopkeepers/collect/:shopId" element={<ShopkeeperCollect />} />
-              <Route path="/shopkeeper-collect/:shopId" element={<ShopkeeperCollect />} />
-              <Route path="/weekly-customers/:customerId/collect" element={<WeeklyCollect />} />
-              <Route path="/weekly-customers/collect/:customerId" element={<WeeklyCollect />} />
-              <Route path="/weekly-collect/:customerId" element={<WeeklyCollect />} />
-              <Route path="/monthly-customers/:customerId/collect" element={<MonthlyCollect />} />
-              <Route path="/monthly-customers/collect/:customerId" element={<MonthlyCollect />} />
-              <Route path="/monthly-collect/:customerId" element={<MonthlyCollect />} />
-
-              {/* Shortcut Top-Level Aliases */}
-              <Route path="/payments-overview" element={<Navigate to="/superadmin/payments" replace />} />
-              <Route path="/analytics" element={<Navigate to="/superadmin/analytics" replace />} />
-              <Route path="/categories" element={<Navigate to="/superadmin/categories" replace />} />
-              <Route path="/app-updates" element={<Navigate to="/superadmin/app-updates" replace />} />
-              <Route path="/privacy" element={<Navigate to="/superadmin/privacy" replace />} />
-              <Route path="/audit" element={<Navigate to="/superadmin/audit" replace />} />
-
-              <Route path="/shopkeepers" element={<Navigate to="/admin/shopkeepers" replace />} />
-              <Route path="/weekly-customers" element={<Navigate to="/admin/weekly-customers" replace />} />
-              <Route path="/monthly-customers" element={<Navigate to="/admin/monthly-customers" replace />} />
-              <Route path="/users" element={<Navigate to="/admin/users" replace />} />
-              <Route path="/staff" element={<Navigate to="/admin/staff" replace />} />
-              <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />
-              <Route path="/loans" element={<Navigate to="/admin/loans" replace />} />
-              <Route path="/interest-rates" element={<Navigate to="/admin/interest-rates" replace />} />
-              <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
-              <Route path="/profile" element={<Navigate to="/admin/profile" replace />} />
             </Route>
 
             {/* Catch-all Fallback */}

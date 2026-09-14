@@ -32,6 +32,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useOrg } from "../../context/OrgContext";
 import { api } from "../../services/api";
+import { SuperAdminOrgSwitcher } from "./SuperAdminOrgSwitcher";
 import "./Sidebar.css";
 import "./SidebarUserProfile.css";
 
@@ -517,6 +518,7 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
 
       {/* Main Content Area */}
       <div className="layout-content-wrapper">
+        <SuperAdminOrgSwitcher />
         <main className="layout-main">
           <Outlet />
         </main>

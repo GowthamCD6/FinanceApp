@@ -10,11 +10,53 @@ const API_BASE_URL =
     : 'http://localhost:5000/api');
 
 /**
+ * Decode JWT and check if it is expired
+ */
+export function isTokenExpired(token) {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (!payload.exp) return false;
+    // Buffer by 5 seconds
+    return Date.now() >= (payload.exp * 1000) - 5000;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Handle session expiration across tabs and app
+ */
+export function triggerSessionExpired(reason = 'Your session has expired. Please log in again.') {
+  localStorage.removeItem('finance_token');
+  localStorage.removeItem('finance_user');
+  sessionStorage.removeItem('finance_token');
+  sessionStorage.removeItem('finance_user');
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('finance_auth_expired', {
+        detail: { message: reason },
+      })
+    );
+  }
+}
+
+/**
  * Core HTTP Request Wrapper with Auth Header and Error Handling
  */
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('finance_token') || sessionStorage.getItem('finance_token');
   const activeOrgId = localStorage.getItem('finance_active_org_id');
+
+  // Check token expiration before sending if not a public login endpoint
+  if (token && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google')) {
+    if (isTokenExpired(token)) {
+      triggerSessionExpired('Session expired due to token lifetime. Please log in again.');
+      throw new Error('Session expired. Please log in again.');
+    }
+  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -33,6 +75,9 @@ async function request(endpoint, options = {}) {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      if (res.status === 401 && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google')) {
+        triggerSessionExpired(json.message || 'Unauthorized or session expired.');
+      }
       throw new Error(json.message || `Server request failed with status ${res.status}`);
     }
 
