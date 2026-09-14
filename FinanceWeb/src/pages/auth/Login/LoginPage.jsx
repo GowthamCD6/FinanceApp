@@ -9,6 +9,8 @@ import {
   AlertCircle,
   Clock,
   X,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export const LoginPage = () => {
@@ -18,6 +20,7 @@ export const LoginPage = () => {
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -33,7 +36,7 @@ export const LoginPage = () => {
     const roles = userData?.roles || [userData?.role_type || 'ADMIN'];
     if (roles.includes('SUPER_ADMIN')) {
       navigate('/dashboard', { replace: true });
-    } else if (roles.includes('ADMIN')) {
+    } else if (roles.includes('ADMIN') || roles.includes('ORG_ADMIN')) {
       navigate('/admin/dashboard', { replace: true });
     } else if (roles.includes('FIELD_AGENT')) {
       navigate('/staff/dashboard', { replace: true });
@@ -214,7 +217,7 @@ export const LoginPage = () => {
                 className="form-input"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="name@organization.com"
+                placeholder="name@organization.com or 9876543210"
                 required
                 autoFocus
               />
@@ -226,13 +229,23 @@ export const LoginPage = () => {
             <div className="input-with-icon">
               <Lock size={16} className="input-icon" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-input"
+                style={{ paddingRight: '40px' }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
               />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
@@ -285,20 +298,20 @@ export const LoginPage = () => {
         .brand-logo-large {
           width: 48px;
           height: 48px;
+          background: #4f46e5;
           border-radius: 12px;
-          background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 12px auto;
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+          margin: 0 auto 12px;
+          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
         }
 
         .login-title {
           font-size: 24px;
           font-weight: 800;
           color: #0f172a;
-          margin: 0 0 6px 0;
+          margin: 0 0 6px;
           letter-spacing: -0.02em;
         }
 
@@ -310,7 +323,6 @@ export const LoginPage = () => {
           font-size: 13px;
           color: #64748b;
           margin: 0;
-          line-height: 1.4;
         }
 
         /* Session Expiry Alert */
@@ -319,12 +331,12 @@ export const LoginPage = () => {
           align-items: center;
           justify-content: space-between;
           background: #fffbeb;
-          border: 1px solid #fde68a;
-          color: #92400e;
-          padding: 10px 14px;
+          border: 1px solid #fef3c7;
           border-radius: 8px;
-          font-size: 13px;
+          padding: 10px 14px;
           margin-bottom: 16px;
+          color: #b45309;
+          font-size: 13px;
         }
 
         .session-alert-left {
@@ -334,16 +346,12 @@ export const LoginPage = () => {
         }
 
         .btn-dismiss-alert {
-          background: transparent;
+          background: none;
           border: none;
-          color: #92400e;
+          color: #b45309;
           cursor: pointer;
-          display: flex;
-          align-items: center;
           padding: 2px;
-          border-radius: 4px;
-          opacity: 0.8;
-          transition: opacity 0.2s;
+          display: flex;
         }
 
         .btn-dismiss-alert:hover {
@@ -357,17 +365,17 @@ export const LoginPage = () => {
           align-items: center;
           gap: 8px;
           background: #fef2f2;
-          border: 1px solid #fecaca;
-          color: #b91c1c;
-          padding: 10px 14px;
+          border: 1px solid #fee2e2;
           border-radius: 8px;
+          padding: 10px 14px;
+          margin-bottom: 16px;
+          color: #b91c1c;
           font-size: 13px;
-          margin-bottom: 18px;
         }
 
         /* Google Sign-In Button */
         .google-auth-section {
-          margin-bottom: 16px;
+          margin-bottom: 8px;
         }
 
         .btn-google-signin {
@@ -460,6 +468,24 @@ export const LoginPage = () => {
           position: absolute;
           left: 12px;
           color: #94a3b8;
+        }
+
+        .password-toggle-btn {
+          position: absolute;
+          right: 12px;
+          background: none;
+          border: none;
+          color: #94a3b8;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          transition: color 0.2s;
+        }
+
+        .password-toggle-btn:hover {
+          color: #475569;
         }
 
         .form-input {

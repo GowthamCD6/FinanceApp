@@ -23,6 +23,11 @@ import {
   Sparkles,
   ShieldCheck,
   TrendingUp,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  KeyRound,
 } from 'lucide-react';
 
 const PLANS = [
@@ -50,10 +55,14 @@ export const Organization = () => {
 
   // Add Org Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     admin_name: '',
     admin_phone: '',
+    admin_email: '',
+    admin_password: '',
     plan: 'PRO',
     city: 'Chennai',
     state: 'Tamil Nadu',
@@ -69,6 +78,8 @@ export const Organization = () => {
     name: '',
     admin_name: '',
     admin_phone: '',
+    admin_email: '',
+    admin_password: '',
     plan: 'PRO',
     status: 'ACTIVE',
   });
@@ -92,11 +103,25 @@ export const Organization = () => {
     const errs = {};
     if (!formData.name.trim()) errs.name = 'Organization name is required';
     if (!formData.admin_name.trim()) errs.admin_name = 'Initial Admin Name is required';
+    
     if (!formData.admin_phone.trim()) {
       errs.admin_phone = 'Admin phone number is required';
     } else if (!/^[6-9]\d{9}$/.test(formData.admin_phone.trim().replace(/\D/g, '').slice(-10))) {
       errs.admin_phone = 'Please enter a valid 10-digit phone number';
     }
+
+    if (!formData.admin_email.trim()) {
+      errs.admin_email = 'Admin login email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email.trim())) {
+      errs.admin_email = 'Please enter a valid email address';
+    }
+
+    if (!formData.admin_password.trim()) {
+      errs.admin_password = 'Admin login password is required';
+    } else if (formData.admin_password.trim().length < 6) {
+      errs.admin_password = 'Password must be at least 6 characters';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -105,11 +130,21 @@ export const Organization = () => {
     const errs = {};
     if (!editFormData.name.trim()) errs.name = 'Organization name is required';
     if (!editFormData.admin_name.trim()) errs.admin_name = 'Admin Name is required';
+    
     if (!editFormData.admin_phone.trim()) {
       errs.admin_phone = 'Admin phone number is required';
     } else if (!/^[6-9]\d{9}$/.test(editFormData.admin_phone.trim().replace(/\D/g, '').slice(-10))) {
       errs.admin_phone = 'Please enter a valid 10-digit phone number';
     }
+
+    if (editFormData.admin_email && editFormData.admin_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editFormData.admin_email.trim())) {
+      errs.admin_email = 'Please enter a valid email address';
+    }
+
+    if (editFormData.admin_password && editFormData.admin_password.trim().length > 0 && editFormData.admin_password.trim().length < 6) {
+      errs.admin_password = 'Password must be at least 6 characters';
+    }
+
     setEditErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -126,6 +161,8 @@ export const Organization = () => {
         code: cleanCode,
         admin_name: formData.admin_name.trim(),
         admin_phone: formData.admin_phone.trim(),
+        admin_email: formData.admin_email.trim(),
+        admin_password: formData.admin_password.trim(),
         plan: formData.plan,
         initial_capital: 500000,
         city: formData.city || 'Chennai',
@@ -138,12 +175,14 @@ export const Organization = () => {
         name: '',
         admin_name: '',
         admin_phone: '',
+        admin_email: '',
+        admin_password: '',
         plan: 'PRO',
         city: 'Chennai',
         state: 'Tamil Nadu',
       });
-      setFeedbackMsg(`Organization "${created?.name || formData.name}" onboarded successfully!`);
-      setTimeout(() => setFeedbackMsg(''), 4000);
+      setFeedbackMsg(`Organization "${created?.name || formData.name}" onboarded successfully! Org Admin can now sign in with email and password.`);
+      setTimeout(() => setFeedbackMsg(''), 5000);
     } catch (err) {
       setErrors({ form: err.message || 'Failed to create organization' });
     } finally {
@@ -153,11 +192,14 @@ export const Organization = () => {
 
   const openEditModal = (org) => {
     setEditErrors({});
+    setShowEditPassword(false);
     setEditFormData({
       id: org.id,
       name: org.name || '',
       admin_name: org.admin_name || '',
-      admin_phone: org.admin_phone || '',
+      admin_phone: org.admin_phone || org.phone || '',
+      admin_email: org.admin_email || '',
+      admin_password: '',
       plan: org.plan || 'PRO',
       status: org.status || 'ACTIVE',
     });
@@ -175,6 +217,8 @@ export const Organization = () => {
           name: editFormData.name.trim(),
           admin_name: editFormData.admin_name.trim(),
           admin_phone: editFormData.admin_phone.trim(),
+          admin_email: editFormData.admin_email ? editFormData.admin_email.trim() : undefined,
+          admin_password: editFormData.admin_password ? editFormData.admin_password.trim() : undefined,
           plan: editFormData.plan,
           status: editFormData.status,
         });
@@ -655,6 +699,66 @@ export const Organization = () => {
               </div>
             </div>
 
+            <div className="modal-form-row">
+              <div className="modal-form-group">
+                <label className="modal-form-label">
+                  <Mail size={14} />
+                  <span>Admin Login Email *</span>
+                </label>
+                <input
+                  type="email"
+                  className={`modal-form-input ${errors.admin_email ? 'input-error' : ''}`}
+                  placeholder="e.g. admin@company.com"
+                  value={formData.admin_email}
+                  onChange={(e) => {
+                    setFormData({ ...formData, admin_email: e.target.value });
+                    if (errors.admin_email) setErrors({ ...errors, admin_email: null });
+                  }}
+                  required
+                />
+                {errors.admin_email && <span className="field-error-text">{errors.admin_email}</span>}
+              </div>
+
+              <div className="modal-form-group">
+                <label className="modal-form-label">
+                  <Lock size={14} />
+                  <span>Admin Login Password *</span>
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className={`modal-form-input ${errors.admin_password ? 'input-error' : ''}`}
+                    placeholder="Min. 6 characters"
+                    value={formData.admin_password}
+                    style={{ paddingRight: '2.5rem' }}
+                    onChange={(e) => {
+                      setFormData({ ...formData, admin_password: e.target.value });
+                      if (errors.admin_password) setErrors({ ...errors, admin_password: null });
+                    }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.75rem',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0,
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {errors.admin_password && <span className="field-error-text">{errors.admin_password}</span>}
+              </div>
+            </div>
+
             {/* Plan Tier Cards */}
             <div className="modal-form-group">
               <label className="modal-form-label">
@@ -769,6 +873,64 @@ export const Organization = () => {
                   required
                 />
                 {editErrors.admin_phone && <span className="field-error-text">{editErrors.admin_phone}</span>}
+              </div>
+            </div>
+
+            <div className="modal-form-row">
+              <div className="modal-form-group">
+                <label className="modal-form-label">
+                  <Mail size={14} />
+                  <span>Admin Login Email</span>
+                </label>
+                <input
+                  type="email"
+                  className={`modal-form-input ${editErrors.admin_email ? 'input-error' : ''}`}
+                  placeholder="e.g. admin@company.com"
+                  value={editFormData.admin_email}
+                  onChange={(e) => {
+                    setEditFormData({ ...editFormData, admin_email: e.target.value });
+                    if (editErrors.admin_email) setEditErrors({ ...editErrors, admin_email: null });
+                  }}
+                />
+                {editErrors.admin_email && <span className="field-error-text">{editErrors.admin_email}</span>}
+              </div>
+
+              <div className="modal-form-group">
+                <label className="modal-form-label">
+                  <Lock size={14} />
+                  <span>Reset Admin Password (Optional)</span>
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showEditPassword ? 'text' : 'password'}
+                    className={`modal-form-input ${editErrors.admin_password ? 'input-error' : ''}`}
+                    placeholder="Leave blank to keep current password"
+                    value={editFormData.admin_password}
+                    style={{ paddingRight: '2.5rem' }}
+                    onChange={(e) => {
+                      setEditFormData({ ...editFormData, admin_password: e.target.value });
+                      if (editErrors.admin_password) setEditErrors({ ...editErrors, admin_password: null });
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.75rem',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0,
+                    }}
+                  >
+                    {showEditPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {editErrors.admin_password && <span className="field-error-text">{editErrors.admin_password}</span>}
               </div>
             </div>
 

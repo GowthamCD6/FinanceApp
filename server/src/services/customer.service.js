@@ -684,45 +684,7 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
       });
     }
 
-    if (formattedLoans.length === 0) {
-      totalPrincipal = 20000;
-      totalOutstanding = 14400;
-      dailyTarget = 900;
-      const defaultInstallments = Array.from({ length: 25 }, (_, idx) => {
-        const dayNum = idx + 1;
-        const d = new Date(targetDate);
-        d.setDate(d.getDate() - (9 - dayNum));
-        const dateStr = d.toISOString().slice(0, 10);
-        const isPaid = dayNum <= 9;
-        return {
-          day_number: dayNum,
-          due_date: dateStr,
-          amount: 900,
-          paid_amount: isPaid ? 900 : 0,
-          status: isPaid ? 'PAID' : (dateStr === targetDate ? 'TODAY_DUE' : 'PENDING'),
-          paid_date: isPaid ? dateStr : null,
-          receipt_no: isPaid ? `REC-DLY-${104800 + dayNum}` : null,
-          payment_mode: dayNum % 2 === 0 ? 'CASH' : 'UPI',
-        };
-      });
 
-      formattedLoans.push({
-        id: `mock-${shop.id}`,
-        loan_code: `LN-DLY-${shop.customer_code || shop.id}`,
-        loan_name: 'Daily Inventory Restock',
-        principal: 20000,
-        interest_rate: 12.5,
-        total_installments: 25,
-        paid_installments: 9,
-        installment_amount: 900,
-        daily_due: 900,
-        remaining_balance: 14400,
-        status: 'ACTIVE',
-        issue_date: '2026-09-01',
-        maturity_date: '2026-09-26',
-        installments: defaultInstallments,
-      });
-    }
 
     // Check payments on target date
     const targetDatePayments = await query(

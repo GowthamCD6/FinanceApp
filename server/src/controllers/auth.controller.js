@@ -4,22 +4,58 @@ const { query } = require('../config/database');
 
 async function login(req, res) {
   try {
-    const { identifier, password } = req.body; // Can be phone or email
+    const { identifier, password } = req.body;
+    const rawId = (identifier || '').trim();
+    const rawPassword = (password || '').trim();
 
-    if (!identifier || !password) {
+    if (!rawId || !rawPassword) {
       return res.status(400).json({ success: false, message: 'Identifier (phone/email) and password are required.' });
     }
 
-    const users = await query(
-      `SELECT * FROM users WHERE phone = ? OR email = ? LIMIT 1`,
-      [identifier, identifier]
+    const cleanPhone = rawId.replace(/\D/g, '').slice(-10);
+
+    // 1. Dynamic User Lookup: Check users table by phone, clean 10-digit phone, or email
+    let users = await query(
+      `SELECT * FROM users 
+       WHERE phone = ? 
+          OR (LENGTH(?) = 10 AND (phone = ? OR phone LIKE ?))
+          OR email = ? 
+          OR LOWER(email) = LOWER(?) 
+       LIMIT 1`,
+      [rawId, cleanPhone, cleanPhone, `%${cleanPhone}`, rawId, rawId]
     );
 
+    // 2. If not found in users table, dynamically check if an organization exists with this phone or email
     if (users.length === 0) {
-      const isEmail = identifier.includes('@');
+      const orgs = await query(
+        `SELECT * FROM organizations 
+         WHERE phone = ? 
+            OR (LENGTH(?) = 10 AND (phone = ? OR phone LIKE ?))
+            OR admin_phone = ? 
+            OR (LENGTH(?) = 10 AND (admin_phone = ? OR admin_phone LIKE ?))
+            OR admin_email = ? 
+            OR LOWER(admin_email) = LOWER(?)
+         LIMIT 1`,
+        [rawId, cleanPhone, cleanPhone, `%${cleanPhone}`, rawId, cleanPhone, cleanPhone, `%${cleanPhone}`, rawId, rawId]
+      );
+
+      if (orgs.length > 0) {
+        const org = orgs[0];
+        const orgUsers = await query(
+          `SELECT * FROM users WHERE organization_id = ? AND role_type IN ('ORG_ADMIN', 'ADMIN') LIMIT 1`,
+          [org.id]
+        );
+        if (orgUsers.length > 0) {
+          users = orgUsers;
+        }
+      }
+    }
+
+    if (users.length === 0) {
+      const isEmail = rawId.includes('@');
       return res.status(404).json({
         success: false,
-        message: isEmail ? 'This email is not registered.' : 'This phone number is not registered.',
+        message: isEmail ? 'This email is not registered in the system.' : 'This phone number is not registered in the system.',
       });
     }
 
@@ -29,23 +65,45 @@ async function login(req, res) {
       return res.status(403).json({ success: false, message: 'Account is deactivated or suspended. Please contact administrator.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    // 3. Dynamic Password Verification (supports bcrypt hash or plain text from direct DB edits)
+    let isMatch = false;
+    if (user.password_hash) {
+      if (user.password_hash === rawPassword || user.password_hash === password) {
+        isMatch = true;
+        // Upgrade plain text to bcrypt hash in DB
+        try {
+          const newHash = await bcrypt.hash(rawPassword, 10);
+          await query(`UPDATE users SET password_hash = ? WHERE id = ?`, [newHash, user.id]);
+        } catch (upgradeErr) {
+          console.warn('Could not upgrade password hash:', upgradeErr);
+        }
+      } else if (user.password_hash.startsWith('$2')) {
+        isMatch = await bcrypt.compare(rawPassword, user.password_hash);
+      }
+    }
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Either the password or email is wrong.',
+        message: 'Either the password or email/phone is wrong.',
       });
     }
 
-    // Update last login
+    // Update last login timestamp
     await query(`UPDATE users SET last_login_at = NOW() WHERE id = ?`, [user.id]);
 
-    // Fetch roles
+    // Fetch user roles
     const roles = await query(
       `SELECT r.name FROM roles r JOIN user_roles ur ON r.id = ur.role_id WHERE ur.user_id = ?`,
       [user.id]
     );
-    const roleNames = roles.map(r => r.name);
+    let roleNames = roles.map(r => r.name);
+    if (user.role_type && !roleNames.includes(user.role_type)) {
+      roleNames.push(user.role_type);
+    }
+    if (roleNames.length === 0) {
+      roleNames = [user.role_type || 'ADMIN'];
+    }
 
     // Fetch permissions
     const permissions = await query(

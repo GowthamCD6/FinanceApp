@@ -17,25 +17,30 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
   let txWhere = ['1=1'];
   const txParams = [];
   if (organizationId && organizationId !== 'ALL') {
-    txWhere.push('organization_id = ?');
+    txWhere.push('(ft.organization_id = ? OR ft.organization_id IS NULL)');
     txParams.push(organizationId);
   }
   if (branchId && branchId !== 'ALL') {
-    txWhere.push('branch_id = ?');
-    txParams.push(branchId);
+    txWhere.push('(ft.branch_id = ? OR fa.branch_id = ?)');
+    txParams.push(branchId, branchId);
   }
   const txWhereSql = txWhere.join(' AND ');
 
   // 1. Available Cash & Total Capital
   const capRow = await query(
-    `SELECT COALESCE(SUM(amount), 0) AS totalCapital FROM fund_transactions WHERE ${txWhereSql} AND transaction_type = 'CAPITAL_IN'`,
+    `SELECT COALESCE(SUM(ft.amount), 0) AS totalCapital 
+     FROM fund_transactions ft 
+     LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id 
+     WHERE ${txWhereSql} AND ft.transaction_type = 'CAPITAL_IN'`,
     txParams
   );
   const totalCapital = parseFloat(capRow[0]?.totalCapital || 0);
 
   const cashRow = await query(
-    `SELECT COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS availableCash 
-     FROM fund_transactions WHERE ${txWhereSql}`,
+    `SELECT COALESCE(SUM(CASE WHEN ft.direction = 'IN' THEN ft.amount ELSE -ft.amount END), 0) AS availableCash 
+     FROM fund_transactions ft 
+     LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id 
+     WHERE ${txWhereSql}`,
     txParams
   );
   const availableCash = parseFloat(cashRow[0]?.availableCash || 0);
@@ -43,9 +48,10 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
   // 2. Principal Disbursed vs Principal Recovered
   const loanMetrics = await query(`
     SELECT 
-      COALESCE(SUM(CASE WHEN transaction_type = 'LOAN_DISBURSEMENT' THEN amount ELSE 0 END), 0) AS totalDisbursed,
-      COALESCE(SUM(CASE WHEN transaction_type = 'PRINCIPAL_COLLECTION' THEN amount ELSE 0 END), 0) AS totalPrincipalRecovered
-    FROM fund_transactions
+      COALESCE(SUM(CASE WHEN ft.transaction_type = 'LOAN_DISBURSEMENT' THEN ft.amount ELSE 0 END), 0) AS totalDisbursed,
+      COALESCE(SUM(CASE WHEN ft.transaction_type = 'PRINCIPAL_COLLECTION' THEN ft.amount ELSE 0 END), 0) AS totalPrincipalRecovered
+    FROM fund_transactions ft
+    LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id
     WHERE ${txWhereSql}
   `, txParams);
   const moneyCurrentlyLent = parseFloat(loanMetrics[0]?.totalDisbursed || 0);
@@ -55,10 +61,11 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
   // 3. Today's Collections & Income
   const todayRows = await query(
     `SELECT 
-       COALESCE(SUM(amount), 0) AS todayTotalCollection,
-       COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS todayLendingIncome
-     FROM fund_transactions
-     WHERE ${txWhereSql} AND DATE(transaction_date) = ? AND transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME')`,
+       COALESCE(SUM(ft.amount), 0) AS todayTotalCollection,
+       COALESCE(SUM(CASE WHEN ft.transaction_type = 'LENDING_INCOME' THEN ft.amount ELSE 0 END), 0) AS todayLendingIncome
+     FROM fund_transactions ft
+     LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id
+     WHERE ${txWhereSql} AND DATE(ft.transaction_date) = ? AND ft.transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME')`,
     [...txParams, today]
   );
   const todayCollection = parseFloat(todayRows[0]?.todayTotalCollection || 0);
@@ -67,11 +74,12 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
   // 4. Monthly Collections, Income, Expenses, and Net Profit
   const monthRows = await query(
     `SELECT 
-       COALESCE(SUM(CASE WHEN transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME') THEN amount ELSE 0 END), 0) AS monthlyCollection,
-       COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS monthlyIncome,
-       COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0) AS monthlyExpenses
-     FROM fund_transactions
-     WHERE ${txWhereSql} AND DATE(transaction_date) >= ?`,
+       COALESCE(SUM(CASE WHEN ft.transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME') THEN ft.amount ELSE 0 END), 0) AS monthlyCollection,
+       COALESCE(SUM(CASE WHEN ft.transaction_type = 'LENDING_INCOME' THEN ft.amount ELSE 0 END), 0) AS monthlyIncome,
+       COALESCE(SUM(CASE WHEN ft.transaction_type = 'EXPENSE' THEN ft.amount ELSE 0 END), 0) AS monthlyExpenses
+     FROM fund_transactions ft
+     LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id
+     WHERE ${txWhereSql} AND DATE(ft.transaction_date) >= ?`,
     [...txParams, startOfMonth]
   );
   const monthlyCollection = parseFloat(monthRows[0]?.monthlyCollection || 0);
@@ -96,11 +104,21 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
     SELECT 
       COUNT(CASE WHEN status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID') THEN 1 END) AS activeLoans,
       COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS completedLoans,
-      COUNT(CASE WHEN status = 'OVERDUE' THEN 1 END) AS overdueLoans,
-      (SELECT COUNT(*) FROM loan_eligibility WHERE status = 'ELIGIBLE') AS eligibleCustomers
+      COUNT(CASE WHEN status = 'OVERDUE' THEN 1 END) AS overdueLoans
     FROM loans
     WHERE ${loanWhereSql}
   `, loanParams);
+
+  let eligibleCustomers = 0;
+  try {
+    const eligRes = await query(`SELECT COUNT(*) as count FROM loan_eligibility WHERE status = 'ELIGIBLE'`);
+    eligibleCustomers = parseInt(eligRes[0]?.count || 0, 10);
+  } catch (e) {
+    eligibleCustomers = 0;
+  }
+
+  const counts = loanStats[0] || {};
+  counts.eligibleCustomers = eligibleCustomers;
 
   return {
     totalCapital,
@@ -114,7 +132,7 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
     monthlyIncome,
     monthlyExpenses,
     netProfit,
-    loanCounts: loanStats[0] || {},
+    loanCounts: counts,
   };
 }
 
