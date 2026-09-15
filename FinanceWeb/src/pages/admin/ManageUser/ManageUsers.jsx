@@ -63,6 +63,7 @@ export const ManageUsers = () => {
     phone: '',
     email: '',
     address: '',
+    city: '',
     role: 'COMMON_CUSTOMER',
     status: 'ACTIVE',
     notes: '',
@@ -153,6 +154,7 @@ export const ManageUsers = () => {
       phone: u.phone || '',
       email: u.email || '',
       address: u.address || '',
+      city: u.city || '',
       role: u.role || 'COMMON_CUSTOMER',
       status: u.status || 'ACTIVE',
       notes: u.notes || '',
@@ -355,7 +357,7 @@ export const ManageUsers = () => {
                     <Phone size={14} color="var(--text-muted)" /> {selectedUser.phone}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <MapPin size={14} color="var(--text-muted)" /> {selectedUser.address || selectedUser.city || 'Chennai'}
+                    <MapPin size={14} color="var(--text-muted)" /> {selectedUser.address ? `${selectedUser.address}${selectedUser.city ? `, ${selectedUser.city}` : ''}` : (selectedUser.city || 'No address registered')}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <Calendar size={14} color="var(--text-muted)" /> Joined: {selectedUser.dateJoined || '2026-09-11'}
@@ -829,7 +831,7 @@ export const ManageUsers = () => {
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
                           <MapPin size={12} color="var(--text-muted)" />
-                          <span>{u.address || u.city || 'Chennai'}</span>
+                          <span>{u.address ? `${u.address}${u.city ? `, ${u.city}` : ''}` : (u.city || 'No address set')}</span>
                         </div>
                       </td>
 
@@ -967,14 +969,27 @@ export const ManageUsers = () => {
               </div>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Residential / Shop Address</label>
-              <input
-                type="text"
-                className="form-input"
-                value={editFormData.address}
-                onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Residential / Shop Address</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. 42 Bazaar Road, Saidapet"
+                  value={editFormData.address}
+                  onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">City</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Chennai / Tirupur"
+                  value={editFormData.city}
+                  onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
+                />
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>

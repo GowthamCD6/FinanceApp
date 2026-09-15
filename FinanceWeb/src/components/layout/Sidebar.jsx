@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useOrg } from "../../context/OrgContext";
-import { api } from "../../services/api";
 import "./Sidebar.css";
 
 export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogout: propOnLogout }) => {
@@ -78,9 +77,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     location.pathname.startsWith("/org/") &&
     !location.pathname.startsWith("/org/create");
   const isDirectAdmin = location.pathname.startsWith("/admin");
-
-  const [metrics, setMetrics] = useState({ todayDailyCollected: 4200, todayDailyTarget: 5850 });
-
   useEffect(() => {
     if (pathOrgId && organizations.length > 0) {
       if (!activeOrg || String(activeOrg.id) !== String(pathOrgId)) {
@@ -88,18 +84,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
       }
     }
   }, [pathOrgId, activeOrg, organizations, setActiveOrg]);
-
-  useEffect(() => {
-    if (isInsideOrg) {
-      api.getAdminDashboardMetrics()
-        .then((data) => {
-          if (data) setMetrics(data);
-        })
-        .catch(() => {});
-    }
-  }, [isInsideOrg, activeOrg, activeBranchId]);
-
-  const formatCurrency = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
   const handleLinkClick = () => {
     setMobileOpen(false);
@@ -423,58 +407,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
           </div>
         </div>
 
-        {/* Active Org Context & Branch Scoping & Progress */}
-        {isInsideOrg && activeOrg && (
-          <div className="sidebar-org-card">
-            <div className="sidebar-org-badge-row">
-              <span className="sidebar-org-pill">
-                <Building size={13} color="#1976d2" />
-                {activeOrg.name}
-              </span>
-              <span className="sidebar-org-code">{activeOrg.code}</span>
-            </div>
-
-            {/* Branch Context Indicator / Selector */}
-            {isBranchAdmin ? (
-              <div className="sidebar-branch-pill">
-                <MapPin size={12} color="#059669" />
-                <span className="sidebar-branch-name">
-                  {userBranchName || activeBranch?.name || 'Allocated Branch'}
-                </span>
-                <span className="sidebar-branch-tag">Locked</span>
-              </div>
-            ) : (
-              <div className="sidebar-branch-selector-wrap">
-                <div className="sidebar-branch-label-row">
-                  <span className="sidebar-branch-lbl">
-                    <MapPin size={11} /> Branch Scope:
-                  </span>
-                </div>
-                <select
-                  className="sidebar-branch-select"
-                  value={activeBranchId || 'ALL'}
-                  onChange={(e) => setActiveBranchId(e.target.value)}
-                  title="Filter all ledger, loans & collections by branch"
-                >
-                  <option value="ALL">🏢 All Branches (Aggregated)</option>
-                  {branches.map((b) => (
-                    <option key={b.id} value={String(b.id)}>
-                      📍 {b.name} ({b.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="sidebar-ticker-stat">
-              <span>Daily Recoveries:</span>
-              <span className="val-green">
-                {formatCurrency(metrics?.todayDailyCollected || 0)} /{" "}
-                {formatCurrency(metrics?.todayDailyTarget || 5850)}
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Navigation Items */}
         <nav className="sidebar-nav">

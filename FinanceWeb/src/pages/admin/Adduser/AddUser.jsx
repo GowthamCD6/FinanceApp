@@ -1,28 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../../services/api';
-import { Modal } from '../../../components/common/Modal';
 import {
   UserPlus,
   ArrowRight,
   CheckCircle2,
-  Phone,
-  Briefcase,
-  User,
-  Users,
-  MapPin,
   AlertCircle,
+  Check,
+  RefreshCw,
+  X,
+  ChevronDown,
+  Building,
+  CreditCard,
+  Receipt,
+  TrendingUp,
   Store,
   Calendar,
-  TrendingUp,
-  Receipt,
-  Building,
-  Check,
-  Sparkles,
+  Users,
   ExternalLink,
-  RefreshCw,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
+import './AddUser.css';
 
 export const AddUser = () => {
   const navigate = useNavigate();
@@ -49,18 +47,17 @@ export const AddUser = () => {
 
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('CAT-BORROWER-WK');
 
-  // Streamlined Form State (Only essential fields)
+  // Streamlined Form State (Previous content preserved)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    address: '',
-    city: 'Chennai',
     occupation: '',
     shop_name: '',
     work_profession: '',
-    credit_limit: 50000,
+    branch_id: '',
+    credit_limit: 5000,
     issue_initial_loan: true,
-    initial_loan_amount: 10000,
+    initial_loan_amount: 2000,
     tenure: '10',
     frequency: 'WEEKLY',
   });
@@ -70,27 +67,69 @@ export const AddUser = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [createdBorrower, setCreatedBorrower] = useState(null);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [toastCountdown, setToastCountdown] = useState(6);
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      phone: '',
-      address: '',
-      city: 'Chennai',
-      occupation: '',
-      shop_name: '',
-      work_profession: '',
-      credit_limit: activeCategory?.default_max_loan || 50000,
-      issue_initial_loan: true,
-      initial_loan_amount: activeCategory?.default_min_loan || 10000,
-      tenure: String(activeCategory?.tenure_installments || 10),
-      frequency: activeCategory?.repayment_frequency || 'WEEKLY',
-    });
-    setErrors({});
-    setCreatedBorrower(null);
-  };
+  // Auto-countdown timer for top-right success notification
+  useEffect(() => {
+    if (!showSuccessToast) return;
+    const interval = setInterval(() => {
+      setToastCountdown((prev) => {
+        if (prev <= 1) {
+          setShowSuccessToast(false);
+          return 6;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-  // Dynamically build the 3 core borrower categories from the DB lending config
+    return () => clearInterval(interval);
+  }, [showSuccessToast]);
+
+  // Load configured rates from database
+  useEffect(() => {
+    const fetchLendingConfig = async () => {
+      try {
+        const res = await api.getRates();
+        const rateRows = res?.data || res || [];
+        if (Array.isArray(rateRows) && rateRows.length > 0) {
+          const cfg = { ...lendingConfig };
+          rateRows.forEach((r) => {
+            const freq = (r.repayment_frequency || r.frequency || '').toUpperCase();
+            if (freq === 'DAILY') {
+              cfg.daily_interest_rate = parseFloat(r.flat_rate_pct ?? r.interest_rate) || 25.0;
+              cfg.daily_tenure_days = parseInt(r.tenure_days ?? r.tenure_installments) || 100;
+              cfg.daily_min_amount = parseFloat(r.min_amount) || 10000;
+              cfg.daily_max_amount = parseFloat(r.max_amount) || 15000;
+            } else if (freq === 'WEEKLY') {
+              cfg.weekly_interest_rate = parseFloat(r.flat_rate_pct ?? r.interest_rate) || 25.0;
+              cfg.weekly_tenure_weeks = parseInt(r.tenure_weeks ?? r.tenure_installments) || 10;
+              cfg.weekly_min_amount = parseFloat(r.min_amount) || 2000;
+              cfg.weekly_max_amount = parseFloat(r.max_amount) || 5000;
+            } else if (freq === 'MONTHLY') {
+              cfg.monthly_interest_rate = parseFloat(r.flat_rate_pct ?? r.interest_rate) || 25.0;
+              cfg.monthly_tenure_months = parseInt(r.tenure_months ?? r.tenure_installments) || 12;
+              cfg.monthly_min_amount = parseFloat(r.min_amount) || 25000;
+              cfg.monthly_max_amount = parseFloat(r.max_amount) || 500000;
+            }
+          });
+          setLendingConfig(cfg);
+        }
+      } catch (err) {
+        console.warn('Using default DB lending config:', err);
+      }
+    };
+    fetchLendingConfig();
+  }, []);
+
+  // Update branch_id when branches are loaded
+  useEffect(() => {
+    if (branches && branches.length > 0 && !formData.branch_id) {
+      setFormData((prev) => ({ ...prev, branch_id: branches[0].id }));
+    }
+  }, [branches]);
+
+  // Dynamically build the 3 core borrower categories from DB lending config
   const categories = useMemo(() => {
     return [
       {
@@ -98,24 +137,24 @@ export const AddUser = () => {
         name: 'Borrower (Weekly Installment)',
         customer_type: 'COMMON_CUSTOMER',
         repayment_frequency: 'WEEKLY',
-        default_min_loan: Number(lendingConfig.weekly_min_amount) || 10000,
-        default_max_loan: Number(lendingConfig.weekly_max_amount) || 50000,
-        default_interest_rate: Number(lendingConfig.weekly_interest_rate) || 10.0,
+        default_min_loan: Number(lendingConfig.weekly_min_amount) || 2000,
+        default_max_loan: Number(lendingConfig.weekly_max_amount) || 5000,
+        default_interest_rate: Number(lendingConfig.weekly_interest_rate) || 25.0,
         tenure_installments: Number(lendingConfig.weekly_tenure_weeks) || 10,
         description: `Standard individual and worker micro-loans with ${lendingConfig.weekly_tenure_weeks || 10}-week recurring repayments.`,
-        color: '#4F46E5',
+        tenure_label: `${lendingConfig.weekly_tenure_weeks || 10} Weeks`,
       },
       {
         category_code: 'CAT-MERCHANT-DLY',
         name: 'Merchant (Daily Installment)',
         customer_type: 'SHOPKEEPER',
         repayment_frequency: 'DAILY',
-        default_min_loan: Number(lendingConfig.daily_min_amount) || 15000,
-        default_max_loan: Number(lendingConfig.daily_max_amount) || 100000,
-        default_interest_rate: Number(lendingConfig.daily_interest_rate) || 12.5,
-        tenure_installments: Number(lendingConfig.daily_tenure_days) || 25,
-        description: `Retail shopkeepers and stall merchants with ${lendingConfig.daily_tenure_days || 25}-day rapid daily collections.`,
-        color: '#7C3AED',
+        default_min_loan: Number(lendingConfig.daily_min_amount) || 10000,
+        default_max_loan: Number(lendingConfig.daily_max_amount) || 15000,
+        default_interest_rate: Number(lendingConfig.daily_interest_rate) || 25.0,
+        tenure_installments: Number(lendingConfig.daily_tenure_days) || 100,
+        description: `Retail shopkeepers and stall merchants with ${lendingConfig.daily_tenure_days || 100}-day rapid daily collections.`,
+        tenure_label: `${lendingConfig.daily_tenure_days || 100} Days`,
       },
       {
         category_code: 'CAT-BORROWER-MO',
@@ -124,124 +163,109 @@ export const AddUser = () => {
         repayment_frequency: 'MONTHLY',
         default_min_loan: Number(lendingConfig.monthly_min_amount) || 25000,
         default_max_loan: Number(lendingConfig.monthly_max_amount) || 500000,
-        default_interest_rate: Number(lendingConfig.monthly_interest_rate) || 15.0,
+        default_interest_rate: Number(lendingConfig.monthly_interest_rate) || 25.0,
         tenure_installments: Number(lendingConfig.monthly_tenure_months) || 12,
-        description: `${lendingConfig.monthly_tenure_months || 12}-Month structured EMI micro-loans for salaried individuals (${lendingConfig.monthly_interest_rate || 15}% flat interest).`,
-        color: '#0891B2',
+        description: `12-Month structured EMI micro-loans for salaried individuals (25% flat interest).`,
+        tenure_label: `${lendingConfig.monthly_tenure_months || 12} Months`,
       },
     ];
   }, [lendingConfig]);
 
-  // Fetch Live Interest Rates & Lending Config from DB on mount & org change
-  useEffect(() => {
-    const fetchLendingAndCategoryConfig = async () => {
-      try {
-        const configData = await api.getLendingConfig(orgId);
-        if (configData) {
-          setLendingConfig((prev) => ({
-            ...prev,
-            daily_interest_rate: Number(configData.daily_interest_rate ?? prev.daily_interest_rate),
-            daily_tenure_days: Number(configData.daily_tenure_days ?? prev.daily_tenure_days),
-            daily_min_amount: Number(configData.daily_min_amount ?? prev.daily_min_amount),
-            daily_max_amount: Number(configData.daily_max_amount ?? prev.daily_max_amount),
-
-            weekly_interest_rate: Number(configData.weekly_interest_rate ?? prev.weekly_interest_rate),
-            weekly_tenure_weeks: Number(configData.weekly_tenure_weeks ?? prev.weekly_tenure_weeks),
-            weekly_min_amount: Number(configData.weekly_min_amount ?? prev.weekly_min_amount),
-            weekly_max_amount: Number(configData.weekly_max_amount ?? prev.weekly_max_amount),
-
-            monthly_interest_rate: Number(configData.monthly_interest_rate ?? prev.monthly_interest_rate),
-            monthly_tenure_months: Number(configData.monthly_tenure_months ?? prev.monthly_tenure_months),
-            monthly_min_amount: Number(configData.monthly_min_amount ?? prev.monthly_min_amount),
-            monthly_max_amount: Number(configData.monthly_max_amount ?? prev.monthly_max_amount),
-          }));
-        }
-      } catch (err) {
-        console.warn('Could not load live lending config from database:', err);
-      }
-    };
-
-    fetchLendingAndCategoryConfig();
-  }, [orgId]);
-
-  const getOrgPath = (sub) => (activeOrg ? `/org/${activeOrg.id}/${sub}` : `/admin/${sub}`);
-  const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
-
-  // Active Category Object
   const activeCategory = useMemo(() => {
-    return (
-      categories.find((c) => c.category_code === selectedCategoryCode) ||
-      categories[0]
-    );
+    return categories.find((c) => c.category_code === selectedCategoryCode) || categories[0];
   }, [categories, selectedCategoryCode]);
 
-  const isShop = activeCategory?.customer_type === 'SHOPKEEPER' || activeCategory?.repayment_frequency === 'DAILY';
-  const isWeekly = activeCategory?.repayment_frequency === 'WEEKLY';
-  const isMonthly = activeCategory?.repayment_frequency === 'MONTHLY';
+  const isShop = activeCategory.repayment_frequency === 'DAILY' || activeCategory.customer_type === 'SHOPKEEPER';
+  const isMonthly = activeCategory.repayment_frequency === 'MONTHLY';
+  const isWeekly = !isShop && !isMonthly;
 
-  // Synchronize form defaults when activeCategory or lendingConfig changes
-  useEffect(() => {
-    if (activeCategory) {
-      setFormData((prev) => ({
-        ...prev,
-        frequency: activeCategory.repayment_frequency,
-        tenure: String(activeCategory.tenure_installments),
-        credit_limit: activeCategory.default_max_loan,
-        initial_loan_amount: activeCategory.default_min_loan,
-      }));
-    }
-  }, [selectedCategoryCode, lendingConfig]);
-
-  // Handle Category Click
   const handleSelectCategory = (cat) => {
     setSelectedCategoryCode(cat.category_code);
+    setFormData((prev) => ({
+      ...prev,
+      credit_limit: cat.default_max_loan,
+      initial_loan_amount: cat.default_min_loan,
+      tenure: String(cat.tenure_installments),
+      frequency: cat.repayment_frequency,
+    }));
   };
 
-  // Live Loan Calculation Preview (Dynamically calculated from DB rates & days)
-  const principalAmount = parseFloat(formData.initial_loan_amount) || 0;
-  const flatRate = Number(activeCategory?.default_interest_rate) || (isShop ? (lendingConfig.daily_interest_rate || 25.0) : isMonthly ? (lendingConfig.monthly_interest_rate || 25.0) : (lendingConfig.weekly_interest_rate || 25.0));
-  const installmentCount = parseInt(formData.tenure, 10) || activeCategory.tenure_installments || (isShop ? (lendingConfig.daily_tenure_days || 100) : isMonthly ? (lendingConfig.monthly_tenure_months || 12) : (lendingConfig.weekly_tenure_weeks || 10));
-  
-  // Dynamic Interest and Repayment calculation
-  const interestAmount = isMonthly
-    ? (principalAmount * (flatRate / 100) * (installmentCount / 12))
-    : ((principalAmount * flatRate) / 100);
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      phone: '',
+      occupation: '',
+      shop_name: '',
+      work_profession: '',
+      branch_id: branches[0]?.id || '',
+      credit_limit: activeCategory.default_max_loan,
+      issue_initial_loan: true,
+      initial_loan_amount: activeCategory.default_min_loan,
+      tenure: String(activeCategory.tenure_installments),
+      frequency: activeCategory.repayment_frequency,
+    });
+    setErrors({});
+    setErrorMsg('');
+    setCreatedBorrower(null);
+  };
 
+  // Financial Calculations
+  const principalAmount = parseFloat(formData.initial_loan_amount) || 0;
+  const flatRate = parseFloat(activeCategory.default_interest_rate) || 25.0;
+  const installmentCount = parseInt(formData.tenure) || activeCategory.tenure_installments || 10;
+  const interestAmount = Math.round((principalAmount * flatRate) / 100);
   const totalRepayable = principalAmount + interestAmount;
-  const installmentAmount = installmentCount > 0 ? Math.ceil(totalRepayable / installmentCount) : 0;
+  const installmentAmount = installmentCount > 0 ? Math.round(totalRepayable / installmentCount) : 0;
+
+  const formatCurrency = (num) => {
+    return `₹${Number(num || 0).toLocaleString('en-IN')}`;
+  };
+
+  const getOrgPath = (sub) => {
+    const p = window.location.pathname;
+    const m = p.match(/^\/admin\/org\/([^/]+)/);
+    if (m) return `/admin/org/${m[1]}/${sub}`;
+    return `/admin/${sub}`;
+  };
 
   const validate = () => {
     const errs = {};
-    if (!formData.name.trim()) errs.name = 'Full name is required';
-    if (!formData.phone.trim()) {
+    if (!formData.name || !formData.name.trim()) {
+      errs.name = 'Borrower full name is required';
+    }
+
+    const cleanPhone = (formData.phone || '').trim().replace(/\D/g, '');
+    if (!cleanPhone) {
       errs.phone = 'Mobile phone number is required';
-    } else if (!/^[6-9]\d{9}$/.test(formData.phone.trim().replace(/\D/g, '').slice(-10))) {
+    } else if (cleanPhone.length < 10) {
       errs.phone = 'Please enter a valid 10-digit mobile number';
     }
 
-    if (isShop && !formData.shop_name.trim()) {
-      errs.shop_name = 'Shop / Stall Name is required for daily merchants';
+    if (isShop && (!formData.shop_name || !formData.shop_name.trim())) {
+      errs.shop_name = 'Shop / Stall name is required for daily merchants';
     }
 
-    if (isWeekly && !formData.occupation.trim()) {
+    if (isWeekly && (!formData.occupation || !formData.occupation.trim())) {
       errs.occupation = 'User Occupation / Trade is required for weekly borrowers';
     }
 
-    if (isMonthly && !formData.work_profession.trim()) {
+    if (isMonthly && (!formData.work_profession || !formData.work_profession.trim())) {
       errs.work_profession = 'Work / Profession is required for monthly salaried borrowers';
     }
 
-    if (!formData.address.trim()) {
-      errs.address = 'Address is required';
-    }
-
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    if (Object.keys(errs).length > 0) {
+      const firstErr = Object.values(errs)[0];
+      setErrorMsg(firstErr);
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setErrorMsg('');
+    setSuccessMsg('');
     if (!validate()) return;
 
     setSubmitting(true);
@@ -249,23 +273,22 @@ export const AddUser = () => {
       const principal = parseFloat(formData.initial_loan_amount) || activeCategory.default_min_loan;
       const freq = activeCategory.repayment_frequency || (isShop ? 'DAILY' : isMonthly ? 'MONTHLY' : 'WEEKLY');
 
-      // Resolve final occupation value cleanly based on category
       const resolvedOccupation = isShop
-        ? 'Market Shopkeeper'
+        ? (formData.shop_name?.trim() || 'Market Shopkeeper')
         : isMonthly
-        ? formData.work_profession.trim()
-        : formData.occupation.trim();
+        ? (formData.work_profession?.trim() || 'Salaried Employee')
+        : (formData.occupation?.trim() || 'Self-Employed Worker');
 
       const res = await api.createUser({
         organizationId: activeOrg?.id || 1,
         branchId: formData.branch_id || (branches[0]?.id || null),
         name: formData.name.trim(),
-        phone: formData.phone.trim(),
+        phone: formData.phone.trim().replace(/\D/g, ''),
         role: isShop ? 'SHOPKEEPER' : 'COMMON_CUSTOMER',
         category_code: activeCategory.category_code,
         status: 'ACTIVE',
-        address: formData.address.trim(),
-        city: formData.city.trim() || 'Chennai',
+        address: null,
+        city: null,
         occupation: resolvedOccupation,
         shop_name: isShop ? formData.shop_name.trim() : null,
         credit_limit: parseFloat(formData.credit_limit) || activeCategory.default_max_loan,
@@ -279,7 +302,7 @@ export const AddUser = () => {
           : null,
       });
 
-      const customerCode = res?.customerCode || res?.data?.customerCode || 'CUST-ONBOARDED';
+      const customerCode = res?.customerCode || res?.data?.customerCode || res?.data?.customer_code || 'CUST-ONBOARDED';
       const createdInfo = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
@@ -291,221 +314,146 @@ export const AddUser = () => {
         frequency: freq,
         isShop,
         isMonthly,
+        branchName: branches.find((b) => String(b.id) === String(formData.branch_id))?.branch_name || branches[0]?.branch_name || 'Main Branch',
       };
 
       setCreatedBorrower(createdInfo);
-      setSuccessMsg(`Borrower "${formData.name}" successfully onboarded with Customer ID: ${customerCode}!`);
+      setShowSuccessToast(true);
+      setToastCountdown(6);
+      setSuccessMsg(`Borrower "${formData.name}" successfully onboarded with ID: ${customerCode}!`);
+
+      // Reset input fields for subsequent entries
+      setFormData((prev) => ({
+        ...prev,
+        name: '',
+        phone: '',
+        occupation: '',
+        shop_name: '',
+        work_profession: '',
+      }));
     } catch (err) {
+      console.error('Failed to onboard borrower:', err);
       setErrorMsg(err.message || 'Failed to onboard borrower. Please check mobile number or connection.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const selectedBranchObj = branches.find((b) => String(b.id) === String(formData.branch_id)) || branches[0];
+
   return (
-    <div className="add-user-page" style={{ width: '100%', maxWidth: '100%', padding: '0 0.5rem' }}>
-      {/* Page Header */}
-      <div className="page-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: '8px',
-                background: '#EEF2FF',
-                color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <UserPlus size={20} />
-            </div>
-            <div>
-              <h1 className="page-title" style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                Onboard New Borrower
-              </h1>
-            </div>
+    <div className="onboard-page-container">
+      {/* ── Page Header ────────────────────────────────────────────── */}
+      <header className="onboard-page-header">
+        <div className="onboard-page-title-wrap">
+          <div className="onboard-page-title-icon">
+            <UserPlus size={20} />
           </div>
+          <h1 className="onboard-page-title">Onboard New Borrower</h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate(getOrgPath('staff'))}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600 }}
-          >
-            <Users size={14} /> Manage Staff & Collectors →
-          </button>
-        </div>
-      </div>
-
-      {/* Feedback Banners */}
-      {successMsg && (
-        <div
-          style={{
-            background: '#ECFDF5',
-            border: '1.5px solid #A7F3D0',
-            color: '#047857',
-            padding: '0.85rem 1.25rem',
-            borderRadius: 10,
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.65rem',
-            fontWeight: 700,
-            fontSize: '0.88rem',
-          }}
+        <button
+          type="button"
+          className="onboard-header-action-btn"
+          onClick={() => navigate(getOrgPath('staff'))}
         >
-          <CheckCircle2 size={18} color="#059669" />
+          Manage Staff & Collectors <ArrowRight size={14} />
+        </button>
+      </header>
+
+      {/* ── Global Alert Banners ───────────────────────────────────── */}
+      {successMsg && (
+        <div className="onboard-alert success">
+          <CheckCircle2 size={18} />
           <span>{successMsg}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div
-          style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #FECACA',
-            color: '#B91C1C',
-            padding: '0.85rem 1.25rem',
-            borderRadius: 10,
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.65rem',
-            fontWeight: 700,
-            fontSize: '0.88rem',
-          }}
-        >
-          <AlertCircle size={18} color="#DC2626" />
+        <div className="onboard-alert error">
+          <AlertCircle size={18} />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* Main 2-Column Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)', gap: '1.25rem', alignItems: 'start' }}>
+      {/* ── Main Layout: Form (Left) & Preview Cards (Right) ───────── */}
+      <div className="onboard-layout-grid">
         {/* Left Column: Form Card */}
-        <div className="card" style={{ padding: '1.5rem', background: '#FFFFFF', border: '1.5px solid #E2E8F0', borderRadius: 12, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-          <form onSubmit={handleSubmit}>
-            {/* 1. Borrower Category Selection Tabs (Live Rates & Tenures from DB) */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <label style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)', margin: 0 }}>
-                  Select Borrower Lending Division *
-                </label>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  Live Policy Configured in DB
-                </span>
+        <div className="onboard-main-card">
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Division Selection Section */}
+            <div className="onboard-section-block">
+              <div className="onboard-section-header">
+                <h3 className="onboard-section-heading">Select Borrower Lending Division *</h3>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              <div className="onboard-division-grid">
                 {categories.map((cat) => {
                   const isSelected = selectedCategoryCode === cat.category_code;
-                  const isShopCategory = cat.repayment_frequency === 'DAILY' || cat.customer_type === 'SHOPKEEPER';
-                  const isMonthlyCategory = cat.repayment_frequency === 'MONTHLY';
-                  const Icon = isShopCategory ? Store : isMonthlyCategory ? Calendar : Users;
-                  const themeColor = isShopCategory ? '#7C3AED' : isMonthlyCategory ? '#0891B2' : '#4F46E5';
+                  const isShopCat = cat.repayment_frequency === 'DAILY';
+                  const isMonthlyCat = cat.repayment_frequency === 'MONTHLY';
+                  const Icon = isShopCat ? Store : isMonthlyCat ? Calendar : Users;
 
                   return (
                     <div
                       key={cat.category_code}
+                      className={`onboard-division-item ${isSelected ? 'active' : ''}`}
                       onClick={() => handleSelectCategory(cat)}
-                      style={{
-                        padding: '0.95rem 1rem',
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        border: isSelected ? `2px solid ${themeColor}` : '1.5px solid #E2E8F0',
-                        background: isSelected ? '#F8FAFC' : '#FFFFFF',
-                        boxShadow: isSelected ? '0 4px 12px rgba(79, 70, 229, 0.08)' : 'none',
-                        transition: 'all 0.15s ease',
-                      }}
+                      role="button"
+                      tabIndex={0}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 6 }}>
-                        <div
-                          style={{
-                            width: 30,
-                            height: 30,
-                            borderRadius: 6,
-                            background: isSelected ? themeColor : '#F1F5F9',
-                            color: isSelected ? '#FFFFFF' : themeColor,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Icon size={16} />
+                      <div className="onboard-division-top">
+                        <div className="onboard-division-icon">
+                          <Icon size={18} />
                         </div>
-                        <strong style={{ fontSize: '0.86rem', color: 'var(--text-primary)', fontWeight: 800 }}>
-                          {cat.name.split('/')[0].trim()}
-                        </strong>
+                        <div style={{ flex: 1 }}>
+                          <h4 className="onboard-division-title">{cat.name}</h4>
+                          <div className="onboard-division-tags">
+                            <span className="onboard-division-badge freq">{cat.repayment_frequency}</span>
+                            <span className="onboard-division-badge rate">{cat.default_interest_rate}% Flat</span>
+                          </div>
+                        </div>
                       </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 4 }}>
-                        <span
-                          style={{
-                            fontSize: '0.68rem',
-                            fontWeight: 800,
-                            color: themeColor,
-                            background: isSelected ? '#EEF2FF' : '#F1F5F9',
-                            padding: '1px 6px',
-                            borderRadius: 4,
-                            letterSpacing: '0.03em',
-                          }}
-                        >
-                          {cat.repayment_frequency}
-                        </span>
-                        <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 800 }}>
-                          {cat.default_interest_rate}% Flat
-                        </span>
-                      </div>
-
-                      <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.35 }}>
-                        {cat.description}
-                      </p>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* 2. Simplified Borrower Contact & Profile Section */}
-            <div style={{ borderTop: '1.5px solid #E2E8F0', paddingTop: '1.25rem', marginBottom: '1.25rem' }}>
-              <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>
-                1. Borrower Details
-              </h4>
+            {/* Section 1: Borrower Details */}
+            <div className="onboard-section-block">
+              <div className="onboard-section-header">
+                <h3 className="onboard-section-heading">Borrower Details</h3>
+              </div>
 
-              {/* Name & Phone */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                    <User size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                    Borrower Full Name *
+              <div className="onboard-fields-row">
+                {/* Borrower Full Name */}
+                <div className="onboard-field">
+                  <label className="onboard-label">
+                    Borrower Full Name <span className="req">*</span>
                   </label>
                   <input
                     type="text"
-                    className={`form-input ${errors.name ? 'input-error' : ''}`}
+                    className={`onboard-input ${errors.name ? 'error' : ''}`}
                     placeholder="e.g. Ramesh Krishnan"
                     value={formData.name}
                     onChange={(e) => {
                       setFormData({ ...formData, name: e.target.value });
                       if (errors.name) setErrors({ ...errors, name: null });
                     }}
-                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
                     required
                   />
-                  {errors.name && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.name}</span>}
+                  {errors.name && <span className="onboard-input-error-text">{errors.name}</span>}
                 </div>
 
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                    <Phone size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                    Mobile Phone Number *
+                {/* Mobile Phone Number */}
+                <div className="onboard-field">
+                  <label className="onboard-label">
+                    Mobile Phone Number <span className="req">*</span>
                   </label>
                   <input
                     type="tel"
-                    className={`form-input ${errors.phone ? 'input-error' : ''}`}
+                    className={`onboard-input ${errors.phone ? 'error' : ''}`}
                     placeholder="e.g. 9876543210"
                     maxLength={10}
                     value={formData.phone}
@@ -513,185 +461,136 @@ export const AddUser = () => {
                       setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') });
                       if (errors.phone) setErrors({ ...errors, phone: null });
                     }}
-                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
                     required
                   />
-                  {errors.phone && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.phone}</span>}
+                  {errors.phone && <span className="onboard-input-error-text">{errors.phone}</span>}
                 </div>
               </div>
 
-              {/* Dynamic Single Category Field: Weekly -> Occupation | Daily -> Shop Name | Monthly -> Work */}
-              <div style={{ marginBottom: '1rem' }}>
-                {isWeekly && (
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                      <Briefcase size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                      User Occupation / Trade *
-                    </label>
+              <div className="onboard-fields-row">
+                {/* Occupation / Trade / Shop Name */}
+                <div className="onboard-field">
+                  <label className="onboard-label">
+                    {isShop ? 'Shop / Stall Name' : isMonthly ? 'Work / Profession' : 'User Occupation / Trade'}{' '}
+                    <span className="req">*</span>
+                  </label>
+                  {isShop ? (
                     <input
                       type="text"
-                      className={`form-input ${errors.occupation ? 'input-error' : ''}`}
+                      className={`onboard-input ${errors.shop_name ? 'error' : ''}`}
+                      placeholder="e.g. Sri Balaji General Store"
+                      value={formData.shop_name}
+                      onChange={(e) => {
+                        setFormData({ ...formData, shop_name: e.target.value });
+                        if (errors.shop_name) setErrors({ ...errors, shop_name: null });
+                      }}
+                      required
+                    />
+                  ) : isMonthly ? (
+                    <input
+                      type="text"
+                      className={`onboard-input ${errors.work_profession ? 'error' : ''}`}
+                      placeholder="e.g. Software Engineer / Retail Manager"
+                      value={formData.work_profession}
+                      onChange={(e) => {
+                        setFormData({ ...formData, work_profession: e.target.value });
+                        if (errors.work_profession) setErrors({ ...errors, work_profession: null });
+                      }}
+                      required
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      className={`onboard-input ${errors.occupation ? 'error' : ''}`}
                       placeholder="e.g. Tailor, Fabrication Worker, Driver, Electrician"
                       value={formData.occupation}
                       onChange={(e) => {
                         setFormData({ ...formData, occupation: e.target.value });
                         if (errors.occupation) setErrors({ ...errors, occupation: null });
                       }}
-                      style={{ fontSize: '0.86rem', borderRadius: 8 }}
                       required
                     />
-                    {errors.occupation && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.occupation}</span>}
-                  </div>
-                )}
-
-                {isShop && (
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                      <Store size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                      Shop / Stall Name *
-                    </label>
-                    <input
-                      type="text"
-                      className={`form-input ${errors.shop_name ? 'input-error' : ''}`}
-                      placeholder="e.g. Sri Balaji Sweets & Provisions"
-                      value={formData.shop_name}
-                      onChange={(e) => {
-                        setFormData({ ...formData, shop_name: e.target.value });
-                        if (errors.shop_name) setErrors({ ...errors, shop_name: null });
-                      }}
-                      style={{ fontSize: '0.86rem', borderRadius: 8 }}
-                      required
-                    />
-                    {errors.shop_name && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.shop_name}</span>}
-                  </div>
-                )}
-
-                {isMonthly && (
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                      <Briefcase size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                      User Work / Profession *
-                    </label>
-                    <input
-                      type="text"
-                      className={`form-input ${errors.work_profession ? 'input-error' : ''}`}
-                      placeholder="e.g. Software Engineer at Infosys / Store Manager / Corporate Executive"
-                      value={formData.work_profession}
-                      onChange={(e) => {
-                        setFormData({ ...formData, work_profession: e.target.value });
-                        if (errors.work_profession) setErrors({ ...errors, work_profession: null });
-                      }}
-                      style={{ fontSize: '0.86rem', borderRadius: 8 }}
-                      required
-                    />
-                    {errors.work_profession && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.work_profession}</span>}
-                  </div>
-                )}
-              </div>
-
-              {/* Address, City & Branch */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.9fr 1.1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                    <MapPin size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                    Address *
-                  </label>
-                  <input
-                    type="text"
-                    className={`form-input ${errors.address ? 'input-error' : ''}`}
-                    placeholder="e.g. 42 Bazaar Road, Saidapet"
-                    value={formData.address}
-                    onChange={(e) => {
-                      setFormData({ ...formData, address: e.target.value });
-                      if (errors.address) setErrors({ ...errors, address: null });
-                    }}
-                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
-                    required
-                  />
-                  {errors.address && <span style={{ color: 'var(--red)', fontSize: '0.74rem', marginTop: 3, display: 'block' }}>{errors.address}</span>}
+                  )}
+                  {(errors.occupation || errors.shop_name || errors.work_profession) && (
+                    <span className="onboard-input-error-text">
+                      {errors.occupation || errors.shop_name || errors.work_profession}
+                    </span>
+                  )}
                 </div>
 
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>City</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Chennai"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    style={{ fontSize: '0.86rem', borderRadius: 8 }}
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                    <Building size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
-                    Operating Branch
+                {/* Operating Branch */}
+                <div className="onboard-field">
+                  <label className="onboard-label">
+                    Operating Branch <span className="req">*</span>
                   </label>
-                  <select
-                    className="form-select"
-                    value={formData.branch_id || (branches[0]?.id || '')}
-                    onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
-                    style={{ fontSize: '0.86rem', borderRadius: 8, width: '100%', padding: '0.45rem 0.6rem', border: '1px solid #CBD5E1' }}
-                  >
-                    {branches.length === 0 ? (
-                      <option value="">Main Hub (Default)</option>
-                    ) : (
-                      branches.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.branch_name} ({b.branch_code})
-                        </option>
-                      ))
-                    )}
-                  </select>
+                  <div className="onboard-select-wrap">
+                    <select
+                      className="onboard-select"
+                      value={formData.branch_id || (branches[0]?.id || '')}
+                      onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
+                    >
+                      {branches.length === 0 ? (
+                        <option value="">Main Branch</option>
+                      ) : (
+                        branches.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.branch_name || b.name} ({b.branch_code || b.code || 'MAIN'})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <ChevronDown size={16} className="onboard-select-chevron" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* 3. Loan Origination & Credit Limit Card */}
-            <div style={{ borderTop: '1.5px solid #E2E8F0', paddingTop: '1.25rem', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h4 style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>
-                  2. Credit Policy & Loan Origination ({activeCategory.repayment_frequency} Cycle)
-                </h4>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700, color: 'var(--primary)' }}>
+            {/* Section 2: Credit Policy & Loan Origination */}
+            <div className="onboard-section-block">
+              <div className="onboard-section-header">
+                <h3 className="onboard-section-heading">
+                  Credit Policy & Loan Origination ({activeCategory.repayment_frequency} Cycle)
+                </h3>
+                <label className="onboard-checkbox-row">
                   <input
                     type="checkbox"
                     checked={formData.issue_initial_loan}
                     onChange={(e) => setFormData({ ...formData, issue_initial_loan: e.target.checked })}
-                    style={{ width: 16, height: 16 }}
                   />
-                  <span>Originate 1st Loan Immediately</span>
+                  <span className="onboard-checkbox-label">Originate 1st Loan Immediately</span>
                 </label>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>Approved Credit Limit (₹)</label>
+              <div className="onboard-fields-row">
+                {/* Approved Credit Limit */}
+                <div className="onboard-field">
+                  <label className="onboard-label">
+                    Approved Credit Limit (₹) <span className="req">*</span>
+                  </label>
                   <input
                     type="number"
-                    className="form-input"
+                    className="onboard-input"
                     value={formData.credit_limit}
                     onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
                     step={1000}
-                    min={activeCategory.default_min_loan}
-                    style={{ fontSize: '0.9rem', fontWeight: 700, borderRadius: 8 }}
+                    min={1000}
+                    required
                   />
                 </div>
 
+                {/* Initial Loan Principal */}
                 {formData.issue_initial_loan && (
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>Initial Loan Principal (₹) *</label>
+                  <div className="onboard-field">
+                    <label className="onboard-label">
+                      Initial Loan Principal (₹) <span className="req">*</span>
+                    </label>
                     <input
                       type="number"
-                      className="form-input"
+                      className="onboard-input"
                       value={formData.initial_loan_amount}
                       onChange={(e) => setFormData({ ...formData, initial_loan_amount: e.target.value })}
-                      step={1000}
+                      step={500}
                       min={1000}
-                      max={formData.credit_limit}
-                      style={{ fontSize: '0.9rem', fontWeight: 700, borderRadius: 8 }}
                       required
                     />
                   </div>
@@ -699,35 +598,31 @@ export const AddUser = () => {
               </div>
             </div>
 
-            {/* Submit Action Buttons */}
-            <div style={{ display: 'flex', gap: '0.85rem' }}>
+            {/* Action Buttons */}
+            <div className="onboard-form-actions">
               <button
                 type="submit"
                 disabled={submitting}
-                className="btn btn-primary"
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  padding: '0.75rem 1.5rem',
-                  fontSize: '0.92rem',
-                  fontWeight: 800,
-                  borderRadius: 8,
-                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
-                }}
+                className="onboard-btn-primary"
               >
-                <UserPlus size={16} />
-                <span>{submitting ? 'Onboarding Borrower...' : `Save & Onboard ${activeCategory.name.split('/')[0].trim()}`}</span>
-                <ArrowRight size={16} />
+                {submitting ? (
+                  <>
+                    <RefreshCw size={15} className="spin" />
+                    <span>Saving to DB...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={15} />
+                    <span>Save & Onboard Borrower ({activeCategory.name.split('/')[0].trim()})</span>
+                    <ArrowRight size={15} />
+                  </>
+                )}
               </button>
 
               <button
                 type="button"
-                className="btn btn-secondary"
-                onClick={() => navigate(getOrgPath('users'))}
-                style={{ padding: '0.75rem 1.25rem', fontSize: '0.86rem', fontWeight: 600, borderRadius: 8 }}
+                className="onboard-btn-cancel"
+                onClick={resetForm}
               >
                 Cancel
               </button>
@@ -735,263 +630,174 @@ export const AddUser = () => {
           </form>
         </div>
 
-        {/* Right Column: Live Borrower Policy & Loan Obligation Preview */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* 1. Borrower Identity Live Card */}
-          <div
-            className="card"
-            style={{
-              padding: '1.35rem',
-              background: '#FFFFFF',
-              border: '1.5px solid #E2E8F0',
-              borderRadius: 12,
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Live Borrower Card Preview
+        {/* Right Column: Live Smart Preview & Obligation Cards */}
+        <div className="onboard-preview-column">
+          {/* Live Borrower Card Preview */}
+          <div className="onboard-preview-card">
+            <div className="onboard-preview-header">
+              <span className="onboard-preview-title">
+                <CreditCard size={14} /> Live Borrower Card Preview
               </span>
-              <span
-                style={{
-                  background: '#ECFDF5',
-                  color: '#047857',
-                  border: '1px solid #A7F3D0',
-                  padding: '2px 8px',
-                  borderRadius: 6,
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                }}
-              >
-                ACTIVE
-              </span>
+              <span className="onboard-preview-badge active">ACTIVE</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
-              <div
-                style={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: 10,
-                  background: isShop ? '#F5F3FF' : isMonthly ? '#ECFEFF' : '#EEF2FF',
-                  color: isShop ? '#7C3AED' : isMonthly ? '#0891B2' : '#4F46E5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: '1.25rem',
-                }}
-              >
-                {formData.name ? formData.name.charAt(0).toUpperCase() : 'B'}
+            <div className="onboard-borrower-info">
+              <div className="onboard-borrower-avatar">
+                {formData.name ? formData.name.trim().charAt(0).toUpperCase() : 'B'}
               </div>
               <div>
-                <strong style={{ fontSize: '1.1rem', color: 'var(--text-primary)', display: 'block', fontWeight: 800 }}>
-                  {formData.name || 'Borrower Name'}
-                </strong>
-                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                <h4 className="onboard-borrower-name">
+                  {formData.name.trim() || 'Borrower Name'}
+                </h4>
+                <p className="onboard-borrower-phone">
                   {formData.phone ? `+91 ${formData.phone}` : '+91 9XXXXXXXXX'}
-                </span>
+                </p>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  fontSize: '0.74rem',
-                  fontWeight: 800,
-                  padding: '2px 8px',
-                  borderRadius: 6,
-                  background: isShop ? '#F5F3FF' : isMonthly ? '#ECFEFF' : '#EEF2FF',
-                  color: isShop ? '#7C3AED' : isMonthly ? '#0891B2' : '#4F46E5',
-                  border: `1px solid ${isShop ? '#DDD6FE' : isMonthly ? '#A5F3FC' : '#C7D2FE'}`,
-                }}
-              >
+            <div>
+              <span className="onboard-borrower-division-pill">
                 {activeCategory.name}
               </span>
-
-              {isShop && formData.shop_name && (
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
-                  {formData.shop_name}
-                </span>
-              )}
-
-              {isWeekly && formData.occupation && (
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE' }}>
-                  {formData.occupation}
-                </span>
-              )}
-
-              {isMonthly && formData.work_profession && (
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#ECFEFF', color: '#0891B2', border: '1px solid #A5F3FC' }}>
-                  {formData.work_profession}
-                </span>
-              )}
             </div>
 
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <MapPin size={13} color="var(--text-muted)" />
-              <span>{formData.address ? `${formData.address}, ${formData.city}` : 'Address pending input'}</span>
+            <div className="onboard-borrower-branch">
+              <Building size={14} />
+              <span>{selectedBranchObj?.branch_name || selectedBranchObj?.name || 'Main Regional Branch'}</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', paddingTop: '0.75rem', borderTop: '1px solid #E2E8F0', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Approved Credit Line:</span>
-              <strong style={{ color: '#047857', fontWeight: 900, fontSize: '1.05rem' }}>{formatCurrency(formData.credit_limit)}</strong>
+            <div className="onboard-borrower-credit-line">
+              <span className="onboard-borrower-credit-lbl">Approved Credit Line:</span>
+              <span className="onboard-borrower-credit-val">
+                {formatCurrency(formData.credit_limit)}
+              </span>
             </div>
           </div>
 
-          {/* 2. Loan Breakdown Live Card */}
+          {/* Originated Loan Obligation Card */}
           {formData.issue_initial_loan && principalAmount > 0 && (
-            <div
-              className="card"
-              style={{
-                padding: '1.35rem',
-                background: '#FFFFFF',
-                border: '1.5px solid #C7D2FE',
-                borderRadius: 12,
-                boxShadow: '0 2px 6px rgba(79, 70, 229, 0.04)',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Receipt size={16} color="var(--primary)" />
-                  <span style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    Originated Loan Obligation
-                  </span>
-                </div>
-                <span
-                  style={{
-                    background: '#EEF2FF',
-                    color: 'var(--primary)',
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                  }}
-                >
+            <div className="onboard-preview-card">
+              <div className="onboard-preview-header">
+                <span className="onboard-preview-title">
+                  <Receipt size={14} /> Originated Loan Obligation
+                </span>
+                <span className="onboard-preview-badge cycle">
                   {activeCategory.repayment_frequency} #{installmentCount}
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
-                <div style={{ background: '#F8FAFC', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Principal Given</span>
-                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 900 }}>{formatCurrency(principalAmount)}</strong>
+              <div className="onboard-metrics-2x2">
+                <div className="onboard-metric-tile">
+                  <span className="onboard-metric-lbl">Principal Given</span>
+                  <div className="onboard-metric-val">{formatCurrency(principalAmount)}</div>
                 </div>
 
-                <div style={{ background: '#F8FAFC', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Repayable ({flatRate}%)</span>
-                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 900 }}>{formatCurrency(totalRepayable)}</strong>
+                <div className="onboard-metric-tile">
+                  <span className="onboard-metric-lbl">Repayable ({flatRate}%)</span>
+                  <div className="onboard-metric-val">{formatCurrency(totalRepayable)}</div>
                 </div>
 
-                <div style={{ background: '#EEF2FF', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #C7D2FE' }}>
-                  <span style={{ color: 'var(--primary)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Installment Due</span>
-                  <strong style={{ color: 'var(--primary)', fontSize: '1.15rem', fontWeight: 900 }}>
-                    {formatCurrency(installmentAmount)} / {isShop ? 'Day' : isMonthly ? 'Month' : 'Week'}
-                  </strong>
+                <div className="onboard-metric-tile highlight">
+                  <span className="onboard-metric-lbl">Installment Due</span>
+                  <div className="onboard-metric-val">
+                    {formatCurrency(installmentAmount)} /{' '}
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                      {isShop ? 'Day' : isMonthly ? 'Month' : 'Week'}
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ background: '#F8FAFC', padding: '0.65rem 0.85rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase' }}>Tenure Duration</span>
-                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 900 }}>
-                    {installmentCount} {isShop ? 'Days' : isMonthly ? 'Months' : 'Weeks'}
-                  </strong>
+                <div className="onboard-metric-tile">
+                  <span className="onboard-metric-lbl">Tenure Duration</span>
+                  <div className="onboard-metric-val">
+                    {installmentCount}{' '}
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                      {isShop ? 'Days' : isMonthly ? 'Months' : 'Weeks'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', background: '#F8FAFC', padding: '0.55rem 0.75rem', borderRadius: 6, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <TrendingUp size={13} color="#059669" />
-                <span>Contracted Lending Income: <strong>{formatCurrency(interestAmount)}</strong></span>
+              <div className="onboard-income-note">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <TrendingUp size={13} color="#059669" />
+                  Contracted Lending Income:
+                </span>
+                <span className="onboard-income-val">+{formatCurrency(interestAmount)}</span>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* MODAL: BORROWER ONBOARDED SUCCESS CONFIRMATION           */}
-      {/* ======================================================== */}
-      {createdBorrower && (
-        <Modal
-          isOpen={!!createdBorrower}
-          onClose={() => setCreatedBorrower(null)}
-          title="Borrower Successfully Onboarded! 🎉"
-          maxWidth="520px"
-        >
-          <div style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* Top Success Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', background: '#ECFDF5', border: '1.5px solid #A7F3D0', padding: '1rem', borderRadius: 10 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#059669', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Check size={22} strokeWidth={3} />
-              </div>
-              <div>
-                <strong style={{ fontSize: '1.05rem', color: '#065F46', display: 'block', fontWeight: 800 }}>
-                  {createdBorrower.name}
-                </strong>
-                <span style={{ fontSize: '0.82rem', color: '#047857', fontWeight: 600 }}>
-                  Customer ID: <code style={{ background: '#FFFFFF', padding: '1px 6px', borderRadius: 4, fontWeight: 800, border: '1px solid #A7F3D0' }}>{createdBorrower.customerCode}</code> • {createdBorrower.phone}
-                </span>
-              </div>
+      {/* ── Top-Right Green Time-Reducing Countdown Toast ──────────── */}
+      {showSuccessToast && createdBorrower && (
+        <div className="onboard-toast-success">
+          <div className="onboard-toast-head">
+            <div className="onboard-toast-head-title">
+              <Check size={16} strokeWidth={3} />
+              <span>Borrower Onboarded Successfully</span>
             </div>
-
-            {/* Loan Contract Summary Strip */}
-            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Lending Division</span>
-                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#0F172A', marginTop: 2 }}>{createdBorrower.categoryName}</strong>
-              </div>
-
-              <div>
-                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Disbursed Principal</span>
-                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#059669', marginTop: 2 }}>{formatCurrency(createdBorrower.principal)}</strong>
-              </div>
-
-              <div>
-                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Installment Due</span>
-                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#4F46E5', marginTop: 2 }}>
-                  {formatCurrency(createdBorrower.installmentAmount)} / {createdBorrower.isShop ? 'Day' : createdBorrower.isMonthly ? 'Month' : 'Week'}
-                </strong>
-              </div>
-
-              <div>
-                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Tenure Plan</span>
-                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#0F172A', marginTop: 2 }}>
-                  {createdBorrower.installmentCount} {createdBorrower.isShop ? 'Days' : createdBorrower.isMonthly ? 'Months' : 'Weeks'}
-                </strong>
-              </div>
-            </div>
-
-            <p style={{ fontSize: '0.82rem', color: '#64748B', margin: 0, lineHeight: 1.45 }}>
-              The borrower profile has been registered and verified in the database with active ledger tracking and payment installments.
-            </p>
-
-            {/* Modal Actions */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <span className="onboard-toast-timer">{toastCountdown}s</span>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="onboard-toast-close"
+                onClick={() => setShowSuccessToast(false)}
+                title="Dismiss"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+
+          <div className="onboard-toast-body">
+            <div className="onboard-toast-user">{createdBorrower.name}</div>
+            <div className="onboard-toast-meta">
+              {createdBorrower.phone} • {createdBorrower.branchName} • ID:{' '}
+              <strong>{createdBorrower.customerCode}</strong>
+            </div>
+
+            <div className="onboard-toast-stat-row">
+              <span>{createdBorrower.categoryName}</span>
+              <strong style={{ color: '#059669' }}>{formatCurrency(createdBorrower.principal)}</strong>
+            </div>
+
+            <div className="onboard-toast-actions">
+              <button
+                type="button"
+                className="onboard-toast-btn-view"
                 onClick={() => {
+                  setShowSuccessToast(false);
                   if (createdBorrower.isShop) navigate(getOrgPath('shopkeepers'));
                   else if (createdBorrower.isMonthly) navigate(getOrgPath('monthly-customers'));
                   else navigate(getOrgPath('weekly-customers'));
                 }}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.65rem 1rem', fontSize: '0.88rem', fontWeight: 700, borderRadius: 8 }}
               >
-                <span>View in Customer Ledger</span>
-                <ExternalLink size={15} />
+                <span>View in Ledger</span>
+                <ExternalLink size={12} />
               </button>
 
               <button
                 type="button"
-                className="btn btn-secondary"
-                onClick={resetForm}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.65rem 1rem', fontSize: '0.88rem', fontWeight: 700, borderRadius: 8 }}
+                className="onboard-toast-btn-dir"
+                onClick={() => {
+                  setShowSuccessToast(false);
+                  navigate(getOrgPath('users'));
+                }}
               >
-                <RefreshCw size={15} />
-                <span>Onboard Another</span>
+                Directory
               </button>
             </div>
           </div>
-        </Modal>
+
+          <div className="onboard-toast-progress-track">
+            <div
+              className="onboard-toast-progress-bar"
+              style={{ width: `${(toastCountdown / 6) * 100}%` }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

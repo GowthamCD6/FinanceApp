@@ -1,0 +1,786 @@
+/* ==============================================================================
+   Onboard Borrower — Exact SaaS Typography & UI Theme
+   Font Family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif
+   Exact font-sizes, weights, and casing matched to reference screenshot
+   ============================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+.onboard-page-container {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem 1.75rem 0.75rem;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* -----------------------------------------------------------------------------
+   Page Header
+   ----------------------------------------------------------------------------- */
+.onboard-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.onboard-page-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.onboard-page-title-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbeafe;
+}
+
+.onboard-page-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.015em;
+  font-family: inherit;
+}
+
+.onboard-header-action-btn {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #d1d5db;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.onboard-header-action-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* -----------------------------------------------------------------------------
+   2-Column Layout (Reduced gap for snug, compact wrapping)
+   ----------------------------------------------------------------------------- */
+.onboard-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(330px, 1fr);
+  gap: 1.15rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .onboard-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Main Form Card (Compact padding, crisp 1px border)
+   ----------------------------------------------------------------------------- */
+.onboard-main-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* Section Blocks */
+.onboard-section-block {
+  margin-bottom: 1.35rem;
+}
+
+.onboard-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+/* Section Headings: 18px, semi-bold */
+.onboard-section-heading {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+
+/* -----------------------------------------------------------------------------
+   Lending Division Cards (Clean, Uncluttered, 18px-19px Title)
+   ----------------------------------------------------------------------------- */
+.onboard-division-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .onboard-division-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.onboard-division-item {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.95rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.onboard-division-item:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.onboard-division-item.active {
+  border-color: #2563eb;
+  background: #f8faff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.onboard-division-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.onboard-division-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.onboard-division-item.active .onboard-division-icon {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.onboard-division-title {
+  font-size: 18.5px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
+  margin: 0 0 0.35rem 0;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+
+.onboard-division-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.onboard-division-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.01em;
+}
+
+.onboard-division-badge.freq {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.onboard-division-badge.rate {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+/* -----------------------------------------------------------------------------
+   Form Fields (Exact Match to Reference Screenshot)
+   ----------------------------------------------------------------------------- */
+.onboard-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .onboard-fields-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.onboard-field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Label: Title case, 14px, font-weight 600, dark slate #374151 */
+.onboard-label {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.45rem;
+  display: block;
+  font-family: inherit;
+  letter-spacing: -0.005em;
+}
+
+.onboard-label .req {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* Input Fields: 42px height, 15px font for clear readability */
+.onboard-input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0 0.9rem;
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 400;
+  color: #111827;
+  background-color: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.onboard-input::placeholder {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.onboard-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.onboard-input.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.onboard-input-error-text {
+  font-size: 0.75rem;
+  color: #ef4444;
+  margin-top: 0.35rem;
+  font-weight: 500;
+}
+
+/* Select Dropdown */
+.onboard-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.onboard-select {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0 2.2rem 0 0.9rem;
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 400;
+  color: #111827;
+  background-color: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.onboard-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.onboard-select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Checkbox Toggle */
+.onboard-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.onboard-checkbox-row input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.onboard-checkbox-label {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 600;
+  color: #2563eb;
+  font-family: inherit;
+}
+
+/* -----------------------------------------------------------------------------
+   Action Buttons (Prominent 15px text, solid blue button)
+   ----------------------------------------------------------------------------- */
+.onboard-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-top: 2rem;
+}
+
+.onboard-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #1d4ed8;
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 600;
+  padding: 0.72rem 1.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.15);
+  font-family: inherit;
+}
+
+.onboard-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.onboard-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.onboard-btn-cancel {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #d1d5db;
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 500;
+  padding: 0.72rem 1.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.onboard-btn-cancel:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* -----------------------------------------------------------------------------
+   Right Column: Preview Cards (Clear, Large, High-Contrast Typography)
+   ----------------------------------------------------------------------------- */
+.onboard-preview-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.onboard-preview-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.onboard-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.onboard-preview-title {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.01em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: inherit;
+}
+
+.onboard-preview-badge {
+  font-size: 0.75rem; /* 12px */
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.onboard-preview-badge.active {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.onboard-preview-badge.cycle {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+/* Borrower Avatar & Name */
+.onboard-borrower-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.onboard-borrower-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #bfdbfe;
+  flex-shrink: 0;
+}
+
+.onboard-borrower-name {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.2rem 0;
+  font-family: inherit;
+}
+
+.onboard-borrower-phone {
+  font-size: 0.9rem; /* 14.5px */
+  color: #64748b;
+  margin: 0;
+  font-family: inherit;
+}
+
+.onboard-borrower-division-pill {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #2563eb;
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  margin-bottom: 0.85rem;
+}
+
+.onboard-borrower-branch {
+  font-size: 0.875rem; /* 14px */
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.onboard-borrower-credit-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.onboard-borrower-credit-lbl {
+  font-size: 0.9375rem; /* 15px */
+  color: #475569;
+  font-weight: 600;
+}
+
+.onboard-borrower-credit-val {
+  font-size: 1.35rem; /* ~22px */
+  font-weight: 800;
+  color: #059669;
+}
+
+/* Metric Tiles in Originated Loan Obligation */
+.onboard-metrics-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.onboard-metric-tile {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.8rem 0.9rem;
+}
+
+.onboard-metric-tile.highlight {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.onboard-metric-lbl {
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 600;
+  color: #64748b;
+  display: block;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.01em;
+}
+
+.onboard-metric-tile.highlight .onboard-metric-lbl {
+  color: #2563eb;
+}
+
+.onboard-metric-val {
+  font-size: 1.25rem; /* 20px */
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.onboard-metric-tile.highlight .onboard-metric-val {
+  color: #2563eb;
+}
+
+.onboard-income-note {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem; /* 14px */
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.onboard-income-val {
+  font-size: 1.05rem; /* ~17px */
+  font-weight: 800;
+  color: #059669;
+}
+
+/* -----------------------------------------------------------------------------
+   Alert Banners
+   ----------------------------------------------------------------------------- */
+.onboard-alert {
+  padding: 0.65rem 0.95rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.onboard-alert.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.onboard-alert.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+/* -----------------------------------------------------------------------------
+   Success Toast Notification
+   ----------------------------------------------------------------------------- */
+.onboard-toast-success {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 99999;
+  width: 370px;
+  max-width: calc(100vw - 2.5rem);
+  background: #ffffff;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(16, 185, 129, 0.12);
+  overflow: hidden;
+  animation: onboardToastSlide 0.25s ease-out forwards;
+}
+
+@keyframes onboardToastSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
+.onboard-toast-head {
+  background: #ecfdf5;
+  padding: 0.65rem 0.95rem;
+  border-bottom: 1px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.onboard-toast-head-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #065f46;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.onboard-toast-timer {
+  font-size: 0.6875rem;
+  color: #047857;
+  font-weight: 600;
+  background: #d1fae5;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.onboard-toast-close {
+  background: transparent;
+  border: none;
+  color: #065f46;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.onboard-toast-body {
+  padding: 0.75rem 0.95rem;
+}
+
+.onboard-toast-user {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.2rem;
+}
+
+.onboard-toast-meta {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.6rem;
+}
+
+.onboard-toast-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.onboard-toast-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.onboard-toast-btn-view {
+  flex: 1;
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-family: inherit;
+}
+
+.onboard-toast-btn-dir {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #d1d5db;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.onboard-toast-progress-track {
+  width: 100%;
+  height: 3px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.onboard-toast-progress-bar {
+  height: 100%;
+  background: #10b981;
+  transition: width 1s linear;
+}

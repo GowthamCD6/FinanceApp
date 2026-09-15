@@ -58,18 +58,18 @@ async function createUser(data, creatorId = null) {
     else if (['SUPER_ADMIN'].includes(role)) mappedRoleName = 'SUPER_ADMIN';
     else if (['FIELD_AGENT', 'COLLECTOR'].includes(role)) mappedRoleName = 'FIELD_AGENT';
 
-    let roleRows = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [mappedRoleName]);
-    if (!roleRows[0] || roleRows[0].length === 0) {
-      // Fallback to ADMIN or USER if specific role row doesn't exist
+    let [roleRows] = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [mappedRoleName]);
+    if (!roleRows || roleRows.length === 0) {
       const fallbackName = ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(mappedRoleName) ? 'ADMIN' : 'USER';
-      roleRows = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [fallbackName]);
+      const [fallbackRows] = await conn.query(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [fallbackName]);
+      roleRows = fallbackRows;
     }
-    const roleId = roleRows[0]?.[0]?.id || null;
+    const roleId = roleRows?.[0]?.id || null;
 
     // 2. Hash default password
     const plainPwd = password || `${rawPhone}@123`;
     const passwordHash = await bcrypt.hash(plainPwd, 10);
-    const userEmail = email || `${rawPhone}@financeflow.local`;
+    const userEmail = email || `${rawPhone}.${Date.now().toString().slice(-4)}@financeflow.local`;
 
     // 3. Verify organization and branch existence
     let effectiveOrgId = organizationId ? parseInt(organizationId, 10) : null;
@@ -78,13 +78,24 @@ async function createUser(data, creatorId = null) {
     } else if (effectiveOrgId) {
       const [orgCheck] = await conn.query(`SELECT id FROM organizations WHERE id = ? LIMIT 1`, [effectiveOrgId]);
       if (!orgCheck || orgCheck.length === 0) {
-        // Look up first active organization as fallback or null
         const [anyOrg] = await conn.query(`SELECT id FROM organizations LIMIT 1`);
         effectiveOrgId = anyOrg?.[0]?.id || null;
       }
     } else {
       const [anyOrg] = await conn.query(`SELECT id FROM organizations LIMIT 1`);
       effectiveOrgId = anyOrg?.[0]?.id || null;
+    }
+
+    if (!effectiveOrgId && !['SUPER_ADMIN'].includes(role)) {
+      const [firstOrg] = await conn.query(`SELECT id FROM organizations LIMIT 1`);
+      if (firstOrg && firstOrg.length > 0) {
+        effectiveOrgId = firstOrg[0].id;
+      } else {
+        const [newOrg] = await conn.query(
+          `INSERT INTO organizations (name, code, status) VALUES ('Main Organization', 'ORG-MAIN-001', 'ACTIVE')`
+        );
+        effectiveOrgId = newOrg.insertId;
+      }
     }
 
     let effectiveBranchId = data.branchId ? parseInt(data.branchId, 10) : null;
@@ -166,8 +177,20 @@ async function createUser(data, creatorId = null) {
         const totalRepay = principal + incomeAmt;
         const loanNum = `LN-${freq.slice(0, 2)}-${customerCode || custId}-${Date.now().toString().slice(-4)}`;
 
-        const [prodRows] = await conn.query(`SELECT id FROM loan_products WHERE repayment_frequency = ? LIMIT 1`, [freq]);
-        const prodId = prodRows.length > 0 ? prodRows[0].id : 1;
+        let [prodRows] = await conn.query(`SELECT id FROM loan_products WHERE repayment_frequency = ? LIMIT 1`, [freq]);
+        let prodId = prodRows?.[0]?.id || null;
+        if (!prodId) {
+          const [anyProd] = await conn.query(`SELECT id FROM loan_products LIMIT 1`);
+          prodId = anyProd?.[0]?.id || null;
+        }
+        if (!prodId) {
+          const [newProd] = await conn.query(
+            `INSERT INTO loan_products (organization_id, name, product_code, repayment_frequency, interest_rate, min_principal, max_principal, default_installments, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
+            [effectiveOrgId || 1, `${freq} Standard Product`, `PROD-${freq.slice(0, 3)}`, freq, rate, 1000, 500000, instCount]
+          );
+          prodId = newProd.insertId;
+        }
 
         const [loanRes] = await conn.query(
           `INSERT INTO loans (organization_id, branch_id, loan_number, customer_id, product_id, loan_title, principal_amount, contracted_income_amount, interest_rate, total_repayment_amount, total_installments, repayment_frequency, status, application_date, approval_date, disbursement_date)
