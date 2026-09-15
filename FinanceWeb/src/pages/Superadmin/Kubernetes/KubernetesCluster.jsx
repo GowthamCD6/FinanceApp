@@ -17,15 +17,13 @@ import {
   RefreshCw,
   Play,
   Pause,
-  Sliders,
   Terminal,
-  Info,
-  ChevronRight,
   Database,
   Globe,
-  Radio,
   X,
-  Code
+  Code,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 
@@ -37,10 +35,10 @@ export const KubernetesCluster = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [selectedNode, setSelectedNode] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
   const [rawManifestNode, setRawManifestNode] = useState(null);
+  const [copiedSpec, setCopiedSpec] = useState(false);
 
   const fetchClusterData = useCallback(async (isManual = false) => {
     try {
@@ -64,7 +62,7 @@ export const KubernetesCluster = () => {
     fetchClusterData();
   }, [fetchClusterData]);
 
-  // Auto-refresh interval
+  // Auto-refresh timer
   useEffect(() => {
     if (!autoRefreshSecs || autoRefreshSecs <= 0) return;
     const interval = setInterval(() => {
@@ -73,19 +71,18 @@ export const KubernetesCluster = () => {
     return () => clearInterval(interval);
   }, [autoRefreshSecs, fetchClusterData]);
 
-  // Handle Node Actions (Drain, Cordon, Restart, Uncordon)
+  // Node Actions (Drain, Cordon, Restart, Uncordon)
   const handleNodeAction = async (node, action) => {
     setActionLoading(`${node.id}-${action}`);
     try {
       const res = await api.governance.actionClusterNode(node.id, action);
       const updatedNode = res?.data || res;
-      
+
       setFeedbackMsg({
         type: 'success',
-        text: `Action "${action}" executed successfully on node "${node.node_name}".`,
+        text: `Action "${action}" executed on node "${node.node_name}".`,
       });
 
-      // Update telemetry state locally
       if (telemetry?.nodes) {
         setTelemetry((prev) => ({
           ...prev,
@@ -122,13 +119,13 @@ export const KubernetesCluster = () => {
   const getRoleBadge = (role) => {
     switch (role) {
       case 'CONTROL_PLANE':
-        return <span className="k8s-role-badge role-cp"><ShieldCheck size={13} /> Control Plane</span>;
+        return <span className="k8s-role-badge role-cp"><ShieldCheck size={12} /> Control Plane</span>;
       case 'WORKER':
-        return <span className="k8s-role-badge role-worker"><Cpu size={13} /> Worker Node</span>;
+        return <span className="k8s-role-badge role-worker"><Cpu size={12} /> Worker</span>;
       case 'DATABASE_REPLICA':
-        return <span className="k8s-role-badge role-db"><Database size={13} /> DB Replica</span>;
+        return <span className="k8s-role-badge role-db"><Database size={12} /> DB Replica</span>;
       case 'INGRESS_GATEWAY':
-        return <span className="k8s-role-badge role-ingress"><Globe size={13} /> Ingress Gateway</span>;
+        return <span className="k8s-role-badge role-ingress"><Globe size={12} /> Ingress</span>;
       default:
         return <span className="k8s-role-badge role-default">{role}</span>;
     }
@@ -146,19 +143,19 @@ export const KubernetesCluster = () => {
       case 'DRAINING':
         return (
           <span className="k8s-status-badge status-draining">
-            <RefreshCw size={12} className="spin-icon" /> DRAINING
+            <RefreshCw size={11} className="spin-icon" /> DRAINING
           </span>
         );
       case 'WARNING':
         return (
           <span className="k8s-status-badge status-warning">
-            <AlertTriangle size={12} /> CORDONED
+            <AlertTriangle size={11} /> CORDONED
           </span>
         );
       case 'OFFLINE':
         return (
           <span className="k8s-status-badge status-offline">
-            <Power size={12} /> OFFLINE
+            <Power size={11} /> OFFLINE
           </span>
         );
       default:
@@ -166,29 +163,37 @@ export const KubernetesCluster = () => {
     }
   };
 
+  const copyNodeSpec = (specObj) => {
+    navigator.clipboard.writeText(JSON.stringify(specObj, null, 2));
+    setCopiedSpec(true);
+    setTimeout(() => setCopiedSpec(false), 2000);
+  };
+
   return (
-    <div className="k8s-page-container">
+    <div className="k8s-clean-container">
       {/* 1. Header Toolbar */}
       <div className="k8s-header">
         <div className="k8s-header-left">
           <div className="k8s-title-row">
             <div className="k8s-icon-badge">
-              <Server size={22} color="#0284c7" />
+              <Server size={20} color="#0284c7" />
             </div>
             <div>
-              <h1 className="k8s-main-title">Kubernetes Cluster & Cloud Infrastructure</h1>
+              <div className="k8s-title-wrapper">
+                <h1 className="k8s-main-title">Kubernetes Cluster & Infrastructure</h1>
+                <span className="k8s-live-badge">
+                  <span className="live-pulse" /> Live Telemetry
+                </span>
+              </div>
               <div className="k8s-sub-info">
-                <span className="k8s-cluster-name">
+                <span className="k8s-meta-item">
                   <strong>Cluster:</strong> {telemetry?.cluster_name || 'k8s-prod-cluster-01'}
                 </span>
-                <span className="k8s-region-pill">
-                  <Globe size={13} /> {telemetry?.region || 'ap-southeast-1 (AWS)'}
+                <span className="k8s-pill">
+                  <Globe size={12} /> {telemetry?.region || 'ap-southeast-1 (AWS)'}
                 </span>
-                <span className="k8s-version-pill">
-                  <Terminal size={13} /> {telemetry?.kubernetes_version || 'v1.30.2'}
-                </span>
-                <span className="k8s-status-pill-header">
-                  <span className="k8s-status-dot" /> ACTIVE & HEALTHY
+                <span className="k8s-pill">
+                  <Terminal size={12} /> {telemetry?.kubernetes_version || 'v1.30.2'}
                 </span>
               </div>
             </div>
@@ -198,17 +203,17 @@ export const KubernetesCluster = () => {
         <div className="k8s-header-right">
           {/* Auto Refresh Select */}
           <div className="auto-refresh-box">
-            <Clock size={14} className="auto-icon" />
+            <Clock size={13} className="auto-icon" />
             <select
               className="refresh-interval-select"
               value={autoRefreshSecs}
               onChange={(e) => setAutoRefreshSecs(Number(e.target.value))}
             >
-              <option value={5}>Auto 5s</option>
-              <option value={10}>Auto 10s</option>
-              <option value={15}>Auto 15s</option>
-              <option value={30}>Auto 30s</option>
-              <option value={0}>Pause Stream</option>
+              <option value={5}>5s</option>
+              <option value={15}>15s</option>
+              <option value={30}>30s</option>
+              <option value={60}>60s</option>
+              <option value={0}>Paused</option>
             </select>
           </div>
 
@@ -217,11 +222,11 @@ export const KubernetesCluster = () => {
             type="button"
             className={`btn-refresh-k8s ${refreshing || loading ? 'is-spinning' : ''}`}
             onClick={() => fetchClusterData(true)}
-            title="Refresh Cluster Telemetry"
+            title="Refresh Telemetry"
             disabled={loading || refreshing}
           >
-            <RotateCw size={16} />
-            <span>Refresh</span>
+            <RotateCw size={14} />
+            <span>Sync</span>
           </button>
         </div>
       </div>
@@ -229,10 +234,10 @@ export const KubernetesCluster = () => {
       {/* Feedback Toast */}
       {feedbackMsg && (
         <div className={`k8s-feedback-banner ${feedbackMsg.type}`}>
-          {feedbackMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+          {feedbackMsg.type === 'success' ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
           <span>{feedbackMsg.text}</span>
           <button className="btn-close-toast" onClick={() => setFeedbackMsg(null)}>
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
       )}
@@ -242,16 +247,16 @@ export const KubernetesCluster = () => {
         {/* Card 1: Pods Allocation */}
         <div className="k8s-kpi-card">
           <div className="kpi-top-row">
-            <span className="kpi-label">Active Workload Pods</span>
+            <span className="kpi-label">Workload Pods</span>
             <div className="kpi-icon-wrap icon-blue">
-              <Layers size={18} />
+              <Layers size={16} />
             </div>
           </div>
           <div className="kpi-value-row">
             <span className="kpi-main-val">
               {loading ? '--' : `${telemetry?.active_pods || 0}`}
             </span>
-            <span className="kpi-sub-val">/ {telemetry?.max_pods || 0} Capacity</span>
+            <span className="kpi-sub-val">/ {telemetry?.max_pods || 0} pods</span>
           </div>
           <div className="kpi-progress-bar-wrap">
             <div
@@ -271,7 +276,7 @@ export const KubernetesCluster = () => {
                 ((telemetry?.active_pods || 0) / Math.max(1, telemetry?.max_pods || 1)) *
                 100
               ).toFixed(1)}
-              % Total Cluster Pod Capacity
+              % Allocated
             </span>
           </div>
         </div>
@@ -281,7 +286,7 @@ export const KubernetesCluster = () => {
           <div className="kpi-top-row">
             <span className="kpi-label">Fleet CPU Load</span>
             <div className="kpi-icon-wrap icon-emerald">
-              <Cpu size={18} />
+              <Cpu size={16} />
             </div>
           </div>
           <div className="kpi-value-row">
@@ -300,7 +305,7 @@ export const KubernetesCluster = () => {
             />
           </div>
           <div className="kpi-footer-sub">
-            <span>Optimal cluster CPU headroom available</span>
+            <span>Optimal Headroom</span>
           </div>
         </div>
 
@@ -309,7 +314,7 @@ export const KubernetesCluster = () => {
           <div className="kpi-top-row">
             <span className="kpi-label">Fleet Memory (RAM)</span>
             <div className="kpi-icon-wrap icon-purple">
-              <Activity size={18} />
+              <Activity size={16} />
             </div>
           </div>
           <div className="kpi-value-row">
@@ -328,16 +333,16 @@ export const KubernetesCluster = () => {
             />
           </div>
           <div className="kpi-footer-sub">
-            <span>{telemetry?.memory_usage_percent || 0}% Total Memory Allocated</span>
+            <span>{telemetry?.memory_usage_percent || 0}% RAM Allocated</span>
           </div>
         </div>
 
         {/* Card 4: Cluster Topology & SLA */}
         <div className="k8s-kpi-card">
           <div className="kpi-top-row">
-            <span className="kpi-label">Active Node Fleet</span>
+            <span className="kpi-label">Node Fleet</span>
             <div className="kpi-icon-wrap icon-amber">
-              <HardDrive size={18} />
+              <HardDrive size={16} />
             </div>
           </div>
           <div className="kpi-value-row">
@@ -355,7 +360,7 @@ export const KubernetesCluster = () => {
             <span className="dist-pill">1 Ingress</span>
           </div>
           <div className="kpi-footer-sub">
-            <span>All nodes reporting healthy kubelet status</span>
+            <span>All Kubelets Healthy</span>
           </div>
         </div>
       </div>
@@ -364,23 +369,23 @@ export const KubernetesCluster = () => {
       <div className="k8s-nodes-card">
         <div className="k8s-table-header">
           <div className="table-header-left">
-            <Server size={18} className="table-title-icon" />
-            <h3 className="table-title">Managed Kubernetes Nodes ({filteredNodes.length})</h3>
+            <Server size={16} className="table-title-icon" />
+            <h3 className="table-title">Managed Fleet Nodes ({filteredNodes.length})</h3>
           </div>
 
           <div className="table-header-actions">
             {/* Search Input */}
             <div className="table-search-box">
-              <Search size={15} className="search-icon" />
+              <Search size={14} className="search-icon" />
               <input
                 type="text"
-                placeholder="Search node name, zone, or version..."
+                placeholder="Search node, zone, or runtime..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
                 <button className="clear-search-btn" onClick={() => setSearchTerm('')}>
-                  <X size={13} />
+                  <X size={12} />
                 </button>
               )}
             </div>
@@ -393,7 +398,7 @@ export const KubernetesCluster = () => {
             >
               <option value="ALL">All Roles</option>
               <option value="CONTROL_PLANE">Control Plane</option>
-              <option value="WORKER">Worker Nodes</option>
+              <option value="WORKER">Worker</option>
               <option value="DATABASE_REPLICA">DB Replica</option>
               <option value="INGRESS_GATEWAY">Ingress Gateway</option>
             </select>
@@ -407,7 +412,7 @@ export const KubernetesCluster = () => {
               <option value="ALL">All Statuses</option>
               <option value="HEALTHY">Healthy</option>
               <option value="DRAINING">Draining</option>
-              <option value="WARNING">Cordoned / Warning</option>
+              <option value="WARNING">Cordoned</option>
             </select>
           </div>
         </div>
@@ -417,16 +422,16 @@ export const KubernetesCluster = () => {
           <table className="k8s-table">
             <thead>
               <tr>
-                <th>Node Name & Zone</th>
-                <th>Cluster Role</th>
-                <th>Status</th>
-                <th>CPU Utilization</th>
-                <th>Memory Allocation</th>
-                <th>Pods (Active/Max)</th>
-                <th>Disk Load</th>
-                <th>Kubelet & Runtime</th>
-                <th>Uptime</th>
-                <th className="th-actions">Operations</th>
+                <th>NODE & TOPOLOGY</th>
+                <th>ROLE</th>
+                <th>STATUS</th>
+                <th>CPU USAGE</th>
+                <th>MEMORY</th>
+                <th>PODS</th>
+                <th>DISK</th>
+                <th>KUBELET RUNTIME</th>
+                <th>UPTIME</th>
+                <th className="th-actions">OPERATIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -434,7 +439,7 @@ export const KubernetesCluster = () => {
                 [1, 2, 3, 4, 5].map((i) => (
                   <tr key={i} className="skeleton-row">
                     <td colSpan={10}>
-                      <div className="skeleton-bar" style={{ height: 28, width: '100%' }} />
+                      <div className="skeleton-bar" style={{ height: 26, width: '100%' }} />
                     </td>
                   </tr>
                 ))
@@ -442,7 +447,7 @@ export const KubernetesCluster = () => {
                 <tr>
                   <td colSpan={10} className="empty-table-cell">
                     <div className="empty-state-wrap">
-                      <Server size={32} color="#94a3b8" />
+                      <Server size={28} color="#94a3b8" />
                       <p>No Kubernetes nodes match your filter criteria.</p>
                     </div>
                   </td>
@@ -458,9 +463,7 @@ export const KubernetesCluster = () => {
                     <tr key={node.id} className="k8s-node-row">
                       {/* 1. Node Name & Zone */}
                       <td className="cell-node-name">
-                        <div className="node-primary-title">
-                          <span className="node-name-text">{node.node_name}</span>
-                        </div>
+                        <div className="node-name-text">{node.node_name}</div>
                         <div className="node-secondary-sub">
                           <span className="zone-pill">{node.zone}</span>
                           <span className="region-text">{node.region}</span>
@@ -477,7 +480,7 @@ export const KubernetesCluster = () => {
                       <td className="cell-metric">
                         <div className="metric-row">
                           <strong>{node.cpu_usage_percent}%</strong>
-                          <span className="metric-sub">({node.cpu_cores} Cores)</span>
+                          <span className="metric-sub">({node.cpu_cores}c)</span>
                         </div>
                         <div className="mini-metric-track">
                           <div
@@ -494,8 +497,8 @@ export const KubernetesCluster = () => {
                       {/* 5. Memory */}
                       <td className="cell-metric">
                         <div className="metric-row">
-                          <strong>{node.memory_usage_gb} GB</strong>
-                          <span className="metric-sub">/ {node.memory_total_gb} GB</span>
+                          <strong>{node.memory_usage_gb}GB</strong>
+                          <span className="metric-sub">/ {node.memory_total_gb}GB</span>
                         </div>
                         <div className="mini-metric-track">
                           <div
@@ -516,7 +519,7 @@ export const KubernetesCluster = () => {
                       {/* 6. Pods */}
                       <td>
                         <span className="pods-badge">
-                          <strong>{node.active_pods}</strong> / {node.max_pods}
+                          <strong>{node.active_pods}</strong>/{node.max_pods}
                         </span>
                       </td>
 
@@ -539,13 +542,13 @@ export const KubernetesCluster = () => {
 
                       {/* 9. Uptime */}
                       <td>
-                        <span className="uptime-pill">{node.uptime_days} days</span>
+                        <span className="uptime-pill">{node.uptime_days}d</span>
                       </td>
 
                       {/* 10. Actions */}
                       <td className="cell-actions">
                         <div className="action-buttons-group">
-                          {/* Restart Pods */}
+                          {/* Restart */}
                           <button
                             type="button"
                             className="btn-k8s-action btn-restart"
@@ -554,7 +557,7 @@ export const KubernetesCluster = () => {
                             onClick={() => handleNodeAction(node, 'RESTART')}
                           >
                             <RefreshCw
-                              size={13}
+                              size={12}
                               className={
                                 actionLoading === `${node.id}-RESTART` ? 'spin-icon' : ''
                               }
@@ -567,22 +570,22 @@ export const KubernetesCluster = () => {
                             <button
                               type="button"
                               className="btn-k8s-action btn-uncordon"
-                              title="Uncordon node to allow scheduling"
+                              title="Uncordon node"
                               disabled={isNodeLoading}
                               onClick={() => handleNodeAction(node, 'UNCORDON')}
                             >
-                              <Play size={13} />
+                              <Play size={12} />
                               <span>Uncordon</span>
                             </button>
                           ) : (
                             <button
                               type="button"
                               className="btn-k8s-action btn-cordon"
-                              title="Cordon node (prevent new pod scheduling)"
+                              title="Cordon node"
                               disabled={isNodeLoading || isDraining}
                               onClick={() => handleNodeAction(node, 'CORDON')}
                             >
-                              <Pause size={13} />
+                              <Pause size={12} />
                               <span>Cordon</span>
                             </button>
                           )}
@@ -593,22 +596,22 @@ export const KubernetesCluster = () => {
                             className={`btn-k8s-action btn-drain ${
                               isDraining ? 'active-draining' : ''
                             }`}
-                            title="Safely evict all running pods from node"
+                            title="Drain node workloads"
                             disabled={isNodeLoading || isDraining}
                             onClick={() => handleNodeAction(node, 'DRAIN')}
                           >
-                            <Power size={13} />
-                            <span>{isDraining ? 'Draining...' : 'Drain'}</span>
+                            <Power size={12} />
+                            <span>{isDraining ? 'Draining' : 'Drain'}</span>
                           </button>
 
-                          {/* Inspect Manifest */}
+                          {/* Spec */}
                           <button
                             type="button"
                             className="btn-k8s-action btn-manifest"
-                            title="View Raw Node Manifest"
+                            title="View Node Spec"
                             onClick={() => setRawManifestNode(node)}
                           >
-                            <Code size={13} />
+                            <Code size={12} />
                           </button>
                         </div>
                       </td>
@@ -626,13 +629,64 @@ export const KubernetesCluster = () => {
         <Modal
           isOpen={!!rawManifestNode}
           onClose={() => setRawManifestNode(null)}
-          title={`Kubernetes Node Spec: ${rawManifestNode.node_name}`}
+          title={`Node Spec: ${rawManifestNode.node_name}`}
         >
           <div className="manifest-modal-content">
             <div className="manifest-info-bar">
               <span><strong>Kind:</strong> Node</span>
-              <span><strong>API Version:</strong> v1</span>
+              <span><strong>API:</strong> v1</span>
               <span><strong>Status:</strong> {rawManifestNode.status}</span>
+              <button
+                type="button"
+                className="btn-copy-spec"
+                onClick={() =>
+                  copyNodeSpec({
+                    apiVersion: 'v1',
+                    kind: 'Node',
+                    metadata: {
+                      name: rawManifestNode.node_name,
+                      cluster: rawManifestNode.cluster_name,
+                      labels: {
+                        'topology.kubernetes.io/region': rawManifestNode.region,
+                        'topology.kubernetes.io/zone': rawManifestNode.zone,
+                        'node-role.kubernetes.io': rawManifestNode.role.toLowerCase(),
+                      },
+                      creationTimestamp: rawManifestNode.created_at,
+                    },
+                    status: {
+                      addresses: [
+                        { type: 'InternalIP', address: `10.0.${rawManifestNode.id}.14` },
+                        { type: 'Hostname', address: rawManifestNode.node_name },
+                      ],
+                      capacity: {
+                        cpu: `${rawManifestNode.cpu_cores}`,
+                        memory: `${rawManifestNode.memory_total_gb}Gi`,
+                        pods: `${rawManifestNode.max_pods}`,
+                      },
+                      allocatable: {
+                        cpu: `${Math.round(rawManifestNode.cpu_cores * 0.95)}`,
+                        memory: `${Math.round(rawManifestNode.memory_total_gb * 0.92)}Gi`,
+                        pods: `${rawManifestNode.max_pods}`,
+                      },
+                      nodeInfo: {
+                        kubeletVersion: rawManifestNode.kubelet_version,
+                        containerRuntimeVersion: rawManifestNode.container_runtime,
+                        osImage: 'Amazon Linux 2023.4 (x86_64)',
+                        kernelVersion: '6.1.75-99.163.amzn2023.x86_64',
+                      },
+                      conditions: [
+                        { type: 'Ready', status: rawManifestNode.status === 'OFFLINE' ? 'False' : 'True', reason: 'KubeletReady' },
+                        { type: 'MemoryPressure', status: 'False', reason: 'KubeletHasSufficientMemory' },
+                        { type: 'DiskPressure', status: 'False', reason: 'KubeletHasNoDiskPressure' },
+                        { type: 'PIDPressure', status: 'False', reason: 'KubeletHasSufficientPID' },
+                      ],
+                    },
+                  })
+                }
+              >
+                {copiedSpec ? <Check size={13} color="#10b981" /> : <Copy size={13} />}
+                <span>{copiedSpec ? 'Copied' : 'Copy JSON'}</span>
+              </button>
             </div>
             <pre className="manifest-code-block">
               {JSON.stringify(
@@ -682,29 +736,18 @@ export const KubernetesCluster = () => {
                 2
               )}
             </pre>
-            <div className="manifest-modal-footer">
-              <button
-                type="button"
-                className="btn-modal-close"
-                onClick={() => setRawManifestNode(null)}
-              >
-                Close Spec Inspector
-              </button>
-            </div>
           </div>
         </Modal>
       )}
 
-      {/* Embedded Component Styles */}
+      {/* Clean Embedded Styles */}
       <style>{`
-        .k8s-page-container {
-          padding: 24px;
+        .k8s-clean-container {
           display: flex;
           flex-direction: column;
-          gap: 20px;
-          min-height: 100vh;
-          background: #f8fafc;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          gap: 1.25rem;
+          color: #0f172a;
+          font-family: inherit;
         }
 
         /* 1. Header */
@@ -713,90 +756,115 @@ export const KubernetesCluster = () => {
           align-items: center;
           justify-content: space-between;
           background: #ffffff;
-          padding: 20px 24px;
+          padding: 1rem 1.25rem;
           border-radius: 12px;
           border: 1px solid #e2e8f0;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+          flex-wrap: wrap;
+          gap: 1rem;
         }
 
         .k8s-title-row {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 0.85rem;
         }
 
         .k8s-icon-badge {
-          width: 46px;
-          height: 46px;
+          width: 40px;
+          height: 40px;
           border-radius: 10px;
           background: #e0f2fe;
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .k8s-title-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          flex-wrap: wrap;
         }
 
         .k8s-main-title {
-          font-size: 20px;
-          font-weight: 700;
+          font-size: 1.35rem;
+          font-weight: 800;
           color: #0f172a;
-          margin: 0 0 4px 0;
+          margin: 0;
+          letter-spacing: -0.02em;
+        }
+
+        .k8s-live-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #059669;
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 0.15rem 0.5rem;
+          border-radius: 9999px;
+        }
+
+        .live-pulse {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #059669;
+          box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.3);
+          animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+          0% { transform: scale(0.95); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.7; }
+          100% { transform: scale(0.95); opacity: 1; }
         }
 
         .k8s-sub-info {
           display: flex;
           align-items: center;
           flex-wrap: wrap;
-          gap: 10px;
-          font-size: 13px;
+          gap: 0.5rem;
+          font-size: 0.78rem;
           color: #64748b;
+          margin-top: 0.2rem;
         }
 
-        .k8s-region-pill, .k8s-version-pill {
+        .k8s-meta-item strong {
+          color: #334155;
+        }
+
+        .k8s-pill {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 0.25rem;
           background: #f1f5f9;
-          padding: 2px 8px;
-          border-radius: 6px;
-          font-weight: 500;
-          color: #475569;
-        }
-
-        .k8s-status-pill-header {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: #ecfdf5;
-          color: #059669;
+          padding: 0.1rem 0.45rem;
+          border-radius: 5px;
           font-weight: 600;
-          font-size: 12px;
-          padding: 2px 8px;
-          border-radius: 6px;
-          border: 1px solid #a7f3d0;
-        }
-
-        .k8s-status-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #10b981;
-          box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+          color: #475569;
+          font-size: 0.72rem;
         }
 
         .k8s-header-right {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 0.6rem;
         }
 
         .auto-refresh-box {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 0.35rem;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 6px 10px;
+          padding: 0.35rem 0.6rem;
+          height: 34px;
         }
 
         .auto-icon {
@@ -806,9 +874,9 @@ export const KubernetesCluster = () => {
         .refresh-interval-select {
           border: none;
           background: transparent;
-          font-size: 13px;
+          font-size: 0.78rem;
           color: #334155;
-          font-weight: 500;
+          font-weight: 600;
           outline: none;
           cursor: pointer;
         }
@@ -816,61 +884,72 @@ export const KubernetesCluster = () => {
         .btn-refresh-k8s {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 0.35rem;
           background: #0284c7;
           color: #ffffff;
           border: none;
-          padding: 8px 14px;
+          padding: 0 0.85rem;
+          height: 34px;
           border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
+          font-size: 0.78rem;
+          font-weight: 700;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: background 0.15s;
         }
 
-        .btn-refresh-k8s:hover {
+        .btn-refresh-k8s:hover:not(:disabled) {
           background: #0369a1;
         }
 
         .btn-refresh-k8s.is-spinning svg {
-          animation: spin 1s linear infinite;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         /* 2. KPI Cards */
         .k8s-kpi-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
+          gap: 1rem;
         }
 
         .k8s-kpi-card {
           background: #ffffff;
           border: 1px solid #e2e8f0;
           border-radius: 12px;
-          padding: 18px 20px;
+          padding: 1.1rem;
           display: flex;
           flex-direction: column;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .k8s-kpi-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
         }
 
         .kpi-top-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 8px;
+          margin-bottom: 0.35rem;
         }
 
         .kpi-label {
-          font-size: 13px;
-          font-weight: 600;
+          font-size: 0.75rem;
+          font-weight: 700;
           color: #64748b;
           text-transform: uppercase;
-          letter-spacing: 0.02em;
+          letter-spacing: 0.03em;
         }
 
         .kpi-icon-wrap {
-          width: 34px;
-          height: 34px;
+          width: 30px;
+          height: 30px;
           border-radius: 8px;
           display: flex;
           align-items: center;
@@ -885,56 +964,57 @@ export const KubernetesCluster = () => {
         .kpi-value-row {
           display: flex;
           align-items: baseline;
-          gap: 8px;
-          margin-bottom: 12px;
+          gap: 0.4rem;
+          margin-bottom: 0.6rem;
         }
 
         .kpi-main-val {
-          font-size: 26px;
-          font-weight: 700;
+          font-size: 1.5rem;
+          font-weight: 800;
           color: #0f172a;
+          letter-spacing: -0.02em;
         }
 
         .kpi-sub-val {
-          font-size: 13px;
+          font-size: 0.75rem;
           color: #64748b;
-          font-weight: 500;
+          font-weight: 600;
         }
 
         .kpi-progress-bar-wrap {
           width: 100%;
-          height: 6px;
+          height: 5px;
           background: #f1f5f9;
           border-radius: 999px;
           overflow: hidden;
-          margin-bottom: 8px;
+          margin-bottom: 0.5rem;
         }
 
         .kpi-progress-bar {
           height: 100%;
           border-radius: 999px;
-          transition: width 0.4s ease;
+          transition: width 0.3s ease;
         }
 
         .kpi-footer-sub {
-          font-size: 12px;
+          font-size: 0.72rem;
           color: #64748b;
-          font-weight: 500;
+          font-weight: 600;
         }
 
         .node-distribution-pills {
           display: flex;
-          gap: 6px;
+          gap: 4px;
           flex-wrap: wrap;
-          margin-bottom: 8px;
+          margin-bottom: 0.5rem;
         }
 
         .dist-pill {
-          font-size: 11px;
-          font-weight: 600;
+          font-size: 0.68rem;
+          font-weight: 700;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          padding: 2px 6px;
+          padding: 1px 5px;
           border-radius: 4px;
           color: #475569;
         }
@@ -945,22 +1025,24 @@ export const KubernetesCluster = () => {
           border: 1px solid #e2e8f0;
           border-radius: 12px;
           overflow: hidden;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
         }
 
         .k8s-table-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 20px;
+          padding: 0.85rem 1.1rem;
           border-bottom: 1px solid #e2e8f0;
           background: #ffffff;
+          flex-wrap: wrap;
+          gap: 0.75rem;
         }
 
         .table-header-left {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 0.5rem;
         }
 
         .table-title-icon {
@@ -968,7 +1050,7 @@ export const KubernetesCluster = () => {
         }
 
         .table-title {
-          font-size: 16px;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
@@ -977,24 +1059,25 @@ export const KubernetesCluster = () => {
         .table-header-actions {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 0.5rem;
+          flex-wrap: wrap;
         }
 
         .table-search-box {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 0.4rem;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 6px 10px;
-          width: 260px;
+          padding: 0.35rem 0.6rem;
+          width: 220px;
         }
 
         .table-search-box input {
           border: none;
           background: transparent;
-          font-size: 13px;
+          font-size: 0.78rem;
           width: 100%;
           outline: none;
           color: #0f172a;
@@ -1006,15 +1089,17 @@ export const KubernetesCluster = () => {
           cursor: pointer;
           color: #94a3b8;
           padding: 0;
+          display: flex;
         }
 
         .table-filter-select {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 6px 10px;
-          font-size: 13px;
+          padding: 0.35rem 0.6rem;
+          font-size: 0.78rem;
           color: #334155;
+          font-weight: 600;
           outline: none;
           cursor: pointer;
         }
@@ -1032,11 +1117,11 @@ export const KubernetesCluster = () => {
         .k8s-table thead th {
           background: #f8fafc;
           color: #475569;
-          font-size: 12px;
-          font-weight: 600;
+          font-size: 0.7rem;
+          font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.03em;
-          padding: 12px 16px;
+          padding: 0.65rem 0.9rem;
           border-bottom: 1px solid #e2e8f0;
           white-space: nowrap;
         }
@@ -1055,8 +1140,8 @@ export const KubernetesCluster = () => {
         }
 
         .k8s-table tbody td {
-          padding: 14px 16px;
-          font-size: 13px;
+          padding: 0.75rem 0.9rem;
+          font-size: 0.8rem;
           color: #334155;
           vertical-align: middle;
         }
@@ -1067,28 +1152,29 @@ export const KubernetesCluster = () => {
 
         .node-name-text {
           color: #0f172a;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 13px;
+          font-family: ui-monospace, SFMono-Regular, monospace;
+          font-size: 0.82rem;
+          font-weight: 700;
         }
 
         .node-secondary-sub {
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin-top: 3px;
+          gap: 0.35rem;
+          margin-top: 0.15rem;
         }
 
         .zone-pill {
-          font-size: 11px;
+          font-size: 0.68rem;
           background: #f1f5f9;
           color: #64748b;
-          padding: 1px 6px;
+          padding: 0.05rem 0.35rem;
           border-radius: 4px;
-          font-family: inherit;
+          font-weight: 600;
         }
 
         .region-text {
-          font-size: 11px;
+          font-size: 0.68rem;
           color: #94a3b8;
         }
 
@@ -1096,10 +1182,10 @@ export const KubernetesCluster = () => {
         .k8s-role-badge {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 3px 8px;
+          gap: 0.3rem;
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 0.2rem 0.5rem;
           border-radius: 6px;
           white-space: nowrap;
         }
@@ -1113,10 +1199,10 @@ export const KubernetesCluster = () => {
         .k8s-status-badge {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          font-size: 11px;
-          font-weight: 700;
-          padding: 3px 8px;
+          gap: 0.35rem;
+          font-size: 0.7rem;
+          font-weight: 800;
+          padding: 0.2rem 0.5rem;
           border-radius: 6px;
           white-space: nowrap;
         }
@@ -1126,20 +1212,28 @@ export const KubernetesCluster = () => {
         .status-warning { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
         .status-offline { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
 
+        .k8s-status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #10b981;
+          box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+        }
+
         /* Metrics */
         .cell-metric {
-          min-width: 130px;
+          min-width: 110px;
         }
 
         .metric-row {
           display: flex;
           align-items: baseline;
-          gap: 4px;
-          margin-bottom: 4px;
+          gap: 0.25rem;
+          margin-bottom: 0.2rem;
         }
 
         .metric-sub {
-          font-size: 11px;
+          font-size: 0.68rem;
           color: #64748b;
         }
 
@@ -1160,15 +1254,16 @@ export const KubernetesCluster = () => {
           font-family: ui-monospace, monospace;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          padding: 3px 8px;
-          border-radius: 6px;
-          font-size: 12px;
+          padding: 0.15rem 0.45rem;
+          border-radius: 5px;
+          font-size: 0.75rem;
+          font-weight: 600;
         }
 
         .disk-badge {
-          font-size: 12px;
-          font-weight: 600;
-          padding: 2px 6px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 0.15rem 0.4rem;
           border-radius: 4px;
         }
 
@@ -1176,29 +1271,29 @@ export const KubernetesCluster = () => {
         .disk-warning { background: #fee2e2; color: #b91c1c; }
 
         .cell-runtime {
-          font-size: 12px;
+          font-size: 0.75rem;
         }
 
         .kubelet-ver {
-          font-weight: 600;
+          font-weight: 700;
           color: #0f172a;
           font-family: ui-monospace, monospace;
         }
 
         .runtime-sub {
-          font-size: 11px;
+          font-size: 0.68rem;
           color: #64748b;
-          margin-top: 2px;
           font-family: ui-monospace, monospace;
         }
 
         .uptime-pill {
-          font-size: 12px;
+          font-size: 0.75rem;
           color: #64748b;
+          font-weight: 600;
           white-space: nowrap;
         }
 
-        /* Action Buttons */
+        /* Actions */
         .cell-actions {
           text-align: right;
         }
@@ -1207,35 +1302,35 @@ export const KubernetesCluster = () => {
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 6px;
+          gap: 0.35rem;
         }
 
         .btn-k8s-action {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 4px 8px;
+          gap: 0.25rem;
+          padding: 0.25rem 0.55rem;
           border-radius: 6px;
-          font-size: 11px;
-          font-weight: 600;
+          font-size: 0.72rem;
+          font-weight: 700;
           border: 1px solid transparent;
           cursor: pointer;
           transition: all 0.15s;
         }
 
         .btn-restart {
-          background: #f8fafc;
-          border-color: #e2e8f0;
+          background: #f0f9ff;
+          border-color: #bae6fd;
           color: #0369a1;
         }
-        .btn-restart:hover { background: #e0f2fe; border-color: #bae6fd; }
+        .btn-restart:hover { background: #e0f2fe; }
 
         .btn-cordon {
-          background: #f8fafc;
-          border-color: #e2e8f0;
+          background: #fffbeb;
+          border-color: #fde68a;
           color: #d97706;
         }
-        .btn-cordon:hover { background: #fef3c7; border-color: #fde68a; }
+        .btn-cordon:hover { background: #fef3c7; }
 
         .btn-uncordon {
           background: #ecfdf5;
@@ -1245,37 +1340,33 @@ export const KubernetesCluster = () => {
         .btn-uncordon:hover { background: #d1fae5; }
 
         .btn-drain {
-          background: #f8fafc;
-          border-color: #e2e8f0;
+          background: #fef2f2;
+          border-color: #fecaca;
           color: #b91c1c;
         }
-        .btn-drain:hover { background: #fee2e2; border-color: #fca5a5; }
+        .btn-drain:hover { background: #fee2e2; }
 
         .btn-manifest {
           background: #f8fafc;
           border-color: #e2e8f0;
           color: #475569;
-          padding: 4px 6px;
+          padding: 0.25rem 0.45rem;
         }
         .btn-manifest:hover { background: #e2e8f0; }
 
         .spin-icon {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          100% { transform: rotate(360deg); }
+          animation: spin 0.8s linear infinite;
         }
 
         /* Toast Feedback Banner */
         .k8s-feedback-banner {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 12px 16px;
+          gap: 0.5rem;
+          padding: 0.65rem 1rem;
           border-radius: 8px;
-          font-size: 13px;
-          font-weight: 500;
+          font-size: 0.8rem;
+          font-weight: 600;
         }
 
         .k8s-feedback-banner.success {
@@ -1302,46 +1393,53 @@ export const KubernetesCluster = () => {
         .manifest-modal-content {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 0.75rem;
         }
 
         .manifest-info-bar {
           display: flex;
-          gap: 16px;
-          font-size: 13px;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 0.78rem;
           color: #475569;
           background: #f8fafc;
-          padding: 8px 12px;
+          padding: 0.5rem 0.75rem;
           border-radius: 6px;
           border: 1px solid #e2e8f0;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .btn-copy-spec {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+          background: #ffffff;
+          border: 1px solid #cbd5e1;
+          color: #334155;
+          padding: 0.2rem 0.5rem;
+          border-radius: 5px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .btn-copy-spec:hover {
+          background: #f1f5f9;
         }
 
         .manifest-code-block {
           background: #0f172a;
           color: #38bdf8;
-          padding: 16px;
+          padding: 1rem;
           border-radius: 8px;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 12px;
-          max-height: 420px;
+          font-family: ui-monospace, SFMono-Regular, monospace;
+          font-size: 0.75rem;
+          max-height: 400px;
           overflow-y: auto;
-          line-height: 1.5;
-        }
-
-        .manifest-modal-footer {
-          display: flex;
-          justify-content: flex-end;
-        }
-
-        .btn-modal-close {
-          background: #0f172a;
-          color: #ffffff;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
+          line-height: 1.45;
+          margin: 0;
         }
 
         /* Responsive Layout */
@@ -1358,11 +1456,13 @@ export const KubernetesCluster = () => {
           .k8s-header {
             flex-direction: column;
             align-items: flex-start;
-            gap: 14px;
           }
           .k8s-header-right {
             width: 100%;
             justify-content: space-between;
+          }
+          .table-search-box {
+            width: 100%;
           }
         }
       `}</style>

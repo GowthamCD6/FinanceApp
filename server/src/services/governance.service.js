@@ -119,6 +119,30 @@ const governanceService = {
   },
 
   // 4. AUDIT LOGS
+  logAudit: async ({ organization_id, user_id, user_name, user_email, action, entity_type, entity_id, ip_address, reason, details, status }) => {
+    try {
+      await query(
+        `INSERT INTO audit_logs (organization_id, user_id, user_name, user_email, action, entity_type, entity_id, ip_address, reason, details, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          organization_id || null,
+          user_id || null,
+          user_name || 'System User',
+          user_email || 'system@fundlending.com',
+          action || 'SYSTEM_ACTION',
+          entity_type || 'SYSTEM',
+          entity_id ? String(entity_id) : null,
+          ip_address || '127.0.0.1',
+          reason || 'Operational activity',
+          details || null,
+          status || 'SUCCESS'
+        ]
+      );
+    } catch (err) {
+      console.warn('logAudit warning:', err.message);
+    }
+  },
+
   getAuditLogs: async (filters = {}) => {
     try {
       await query(`
@@ -155,19 +179,35 @@ const governanceService = {
 
       const countRow = await query(`SELECT COUNT(*) as count FROM audit_logs`);
       if ((countRow[0]?.count || 0) === 0) {
+        const orgs = await query(`SELECT id, name FROM organizations LIMIT 5`);
+        const users = await query(`SELECT id, name, email FROM users LIMIT 5`);
+        const primaryOrgId = orgs.length > 0 ? orgs[0].id : null;
+        const primaryOrgName = orgs.length > 0 ? orgs[0].name : 'Primary Organization';
+        const superAdminUser = users.find(u => u.name === 'GOWTHAM') || users[0] || { id: 1, name: 'Super Admin', email: 'gowthamnaveen124@gmail.com' };
+
         await query(`
           INSERT INTO audit_logs (organization_id, user_id, user_name, user_email, action, entity_type, entity_id, ip_address, reason, status, created_at)
           VALUES
-          (1, 1, 'Super Admin', 'admin@fundlending.com', 'USER_LOGIN', 'AUTHENTICATION', 'AUTH-1001', '192.168.1.101', 'Super Admin logged into governance portal', 'SUCCESS', NOW() - INTERVAL 12 MINUTE),
-          (1, 1, 'Super Admin', 'admin@fundlending.com', 'POLICY_UPDATED', 'PRIVACY_POLICY', 'POL-v2.1', '192.168.1.101', 'Published Privacy Policy v2.1 terms', 'SUCCESS', NOW() - INTERVAL 45 MINUTE),
-          (1, 2, 'Rajesh Kumar', 'rajesh@apexfinance.com', 'LOAN_DISBURSED', 'LOAN', 'LN-004', '14.139.182.12', 'Disbursed ₹40,000 weekly micro-loan to Kumar', 'SUCCESS', NOW() - INTERVAL 2 HOUR),
-          (1, 3, 'Venkatesh S', 'agent@apexfinance.com', 'PAYMENT_COLLECTED', 'COLLECTION', 'RCPT-8890', '106.51.78.22', 'Collected ₹2,200 installment from Annachi Tea Stall', 'SUCCESS', NOW() - INTERVAL 3 HOUR),
-          (2, 4, 'Priya Sharma', 'priya@horizoncredit.in', 'CATEGORY_CREATED', 'GOVERNANCE', 'CAT-MERCHANT-DLY', '49.207.210.15', 'Added 25-Day Daily Merchant Lending Model', 'SUCCESS', NOW() - INTERVAL 5 HOUR),
-          (1, 1, 'Super Admin', 'admin@fundlending.com', 'ORG_ONBOARDED', 'ORGANIZATION', 'ORG-APX-01', '192.168.1.101', 'Onboarded Apex Finance Ltd with Enterprise Tier', 'SUCCESS', NOW() - INTERVAL 8 HOUR),
-          (1, 2, 'Rajesh Kumar', 'rajesh@apexfinance.com', 'KYC_VERIFIED', 'CUSTOMER', 'CUST-004', '14.139.182.12', 'Aadhaar biometric KYC verification completed', 'SUCCESS', NOW() - INTERVAL 12 HOUR),
-          (3, 5, 'Suresh Babu', 'suresh@deltarural.in', 'ROLE_ASSIGNED', 'USER_ROLE', 'ROLE-AGENT', '117.216.45.10', 'Assigned Field Route Agent to Madurai Rural', 'SUCCESS', NOW() - INTERVAL 1 DAY),
-          (1, 1, 'Super Admin', 'admin@fundlending.com', 'SETTINGS_UPDATED', 'SYSTEM', 'SYS-SET-01', '192.168.1.101', 'Enabled Auto-reconciliation interval to 60s', 'SUCCESS', NOW() - INTERVAL 1 DAY)
-        `);
+          (NULL, ?, ?, ?, 'USER_LOGIN', 'AUTHENTICATION', 'AUTH-1001', '127.0.0.1', 'Super Admin logged into governance portal', 'SUCCESS', NOW() - INTERVAL 15 MINUTE),
+          (NULL, ?, ?, ?, 'POLICY_UPDATED', 'PRIVACY_POLICY', 'POL-v2.1', '127.0.0.1', 'Published Privacy Policy v2.1 terms and conditions', 'SUCCESS', NOW() - INTERVAL 45 MINUTE),
+          (?, ?, 'Org Admin', 'admin@periyanayagi.com', 'LOAN_DISBURSED', 'LOAN', 'LN-004', '127.0.0.1', 'Disbursed ₹40,000 weekly micro-loan to Kumar', 'SUCCESS', NOW() - INTERVAL 2 HOUR),
+          (?, ?, 'Field Agent', 'agent@fundflow.in', 'PAYMENT_COLLECTED', 'COLLECTION', 'RCPT-8890', '127.0.0.1', 'Collected ₹2,200 installment from Merchant Store', 'SUCCESS', NOW() - INTERVAL 3 HOUR),
+          (NULL, ?, ?, ?, 'CATEGORY_CREATED', 'GOVERNANCE', 'CAT-MERCHANT-DLY', '127.0.0.1', 'Added 25-Day Daily Merchant Lending Blueprint', 'SUCCESS', NOW() - INTERVAL 5 HOUR),
+          (?, ?, ?, ?, 'ORG_ONBOARDED', 'ORGANIZATION', 'ORG-PERIYA-758', '127.0.0.1', 'Onboarded ${primaryOrgName} with PRO Tier', 'SUCCESS', NOW() - INTERVAL 8 HOUR),
+          (?, ?, 'KYC Staff', 'kyc@fundflow.in', 'KYC_VERIFIED', 'CUSTOMER', 'CUST-004', '127.0.0.1', 'Aadhaar biometric KYC verification completed', 'SUCCESS', NOW() - INTERVAL 12 HOUR),
+          (?, ?, 'Field Officer', 'suresh@fundflow.in', 'ROLE_ASSIGNED', 'USER_ROLE', 'ROLE-AGENT', '127.0.0.1', 'Assigned Field Route Agent to Primary Branch', 'SUCCESS', NOW() - INTERVAL 1 DAY),
+          (NULL, ?, ?, ?, 'SETTINGS_UPDATED', 'SYSTEM', 'SYS-SET-01', '127.0.0.1', 'Configured automated ledger reconciliation window', 'SUCCESS', NOW() - INTERVAL 1 DAY)
+        `, [
+          superAdminUser.id, superAdminUser.name, superAdminUser.email,
+          superAdminUser.id, superAdminUser.name, superAdminUser.email,
+          primaryOrgId, superAdminUser.id,
+          primaryOrgId, superAdminUser.id,
+          superAdminUser.id, superAdminUser.name, superAdminUser.email,
+          primaryOrgId, superAdminUser.id, superAdminUser.name, superAdminUser.email,
+          primaryOrgId, superAdminUser.id,
+          primaryOrgId, superAdminUser.id,
+          superAdminUser.id, superAdminUser.name, superAdminUser.email
+        ]);
       }
     } catch (e) {
       console.error('Audit logs init error:', e);
@@ -460,18 +500,29 @@ const governanceService = {
         try { await query(alt); } catch (e) {}
       }
 
-      const rows = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
+      let validOrgId = orgId;
+      const orgCheck = await query(`SELECT id FROM organizations WHERE id = ? LIMIT 1`, [orgId]);
+      if (!orgCheck || orgCheck.length === 0) {
+        const anyOrg = await query(`SELECT id FROM organizations ORDER BY id ASC LIMIT 1`);
+        if (anyOrg && anyOrg.length > 0) {
+          validOrgId = anyOrg[0].id;
+        }
+      }
+
+      const rows = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [validOrgId]);
       if (rows && rows.length > 0) return rows[0];
 
       await query(
         `INSERT INTO organization_settings 
          (organization_id, daily_loan_enabled, weekly_loan_enabled, monthly_loan_enabled, daily_interest_rate, daily_tenure_days, weekly_interest_rate, weekly_tenure_weeks, monthly_interest_rate, monthly_tenure_months, max_active_loans_per_customer, auto_eligibility_check, grace_period_days, default_interest_rate, currency_symbol, weekly_collection_days, weekly_collection_grace_days, monthly_collection_start_day, monthly_collection_end_day, monthly_collection_grace_days, daily_operating_days)
          VALUES (?, 1, 1, 1, 10.00, 100, 10.00, 10, 18.00, 12, 1, 1, 0, 10.00, '₹', 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT')`,
-        [orgId]
+        [validOrgId]
       );
-      const created = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
+      const created = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [validOrgId]);
       return created && created.length > 0 ? created[0] : null;
     } catch (err) {
+      const anySetting = await query(`SELECT * FROM organization_settings ORDER BY id ASC LIMIT 1`).catch(() => []);
+      if (anySetting && anySetting.length > 0) return anySetting[0];
       return {
         organization_id: parseInt(orgId, 10),
         daily_loan_enabled: true,
@@ -533,7 +584,16 @@ const governanceService = {
     } = configData;
 
     try {
-      await governanceService.getLendingConfig(orgId);
+      let validOrgId = orgId;
+      const orgCheck = await query(`SELECT id FROM organizations WHERE id = ? LIMIT 1`, [orgId]);
+      if (!orgCheck || orgCheck.length === 0) {
+        const anyOrg = await query(`SELECT id FROM organizations ORDER BY id ASC LIMIT 1`);
+        if (anyOrg && anyOrg.length > 0) {
+          validOrgId = anyOrg[0].id;
+        }
+      }
+
+      await governanceService.getLendingConfig(validOrgId);
       await query(
         `UPDATE organization_settings SET
            daily_loan_enabled = COALESCE(?, daily_loan_enabled),
@@ -588,7 +648,7 @@ const governanceService = {
           monthly_collection_end_day,
           monthly_collection_grace_days,
           daily_operating_days,
-          orgId
+          validOrgId,
         ]
       );
       // Synchronize default_category_configs table with newly saved interest rates & tenures

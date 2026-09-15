@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../../services/api';
+import { Modal } from '../../../components/common/Modal';
 import {
   UserPlus,
   ArrowRight,
@@ -16,6 +17,10 @@ import {
   TrendingUp,
   Receipt,
   Building,
+  Check,
+  Sparkles,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
 
@@ -26,17 +31,17 @@ export const AddUser = () => {
 
   // Dynamic Lending Config fetched from DB (interest rates page table)
   const [lendingConfig, setLendingConfig] = useState({
-    daily_interest_rate: 12.5,
-    daily_tenure_days: 25,
-    daily_min_amount: 15000,
-    daily_max_amount: 100000,
+    daily_interest_rate: 25.0,
+    daily_tenure_days: 100,
+    daily_min_amount: 10000,
+    daily_max_amount: 15000,
 
-    weekly_interest_rate: 10.0,
+    weekly_interest_rate: 25.0,
     weekly_tenure_weeks: 10,
-    weekly_min_amount: 10000,
-    weekly_max_amount: 50000,
+    weekly_min_amount: 2000,
+    weekly_max_amount: 5000,
 
-    monthly_interest_rate: 15.0,
+    monthly_interest_rate: 25.0,
     monthly_tenure_months: 12,
     monthly_min_amount: 25000,
     monthly_max_amount: 500000,
@@ -64,6 +69,26 @@ export const AddUser = () => {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [createdBorrower, setCreatedBorrower] = useState(null);
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      phone: '',
+      address: '',
+      city: 'Chennai',
+      occupation: '',
+      shop_name: '',
+      work_profession: '',
+      credit_limit: activeCategory?.default_max_loan || 50000,
+      issue_initial_loan: true,
+      initial_loan_amount: activeCategory?.default_min_loan || 10000,
+      tenure: String(activeCategory?.tenure_installments || 10),
+      frequency: activeCategory?.repayment_frequency || 'WEEKLY',
+    });
+    setErrors({});
+    setCreatedBorrower(null);
+  };
 
   // Dynamically build the 3 core borrower categories from the DB lending config
   const categories = useMemo(() => {
@@ -174,10 +199,15 @@ export const AddUser = () => {
 
   // Live Loan Calculation Preview (Dynamically calculated from DB rates & days)
   const principalAmount = parseFloat(formData.initial_loan_amount) || 0;
-  const flatRate = Number(activeCategory?.default_interest_rate) || (isShop ? 12.5 : isMonthly ? 15.0 : 10.0);
-  const interestAmount = (principalAmount * flatRate) / 100;
+  const flatRate = Number(activeCategory?.default_interest_rate) || (isShop ? (lendingConfig.daily_interest_rate || 25.0) : isMonthly ? (lendingConfig.monthly_interest_rate || 25.0) : (lendingConfig.weekly_interest_rate || 25.0));
+  const installmentCount = parseInt(formData.tenure, 10) || activeCategory.tenure_installments || (isShop ? (lendingConfig.daily_tenure_days || 100) : isMonthly ? (lendingConfig.monthly_tenure_months || 12) : (lendingConfig.weekly_tenure_weeks || 10));
+  
+  // Dynamic Interest and Repayment calculation
+  const interestAmount = isMonthly
+    ? (principalAmount * (flatRate / 100) * (installmentCount / 12))
+    : ((principalAmount * flatRate) / 100);
+
   const totalRepayable = principalAmount + interestAmount;
-  const installmentCount = parseInt(formData.tenure, 10) || activeCategory.tenure_installments || (isShop ? 25 : isMonthly ? 12 : 10);
   const installmentAmount = installmentCount > 0 ? Math.ceil(totalRepayable / installmentCount) : 0;
 
   const validate = () => {
@@ -226,7 +256,7 @@ export const AddUser = () => {
         ? formData.work_profession.trim()
         : formData.occupation.trim();
 
-      await api.createUser({
+      const res = await api.createUser({
         organizationId: activeOrg?.id || 1,
         branchId: formData.branch_id || (branches[0]?.id || null),
         name: formData.name.trim(),
@@ -249,13 +279,22 @@ export const AddUser = () => {
           : null,
       });
 
-      setSuccessMsg(`Borrower "${formData.name}" successfully onboarded!`);
+      const customerCode = res?.customerCode || res?.data?.customerCode || 'CUST-ONBOARDED';
+      const createdInfo = {
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        customerCode,
+        categoryName: activeCategory.name,
+        principal,
+        installmentAmount,
+        installmentCount,
+        frequency: freq,
+        isShop,
+        isMonthly,
+      };
 
-      setTimeout(() => {
-        if (isShop) navigate(getOrgPath('shopkeepers'));
-        else if (isMonthly) navigate(getOrgPath('monthly-customers'));
-        else navigate(getOrgPath('weekly-customers'));
-      }, 900);
+      setCreatedBorrower(createdInfo);
+      setSuccessMsg(`Borrower "${formData.name}" successfully onboarded with Customer ID: ${customerCode}!`);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to onboard borrower. Please check mobile number or connection.');
     } finally {
@@ -867,6 +906,93 @@ export const AddUser = () => {
           )}
         </div>
       </div>
+
+      {/* ======================================================== */}
+      {/* MODAL: BORROWER ONBOARDED SUCCESS CONFIRMATION           */}
+      {/* ======================================================== */}
+      {createdBorrower && (
+        <Modal
+          isOpen={!!createdBorrower}
+          onClose={() => setCreatedBorrower(null)}
+          title="Borrower Successfully Onboarded! 🎉"
+          maxWidth="520px"
+        >
+          <div style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Top Success Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', background: '#ECFDF5', border: '1.5px solid #A7F3D0', padding: '1rem', borderRadius: 10 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#059669', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Check size={22} strokeWidth={3} />
+              </div>
+              <div>
+                <strong style={{ fontSize: '1.05rem', color: '#065F46', display: 'block', fontWeight: 800 }}>
+                  {createdBorrower.name}
+                </strong>
+                <span style={{ fontSize: '0.82rem', color: '#047857', fontWeight: 600 }}>
+                  Customer ID: <code style={{ background: '#FFFFFF', padding: '1px 6px', borderRadius: 4, fontWeight: 800, border: '1px solid #A7F3D0' }}>{createdBorrower.customerCode}</code> • {createdBorrower.phone}
+                </span>
+              </div>
+            </div>
+
+            {/* Loan Contract Summary Strip */}
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Lending Division</span>
+                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#0F172A', marginTop: 2 }}>{createdBorrower.categoryName}</strong>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Disbursed Principal</span>
+                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#059669', marginTop: 2 }}>{formatCurrency(createdBorrower.principal)}</strong>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Installment Due</span>
+                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#4F46E5', marginTop: 2 }}>
+                  {formatCurrency(createdBorrower.installmentAmount)} / {createdBorrower.isShop ? 'Day' : createdBorrower.isMonthly ? 'Month' : 'Week'}
+                </strong>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Tenure Plan</span>
+                <strong style={{ display: 'block', fontSize: '0.88rem', color: '#0F172A', marginTop: 2 }}>
+                  {createdBorrower.installmentCount} {createdBorrower.isShop ? 'Days' : createdBorrower.isMonthly ? 'Months' : 'Weeks'}
+                </strong>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: '#64748B', margin: 0, lineHeight: 1.45 }}>
+              The borrower profile has been registered and verified in the database with active ledger tracking and payment installments.
+            </p>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  if (createdBorrower.isShop) navigate(getOrgPath('shopkeepers'));
+                  else if (createdBorrower.isMonthly) navigate(getOrgPath('monthly-customers'));
+                  else navigate(getOrgPath('weekly-customers'));
+                }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.65rem 1rem', fontSize: '0.88rem', fontWeight: 700, borderRadius: 8 }}
+              >
+                <span>View in Customer Ledger</span>
+                <ExternalLink size={15} />
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={resetForm}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.65rem 1rem', fontSize: '0.88rem', fontWeight: 700, borderRadius: 8 }}
+              >
+                <RefreshCw size={15} />
+                <span>Onboard Another</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

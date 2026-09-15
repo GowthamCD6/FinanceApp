@@ -630,6 +630,7 @@ export const PrivacyPolicy = () => {
           gap: 1.25rem;
           color: #0f172a;
           font-family: inherit;
+          width: 100%;
         }
 
         .policy-header-row {
@@ -783,8 +784,8 @@ export const PrivacyPolicy = () => {
         .policy-kpi-card {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 1.15rem 1.25rem;
+          border-radius: 10px;
+          padding: 0.9rem 1.15rem;
           display: flex;
           flex-direction: column;
           box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
@@ -803,7 +804,7 @@ export const PrivacyPolicy = () => {
         }
 
         .policy-kpi-label {
-          font-size: 0.75rem;
+          font-size: 0.72rem;
           font-weight: 700;
           text-transform: uppercase;
           color: #64748b;
@@ -811,9 +812,9 @@ export const PrivacyPolicy = () => {
         }
 
         .policy-kpi-icon {
-          width: 38px;
-          height: 38px;
-          border-radius: 10px;
+          width: 34px;
+          height: 34px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -825,10 +826,10 @@ export const PrivacyPolicy = () => {
         .icon-amber { background: #fffbeb; color: #d97706; }
 
         .policy-kpi-value {
-          font-size: 1.55rem;
+          font-size: 1.4rem;
           font-weight: 800;
           color: #0f172a;
-          margin: 0.35rem 0 0.25rem 0;
+          margin: 0.25rem 0 0.15rem 0;
           letter-spacing: -0.02em;
         }
 
@@ -836,7 +837,7 @@ export const PrivacyPolicy = () => {
           display: flex;
           align-items: center;
           gap: 0.4rem;
-          font-size: 0.78rem;
+          font-size: 0.75rem;
           color: #64748b;
         }
 
@@ -850,12 +851,12 @@ export const PrivacyPolicy = () => {
         /* Split Layout */
         .policy-split-layout {
           display: grid;
-          grid-template-columns: 1.8fr 1.2fr;
+          grid-template-columns: minmax(0, 1fr) 350px;
           gap: 1.25rem;
-          margin-bottom: 2rem;
+          align-items: start;
         }
 
-        @media (max-width: 980px) {
+        @media (max-width: 1080px) {
           .policy-split-layout {
             grid-template-columns: 1fr;
           }
@@ -865,7 +866,7 @@ export const PrivacyPolicy = () => {
         .policy-document-card {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 12px;
+          border-radius: 10px;
           box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
           overflow: hidden;
         }
@@ -874,7 +875,7 @@ export const PrivacyPolicy = () => {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1.15rem 1.35rem;
+          padding: 0.95rem 1.25rem;
           background: #f8fafc;
           border-bottom: 1px solid #e2e8f0;
         }
@@ -886,7 +887,7 @@ export const PrivacyPolicy = () => {
         }
 
         .doc-card-title {
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
@@ -906,38 +907,40 @@ export const PrivacyPolicy = () => {
         }
 
         .policy-document-body {
-          padding: 1.5rem;
+          padding: 1.25rem;
           display: flex;
           flex-direction: column;
-          gap: 1.25rem;
+          gap: 0.85rem;
         }
 
         .clause-block {
-          background: #ffffff;
-          border: 1px solid #f1f5f9;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 1rem;
-          transition: border-color 0.15s ease;
+          padding: 0.85rem 1.1rem;
+          transition: all 0.15s ease;
         }
 
         .clause-block:hover {
+          background: #ffffff;
           border-color: #cbd5e1;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
         }
 
         .clause-header {
           display: flex;
           align-items: center;
           gap: 0.65rem;
-          margin-bottom: 0.45rem;
+          margin-bottom: 0.35rem;
         }
 
         .clause-num-badge {
-          width: 24px;
-          height: 24px;
+          width: 22px;
+          height: 22px;
           border-radius: 6px;
           background: #eff6ff;
           color: #1976d2;
-          font-size: 0.75rem;
+          font-size: 0.72rem;
           font-weight: 700;
           display: flex;
           align-items: center;
@@ -946,18 +949,18 @@ export const PrivacyPolicy = () => {
         }
 
         .clause-title {
-          font-size: 0.92rem;
+          font-size: 0.88rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
         }
 
         .clause-text {
-          font-size: 0.85rem;
+          font-size: 0.835rem;
           color: #334155;
-          line-height: 1.55;
+          line-height: 1.5;
           margin: 0;
-          padding-left: 2rem;
+          padding-left: 0;
         }
 
         .document-signature-strip {
@@ -967,7 +970,7 @@ export const PrivacyPolicy = () => {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 1rem;
+          padding: 0.85rem 1rem;
           margin-top: 0.5rem;
         }
 
@@ -1089,8 +1092,8 @@ export const PrivacyPolicy = () => {
         .sidebar-card {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 1.25rem;
+          border-radius: 10px;
+          padding: 1.1rem;
           box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
         }
 
@@ -1098,13 +1101,13 @@ export const PrivacyPolicy = () => {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          margin-bottom: 1rem;
-          padding-bottom: 0.65rem;
+          margin-bottom: 0.75rem;
+          padding-bottom: 0.5rem;
           border-bottom: 1px solid #f1f5f9;
         }
 
         .sidebar-title {
-          font-size: 0.95rem;
+          font-size: 0.92rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;

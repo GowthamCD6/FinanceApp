@@ -125,7 +125,7 @@ async function createUser(data, creatorId = null) {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           effectiveOrgId,
-          data.branchId || null,
+          effectiveBranchId,
           customerCode,
           displayName,
           rawPhone,
@@ -164,7 +164,7 @@ async function createUser(data, creatorId = null) {
         const rate = parseFloat(initLoan.interest_rate || (freq === 'DAILY' ? 12.5 : (freq === 'MONTHLY' ? 15.0 : 10.0)));
         const incomeAmt = Math.round(((principal * rate) / 100) * 100) / 100;
         const totalRepay = principal + incomeAmt;
-        const loanNum = `LN-${freq.slice(0, 2)}-${customerCode || custId}`;
+        const loanNum = `LN-${freq.slice(0, 2)}-${customerCode || custId}-${Date.now().toString().slice(-4)}`;
 
         const [prodRows] = await conn.query(`SELECT id FROM loan_products WHERE repayment_frequency = ? LIMIT 1`, [freq]);
         const prodId = prodRows.length > 0 ? prodRows[0].id : 1;
@@ -172,17 +172,30 @@ async function createUser(data, creatorId = null) {
         const [loanRes] = await conn.query(
           `INSERT INTO loans (organization_id, branch_id, loan_number, customer_id, product_id, loan_title, principal_amount, contracted_income_amount, interest_rate, total_repayment_amount, total_installments, repayment_frequency, status, application_date, approval_date, disbursement_date)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', CURRENT_DATE, CURRENT_DATE, CURRENT_DATE)`,
-          [effectiveOrgId, data.branchId || null, loanNum, custId, prodId, `${freq} Micro-Loan (₹${principal})`, principal, incomeAmt, rate, totalRepay, instCount, freq]
+          [effectiveOrgId, effectiveBranchId, loanNum, custId, prodId, `${freq} Micro-Loan (₹${principal})`, principal, incomeAmt, rate, totalRepay, instCount, freq]
         );
         const newLoanId = loanRes.insertId;
 
         const instAmount = Math.ceil(totalRepay / instCount);
         const stepDays = freq === 'DAILY' ? 1 : (freq === 'MONTHLY' ? 30 : 7);
+        const princComp = principal / instCount;
+        const incComp = incomeAmt / instCount;
+
+        // Clean any existing installments for safety
+        await conn.query(`DELETE FROM loan_installments WHERE loan_id = ?`, [newLoanId]);
+
+        const instPlaceholders = [];
+        const instValues = [];
         for (let i = 1; i <= instCount; i++) {
+          instPlaceholders.push(`(?, ?, DATE_ADD(CURRENT_DATE, INTERVAL ? DAY), ?, ?, ?, 0, ?, 'PENDING')`);
+          instValues.push(newLoanId, i, i * stepDays, instAmount, princComp, incComp, instAmount);
+        }
+
+        if (instPlaceholders.length > 0) {
           await conn.query(
             `INSERT INTO loan_installments (loan_id, installment_number, due_date, scheduled_amount, principal_component, income_component, paid_amount, outstanding_amount, status)
-             VALUES (?, ?, DATE_ADD(CURRENT_DATE, INTERVAL ? DAY), ?, ?, ?, 0, ?, 'PENDING')`,
-            [newLoanId, i, i * stepDays, instAmount, principal / instCount, incomeAmt / instCount, instAmount]
+             VALUES ${instPlaceholders.join(', ')}`,
+            instValues
           );
         }
       }

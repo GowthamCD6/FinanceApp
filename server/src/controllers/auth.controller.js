@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
+const governanceService = require('../services/governance.service');
 
 async function login(req, res) {
   try {
@@ -140,6 +141,20 @@ async function login(req, res) {
       if (custRows.length > 0) customerInfo = custRows[0];
     }
 
+    // Asynchronously log audit event
+    governanceService.logAudit({
+      organization_id: user.organization_id,
+      user_id: user.id,
+      user_name: user.name,
+      user_email: user.email,
+      action: 'USER_LOGIN',
+      entity_type: 'AUTHENTICATION',
+      entity_id: `AUTH-${user.id}`,
+      ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1',
+      reason: `${user.role_type || roleNames[0] || 'User'} authenticated successfully`,
+      status: 'SUCCESS'
+    });
+
     return res.json({
       success: true,
       data: {
@@ -234,6 +249,20 @@ async function googleLogin(req, res) {
       process.env.JWT_SECRET || 'secret',
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
+
+    // Asynchronously log audit event
+    governanceService.logAudit({
+      organization_id: user.organization_id,
+      user_id: user.id,
+      user_name: user.name,
+      user_email: user.email,
+      action: 'USER_LOGIN',
+      entity_type: 'AUTHENTICATION',
+      entity_id: `AUTH-GOOGLE-${user.id}`,
+      ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1',
+      reason: `User authenticated via Google OAuth SSO`,
+      status: 'SUCCESS'
+    });
 
     return res.json({
       success: true,
