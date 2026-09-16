@@ -16,13 +16,13 @@ export const Modal = ({ isOpen, onClose, title, subtitle, children, footer, maxW
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-dialog"
-        style={{ maxWidth }}
+        style={{ maxWidth, fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>{title}</h3>
-            {subtitle && <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{subtitle}</p>}
+            <h3 style={{ fontSize: '1.28rem', fontWeight: 800, fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif", color: '#0f172a', letterSpacing: '-0.02em' }}>{title}</h3>
+            {subtitle && <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
