@@ -1,0 +1,1456 @@
+/* ==============================================================================
+   Borrower History & Virtual Profile View — Professional Fintech Theme
+   Strictly complies with Docs/ProfesonalTheme&Content.md
+   Font Family: 'Plus Jakarta Sans'
+   ============================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+.borrower-history-view,
+.borrower-history-view *,
+.bh-modal-backdrop,
+.bh-modal-backdrop * {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.borrower-history-view {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0.25rem 0.5rem 2.5rem 0.5rem;
+  color: #0F172A;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* -----------------------------------------------------------------------------
+   1. Skeleton Loading Animation & Styles
+   ----------------------------------------------------------------------------- */
+@keyframes bhShimmer {
+  0% {
+    background-position: -600px 0;
+  }
+  100% {
+    background-position: 600px 0;
+  }
+}
+
+.bh-skeleton {
+  background: linear-gradient(90deg, #F1F5F9 0%, #E2E8F0 50%, #F1F5F9 100%);
+  background-size: 800px 100%;
+  animation: bhShimmer 1.5s infinite linear;
+  border-radius: 6px;
+}
+
+.bh-skeleton-circle {
+  border-radius: 50% !important;
+}
+
+.bh-skeleton-hero {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.bh-skeleton-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* -----------------------------------------------------------------------------
+   2. Top Navigation & Actions Bar
+   ----------------------------------------------------------------------------- */
+.bh-top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bh-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #FFFFFF;
+  color: #334155;
+  border: 1.5px solid #CBD5E1;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.bh-back-btn:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+
+.bh-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.bh-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #FFFFFF;
+  color: #334155;
+  border: 1.5px solid #CBD5E1;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.bh-btn-secondary:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+
+.bh-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #2563EB;
+  color: #FFFFFF;
+  border: 1.5px solid #2563EB;
+  padding: 0.55rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.bh-btn-primary:hover {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+}
+
+.bh-btn-collect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #059669;
+  color: #FFFFFF;
+  border: 1.5px solid #059669;
+  padding: 0.55rem 1.15rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+.bh-btn-collect:hover {
+  background: #047857;
+  border-color: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3);
+}
+
+/* -----------------------------------------------------------------------------
+   3. Feedback Alert
+   ----------------------------------------------------------------------------- */
+.bh-feedback-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+
+/* -----------------------------------------------------------------------------
+   4. Borrower Identity Hero Card
+   ----------------------------------------------------------------------------- */
+.bh-hero-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  position: relative;
+}
+
+.bh-hero-layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.bh-hero-identity {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.bh-hero-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #EFF6FF;
+  border: 2px solid #BFDBFE;
+  color: #1D4ED8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.bh-hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.bh-hero-name {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+}
+
+.bh-scheme-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  background: #F1F5F9;
+  color: #334155;
+  border: 1px solid #E2E8F0;
+  letter-spacing: 0.02em;
+}
+
+.bh-hero-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.bh-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bh-meta-item svg {
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.bh-meta-code {
+  font-weight: 700;
+  color: #0F172A;
+  background: #F8FAFC;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #E2E8F0;
+  font-size: 0.8rem;
+}
+
+/* Merchant Stall Banner (Shopkeeper specific) */
+.bh-merchant-banner {
+  margin-top: 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.bh-merchant-detail-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+}
+
+.bh-merchant-badge {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+/* -----------------------------------------------------------------------------
+   5. KPI Statistics Metric Cards (Strictly Solid #0F172A Numbers)
+   ----------------------------------------------------------------------------- */
+.bh-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .bh-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 580px) {
+  .bh-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bh-stat-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 1.15rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.15s ease;
+}
+
+.bh-stat-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
+}
+
+.bh-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.bh-stat-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748B;
+  letter-spacing: 0.01em;
+}
+
+.bh-stat-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bh-stat-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #0F172A !important;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin: 0.15rem 0 0.35rem 0;
+  font-family: inherit;
+}
+
+.bh-stat-subtext {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+/* -----------------------------------------------------------------------------
+   6. Segmented Tab Navigation Bar
+   ----------------------------------------------------------------------------- */
+.bh-tabs-bar {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #E2E8F0;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bh-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.bh-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748B;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.bh-tab-btn:hover {
+  color: #0F172A;
+}
+
+.bh-tab-btn.active {
+  color: #2563EB;
+  border-bottom-color: #2563EB;
+  font-weight: 700;
+}
+
+.bh-tab-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.bh-tab-btn.active .bh-tab-count {
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+/* -----------------------------------------------------------------------------
+   7. Premium Fintech Loan Cards UI (Spacious, Executive, Multi-Tier Metrics)
+   ----------------------------------------------------------------------------- */
+.bh-loans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .bh-loans-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bh-loan-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 1.35rem 1.45rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.15rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.bh-loan-card:hover {
+  transform: translateY(-2px);
+  border-color: #CBD5E1;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08);
+}
+
+/* Overdue Card Variant (Soft border alert, no harsh line) */
+.bh-loan-card.overdue-card {
+  border-color: #FECDD3 !important;
+  background: #FFFDFD;
+}
+
+.bh-loan-card.overdue-card:hover {
+  border-color: #F87171 !important;
+  box-shadow: 0 12px 28px -4px rgba(239, 68, 68, 0.1);
+}
+
+/* Completed Card Variant */
+.bh-loan-card.completed-card {
+  border-color: #A7F3D0 !important;
+}
+
+/* Card Header */
+.bh-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.bh-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.bh-card-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  border: 1px solid #DBEAFE;
+  color: #2563EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.bh-loan-card:hover .bh-card-icon-wrap {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.bh-card-icon-wrap.overdue {
+  background: #FEF2F2;
+  border-color: #FECDD3;
+  color: #DC2626;
+}
+
+.bh-card-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.bh-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bh-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.bh-card-meta-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.bh-pill-code {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #334155;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+}
+
+.bh-pill-freq {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1D4ED8;
+  background: #EEF2FF;
+  border: 1px solid #E0E7FF;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bh-pill-progress {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+}
+
+/* Overdue Alert Callout inside Card */
+.bh-card-alert-strip {
+  background: #FEF2F2;
+  border: 1px solid #FECDD3;
+  color: #DC2626;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Hero Financial Overview (Two-Box Highlight) */
+.bh-card-hero-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .bh-card-hero-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bh-card-hero-box {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  transition: all 0.15s ease;
+}
+
+.bh-card-hero-box.installment {
+  background: #F0FDF4;
+  border-color: #DCFCE7;
+}
+
+.bh-hero-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bh-hero-val {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.bh-hero-val.text-indigo {
+  color: #059669;
+}
+
+.bh-hero-per {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748B;
+  margin-left: 2px;
+}
+
+.bh-hero-sub {
+  font-size: 0.72rem;
+  color: #64748B;
+  font-weight: 500;
+}
+
+/* 4-Item Compact Financial Summary Grid */
+.bh-card-spec-grid {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .bh-card-spec-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+.bh-spec-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bh-spec-lbl {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748B;
+}
+
+.bh-spec-val {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+/* Card Bottom Action Bar */
+.bh-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.bh-footer-schedule-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  padding: 0.48rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.bh-footer-schedule-btn:hover {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #93C5FD;
+}
+
+.bh-footer-pay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #2563EB;
+  color: #FFFFFF;
+  border: 1px solid #2563EB;
+  padding: 0.48rem 0.95rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+  font-family: inherit;
+}
+
+.bh-footer-pay-btn:hover {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* -----------------------------------------------------------------------------
+   9. Day-by-Day Collection Schedule & Log Modal
+   ----------------------------------------------------------------------------- */
+.bh-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: bhFadeIn 0.2s ease-out;
+}
+
+@keyframes bhFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bhSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.bh-modal-dialog {
+  background: #FFFFFF;
+  border-radius: 14px;
+  width: 940px;
+  max-width: 96vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  border: 1px solid #E2E8F0;
+  animation: bhSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.bh-modal-header {
+  padding: 1.25rem 1.65rem;
+  background: #F8FAFC;
+  border-bottom: 2px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bh-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.bh-modal-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #2563EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bh-modal-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+}
+
+.bh-modal-subtitle {
+  font-size: 0.8125rem;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.bh-modal-close-btn {
+  background: #FFFFFF;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748B;
+  transition: all 0.15s ease;
+}
+
+.bh-modal-close-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+  border-color: #94A3B8;
+}
+
+.bh-modal-body {
+  padding: 1.35rem 1.65rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+/* 4-Stat Strip inside Modal */
+.bh-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.85rem;
+}
+
+.bh-strip-card {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 0.95rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bh-strip-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.bh-strip-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748B;
+  letter-spacing: 0.04em;
+}
+
+.bh-strip-val {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.bh-strip-sub {
+  font-size: 0.75rem;
+  color: #64748B;
+  font-weight: 500;
+  margin-top: 0.2rem;
+}
+
+/* Progress Bar Strip inside Modal */
+.bh-timeline-strip {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.85rem 1.15rem;
+}
+
+.bh-timeline-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  font-size: 0.8125rem;
+}
+
+.bh-timeline-track {
+  width: 100%;
+  height: 9px;
+  background: #E2E8F0;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.bh-timeline-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563EB 0%, #059669 100%);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+/* Day-by-Day Schedule Table in Modal */
+.bh-log-section {
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+.bh-log-header-bar {
+  padding: 0.85rem 1.15rem;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.bh-log-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.bh-log-filter-group {
+  display: flex;
+  background: #E2E8F0;
+  padding: 2px;
+  border-radius: 6px;
+  gap: 2px;
+}
+
+.bh-log-filter-btn {
+  border: none;
+  background: transparent;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 4px;
+  color: #475569;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.bh-log-filter-btn.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.bh-log-table-container {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.bh-modal-footer {
+  padding: 1rem 1.65rem;
+  background: #F8FAFC;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   10. Data Tables (Payment Receipts Ledger & Completed Archive)
+   ----------------------------------------------------------------------------- */
+.bh-table-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.bh-table-card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bh-table-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.bh-table-subtitle {
+  font-size: 0.8125rem;
+  color: #64748B;
+  margin: 0.2rem 0 0 0;
+}
+
+.bh-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: inherit;
+}
+
+.bh-data-table thead {
+  background: #F8FAFC;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.bh-data-table th {
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0F172A !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.bh-data-table th.th-center {
+  text-align: center;
+}
+
+.bh-data-table th.th-right {
+  text-align: right;
+}
+
+.bh-data-table tbody tr {
+  border-bottom: 1px solid #F1F5F9;
+  transition: background 0.15s ease;
+}
+
+.bh-data-table tbody tr:hover {
+  background: #F8FAFC;
+}
+
+.bh-data-table td {
+  padding: 0.85rem 1rem;
+  font-size: 0.875rem;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.bh-data-table td.td-center {
+  text-align: center;
+}
+
+.bh-data-table td.td-right {
+  text-align: right;
+}
+
+.bh-data-table td strong {
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.bh-method-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  background: #F1F5F9;
+  color: #334155;
+  border: 1px solid #E2E8F0;
+}
+
+/* -----------------------------------------------------------------------------
+   10. Completed & Settled History Table Styles (Matching ManageUsers.css)
+   ----------------------------------------------------------------------------- */
+.bh-table-card-header {
+  padding: 1.15rem 1.35rem;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.bh-table-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.bh-table-subtitle {
+  font-size: 0.78rem;
+  color: #64748B;
+  margin: 0.2rem 0 0 0;
+  font-weight: 500;
+}
+
+/* -----------------------------------------------------------------------------
+   11. Borrower Profile & KYC Dashboard (Executive 2x2 Grid with KYC Chips)
+   ----------------------------------------------------------------------------- */
+.bh-profile-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Top KYC Verification Status Strip */
+.bh-kyc-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .bh-kyc-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .bh-kyc-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bh-kyc-pill-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  transition: all 0.15s ease;
+}
+
+.bh-kyc-pill-card:hover {
+  border-color: #CBD5E1;
+  transform: translateY(-1px);
+}
+
+.bh-kyc-pill-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bh-kyc-pill-icon.emerald {
+  background: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
+}
+
+.bh-kyc-pill-icon.indigo {
+  background: #EEF2FF;
+  color: #4F46E5;
+  border: 1px solid #C7D2FE;
+}
+
+.bh-kyc-pill-icon.amber {
+  background: #FFFBEB;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}
+
+.bh-kyc-pill-icon.purple {
+  background: #F5F3FF;
+  color: #7C3AED;
+  border: 1px solid #DDD6FE;
+}
+
+.bh-kyc-pill-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bh-kyc-pill-lbl {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bh-kyc-pill-val {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+/* 4 Rich Profile Sections in 2x2 Grid */
+.bh-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 840px) {
+  .bh-profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bh-info-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 1.35rem 1.45rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.15s ease;
+}
+
+.bh-info-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+}
+
+.bh-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #F1F5F9;
+  padding-bottom: 0.85rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bh-info-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.bh-info-header-title h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.015em;
+}
+
+.bh-info-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bh-info-icon-badge.indigo {
+  background: #EEF2FF;
+  color: #2563EB;
+  border: 1px solid #DBEAFE;
+}
+
+.bh-info-icon-badge.emerald {
+  background: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
+}
+
+.bh-info-icon-badge.purple {
+  background: #F5F3FF;
+  color: #7C3AED;
+  border: 1px solid #DDD6FE;
+}
+
+.bh-info-icon-badge.amber {
+  background: #FFFBEB;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}
+
+.bh-info-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.bh-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed #F1F5F9;
+  font-size: 0.875rem;
+  gap: 1rem;
+}
+
+.bh-info-row:last-child {
+  border-bottom: none;
+}
+
+.bh-info-label {
+  color: #64748B;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.bh-info-val {
+  color: #0F172A;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* -----------------------------------------------------------------------------
+   12. Print Media Query
+   ----------------------------------------------------------------------------- */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+
+  .bh-top-nav,
+  .bh-tabs-bar,
+  .bh-action-group,
+  .bh-test-bar,
+  .bh-card-action-bar,
+  .bh-log-filter-group,
+  .bh-modal-close-btn,
+  .bh-modal-footer {
+    display: none !important;
+  }
+
+  .borrower-history-view {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .bh-hero-card,
+  .bh-stat-card,
+  .bh-loan-card,
+  .bh-table-card,
+  .bh-info-card,
+  .bh-log-section {
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  .bh-data-table th,
+  .bh-data-table td {
+    border-bottom: 1px solid #CCCCCC !important;
+  }
+}
