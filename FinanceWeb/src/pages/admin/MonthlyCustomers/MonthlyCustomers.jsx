@@ -697,12 +697,16 @@ export const MonthlyCustomers = () => {
                 paginatedCustomers.map((cust) => {
                   const isPaid = cust.computedMonthStatus === 'PAID' || cust.computedMonthStatus === 'COLLECTED';
                   const isOverdue = cust.computedMonthStatus === 'OVERDUE';
-                  const totalMonths = cust.total_installments || cust.active_loan?.total_installments || 12;
-                  const paidMonths = typeof cust.effectivePaidMonths === 'number'
-                    ? cust.effectivePaidMonths
-                    : (typeof cust.paid_installments === 'number' ? cust.paid_installments : (isPaid ? 1 : 0));
+                  const totalMonths = typeof cust.total_installments === 'number'
+                    ? cust.total_installments
+                    : (cust.active_loan?.total_installments || 12);
+                  const paidMonths = typeof cust.paid_installments === 'number'
+                    ? cust.paid_installments
+                    : (typeof cust.effectivePaidMonths === 'number' ? cust.effectivePaidMonths : 0);
                   const monthlyEmi = cust.monthly_emi || cust.active_loan?.installment_amount || 625;
-                  const progressPct = totalMonths > 0 ? Math.min(100, Math.round((paidMonths / totalMonths) * 100)) : 0;
+                  const progressPct = typeof cust.progress_percentage === 'number'
+                    ? cust.progress_percentage
+                    : (totalMonths > 0 ? Math.min(100, Math.round((paidMonths / totalMonths) * 100)) : 0);
 
                   return (
                     <tr key={cust.id}>

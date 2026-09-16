@@ -532,6 +532,10 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
       schedule,
     } : null;
 
+    const totalInstWk = activeLoanObj ? Number(activeLoanObj.total_installments || 10) : 10;
+    const paidInstWk = activeLoanObj ? Number(activeLoanObj.paid_installments || 0) : 0;
+    const progressPctWk = totalInstWk > 0 ? Math.round((paidInstWk / totalInstWk) * 100) : 0;
+
     result.push({
       id: cust.id,
       customer_code: cust.customer_code,
@@ -541,8 +545,9 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
       occupation: cust.occupation || 'Self Employed',
       active_loan: activeLoanObj,
       loans: activeLoanObj ? [activeLoanObj] : [],
-      paid_installments: paidInstallments,
-      total_installments: totalInstallments,
+      paid_installments: paidInstWk,
+      total_installments: totalInstWk,
+      progress_percentage: progressPctWk,
       current_week_due: currentWeekDue,
       current_week_due_date: new Date().toISOString().slice(0, 10),
       current_week_status: currentWeekStatus,
@@ -562,7 +567,10 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
     ? date
     : new Date().toISOString().slice(0, 10);
 
-  let whereClauses = ["(c.customer_type = 'SHOPKEEPER' OR c.shop_name IS NOT NULL OR c.id IN (SELECT customer_id FROM loans WHERE repayment_frequency = 'DAILY'))"];
+  let whereClauses = [
+    "(c.customer_type = 'SHOPKEEPER' OR (c.shop_name IS NOT NULL AND c.shop_name != '') OR c.id IN (SELECT customer_id FROM loans WHERE repayment_frequency = 'DAILY'))",
+    "c.id NOT IN (SELECT customer_id FROM loans WHERE repayment_frequency IN ('WEEKLY', 'MONTHLY') AND customer_id NOT IN (SELECT customer_id FROM loans WHERE repayment_frequency = 'DAILY'))"
+  ];
   const params = [];
 
   if (organizationId && organizationId !== 'ALL') {
@@ -608,7 +616,9 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
       `SELECT l.*, lp.repayment_frequency, lp.product_name
        FROM loans l
        LEFT JOIN loan_products lp ON l.product_id = lp.id
-       WHERE l.customer_id = ? AND (l.repayment_frequency = 'DAILY' OR l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE'))
+       WHERE l.customer_id = ? 
+         AND (l.repayment_frequency = 'DAILY' OR lp.repayment_frequency = 'DAILY' OR (l.repayment_frequency IS NULL AND lp.repayment_frequency IS NULL))
+         AND (l.repayment_frequency NOT IN ('WEEKLY', 'MONTHLY') OR l.repayment_frequency IS NULL)
        ORDER BY l.id ASC`,
       [shop.id]
     );
@@ -730,6 +740,11 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
       continue;
     }
 
+    const primaryLoan = formattedLoans[0] || null;
+    const totalInst = primaryLoan ? Number(primaryLoan.total_installments || 100) : 100;
+    const paidInst = primaryLoan ? Number(primaryLoan.paid_installments || 0) : 0;
+    const progressPct = totalInst > 0 ? Math.round((paidInst / totalInst) * 100) : 0;
+
     result.push({
       id: shop.id,
       customer_code: shop.customer_code,
@@ -743,7 +758,12 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
       daily_collection_target: dailyTarget,
       total_outstanding: totalOutstanding,
       today_collection_status: currentStatus,
+      total_installments: totalInst,
+      paid_installments: paidInst,
+      progress_percentage: progressPct,
+      active_loan: primaryLoan,
       loans: formattedLoans,
+      schedule: primaryLoan ? primaryLoan.installments : [],
       today_entries: isCollectedOnTargetDate ? (targetDatePayments.length > 0 ? targetDatePayments.map(p => ({
         status: 'COLLECTED',
         collected_amount: Number(p.amount),
@@ -925,6 +945,7 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
       loans: [activeLoanObj],
       paid_installments: paidInstallments,
       total_installments: totalInstallments,
+      progress_percentage: totalInstallments > 0 ? Math.round((paidInstallments / totalInstallments) * 100) : 0,
       monthly_emi: monthlyEmi,
       current_month_due_date: new Date().toISOString().slice(0, 10),
       current_month_status: currentMonthStatus,
