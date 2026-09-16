@@ -725,7 +725,7 @@ export const api = {
     }
   },
 
-  recordShopkeeperCollection: async (shopId, loanCode, paymentMode, amount) => {
+  recordShopkeeperCollection: async (shopId, loanCode, paymentMode, amount, collectionDate) => {
     try {
       return await request('/payments', {
         method: 'POST',
@@ -735,6 +735,8 @@ export const api = {
           paymentMode,
           amount: amount ? parseFloat(amount) : undefined,
           paymentType: 'DAILY_INSTALLMENT',
+          collectionDate: collectionDate || new Date().toISOString().slice(0, 10),
+          paymentDate: collectionDate || new Date().toISOString().slice(0, 10),
         }),
       });
     } catch {

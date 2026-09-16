@@ -629,9 +629,9 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
     const formattedLoans = [];
 
     for (const l of loans) {
-      const p = Number(l.principal_amount || 20000);
-      const totalRepayable = Number(l.total_repayment_amount || p * 1.125);
-      const totalInst = Number(l.total_installments || 25);
+      const p = Number(l.principal_amount || 0);
+      const totalRepayable = Number(l.total_repayment_amount || (p + (p * Number(l.interest_rate || 0) / 100)));
+      const totalInst = Number(l.total_installments || 1);
       const instAmt = Math.ceil(totalRepayable / totalInst);
 
       let dbInstallments = await query(
@@ -639,40 +639,82 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
         [l.id]
       );
 
-      // If no installments row exist in DB, construct full day-by-day installment list
+      const toIsoDate = (val, defaultVal = null) => {
+        if (!val) return defaultVal;
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+        try {
+          const dt = new Date(val);
+          if (isNaN(dt.getTime())) return defaultVal;
+          const y = dt.getFullYear();
+          const m = String(dt.getMonth() + 1).padStart(2, '0');
+          const d = String(dt.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        } catch (e) {
+          return defaultVal;
+        }
+      };
+
+      // If no installments row exist in DB, create and persist them into loan_installments
       if (!dbInstallments || dbInstallments.length === 0) {
-        const baseDate = new Date(l.application_date || l.disbursement_date || '2026-09-01');
-        const paidCount = Number(l.paid_installments || Math.floor(totalInst * 0.4));
-        dbInstallments = [];
+        const rawBase = l.disbursement_date || l.application_date;
+        const baseDateStr = toIsoDate(rawBase, '2026-09-01');
+        const baseDate = new Date(baseDateStr);
+        const paidCount = Number(l.paid_installments || 0);
+
         for (let idx = 1; idx <= totalInst; idx++) {
           const d = new Date(baseDate);
           d.setDate(d.getDate() + (idx - 1));
-          const dateStr = d.toISOString().slice(0, 10);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${day}`;
           const isPaid = idx <= paidCount;
-          dbInstallments.push({
-            installment_number: idx,
-            due_date: dateStr,
-            scheduled_amount: instAmt,
-            paid_amount: isPaid ? instAmt : 0,
-            status: isPaid ? 'PAID' : (dateStr === targetDate ? 'TODAY_DUE' : 'PENDING'),
-            paid_at: isPaid ? dateStr : null,
-            receipt_no: isPaid ? `REC-DLY-${104800 + idx}` : null,
-          });
+
+          try {
+            await query(
+              `INSERT INTO loan_installments 
+               (loan_id, installment_number, due_date, scheduled_amount, principal_component, income_component, paid_amount, outstanding_amount, status, paid_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE due_date = VALUES(due_date)`,
+              [
+                l.id,
+                idx,
+                dateStr,
+                instAmt,
+                Math.round((p / totalInst) * 100) / 100,
+                Math.round(((totalRepayable - p) / totalInst) * 100) / 100,
+                isPaid ? instAmt : 0,
+                isPaid ? 0 : instAmt,
+                isPaid ? 'PAID' : (dateStr < targetDate ? 'OVERDUE' : 'PENDING'),
+                isPaid ? dateStr : null,
+              ]
+            );
+          } catch (e) {}
         }
+
+        dbInstallments = await query(
+          `SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`,
+          [l.id]
+        );
       }
 
       const installmentList = dbInstallments.map((inst, idx) => {
         const dayNum = inst.installment_number || (idx + 1);
-        const dStr = String(inst.due_date).slice(0, 10);
+        const dStr = toIsoDate(inst.due_date, '2026-09-01');
         const isPaid = inst.status === 'PAID' || Number(inst.paid_amount) >= Number(inst.scheduled_amount || instAmt);
         const isTargetDay = dStr === targetDate;
+        const isPastDue = dStr < targetDate;
 
         let statusLabel = 'PENDING';
         if (isPaid) {
           statusLabel = 'PAID';
         } else if (isTargetDay) {
           statusLabel = 'TODAY_DUE';
+        } else if (isPastDue) {
+          statusLabel = 'OVERDUE';
         }
+
+        const paidDateStr = inst.paid_at ? toIsoDate(inst.paid_at, dStr) : (isPaid ? dStr : null);
 
         return {
           day_number: dayNum,
@@ -680,19 +722,28 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
           amount: Number(inst.scheduled_amount || instAmt),
           paid_amount: isPaid ? Number(inst.paid_amount || instAmt) : 0,
           status: statusLabel,
-          paid_date: inst.paid_at ? String(inst.paid_at).slice(0, 10) : (isPaid ? dStr : null),
+          paid_date: paidDateStr,
           receipt_no: inst.receipt_no || (isPaid ? `REC-DLY-${104800 + dayNum}` : null),
           payment_mode: dayNum % 2 === 0 ? 'CASH' : 'UPI',
         };
       });
 
-      const paidCount = installmentList.filter(i => i.status === 'PAID').length;
-      const paidAmt = installmentList.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || instAmt), 0);
+      const paidCount = installmentList.filter((i) => i.status === 'PAID').length;
+      const paidAmt = installmentList
+        .filter((i) => i.status === 'PAID')
+        .reduce((s, i) => s + Number(i.paid_amount || instAmt), 0);
       const remaining = Math.max(0, totalRepayable - paidAmt);
 
       totalPrincipal += p;
       totalOutstanding += remaining;
       dailyTarget += instAmt;
+
+      const issueDateClean = toIsoDate(l.disbursement_date || l.application_date, '2026-09-01');
+      let maturityDateClean = toIsoDate(l.maturity_date, null);
+      if (!maturityDateClean && installmentList.length > 0) {
+        maturityDateClean = installmentList[installmentList.length - 1].due_date;
+      }
+      if (!maturityDateClean) maturityDateClean = '2026-09-26';
 
       formattedLoans.push({
         id: l.id,
@@ -700,14 +751,15 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
         loan_name: l.loan_title || l.product_name || `Daily Loan (${p})`,
         principal: p,
         interest_rate: Number(l.interest_rate || 12.5),
+        total_repayment_amount: totalRepayable,
         total_installments: totalInst,
         paid_installments: paidCount,
         installment_amount: instAmt,
         daily_due: instAmt,
         remaining_balance: remaining,
         status: l.status,
-        issue_date: l.disbursement_date ? String(l.disbursement_date).slice(0, 10) : '2026-09-01',
-        maturity_date: l.maturity_date ? String(l.maturity_date).slice(0, 10) : '2026-09-26',
+        issue_date: issueDateClean,
+        maturity_date: maturityDateClean,
         installments: installmentList,
       });
     }

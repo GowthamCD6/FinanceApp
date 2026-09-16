@@ -11,6 +11,61 @@ async function generatePaymentNumber() {
 }
 
 /**
+ * Safely resolve an active fund_account_id for the organization,
+ * auto-creating a default cash account if none exists,
+ * preventing foreign key constraint violations on fund_transactions.
+ */
+async function resolveFundAccountId(conn, orgId = 1, branchId = 1, requestedId = null) {
+  if (requestedId) {
+    const [acc] = await conn.query(`SELECT id FROM fund_accounts WHERE id = ? LIMIT 1`, [requestedId]);
+    if (acc && acc.length > 0) return acc[0].id;
+  }
+
+  // 1. Try to find an active fund account for this organization
+  const [orgAccounts] = await conn.query(
+    `SELECT id FROM fund_accounts WHERE organization_id = ? AND status = 'ACTIVE' ORDER BY id ASC LIMIT 1`,
+    [orgId]
+  );
+  if (orgAccounts && orgAccounts.length > 0) return orgAccounts[0].id;
+
+  // 2. Try any account for this organization
+  const [anyOrg] = await conn.query(
+    `SELECT id FROM fund_accounts WHERE organization_id = ? ORDER BY id ASC LIMIT 1`,
+    [orgId]
+  );
+  if (anyOrg && anyOrg.length > 0) return anyOrg[0].id;
+
+  // 3. Try any active account globally
+  const [anyActive] = await conn.query(
+    `SELECT id FROM fund_accounts WHERE status = 'ACTIVE' ORDER BY id ASC LIMIT 1`
+  );
+  if (anyActive && anyActive.length > 0) return anyActive[0].id;
+
+  // 4. Try any fund account globally
+  const [anyAccount] = await conn.query(`SELECT id FROM fund_accounts ORDER BY id ASC LIMIT 1`);
+  if (anyAccount && anyAccount.length > 0) return anyAccount[0].id;
+
+  // 5. If table is completely empty, create a default cash account for this org
+  const [created] = await conn.query(
+    `INSERT INTO fund_accounts (organization_id, branch_id, account_code, account_name, account_type, status)
+     VALUES (?, ?, ?, 'Operating Cash Vault', 'CASH', 'ACTIVE')`,
+    [orgId, branchId || null, `ACC-CASH-${orgId}-${Date.now().toString().slice(-4)}`]
+  );
+  return created.insertId;
+}
+
+function normalizePaymentMethod(method) {
+  if (!method) return 'CASH';
+  const m = String(method).toUpperCase().trim();
+  if (['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'].includes(m)) return m;
+  if (m === 'BANK') return 'BANK_TRANSFER';
+  if (m.includes('BANK') || m.includes('TRANSFER') || m.includes('NEFT') || m.includes('IMPS') || m.includes('RTGS')) return 'BANK_TRANSFER';
+  if (m.includes('UPI') || m.includes('GPAY') || m.includes('PHONEPE')) return 'UPI';
+  if (m.includes('CHEQUE') || m.includes('CHECK')) return 'CHEQUE';
+  return 'OTHER';
+}
+
+/**
  * Process a customer payment collection atomically:
  * 1. Validates loan and unpaid installments
  * 2. Distributes payment across pending installments (supports partial and multi-installment settlement)
@@ -21,11 +76,14 @@ async function generatePaymentNumber() {
  * 7. Records immutable loan_events (PAYMENT_RECEIVED)
  * 8. Checks for loan completion and triggers rule-based repeat-loan eligibility evaluation
  */
-async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, referenceNumber, notes, collectorId }) {
+async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, referenceNumber, notes, collectorId, collectionDate, paymentDate }) {
   const parsedAmount = parseFloat(amount);
   if (isNaN(parsedAmount) || parsedAmount <= 0) {
     throw new Error('Payment amount must be a positive number.');
   }
+
+  const effectivePaymentDate = collectionDate || paymentDate ? new Date(collectionDate || paymentDate) : new Date();
+  const finalPaymentMethod = normalizePaymentMethod(paymentMethod);
 
   return await withTransaction(async (conn) => {
     // 1. Lock and fetch loan
@@ -66,8 +124,8 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
     const [paymentResult] = await conn.query(
       `INSERT INTO payments 
        (organization_id, branch_id, payment_number, customer_id, loan_id, payment_date, amount, payment_method, reference_number, collector_id, status, notes)
-       VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, 'COMPLETED', ?)`,
-      [orgId, branchId, paymentNumber, loan.customer_id, loanId, parsedAmount, paymentMethod || 'CASH', referenceNumber || null, collectorId, notes || null]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED', ?)`,
+      [orgId, branchId, paymentNumber, loan.customer_id, loanId, effectivePaymentDate, parsedAmount, finalPaymentMethod, referenceNumber || null, collectorId, notes || null]
     );
     const paymentId = paymentResult.insertId;
 
@@ -77,7 +135,23 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
     let totalIncomeAllocated = 0;
     const allocationDetails = [];
 
-    for (const inst of installments) {
+    // Prioritize installment matching collectionDate if provided
+    let targetInstallments = [...installments];
+    if (collectionDate) {
+      const matchDateStr = String(collectionDate).slice(0, 10);
+      const matchIdx = targetInstallments.findIndex(i => {
+        const iDate = i.due_date instanceof Date 
+          ? `${i.due_date.getFullYear()}-${String(i.due_date.getMonth() + 1).padStart(2, '0')}-${String(i.due_date.getDate()).padStart(2, '0')}`
+          : String(i.due_date).slice(0, 10);
+        return iDate === matchDateStr;
+      });
+      if (matchIdx > -1) {
+        const matched = targetInstallments.splice(matchIdx, 1)[0];
+        targetInstallments.unshift(matched);
+      }
+    }
+
+    for (const inst of targetInstallments) {
       if (unallocatedAmount <= 0) break;
 
       const instDue = parseFloat(inst.outstanding_amount);
@@ -99,9 +173,9 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
 
       await conn.query(
         `UPDATE loan_installments 
-         SET paid_amount = ?, outstanding_amount = ?, status = ?, paid_at = CASE WHEN ? = 'PAID' THEN NOW() ELSE paid_at END
+         SET paid_amount = ?, outstanding_amount = ?, status = ?, paid_at = CASE WHEN ? = 'PAID' THEN ? ELSE paid_at END
          WHERE id = ?`,
-        [newPaid, newOutstanding, newStatus, newStatus, inst.id]
+        [newPaid, newOutstanding, newStatus, newStatus, effectivePaymentDate, inst.id]
       );
 
       // Record payment allocation
@@ -139,7 +213,7 @@ async function recordPayment({ loanId, amount, paymentMethod, fundAccountId, ref
     }
 
     // 5. Inflow into Central Fund Ledger (Pooled circulation)
-    const targetAccountId = fundAccountId || 1;
+    const targetAccountId = await resolveFundAccountId(conn, orgId, branchId, fundAccountId);
 
     if (totalPrincipalAllocated > 0) {
       await conn.query(
@@ -341,12 +415,13 @@ async function reversePayment({ paymentId, reason, userId }) {
     // 5. Post counter-entries in Central Fund Ledger (OUT)
     const orgId = payment.organization_id || loan?.organization_id || 1;
     const branchId = payment.branch_id || loan?.branch_id || 1;
+    const revAccountId = await resolveFundAccountId(conn, orgId, branchId, null);
     const revTxNum = `TX-REV-${payment.payment_number}`;
     await conn.query(
       `INSERT INTO fund_transactions
        (organization_id, transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
-       VALUES (?, ?, 1, NOW(), 'REVERSAL', 'OUT', ?, 'PAYMENT_REVERSAL', ?, ?, ?)`,
-      [orgId, revTxNum, payment.amount, paymentId, `Reversal of payment ${payment.payment_number}: ${reason}`, userId]
+       VALUES (?, ?, ?, NOW(), 'REVERSAL', 'OUT', ?, 'PAYMENT_REVERSAL', ?, ?, ?)`,
+      [orgId, revTxNum, revAccountId, payment.amount, paymentId, `Reversal of payment ${payment.payment_number}: ${reason}`, userId]
     );
 
     // 6. Reverse Journal Entry

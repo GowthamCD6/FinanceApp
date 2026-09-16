@@ -21,6 +21,8 @@ const pool = mysql.createPool({
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   decimalNumbers: true,
+  dateStrings: true,
+  timezone: '+00:00',
 });
 
 /**

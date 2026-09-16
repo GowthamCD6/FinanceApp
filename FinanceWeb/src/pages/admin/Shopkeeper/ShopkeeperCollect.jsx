@@ -20,6 +20,7 @@ import {
   Phone,
   MapPin,
   ArrowRight,
+  AlertTriangle,
 } from 'lucide-react';
 
 export const ShopkeeperCollect = () => {
@@ -51,27 +52,201 @@ export const ShopkeeperCollect = () => {
   const getOrgPath = (sub) => (activeOrg ? `/org/${activeOrg.id}/${sub}` : `/admin/${sub}`);
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
 
-  // Fast Date Steppers
+  // Helper to parse date to clean YYYY-MM-DD string
+  const toCleanIsoDate = (val, fallback = null) => {
+    if (!val) return fallback;
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return fallback;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    } catch (e) {
+      return fallback;
+    }
+  };
+
+  const activeLoans = shop?.loans || shop?.active_loans || [];
+
+  // Helper to generate day-wise installment logs for a loan card (with OVERDUE detection)
+  const getLoanInstallments = (loan) => {
+    if (!loan) return [];
+
+    const todayStr = toCleanIsoDate(new Date());
+
+    // If backend returned real installments, use them but add overdue logic
+    if (Array.isArray(loan.installments) && loan.installments.length > 0) {
+      return loan.installments.map((inst) => {
+        let status = inst.status;
+        const dueStr = toCleanIsoDate(inst.due_date);
+        let daysOverdue = 0;
+
+        if (status !== 'PAID' && dueStr && dueStr < todayStr) {
+          status = 'OVERDUE';
+          daysOverdue = Math.max(1, Math.floor((new Date(todayStr) - new Date(dueStr)) / 86400000));
+        } else if (status !== 'PAID' && dueStr === todayStr) {
+          status = 'TODAY_DUE';
+        }
+        return { ...inst, due_date: dueStr, status, days_overdue: daysOverdue };
+      });
+    }
+
+    const total = loan.total_installments || 25;
+    const paidCount = loan.paid_installments || 0;
+    const dailyAmt = loan.installment_amount || loan.daily_due || 900;
+    const baseDateStr = toCleanIsoDate(loan.first_due_date || loan.start_date || loan.issue_date, '2026-09-01');
+    const baseDate = new Date(baseDateStr);
+
+    const list = [];
+    for (let i = 1; i <= total; i++) {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + (i - 1));
+      const dateStr = toCleanIsoDate(d);
+
+      let status = 'PENDING';
+      let paidAmt = 0;
+      let paidAt = null;
+      let receiptNo = null;
+      let mode = 'UPI';
+      let daysOverdue = 0;
+
+      if (i <= paidCount) {
+        status = 'PAID';
+        paidAmt = dailyAmt;
+        paidAt = dateStr;
+        receiptNo = `REC-DLY-${104800 + i}`;
+        mode = i % 2 === 0 ? 'CASH' : 'UPI';
+      } else if (dateStr === todayStr) {
+        status = 'TODAY_DUE';
+      } else if (dateStr < todayStr) {
+        status = 'OVERDUE';
+        daysOverdue = Math.max(1, Math.floor((new Date(todayStr) - new Date(dateStr)) / 86400000));
+      }
+
+      list.push({
+        day_number: i,
+        due_date: dateStr,
+        amount: dailyAmt,
+        paid_amount: paidAmt,
+        status,
+        days_overdue: daysOverdue,
+        paid_date: paidAt,
+        receipt_no: receiptNo,
+        payment_mode: mode,
+        remaining_after: Math.max(0, (total - i) * dailyAmt),
+      });
+    }
+
+    return list;
+  };
+
+  // Check whether a specific loan is already PAID on the currently selected date
+  const isLoanPaidOnDate = (loan, targetDate) => {
+    if (!loan || !targetDate) return false;
+    const installments = getLoanInstallments(loan);
+    const matched = installments.find((inst) => inst.due_date === targetDate);
+    if (matched) {
+      return matched.status === 'PAID';
+    }
+    return false;
+  };
+
+  // Compute loan date bounds (minDate & maxDate) dynamically from SELECTED card(s)
+  // minDate is the FIRST scheduled installment due date, and maxDate is the LAST installment due date!
+  const loanDateBounds = (() => {
+    if (activeLoans.length === 0) return { minDate: null, maxDate: null };
+
+    // Use selected loans; if none selected, fallback to all active loans
+    const selectedList = activeLoans.filter((l) => selectedLoans[l.id]);
+    const relevantLoans = selectedList.length > 0 ? selectedList : activeLoans;
+
+    let minDate = null;
+    let maxDate = null;
+
+    relevantLoans.forEach((l) => {
+      const installments = getLoanInstallments(l);
+      const firstDue = installments.length > 0 ? installments[0].due_date : (l.first_due_date || l.start_date || l.issue_date);
+      const lastDue = installments.length > 0 ? installments[installments.length - 1].due_date : (l.last_due_date || l.maturity_date || l.end_date);
+
+      const startStr = toCleanIsoDate(firstDue);
+      const endStr = toCleanIsoDate(lastDue);
+
+      if (startStr) {
+        if (!minDate || startStr < minDate) minDate = startStr;
+      }
+      if (endStr) {
+        if (!maxDate || endStr > maxDate) maxDate = endStr;
+      }
+    });
+
+    return { minDate, maxDate };
+  })();
+
+  // Clamp a date string within the current loan bounds
+  const clampDate = (dateStr) => {
+    if (!dateStr) return dateStr;
+    if (loanDateBounds.minDate && dateStr < loanDateBounds.minDate) return loanDateBounds.minDate;
+    if (loanDateBounds.maxDate && dateStr > loanDateBounds.maxDate) return loanDateBounds.maxDate;
+    return dateStr;
+  };
+
+  // Adjust collectionDate when selected loans change or shop loads so date is within valid bounds
+  useEffect(() => {
+    if (loanDateBounds.minDate && loanDateBounds.maxDate) {
+      setCollectionDate((cur) => {
+        if (!cur) return loanDateBounds.minDate;
+        if (cur < loanDateBounds.minDate) return loanDateBounds.minDate;
+        if (cur > loanDateBounds.maxDate) return loanDateBounds.maxDate;
+        return cur;
+      });
+    }
+  }, [selectedLoans, loanDateBounds.minDate, loanDateBounds.maxDate]);
+
+  // When shop data loads, default to the earliest pending installment due date if not passed from navigation
+  useEffect(() => {
+    if (activeLoans.length > 0 && !location.state?.selectedDate) {
+      let earliestPending = null;
+      activeLoans.forEach((l) => {
+        const insts = getLoanInstallments(l);
+        const pendingInst = insts.find((i) => i.status !== 'PAID');
+        const candidate = pendingInst ? pendingInst.due_date : insts[0]?.due_date;
+        if (candidate && (!earliestPending || candidate < earliestPending)) {
+          earliestPending = candidate;
+        }
+      });
+      if (earliestPending) {
+        setCollectionDate(earliestPending);
+      }
+    }
+  }, [shop?.id]);
+
+  // Fast Date Steppers (clamped to loan tenure)
   const handlePrevDay = () => {
     const d = new Date(collectionDate);
     d.setDate(d.getDate() - 1);
-    setCollectionDate(d.toISOString().slice(0, 10));
+    const newDate = toCleanIsoDate(d);
+    setCollectionDate(clampDate(newDate));
   };
 
   const handleNextDay = () => {
     const d = new Date(collectionDate);
     d.setDate(d.getDate() + 1);
-    setCollectionDate(d.toISOString().slice(0, 10));
+    const newDate = toCleanIsoDate(d);
+    setCollectionDate(clampDate(newDate));
   };
 
   const handleSetToday = () => {
-    setCollectionDate(new Date().toISOString().slice(0, 10));
+    const todayStr = toCleanIsoDate(new Date());
+    setCollectionDate(clampDate(todayStr));
   };
 
   const handleSetYesterday = () => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    setCollectionDate(d.toISOString().slice(0, 10));
+    const yesterdayStr = toCleanIsoDate(d);
+    setCollectionDate(clampDate(yesterdayStr));
   };
 
   // Initialize selected loans when shop data is loaded
@@ -89,12 +264,11 @@ export const ShopkeeperCollect = () => {
     }
   };
 
-  const fetchShopData = async (targetDate = collectionDate) => {
+  const fetchShopData = async (isInitial = true) => {
     if (!shopId) return;
-    setLoading(true);
+    if (isInitial && !shop) setLoading(true);
     try {
       const shops = await api.getShopkeepers({
-        date: targetDate,
         ...(activeOrg ? { organizationId: activeOrg.id } : {}),
       });
       const found = Array.isArray(shops)
@@ -129,15 +303,14 @@ export const ShopkeeperCollect = () => {
     } catch (err) {
       console.error('Error retrieving merchant collection record:', err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
+  // Only fetch initial data on mount or customer change — NOT on collectionDate changes!
   useEffect(() => {
-    fetchShopData(collectionDate);
-  }, [shopId, activeOrg?.id, collectionDate]);
-
-  const activeLoans = shop?.loans || shop?.active_loans || [];
+    fetchShopData(true);
+  }, [shopId, activeOrg?.id]);
 
   // Toggle selection of a loan
   const toggleLoanSelection = (loanId) => {
@@ -153,78 +326,28 @@ export const ShopkeeperCollect = () => {
     setModalFilterStatus('ALL');
   };
 
-  // Helper to generate day-wise installment logs for a loan card
-  const getLoanInstallments = (loan) => {
-    if (!loan) return [];
 
-    if (Array.isArray(loan.installments) && loan.installments.length > 0) {
-      return loan.installments;
-    }
 
-    const total = loan.total_installments || 25;
-    const paidCount = loan.paid_installments || 9;
-    const dailyAmt = loan.installment_amount || loan.daily_due || 900;
-    const baseDate = new Date(loan.issue_date || '2026-09-01');
+  // Check whether any active loan has a scheduled installment on the selected date
+  const hasScheduledInstallmentOnDate = activeLoans.some((l) => {
+    const insts = getLoanInstallments(l);
+    return insts.some((i) => i.due_date === collectionDate);
+  });
 
-    const list = [];
-    for (let i = 1; i <= total; i++) {
-      const d = new Date(baseDate);
-      d.setDate(d.getDate() + (i - 1));
-      const dateStr = d.toISOString().slice(0, 10);
-      const isDateToday = dateStr === collectionDate;
+  // Check whether all active loans are paid for the selected date (only true if there was actually an installment scheduled!)
+  const isAllPaidForDate = hasScheduledInstallmentOnDate && activeLoans.every((l) => isLoanPaidOnDate(l, collectionDate));
 
-      let status = 'PENDING';
-      let paidAmt = 0;
-      let paidAt = null;
-      let receiptNo = null;
-      let mode = 'UPI';
-
-      if (i <= paidCount) {
-        status = 'PAID';
-        paidAmt = dailyAmt;
-        paidAt = dateStr;
-        receiptNo = `REC-DLY-${104800 + i}`;
-        mode = i % 2 === 0 ? 'CASH' : 'UPI';
-      } else if (isDateToday) {
-        status = 'TODAY_DUE';
-      }
-
-      list.push({
-        day_number: i,
-        due_date: dateStr,
-        amount: dailyAmt,
-        paid_amount: paidAmt,
-        status,
-        paid_date: paidAt,
-        receipt_no: receiptNo,
-        payment_mode: mode,
-        remaining_after: Math.max(0, (total - i) * dailyAmt),
-      });
-    }
-
-    return list;
-  };
-
-  // Check whether a specific loan is already PAID on the currently selected date
-  const isLoanPaidOnDate = (loan, targetDate) => {
-    if (!loan) return false;
-    const installments = getLoanInstallments(loan);
-    const matched = installments.find((inst) => inst.due_date === targetDate);
-    if (matched) {
-      return matched.status === 'PAID';
-    }
-    const baseDate = new Date(loan.issue_date || '2026-09-01');
-    const checkDate = new Date(targetDate);
-    const diffDays = Math.floor((checkDate - baseDate) / (1000 * 60 * 60 * 24)) + 1;
-    const paidCount = loan.paid_installments || 9;
-    return diffDays <= paidCount;
-  };
-
-  // Check whether all active loans are paid for the selected date
-  const isAllPaidForDate = activeLoans.length > 0 && activeLoans.every((l) => isLoanPaidOnDate(l, collectionDate));
+  // Check whether collectionDate is before the loan repayment tenure begins
+  const isBeforeLoanTenure = Boolean(loanDateBounds.minDate && collectionDate < loanDateBounds.minDate);
 
   // Filter only payable loans (not yet paid on this date) that are selected
-  const payableSelectedLoans = activeLoans.filter((l) => selectedLoans[l.id] && !isLoanPaidOnDate(l, collectionDate));
+  const payableSelectedLoans = activeLoans.filter((l) => {
+    if (!selectedLoans[l.id]) return false;
+    const insts = getLoanInstallments(l);
+    const matched = insts.find((i) => i.due_date === collectionDate);
+    if (matched) return matched.status !== 'PAID';
+    return !isLoanPaidOnDate(l, collectionDate);
+  });
 
   // Calculate total selected payable sum
   const totalPayableAmount = payableSelectedLoans.reduce((sum, l) => {
@@ -234,6 +357,31 @@ export const ShopkeeperCollect = () => {
 
   // Total daily due for this merchant across all active loans
   const totalCombinedDailyDue = activeLoans.reduce((sum, l) => sum + Number(l.installment_amount || l.daily_due || 900), 0);
+
+  // Compute overdue summary across selected or active loans
+  const overdueSummary = (() => {
+    const selectedList = activeLoans.filter((l) => selectedLoans[l.id]);
+    const relevant = selectedList.length > 0 ? selectedList : activeLoans;
+
+    let overdueCount = 0;
+    let overdueTotalAmount = 0;
+    let earliestOverdueDate = null;
+
+    relevant.forEach((loan) => {
+      const installments = getLoanInstallments(loan);
+      installments.forEach((inst) => {
+        if (inst.status === 'OVERDUE') {
+          overdueCount++;
+          overdueTotalAmount += Number(inst.amount || loan.installment_amount || 900);
+          if (!earliestOverdueDate || inst.due_date < earliestOverdueDate) {
+            earliestOverdueDate = inst.due_date;
+          }
+        }
+      });
+    });
+
+    return { overdueCount, overdueTotalAmount, earliestOverdueDate };
+  })();
 
   // Handle Simultaneous Payment Submission
   const handleSubmitPayment = async (e) => {
@@ -250,7 +398,8 @@ export const ShopkeeperCollect = () => {
           shop.id,
           loan.loan_code,
           paymentMode,
-          amt
+          amt,
+          collectionDate
         );
         const receiptNo = res?.paymentNumber || res?.receipt_no || res?.receiptNumber || `REC-DLY-${Date.now().toString().slice(-6)}`;
         collectedItems.push({
@@ -267,6 +416,7 @@ export const ShopkeeperCollect = () => {
         shop_name: shop.shop_name || shop.name,
         owner_name: shop.owner_name || shop.name,
         customer_code: shop.customer_code,
+        phone: shop.phone,
         stall_no: shop.stall_no,
         market_location: shop.market_location,
         total_collected: totalPayableAmount,
@@ -275,6 +425,9 @@ export const ShopkeeperCollect = () => {
         timestamp: new Date().toLocaleString('en-IN'),
         items: collectedItems,
       });
+
+      // Silently refresh customer and loan data so the updated installment state is fresh
+      fetchShopData(false);
     } catch (err) {
       alert('Failed to record payment: ' + (err.message || err));
     } finally {
@@ -368,50 +521,82 @@ export const ShopkeeperCollect = () => {
               border: '1px solid #E2E8F0',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Receipt Number:</span>
-              <strong style={{ color: 'var(--primary)', fontSize: '0.92rem', fontWeight: 800 }}>
-                {receiptData.receipt_master_no}
-              </strong>
+            {/* Header / Receipt Meta */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid #E2E8F0' }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Receipt Reference</span>
+                <strong style={{ color: 'var(--primary)', fontSize: '1rem', fontWeight: 900, display: 'block' }}>
+                  {receiptData.receipt_master_no}
+                </strong>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Payment Mode</span>
+                <div>
+                  <span
+                    style={{
+                      color: '#065F46',
+                      background: '#D1FAE5',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      border: '1px solid #A7F3D0',
+                      display: 'inline-block',
+                      marginTop: 2,
+                    }}
+                  >
+                    {receiptData.payment_mode}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Store / Merchant:</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
-                {receiptData.shop_name} ({receiptData.customer_code})
-              </span>
+            {/* Merchant Details in Clean 2-Column Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>Merchant Name</span>
+                <div style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
+                  {receiptData.owner_name || receiptData.shop_name}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>Customer ID</span>
+                <div style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.88rem' }}>
+                  {receiptData.customer_code}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>Contact Number</span>
+                <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.88rem' }}>
+                  {receiptData.phone || 'N/A'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>Store & Stall</span>
+                <div style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.88rem' }}>
+                  {receiptData.shop_name} {receiptData.stall_no ? `• ${receiptData.stall_no}` : ''}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>Route / Location</span>
+                <div style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>
+                  {receiptData.market_location || 'Saidapet Bazaar Route'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>Date & Timestamp</span>
+                <div style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.82rem' }}>
+                  {receiptData.collection_date} • {receiptData.timestamp}
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Proprietor & Location:</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
-                {receiptData.owner_name} • {receiptData.stall_no} • {receiptData.market_location}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Payment Mode:</span>
-              <span
-                style={{
-                  color: '#065F46',
-                  background: '#D1FAE5',
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontWeight: 800,
-                  fontSize: '0.8rem',
-                  border: '1px solid #A7F3D0',
-                }}
-              >
-                {receiptData.payment_mode}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Date & Timestamp:</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{receiptData.collection_date} • {receiptData.timestamp}</span>
-            </div>
-
-            <hr style={{ borderColor: '#E2E8F0', margin: '0.75rem 0' }} />
+            <hr style={{ borderColor: '#E2E8F0', margin: '0.85rem 0' }} />
 
             {/* Loan Card Breakdown Table */}
             <div style={{ marginBottom: '0.85rem' }}>
@@ -463,7 +648,7 @@ export const ShopkeeperCollect = () => {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
               className="btn btn-secondary"
               onClick={() => window.print()}
@@ -473,10 +658,21 @@ export const ShopkeeperCollect = () => {
             </button>
             <button
               className="btn btn-primary"
-              onClick={() => navigate(getOrgPath('shopkeepers'))}
-              style={{ padding: '0.7rem 1.35rem', fontWeight: 800 }}
+              onClick={() => {
+                setReceiptData(null);
+                fetchShopData(false);
+              }}
+              style={{ padding: '0.7rem 1.45rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
-              Back to Daily Merchants
+              <ArrowLeft size={16} />
+              <span>Back to Collection Form</span>
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(getOrgPath('shopkeepers'))}
+              style={{ padding: '0.7rem 1.15rem', fontWeight: 600, fontSize: '0.85rem' }}
+            >
+              All Merchants
             </button>
           </div>
         </div>
@@ -632,22 +828,28 @@ export const ShopkeeperCollect = () => {
                 Active Daily Loan Cards ({activeLoans.length})
               </h3>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Click card to open Daily Log Modal
+                Click card to select for collection
               </span>
             </div>
 
             {activeLoans.map((loan, idx) => {
               const isSelected = !!selectedLoans[loan.id];
-              const totalDays = loan.total_installments || 25;
-              const paidDays = loan.paid_installments || 0;
+              const loanInstallments = getLoanInstallments(loan);
+              const paidInstallmentsList = loanInstallments.filter((inst) => inst.status === 'PAID');
+              const paidDays = paidInstallmentsList.length;
+              const totalDays = loanInstallments.length || loan.total_installments || 100;
               const progressPct = totalDays > 0 ? Math.round((paidDays / totalDays) * 100) : 0;
               const isPaidForToday = isLoanPaidOnDate(loan, collectionDate);
+
+              // Calculate overdue count: how many unpaid installments are past due
+              const overdueCount = loanInstallments.filter((inst) => inst.status === 'OVERDUE').length;
+              const isOverdue = overdueCount > 0;
 
               return (
                 <div
                   key={loan.id || idx}
                   className="card"
-                  onClick={() => handleOpenLoanModal(loan)}
+                  onClick={() => toggleLoanSelection(loan.id)}
                   style={{
                     padding: '1.25rem 1.4rem',
                     border: `1.5px solid ${isPaidForToday ? '#A7F3D0' : isSelected ? 'var(--primary)' : '#E2E8F0'}`,
@@ -722,6 +924,26 @@ export const ShopkeeperCollect = () => {
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                           Issued: {loan.issue_date || '2026-09-01'} • Maturity: {loan.maturity_date || '2026-09-26'}
                         </span>
+                        {isOverdue && (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              color: '#991B1B',
+                              background: '#FEE2E2',
+                              border: '1px solid #FECACA',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: 5,
+                              marginTop: 2,
+                              animation: 'pulse 2s infinite',
+                            }}
+                          >
+                            <AlertTriangle size={12} /> {overdueCount} OVERDUE
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -756,13 +978,21 @@ export const ShopkeeperCollect = () => {
                     <div>
                       <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Total Repayable</span>
                       <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
-                        {formatCurrency(loan.total_repayment_amount || loan.principal * 1.125)}
+                        {formatCurrency(loan.total_repayment_amount || (loan.principal + (loan.principal * (loan.interest_rate || 0) / 100)))}
                       </strong>
                     </div>
                     <div>
                       <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Remaining Balance</span>
                       <strong style={{ color: '#D97706', fontWeight: 900 }}>
-                        {formatCurrency(loan.remaining_balance)}
+                        {formatCurrency(
+                          loan.remaining_balance != null
+                            ? loan.remaining_balance
+                            : Math.max(
+                                0,
+                                (loan.total_repayment_amount || (loan.principal + (loan.principal * (loan.interest_rate || 0) / 100))) -
+                                  paidInstallmentsList.reduce((acc, i) => acc + Number(i.paid_amount || loan.installment_amount || 0), 0)
+                              )
+                        )}
                       </strong>
                     </div>
                   </div>
@@ -823,38 +1053,89 @@ export const ShopkeeperCollect = () => {
                     </button>
 
                     {/* Status Pill for the currently selected date */}
-                    {isPaidForToday ? (
-                      <span
-                        style={{
-                          fontSize: '0.74rem',
-                          fontWeight: 800,
-                          color: '#065F46',
-                          background: '#D1FAE5',
-                          border: '1px solid #A7F3D0',
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: 6,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}
-                      >
-                        <CheckCircle2 size={13} color="#059669" /> Paid for {collectionDate}
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: '0.74rem',
-                          fontWeight: 800,
-                          color: '#92400E',
-                          background: '#FEF3C7',
-                          border: '1px solid #FDE68A',
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: 6,
-                        }}
-                      >
-                        Due on {collectionDate}: {formatCurrency(loan.installment_amount || loan.daily_due)}
-                      </span>
-                    )}
+                    {(() => {
+                      const firstLoanDue = loanInstallments.length > 0 ? loanInstallments[0].due_date : loan.issue_date;
+                      const isBeforeThisLoanTenure = Boolean(firstLoanDue && collectionDate < firstLoanDue);
+
+                      if (isPaidForToday) {
+                        return (
+                          <span
+                            style={{
+                              fontSize: '0.74rem',
+                              fontWeight: 800,
+                              color: '#065F46',
+                              background: '#D1FAE5',
+                              border: '1px solid #A7F3D0',
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <CheckCircle2 size={13} color="#059669" /> Paid for {collectionDate}
+                          </span>
+                        );
+                      }
+
+                      if (isBeforeThisLoanTenure) {
+                        return (
+                          <span
+                            style={{
+                              fontSize: '0.74rem',
+                              fontWeight: 800,
+                              color: '#1E40AF',
+                              background: '#DBEAFE',
+                              border: '1px solid #BFDBFE',
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <Clock size={13} color="#2563EB" /> Starts {firstLoanDue}
+                          </span>
+                        );
+                      }
+
+                      if (isOverdue) {
+                        return (
+                          <span
+                            style={{
+                              fontSize: '0.74rem',
+                              fontWeight: 800,
+                              color: '#991B1B',
+                              background: '#FEE2E2',
+                              border: '1px solid #FECACA',
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <AlertTriangle size={13} color="#DC2626" /> {overdueCount} Overdue — {formatCurrency(loan.installment_amount || loan.daily_due)}/day
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <span
+                          style={{
+                            fontSize: '0.74rem',
+                            fontWeight: 800,
+                            color: '#92400E',
+                            background: '#FEF3C7',
+                            border: '1px solid #FDE68A',
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: 6,
+                          }}
+                        >
+                          Due on {collectionDate}: {formatCurrency(loan.installment_amount || loan.daily_due)}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -912,6 +1193,7 @@ export const ShopkeeperCollect = () => {
                   className="btn btn-secondary"
                   onClick={handlePrevDay}
                   title="Previous Day"
+                  disabled={Boolean(loanDateBounds.minDate && collectionDate <= loanDateBounds.minDate)}
                   style={{
                     padding: '0.55rem 0.75rem',
                     display: 'flex',
@@ -919,6 +1201,8 @@ export const ShopkeeperCollect = () => {
                     justifyContent: 'center',
                     borderRadius: 8,
                     border: '1.5px solid #E2E8F0',
+                    opacity: loanDateBounds.minDate && collectionDate <= loanDateBounds.minDate ? 0.45 : 1,
+                    cursor: loanDateBounds.minDate && collectionDate <= loanDateBounds.minDate ? 'not-allowed' : 'pointer',
                   }}
                 >
                   <ChevronLeft size={18} />
@@ -928,7 +1212,9 @@ export const ShopkeeperCollect = () => {
                   type="date"
                   className="form-input"
                   value={collectionDate}
-                  onChange={(e) => setCollectionDate(e.target.value)}
+                  min={loanDateBounds.minDate || undefined}
+                  max={loanDateBounds.maxDate || undefined}
+                  onChange={(e) => setCollectionDate(clampDate(e.target.value))}
                   required
                   style={{
                     fontWeight: 800,
@@ -937,6 +1223,7 @@ export const ShopkeeperCollect = () => {
                     padding: '0.55rem 0.75rem',
                     borderRadius: 8,
                     border: '1.5px solid #CBD5E1',
+                    flex: 1,
                   }}
                 />
 
@@ -945,6 +1232,7 @@ export const ShopkeeperCollect = () => {
                   className="btn btn-secondary"
                   onClick={handleNextDay}
                   title="Next Day"
+                  disabled={Boolean(loanDateBounds.maxDate && collectionDate >= loanDateBounds.maxDate)}
                   style={{
                     padding: '0.55rem 0.75rem',
                     display: 'flex',
@@ -952,15 +1240,137 @@ export const ShopkeeperCollect = () => {
                     justifyContent: 'center',
                     borderRadius: 8,
                     border: '1.5px solid #E2E8F0',
+                    opacity: loanDateBounds.maxDate && collectionDate >= loanDateBounds.maxDate ? 0.45 : 1,
+                    cursor: loanDateBounds.maxDate && collectionDate >= loanDateBounds.maxDate ? 'not-allowed' : 'pointer',
                   }}
                 >
                   <ChevronRight size={18} />
                 </button>
               </div>
+
+              {/* Date range indicator placed neatly below the buttons */}
+              {loanDateBounds.minDate && loanDateBounds.maxDate && (
+                <div
+                  style={{
+                    marginTop: '0.45rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: '#F8FAFC',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Loan Tenure:
+                  </span>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--primary)', fontWeight: 800 }}>
+                    {loanDateBounds.minDate} to {loanDateBounds.maxDate}
+                  </span>
+                </div>
+              )}
+
+              {/* Overdue alert notice if any unpaid days are past due */}
+              {overdueSummary.overdueCount > 0 && (
+                <div
+                  style={{
+                    marginTop: '0.75rem',
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderRadius: 8,
+                    padding: '0.65rem 0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <AlertTriangle size={15} color="#DC2626" />
+                    <span style={{ fontSize: '0.76rem', color: '#991B1B', fontWeight: 700 }}>
+                      {overdueSummary.overdueCount} missed day{overdueSummary.overdueCount > 1 ? 's' : ''} ({formatCurrency(overdueSummary.overdueTotalAmount)})
+                    </span>
+                  </div>
+                  {overdueSummary.earliestOverdueDate && collectionDate !== overdueSummary.earliestOverdueDate && (
+                    <button
+                      type="button"
+                      onClick={() => setCollectionDate(overdueSummary.earliestOverdueDate)}
+                      style={{
+                        background: '#DC2626',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: 5,
+                        padding: '3px 8px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Collect Overdue ({overdueSummary.earliestOverdueDate})
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* CONDITIONAL DISPLAY: IF ALREADY PAID FOR THIS DATE VS PAYABLE FORM */}
-            {isAllPaidForDate ? (
+            {/* CONDITIONAL DISPLAY: IF BEFORE LOAN START VS ALREADY PAID FOR THIS DATE VS PAYABLE FORM */}
+            {isBeforeLoanTenure ? (
+              <div
+                style={{
+                  background: '#EFF6FF',
+                  borderRadius: 12,
+                  padding: '1.75rem 1.25rem',
+                  textAlign: 'center',
+                  border: '1.5px solid #BFDBFE',
+                  marginTop: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: 54,
+                    height: 54,
+                    borderRadius: '50%',
+                    background: '#DBEAFE',
+                    color: '#2563EB',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 1rem auto',
+                    border: '2px solid #93C5FD',
+                  }}
+                >
+                  <Clock size={32} />
+                </div>
+
+                <h4 style={{ margin: '0 0 0.35rem 0', color: '#1E40AF', fontSize: '1.15rem', fontWeight: 900 }}>
+                  Repayment Begins on {loanDateBounds.minDate}
+                </h4>
+                <p style={{ color: '#1E3A8A', fontSize: '0.85rem', margin: '0 0 1.25rem 0', fontWeight: 600 }}>
+                  Selected date ({collectionDate}) is before the first scheduled installment due date. Day 1 collection starts on <strong>{loanDateBounds.minDate}</strong>.
+                </p>
+
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setCollectionDate(loanDateBounds.minDate)}
+                    style={{ fontSize: '0.8rem', fontWeight: 800, padding: '0.45rem 1rem' }}
+                  >
+                    Go to Day 1 ({loanDateBounds.minDate}) →
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setActiveTab('SCHEDULE')}
+                    style={{ fontSize: '0.8rem', fontWeight: 700, padding: '0.45rem 0.85rem' }}
+                  >
+                    View Ledger
+                  </button>
+                </div>
+              </div>
+            ) : isAllPaidForDate ? (
               <div
                 style={{
                   background: '#F0FDF4',
@@ -1190,9 +1600,10 @@ export const ShopkeeperCollect = () => {
                     {getLoanInstallments(currentScheduleLoan).map((inst, i) => {
                       const isPaid = inst.status === 'PAID';
                       const isTodayDue = inst.status === 'TODAY_DUE';
+                      const isOverdueInst = inst.status === 'OVERDUE';
 
                       return (
-                        <tr key={i}>
+                        <tr key={i} style={{ background: isOverdueInst ? '#FFF5F5' : undefined }}>
                           <td>
                             <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
                               Day {inst.day_number || inst.installment_number || i + 1}
@@ -1218,20 +1629,27 @@ export const ShopkeeperCollect = () => {
                               style={{
                                 background: isPaid
                                   ? '#D1FAE5'
-                                  : isTodayDue
-                                    ? '#FEF3C7'
-                                    : '#F1F5F9',
+                                  : isOverdueInst
+                                    ? '#FEE2E2'
+                                    : isTodayDue
+                                      ? '#FEF3C7'
+                                      : '#F1F5F9',
                                 color: isPaid
                                   ? '#065F46'
-                                  : isTodayDue
-                                    ? '#92400E'
-                                    : 'var(--text-muted)',
-                                border: `1px solid ${isPaid ? '#A7F3D0' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
+                                  : isOverdueInst
+                                    ? '#991B1B'
+                                    : isTodayDue
+                                      ? '#92400E'
+                                      : 'var(--text-muted)',
+                                border: `1px solid ${isPaid ? '#A7F3D0' : isOverdueInst ? '#FECACA' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
                                 fontWeight: 800,
                                 fontSize: '0.72rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              {isPaid ? 'PAID' : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
+                              {isPaid ? 'PAID' : isOverdueInst ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                             </span>
                           </td>
                           <td>
@@ -1363,65 +1781,88 @@ export const ShopkeeperCollect = () => {
 
             {/* Modal Body */}
             <div style={{ padding: '1.25rem 1.5rem' }}>
-              {/* 4-Stat Box Strip */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                  gap: '0.75rem',
-                  marginBottom: '1.25rem',
-                }}
-              >
-                <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Daily Installment</span>
-                  <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--primary)' }}>
-                    {formatCurrency(selectedLoanForModal.installment_amount || selectedLoanForModal.daily_due)}
-                  </strong>
-                </div>
+              {(() => {
+                const totalRepay = Number(
+                  selectedLoanForModal.total_repayment_amount ||
+                    (selectedLoanForModal.principal + (selectedLoanForModal.principal * (selectedLoanForModal.interest_rate || 0)) / 100)
+                );
+                const insts = getLoanInstallments(selectedLoanForModal);
+                const paidList = insts.filter((i) => i.status === 'PAID');
+                const paidCount = paidList.length;
+                const totalCount = insts.length || Number(selectedLoanForModal.total_installments || 100);
+                const dailyAmt = Number(selectedLoanForModal.installment_amount || selectedLoanForModal.daily_due || 125);
+                const paidAmount = paidList.reduce((acc, i) => acc + Number(i.paid_amount || dailyAmt), 0);
+                const remainingBal = Number(
+                  selectedLoanForModal.remaining_balance != null
+                    ? selectedLoanForModal.remaining_balance
+                    : Math.max(0, totalRepay - paidAmount)
+                );
+                const progressPct = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
 
-                <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Total Repayable</span>
-                  <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)' }}>
-                    {formatCurrency(selectedLoanForModal.total_repayment_amount || selectedLoanForModal.principal * 1.125)}
-                  </strong>
-                </div>
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: '0.75rem',
+                        marginBottom: '1.25rem',
+                      }}
+                    >
+                      <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Daily Installment</span>
+                        <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--primary)' }}>
+                          {formatCurrency(dailyAmt)}
+                        </strong>
+                      </div>
 
-                <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Paid Amount</span>
-                  <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: '#047857' }}>
-                    {formatCurrency((selectedLoanForModal.paid_installments || 9) * (selectedLoanForModal.installment_amount || 900))}
-                  </strong>
-                </div>
+                      <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Total Repayable</span>
+                        <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                          {formatCurrency(totalRepay)}
+                        </strong>
+                      </div>
 
-                <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Remaining Balance</span>
-                  <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: '#D97706' }}>
-                    {formatCurrency(selectedLoanForModal.remaining_balance)}
-                  </strong>
-                </div>
-              </div>
+                      <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Paid Amount</span>
+                        <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: '#047857' }}>
+                          {formatCurrency(paidAmount)}
+                        </strong>
+                      </div>
 
-              {/* Progress Bar Strip */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 5 }}>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
-                    Installment Recovery Progress:
-                  </span>
-                  <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
-                    Day {selectedLoanForModal.paid_installments || 9} of {selectedLoanForModal.total_installments || 25} ({Math.round(((selectedLoanForModal.paid_installments || 9) / (selectedLoanForModal.total_installments || 25)) * 100)}%)
-                  </strong>
-                </div>
-                <div style={{ width: '100%', height: 8, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      width: `${Math.round(((selectedLoanForModal.paid_installments || 9) / (selectedLoanForModal.total_installments || 25)) * 100)}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, #6366F1, #4F46E5)',
-                      borderRadius: 4,
-                    }}
-                  />
-                </div>
-              </div>
+                      <div style={{ background: '#F8FAFC', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Remaining Balance</span>
+                        <strong style={{ fontSize: '1.15rem', fontWeight: 900, color: '#D97706' }}>
+                          {formatCurrency(remainingBal)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Strip */}
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 5 }}>
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                          Installment Recovery Progress:
+                        </span>
+                        <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                          Day {paidCount} of {totalCount} ({progressPct}%)
+                        </strong>
+                      </div>
+                      <div style={{ width: '100%', height: 8, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            width: `${progressPct}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #6366F1, #4F46E5)',
+                            borderRadius: 4,
+                            transition: 'width 0.3s ease',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Filter Tabs */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
@@ -1463,15 +1904,16 @@ export const ShopkeeperCollect = () => {
                     {getLoanInstallments(selectedLoanForModal)
                       .filter((inst) => {
                         if (modalFilterStatus === 'PAID') return inst.status === 'PAID';
-                        if (modalFilterStatus === 'PENDING') return inst.status === 'PENDING' || inst.status === 'TODAY_DUE';
+                        if (modalFilterStatus === 'PENDING') return inst.status === 'PENDING' || inst.status === 'TODAY_DUE' || inst.status === 'OVERDUE';
                         return true;
                       })
                       .map((inst, idx) => {
                         const isPaid = inst.status === 'PAID';
                         const isTodayDue = inst.status === 'TODAY_DUE';
+                        const isOverdueModal = inst.status === 'OVERDUE';
 
                         return (
-                          <tr key={idx}>
+                          <tr key={idx} style={{ background: isOverdueModal ? '#FFF5F5' : undefined }}>
                             <td>
                               <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
                                 Day {inst.day_number}
@@ -1511,20 +1953,27 @@ export const ShopkeeperCollect = () => {
                                 style={{
                                   background: isPaid
                                     ? '#D1FAE5'
-                                    : isTodayDue
-                                      ? '#FEF3C7'
-                                      : '#F1F5F9',
+                                    : isOverdueModal
+                                      ? '#FEE2E2'
+                                      : isTodayDue
+                                        ? '#FEF3C7'
+                                        : '#F1F5F9',
                                   color: isPaid
                                     ? '#065F46'
-                                    : isTodayDue
-                                      ? '#92400E'
-                                      : 'var(--text-muted)',
-                                  border: `1px solid ${isPaid ? '#A7F3D0' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
+                                    : isOverdueModal
+                                      ? '#991B1B'
+                                      : isTodayDue
+                                        ? '#92400E'
+                                        : 'var(--text-muted)',
+                                  border: `1px solid ${isPaid ? '#A7F3D0' : isOverdueModal ? '#FECACA' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
                                   fontWeight: 800,
                                   fontSize: '0.7rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
                                 }}
                               >
-                                {isPaid ? 'PAID' : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
+                                {isPaid ? 'PAID' : isOverdueModal ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                               </span>
                             </td>
                             <td>
@@ -1539,6 +1988,8 @@ export const ShopkeeperCollect = () => {
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    if (inst.due_date) setCollectionDate(inst.due_date);
+                                    setSelectedLoans({ [selectedLoanForModal.id]: true });
                                     setSelectedLoanForModal(null);
                                     setActiveTab('COLLECT');
                                   }}
@@ -1547,17 +1998,17 @@ export const ShopkeeperCollect = () => {
                                     borderRadius: 6,
                                     fontSize: '0.72rem',
                                     fontWeight: 800,
-                                    background: 'var(--primary)',
+                                    background: isOverdueModal ? '#DC2626' : 'var(--primary)',
                                     color: '#FFFFFF',
                                     border: 'none',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: 4,
-                                    boxShadow: '0 1px 2px rgba(79, 70, 229, 0.2)',
+                                    boxShadow: isOverdueModal ? '0 1px 2px rgba(220, 38, 38, 0.3)' : '0 1px 2px rgba(79, 70, 229, 0.2)',
                                   }}
                                 >
-                                  <span>Pay</span>
+                                  <span>{isOverdueModal ? 'Pay Overdue' : 'Pay'}</span>
                                   <ArrowRight size={11} />
                                 </button>
                               )}
@@ -1607,6 +2058,7 @@ export const ShopkeeperCollect = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={() => {
+                    setSelectedLoans({ [selectedLoanForModal.id]: true });
                     setSelectedLoanForModal(null);
                     setActiveTab('COLLECT');
                   }}

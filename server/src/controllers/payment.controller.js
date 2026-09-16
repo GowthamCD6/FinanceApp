@@ -18,6 +18,8 @@ async function collectPayment(req, res) {
       fundAccountId,
       referenceNumber,
       notes,
+      collectionDate,
+      paymentDate,
     } = req.body;
 
     let targetLoanId = loanId || loan_id;
@@ -93,6 +95,8 @@ async function collectPayment(req, res) {
       referenceNumber,
       notes,
       collectorId: req.user?.id || 1,
+      collectionDate,
+      paymentDate,
     });
 
     return res.status(201).json({
