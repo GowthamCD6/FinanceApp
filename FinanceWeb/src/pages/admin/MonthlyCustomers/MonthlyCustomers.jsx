@@ -239,7 +239,7 @@ export const MonthlyCustomers = () => {
   const processedCustomers = useMemo(() => {
     return customers.map((c) => {
       const totalMonths = c.total_installments || 12;
-      const basePaidMonths = c.paid_installments || 4;
+      const basePaidMonths = typeof c.paid_installments === 'number' ? c.paid_installments : 0;
 
       // Adjust status dynamically based on selectedMonthOffset
       let effectiveStatus = c.current_month_status || 'PENDING';
@@ -298,11 +298,11 @@ export const MonthlyCustomers = () => {
 
   // Dynamic KPI Aggregations for the chosen billing month
   const totalBorrowers = customers.length;
-  const totalMonthlyTarget = customers.reduce((s, c) => s + (c.monthly_emi || 5000), 0);
+  const totalMonthlyTarget = customers.reduce((s, c) => s + (c.monthly_emi || c.active_loan?.installment_amount || 0), 0);
   const paidBorrowers = processedCustomers.filter(
     (c) => c.computedMonthStatus === 'PAID' || c.computedMonthStatus === 'COLLECTED'
   );
-  const collectedAmount = paidBorrowers.reduce((s, c) => s + (c.monthly_emi || 5000), 0);
+  const collectedAmount = paidBorrowers.reduce((s, c) => s + (c.monthly_emi || c.active_loan?.installment_amount || 0), 0);
   const pendingCount = totalBorrowers - paidBorrowers.length;
   const pendingAmount = Math.max(0, totalMonthlyTarget - collectedAmount);
   const overdueCount = processedCustomers.filter((c) => c.computedMonthStatus === 'OVERDUE').length;
@@ -332,12 +332,13 @@ export const MonthlyCustomers = () => {
   // Helper to generate full monthly schedule for a customer
   const getMonthlyInstallmentLogs = (cust) => {
     if (!cust) return [];
+    const loan = cust.active_loan || cust.loans?.[0];
     if (Array.isArray(cust.schedule) && cust.schedule.length > 0) {
       return cust.schedule.map((s, idx) => ({
         month_number: s.installment_no || idx + 1,
         due_date: s.due_date,
-        amount: s.amount || cust.monthly_emi || 5000,
-        paid_amount: s.status === 'PAID' ? s.amount || cust.monthly_emi || 5000 : 0,
+        amount: s.amount || cust.monthly_emi || loan?.installment_amount || 625,
+        paid_amount: s.status === 'PAID' ? (s.amount || cust.monthly_emi || loan?.installment_amount || 625) : 0,
         status: s.status,
         paid_date: s.status === 'PAID' ? s.due_date : null,
         receipt_no: s.receipt_no || (s.status === 'PAID' ? `REC-MTH-${cust.id}-${s.installment_no || idx + 1}` : null),
@@ -345,11 +346,12 @@ export const MonthlyCustomers = () => {
       }));
     }
 
-    const totalMonths = cust.total_installments || 12;
-    const paidMonths = cust.effectivePaidMonths || 4;
-    const monthlyEmi = cust.monthly_emi || 5000;
-    const baseDate = new Date();
-    baseDate.setMonth(baseDate.getMonth() - paidMonths);
+    const totalMonths = cust.total_installments || loan?.total_installments || 12;
+    const paidMonths = typeof cust.effectivePaidMonths === 'number'
+      ? cust.effectivePaidMonths
+      : (typeof cust.paid_installments === 'number' ? cust.paid_installments : 0);
+    const monthlyEmi = cust.monthly_emi || loan?.installment_amount || 625;
+    const baseDate = new Date(loan?.issue_date || '2026-09-15');
 
     const list = [];
     for (let m = 1; m <= totalMonths; m++) {
@@ -695,10 +697,12 @@ export const MonthlyCustomers = () => {
                 paginatedCustomers.map((cust) => {
                   const isPaid = cust.computedMonthStatus === 'PAID' || cust.computedMonthStatus === 'COLLECTED';
                   const isOverdue = cust.computedMonthStatus === 'OVERDUE';
-                  const totalMonths = cust.total_installments || 12;
-                  const paidMonths = cust.effectivePaidMonths || (isPaid ? 5 : 4);
-                  const monthlyEmi = cust.monthly_emi || 5000;
-                  const progressPct = Math.min(100, Math.round((paidMonths / totalMonths) * 100));
+                  const totalMonths = cust.total_installments || cust.active_loan?.total_installments || 12;
+                  const paidMonths = typeof cust.effectivePaidMonths === 'number'
+                    ? cust.effectivePaidMonths
+                    : (typeof cust.paid_installments === 'number' ? cust.paid_installments : (isPaid ? 1 : 0));
+                  const monthlyEmi = cust.monthly_emi || cust.active_loan?.installment_amount || 625;
+                  const progressPct = totalMonths > 0 ? Math.min(100, Math.round((paidMonths / totalMonths) * 100)) : 0;
 
                   return (
                     <tr key={cust.id}>
@@ -761,7 +765,7 @@ export const MonthlyCustomers = () => {
                       {/* Total Outstanding: Solid #0F172A (Centered) */}
                       <td style={{ textAlign: 'center' }}>
                         <div className="mc-amount-primary">
-                          {formatCurrency(cust.outstanding_balance || 40000)}
+                          {formatCurrency(cust.outstanding_balance ?? cust.active_loan?.remaining_balance ?? 0)}
                         </div>
                         <div className="mc-amount-secondary">Total Balance</div>
                       </td>

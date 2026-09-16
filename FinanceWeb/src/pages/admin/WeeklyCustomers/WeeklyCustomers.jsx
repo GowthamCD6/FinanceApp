@@ -1306,9 +1306,11 @@ export const WeeklyCustomers = () => {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const custId = selectedCustForModal.id;
+                                  const cust = selectedCustForModal;
                                   setSelectedCustForModal(null);
-                                  navigate(getOrgPath(`weekly-customers/collect/${custId}`));
+                                  navigate(getOrgPath(`weekly-customers/${cust.id}/collect`), {
+                                    state: { customer: cust },
+                                  });
                                 }}
                                 style={{
                                   padding: '4px 10px',
@@ -1375,9 +1377,11 @@ export const WeeklyCustomers = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={() => {
-                    const custId = selectedCustForModal.id;
+                    const cust = selectedCustForModal;
                     setSelectedCustForModal(null);
-                    navigate(getOrgPath(`weekly-customers/collect/${custId}`));
+                    navigate(getOrgPath(`weekly-customers/${cust.id}/collect`), {
+                      state: { customer: cust },
+                    });
                   }}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 800 }}
                 >

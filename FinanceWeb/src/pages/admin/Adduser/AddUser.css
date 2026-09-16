@@ -18,65 +18,89 @@
 }
 
 /* -----------------------------------------------------------------------------
-   Page Header
+   Page Header (Standardized to match Monthly Borrowers & ManageUsers Header)
    ----------------------------------------------------------------------------- */
-.onboard-page-header {
+.directory-page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 1.35rem;
   flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.directory-title-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.directory-title-row {
+  display: flex;
+  align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.onboard-page-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.onboard-page-title-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  background: #eff6ff;
-  color: #2563eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #dbeafe;
-}
-
-.onboard-page-title {
-  font-size: 1.25rem;
-  font-weight: 700;
+.directory-page-title {
+  font-size: 1.5rem;
+  font-weight: 800;
   color: #0f172a;
+  letter-spacing: -0.025em;
   margin: 0;
-  letter-spacing: -0.015em;
   font-family: inherit;
+  line-height: 1.25;
 }
 
-.onboard-header-action-btn {
+.directory-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.directory-btn-secondary {
   background: #ffffff;
   color: #475569;
   border: 1px solid #d1d5db;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   transition: all 0.15s ease;
-  text-decoration: none;
   font-family: inherit;
 }
 
-.onboard-header-action-btn:hover {
+.directory-btn-secondary:hover:not(:disabled) {
   background: #f8fafc;
   border-color: #94a3b8;
   color: #0f172a;
+}
+
+.directory-btn-primary {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+  border: 1px solid #4338ca;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0.55rem 1.15rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+  font-family: inherit;
+}
+
+.directory-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+  border-color: #3730a3;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.28);
 }
 
 /* -----------------------------------------------------------------------------
@@ -258,6 +282,16 @@
 .onboard-label .req {
   color: #ef4444;
   margin-left: 2px;
+}
+
+.onboard-field-hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 0.45rem;
+  background: #f1f5f9;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
 }
 
 /* Input Fields: 42px height, 15px font for clear readability */
@@ -643,144 +677,89 @@
 }
 
 /* -----------------------------------------------------------------------------
-   Success Toast Notification
+   Cool Success Toast Notification (Minimal & Modern)
    ----------------------------------------------------------------------------- */
-.onboard-toast-success {
+.onboard-toast-cool {
   position: fixed;
-  top: 1.25rem;
-  right: 1.25rem;
+  top: 1.5rem;
+  right: 1.5rem;
   z-index: 99999;
-  width: 370px;
-  max-width: calc(100vw - 2.5rem);
   background: #ffffff;
   border: 1px solid #10b981;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(16, 185, 129, 0.12);
-  overflow: hidden;
-  animation: onboardToastSlide 0.25s ease-out forwards;
+  border-radius: 12px;
+  padding: 0.85rem 1.15rem;
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(16, 185, 129, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 280px;
+  max-width: 380px;
+  animation: coolToastSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes onboardToastSlide {
+@keyframes coolToastSlide {
   from {
     opacity: 0;
-    transform: translateY(-8px) translateX(8px);
+    transform: translateY(-12px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateY(0) translateX(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-.onboard-toast-head {
+.onboard-toast-cool-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   background: #ecfdf5;
-  padding: 0.65rem 0.95rem;
-  border-bottom: 1px solid #a7f3d0;
+  color: #059669;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.onboard-toast-head-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #065f46;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.onboard-toast-timer {
-  font-size: 0.6875rem;
-  color: #047857;
-  font-weight: 600;
-  background: #d1fae5;
-  padding: 1px 5px;
-  border-radius: 4px;
-}
-
-.onboard-toast-close {
-  background: transparent;
-  border: none;
-  color: #065f46;
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-}
-
-.onboard-toast-body {
-  padding: 0.75rem 0.95rem;
-}
-
-.onboard-toast-user {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #0f172a;
-  margin-bottom: 0.2rem;
-}
-
-.onboard-toast-meta {
-  font-size: 0.75rem;
-  color: #64748b;
-  margin-bottom: 0.6rem;
-}
-
-.onboard-toast-stat-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 0.4rem 0.65rem;
-  font-size: 0.75rem;
-  margin-bottom: 0.65rem;
-}
-
-.onboard-toast-actions {
-  display: flex;
-  gap: 0.45rem;
-}
-
-.onboard-toast-btn-view {
-  flex: 1;
-  background: #2563eb;
-  color: #ffffff;
-  border: 1px solid #1d4ed8;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.3rem;
-  font-family: inherit;
+  flex-shrink: 0;
+  border: 1.5px solid #a7f3d0;
 }
 
-.onboard-toast-btn-dir {
-  background: #ffffff;
-  color: #475569;
-  border: 1px solid #d1d5db;
-  font-size: 0.75rem;
+.onboard-toast-cool-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboard-toast-cool-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.onboard-toast-cool-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0.2rem 0 0 0;
   font-weight: 500;
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.onboard-toast-progress-track {
-  width: 100%;
-  height: 3px;
-  background: #e2e8f0;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.onboard-toast-progress-bar {
-  height: 100%;
-  background: #10b981;
-  transition: width 1s linear;
+.onboard-toast-cool-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.onboard-toast-cool-close:hover {
+  color: #334155;
+  background: #f1f5f9;
 }

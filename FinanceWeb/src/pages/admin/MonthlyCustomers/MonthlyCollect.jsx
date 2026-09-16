@@ -34,8 +34,27 @@ export const MonthlyCollect = () => {
   const { customerId } = useParams();
   const { activeOrg } = useOrg();
 
+  const getTodayStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const shiftDateByDays = (dateStr, days) => {
+    if (!dateStr) return getTodayStr();
+    const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+    const dateObj = new Date(y, (m || 1) - 1, d || 1);
+    dateObj.setDate(dateObj.getDate() + days);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const initialCustomer = location.state?.customer || null;
-  const initialDate = location.state?.selectedDate || new Date().toISOString().slice(0, 10);
+  const initialDate = location.state?.selectedDate || getTodayStr();
 
   const [customer, setCustomer] = useState(initialCustomer);
   const [loadingCust, setLoadingCust] = useState(!initialCustomer);
@@ -60,21 +79,11 @@ export const MonthlyCollect = () => {
 
   // Initialize selected loans
   const initializeLoanState = (cust) => {
-    const loans = cust.loans || [
-      cust.active_loan || {
-        id: `loan-${cust.id}`,
-        loan_code: `LN-MTH-${cust.customer_code || cust.id}`,
-        loan_name: '12-Month EMI Business Loan',
-        principal: cust.principal || 50000,
-        interest_rate: 18.0,
-        total_installments: cust.total_installments || 12,
-        paid_installments: cust.paid_installments || 4,
-        installment_amount: cust.monthly_emi || 5000,
-        remaining_balance: cust.outstanding_balance || 40000,
-        issue_date: '2026-05-10',
-        maturity_date: '2027-05-10',
-      },
-    ];
+    if (!cust) return;
+    const loans = (cust.loans && cust.loans.length > 0)
+      ? cust.loans
+      : (cust.active_loan ? [cust.active_loan] : []);
+
     const selMap = {};
     loans.forEach((l) => {
       selMap[l.id] = true;
@@ -82,84 +91,80 @@ export const MonthlyCollect = () => {
     setSelectedLoans(selMap);
   };
 
-  // Fast Date Steppers
+  // Fast Date Steppers (Local Timezone Safe)
   const handlePrevDay = () => {
-    const d = new Date(collectionDate);
-    d.setDate(d.getDate() - 1);
-    setCollectionDate(d.toISOString().slice(0, 10));
+    setCollectionDate((prev) => shiftDateByDays(prev, -1));
   };
 
   const handleNextDay = () => {
-    const d = new Date(collectionDate);
-    d.setDate(d.getDate() + 1);
-    setCollectionDate(d.toISOString().slice(0, 10));
+    setCollectionDate((prev) => shiftDateByDays(prev, 1));
   };
 
   const handleSetToday = () => {
-    setCollectionDate(new Date().toISOString().slice(0, 10));
+    setCollectionDate(getTodayStr());
   };
 
-  const isToday = collectionDate === new Date().toISOString().slice(0, 10);
+  const isToday = collectionDate === getTodayStr();
+
+  const loadFreshCustomerData = async (targetId) => {
+    setLoadingCust(true);
+    try {
+      const cust = await api.getMonthlyCustomerById(targetId);
+      if (cust) {
+        setCustomer(cust);
+        initializeLoanState(cust);
+      } else if (initialCustomer) {
+        setCustomer(initialCustomer);
+        initializeLoanState(initialCustomer);
+      }
+    } catch (err) {
+      console.error('Error fetching monthly customer for collection:', err);
+      if (initialCustomer) {
+        setCustomer(initialCustomer);
+        initializeLoanState(initialCustomer);
+      }
+    } finally {
+      setLoadingCust(false);
+    }
+  };
 
   useEffect(() => {
-    if (initialCustomer) {
+    const targetId = customerId || initialCustomer?.id;
+    if (targetId) {
+      loadFreshCustomerData(targetId);
+    } else if (initialCustomer) {
+      setCustomer(initialCustomer);
       initializeLoanState(initialCustomer);
-    } else if (customerId) {
-      setLoadingCust(true);
-      api.getCustomerById(customerId)
-        .then((cust) => {
-          if (cust) {
-            const mapped = {
-              id: cust.id,
-              customer_code: cust.customer_code || `MTH-${cust.id}`,
-              name: cust.full_name || cust.name || 'Monthly Borrower',
-              phone: cust.phone || '9876543210',
-              address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
-              occupation: cust.occupation || 'Salaried Executive',
-              monthly_emi: cust.monthly_emi || 5000,
-              current_month_status: 'UNPAID',
-              total_installments: 12,
-              paid_installments: 4,
-              outstanding_balance: cust.totalOutstanding || 40000,
-              loans: [
-                {
-                  id: `loan-${cust.id}`,
-                  loan_code: `LN-MTH-${cust.customer_code || cust.id}`,
-                  loan_name: '12-Month EMI Business Loan',
-                  principal: 50000,
-                  interest_rate: 18.0,
-                  total_installments: 12,
-                  paid_installments: 4,
-                  installment_amount: 5000,
-                  remaining_balance: 40000,
-                  issue_date: '2026-05-10',
-                  maturity_date: '2027-05-10',
-                },
-              ],
-            };
-            setCustomer(mapped);
-            initializeLoanState(mapped);
-          }
-        })
-        .catch((err) => console.error('Error fetching monthly customer for collection:', err))
-        .finally(() => setLoadingCust(false));
+      setLoadingCust(false);
     }
   }, [customerId]);
 
-  const activeLoans = customer?.loans || (customer?.active_loan ? [customer.active_loan] : []);
+  const activeLoans = (customer?.loans && customer.loans.length > 0)
+    ? customer.loans
+    : (customer?.active_loan ? [customer.active_loan] : []);
 
   // Helper to generate full monthly schedule for a loan
   const getLoanInstallments = (loan) => {
     if (!loan) return [];
     if (Array.isArray(loan.schedule) && loan.schedule.length > 0) {
-      return loan.schedule;
+      return loan.schedule.map((s, idx) => ({
+        month_number: s.installment_no || idx + 1,
+        due_date: s.due_date,
+        amount: Number(s.amount || loan.installment_amount || 625),
+        paid_amount: Number(s.paid_amount || (s.status === 'PAID' ? (s.amount || loan.installment_amount || 625) : 0)),
+        status: s.status || 'PENDING',
+        paid_date: s.status === 'PAID' ? s.due_date : null,
+        receipt_no: s.receipt_no || null,
+        payment_mode: s.status === 'PAID' ? 'UPI' : '—',
+        remaining_after: 0,
+      }));
     }
 
     const total = loan.total_installments || 12;
     const isPaid = customer?.current_month_status === 'PAID' || customer?.current_month_status === 'COLLECTED';
-    const paidCount = loan.paid_installments || (isPaid ? 5 : 4);
-    const monthlyAmt = loan.installment_amount || customer?.monthly_emi || 5000;
-    const baseDate = new Date(loan.issue_date || '2026-05-10');
+    const paidCount = typeof loan.paid_installments === 'number' ? loan.paid_installments : (isPaid ? 1 : 0);
+    const monthlyAmt = Number(loan.installment_amount || customer?.monthly_emi || 625);
+    const baseDate = new Date(loan.issue_date || '2026-09-15');
 
     const list = [];
     for (let i = 1; i <= total; i++) {
@@ -183,7 +188,30 @@ export const MonthlyCollect = () => {
     return list;
   };
 
-  const isLoanPaidOnDate = (loan) => {
+  const isLoanPaidOnDate = (loan, targetDate = collectionDate) => {
+    if (!loan) return false;
+    const dateStr = targetDate || collectionDate;
+
+    // Check if loan schedule has an installment matching this target date or month
+    if (Array.isArray(loan.schedule) && loan.schedule.length > 0) {
+      // 1. Check exact due date match
+      const exactInst = loan.schedule.find((s) => String(s.due_date).slice(0, 10) === dateStr);
+      if (exactInst) {
+        return exactInst.status === 'PAID' || Number(exactInst.paid_amount || 0) >= Number(exactInst.amount || 0);
+      }
+
+      // 2. Check month and year match
+      const [targetY, targetM] = dateStr.split('-').map(Number);
+      const monthInst = loan.schedule.find((s) => {
+        if (!s.due_date) return false;
+        const [sy, sm] = String(s.due_date).slice(0, 10).split('-').map(Number);
+        return sy === targetY && sm === targetM;
+      });
+      if (monthInst) {
+        return monthInst.status === 'PAID' || Number(monthInst.paid_amount || 0) >= Number(monthInst.amount || 0);
+      }
+    }
+
     return customer?.current_month_status === 'PAID' || customer?.current_month_status === 'COLLECTED';
   };
 
@@ -194,10 +222,10 @@ export const MonthlyCollect = () => {
     }));
   };
 
-  const payableSelectedLoans = activeLoans.filter((l) => selectedLoans[l.id] && !isLoanPaidOnDate(l));
-  const totalPayableAmount = payableSelectedLoans.reduce((sum, l) => sum + Number(l.installment_amount || 5000), 0);
-  const totalCombinedMonthlyDue = activeLoans.reduce((sum, l) => sum + Number(l.installment_amount || 5000), 0);
-  const isAlreadyPaid = customer?.current_month_status === 'PAID' || customer?.current_month_status === 'COLLECTED';
+  const payableSelectedLoans = activeLoans.filter((l) => selectedLoans[l.id] && !isLoanPaidOnDate(l, collectionDate));
+  const totalPayableAmount = payableSelectedLoans.reduce((sum, l) => sum + Number(l.installment_amount || customer?.monthly_emi || 0), 0);
+  const totalCombinedMonthlyDue = activeLoans.reduce((sum, l) => sum + Number(l.installment_amount || customer?.monthly_emi || 0), 0);
+  const isAlreadyPaid = activeLoans.length > 0 && activeLoans.every((l) => isLoanPaidOnDate(l, collectionDate));
 
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
@@ -207,26 +235,50 @@ export const MonthlyCollect = () => {
     try {
       const collectedItems = [];
       for (const loan of payableSelectedLoans) {
-        const amt = loan.installment_amount || 5000;
-        const res = await api.recordMonthlyCollection(customer.id, loan.loan_code, paymentMode, amt);
+        const amt = Number(loan.installment_amount || customer?.monthly_emi || totalPayableAmount);
+        const res = await api.recordMonthlyCollection(
+          customer.id,
+          loan.loan_code,
+          paymentMode,
+          amt,
+          loan.id
+        );
+
         collectedItems.push({
           loan_id: loan.id,
           loan_code: loan.loan_code,
-          loan_name: loan.loan_name || '12-Month EMI Loan',
+          loan_name: loan.loan_name || '12-Month EMI Scheme',
           amount: amt,
-          receipt_no: res?.receipt_no || res?.receiptNumber || `REC-MTH-${Date.now().toString().slice(-6)}`,
+          receipt_no: res?.paymentNumber || res?.receipt_no || res?.receiptNumber || `REC-MTH-${Date.now().toString().slice(-6)}`,
         });
       }
 
-      setCustomer((prev) => ({
-        ...prev,
-        current_month_status: 'PAID',
-        paid_installments: (prev?.paid_installments || 4) + 1,
-        outstanding_balance: Math.max(0, (prev?.outstanding_balance || 40000) - totalPayableAmount),
-      }));
+      // Re-fetch fresh customer and loan data from DB!
+      const targetId = customerId || customer.id;
+      const freshCust = await api.getMonthlyCustomerById(targetId);
+
+      if (freshCust) {
+        setCustomer(freshCust);
+        initializeLoanState(freshCust);
+      } else {
+        setCustomer((prev) => {
+          const newBal = Math.max(0, (prev?.outstanding_balance || 0) - totalPayableAmount);
+          return {
+            ...prev,
+            current_month_status: 'PAID',
+            paid_installments: (prev?.paid_installments || 0) + 1,
+            outstanding_balance: newBal,
+            loans: prev?.loans?.map((l) => ({
+              ...l,
+              paid_installments: (l.paid_installments || 0) + 1,
+              remaining_balance: Math.max(0, (l.remaining_balance || l.total_repayment_amount || 0) - totalPayableAmount),
+            })),
+          };
+        });
+      }
 
       setReceiptData({
-        receipt_master_no: `REC-MTH-BATCH-${Date.now().toString().slice(-6)}`,
+        receipt_master_no: collectedItems[0]?.receipt_no || `REC-MTH-BATCH-${Date.now().toString().slice(-6)}`,
         customer_name: customer.name,
         customer_code: customer.customer_code,
         phone: customer.phone,
@@ -238,7 +290,8 @@ export const MonthlyCollect = () => {
         items: collectedItems,
       });
     } catch (err) {
-      alert('Failed to record payment: ' + (err.message || err));
+      console.error('Error submitting monthly payment:', err);
+      alert('Failed to record payment: ' + (err.message || 'Server error. Please verify the balance and try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -392,7 +445,7 @@ export const MonthlyCollect = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="mcol-btn-back"
@@ -404,6 +457,15 @@ export const MonthlyCollect = () => {
               <button
                 type="button"
                 className="mcol-btn-submit"
+                style={{ width: 'auto', padding: '0.55rem 1.25rem', background: '#0F172A', color: '#FFFFFF' }}
+                onClick={() => setReceiptData(null)}
+              >
+                <CheckCircle2 size={15} />
+                <span>View Updated Account</span>
+              </button>
+              <button
+                type="button"
+                className="mcol-btn-back"
                 style={{ width: 'auto', padding: '0.55rem 1.25rem' }}
                 onClick={() => navigate(getOrgPath('monthly-customers'))}
               >
@@ -420,8 +482,22 @@ export const MonthlyCollect = () => {
   // VIEW 2: ACTIVE MULTI-LOAN COLLECTION & SCHEDULE WORKSPACE
   // =========================================================================
   const scheduleLoan = activeLoans[0];
+  const scheduleTotalMonths = scheduleLoan?.total_installments || (scheduleLoan?.schedule ? scheduleLoan.schedule.length : 12);
+  const scheduleStartDate = scheduleLoan?.start_date || scheduleLoan?.issue_date || scheduleLoan?.schedule?.[0]?.due_date || '2026-09-14';
+  const scheduleEndDate = scheduleLoan?.end_date || scheduleLoan?.maturity_date || scheduleLoan?.schedule?.[scheduleLoan.schedule.length - 1]?.due_date || '2026-11-23';
   const scheduleItems = scheduleLoan ? getLoanInstallments(scheduleLoan) : [];
   const filteredScheduleItems = scheduleItems.filter((inst) => {
+    if (modalFilterStatus === 'PAID') return inst.status === 'PAID';
+    if (modalFilterStatus === 'PENDING') return inst.status !== 'PAID';
+    return true;
+  });
+
+  const modalLoan = selectedLoanForModal || activeLoans[0];
+  const modalTotalMonths = modalLoan?.total_installments || (modalLoan?.schedule ? modalLoan.schedule.length : 12);
+  const modalStartDate = modalLoan?.start_date || modalLoan?.issue_date || modalLoan?.schedule?.[0]?.due_date || '2026-09-14';
+  const modalEndDate = modalLoan?.end_date || modalLoan?.maturity_date || modalLoan?.schedule?.[modalLoan.schedule.length - 1]?.due_date || '2026-11-23';
+  const modalItems = modalLoan ? getLoanInstallments(modalLoan) : [];
+  const filteredModalItems = modalItems.filter((inst) => {
     if (modalFilterStatus === 'PAID') return inst.status === 'PAID';
     if (modalFilterStatus === 'PENDING') return inst.status !== 'PAID';
     return true;
@@ -455,7 +531,7 @@ export const MonthlyCollect = () => {
             onClick={() => setActiveTab('SCHEDULE')}
           >
             <Calendar size={14} />
-            <span>12-Month EMI Schedule</span>
+            <span>{scheduleTotalMonths}-Month EMI Schedule</span>
           </button>
         </div>
       </div>
@@ -504,7 +580,7 @@ export const MonthlyCollect = () => {
           <div className="mcol-hero-stat-block" style={{ borderLeft: '1px solid #E2E8F0', paddingLeft: '1.25rem' }}>
             <span className="mcol-hero-stat-label">Total Outstanding</span>
             <strong className="mcol-hero-stat-val">
-              {formatCurrency(customer.outstanding_balance || 40000)}
+              {formatCurrency(customer.outstanding_balance ?? 0)}
             </strong>
           </div>
         </div>
@@ -528,10 +604,16 @@ export const MonthlyCollect = () => {
 
             {activeLoans.map((loan, idx) => {
               const isSelected = !!selectedLoans[loan.id];
-              const totalMonths = loan.total_installments || 12;
-              const paidMonths = loan.paid_installments || (isAlreadyPaid ? 5 : 4);
+              const totalMonths = loan.total_installments || (loan.schedule ? loan.schedule.length : 12);
+              const paidMonths = typeof loan.paid_installments === 'number' ? loan.paid_installments : (isAlreadyPaid ? 1 : 0);
               const progressPct = totalMonths > 0 ? Math.round((paidMonths / totalMonths) * 100) : 0;
-              const isPaidForMonth = isLoanPaidOnDate(loan);
+              const isPaidForMonth = isLoanPaidOnDate(loan, collectionDate);
+              const totalRepayable = loan.total_repayment_amount || (loan.principal ? loan.principal * (1 + (loan.interest_rate || 18) / 100) : 0);
+              const remainingBal = loan.remaining_balance ?? customer?.outstanding_balance ?? 0;
+              const monthlyEmiVal = loan.installment_amount || customer?.monthly_emi || (totalMonths > 0 ? Math.ceil(totalRepayable / totalMonths) : 0);
+
+              const startDate = loan.start_date || loan.issue_date || loan.schedule?.[0]?.due_date || '2026-09-14';
+              const endDate = loan.end_date || loan.maturity_date || loan.schedule?.[loan.schedule.length - 1]?.due_date || '2026-11-23';
 
               return (
                 <div
@@ -574,11 +656,13 @@ export const MonthlyCollect = () => {
                         <div className="mcol-loan-card-title-group">
                           <span className="mcol-loan-code">{loan.loan_code}</span>
                           <span className="mcol-loan-name-badge">
-                            {loan.loan_name || '12-Month EMI Scheme'}
+                            {loan.loan_name || `${totalMonths}-Month EMI Scheme`}
                           </span>
                         </div>
-                        <div className="mcol-loan-card-sub">
-                          Issued: {loan.issue_date || '2026-05-10'} • Maturity: {loan.maturity_date || '2027-05-10'}
+                        <div className="mcol-loan-card-sub" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginTop: 4 }}>
+                          <span>Start Date: <strong style={{ color: '#0F172A', fontWeight: 700 }}>{startDate}</strong></span>
+                          <span style={{ color: '#CBD5E1' }}>•</span>
+                          <span>End Date (Maturity): <strong style={{ color: '#0F172A', fontWeight: 700 }}>{endDate}</strong></span>
                         </div>
                       </div>
                     </div>
@@ -586,7 +670,7 @@ export const MonthlyCollect = () => {
                     <div className="mcol-loan-card-emi-block">
                       <span className="mcol-loan-card-emi-label">Monthly EMI</span>
                       <strong className="mcol-loan-card-emi-val">
-                        {formatCurrency(loan.installment_amount || 5000)}
+                        {formatCurrency(monthlyEmiVal)}
                       </strong>
                     </div>
                   </div>
@@ -596,19 +680,19 @@ export const MonthlyCollect = () => {
                     <div className="mcol-metric-box">
                       <span className="mcol-metric-label">Principal & Rate</span>
                       <strong className="mcol-metric-val">
-                        {formatCurrency(loan.principal || 50000)} @ {loan.interest_rate || 18}%
+                        {formatCurrency(loan.principal || 5000)} @ {loan.interest_rate || 18}%
                       </strong>
                     </div>
                     <div className="mcol-metric-box">
                       <span className="mcol-metric-label">Total Repayable</span>
                       <strong className="mcol-metric-val">
-                        {formatCurrency((loan.principal || 50000) * 1.18)}
+                        {formatCurrency(totalRepayable)}
                       </strong>
                     </div>
                     <div className="mcol-metric-box">
                       <span className="mcol-metric-label">Remaining Balance</span>
                       <strong className="mcol-metric-val">
-                        {formatCurrency(loan.remaining_balance || 40000)}
+                        {formatCurrency(remainingBal)}
                       </strong>
                     </div>
                   </div>
@@ -781,11 +865,17 @@ export const MonthlyCollect = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
-                12-Month EMI Repayment Ledger
+                {scheduleLoan?.loan_name || `${scheduleTotalMonths}-Month EMI`} Repayment Ledger
               </h3>
-              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748B' }}>
-                Full installment breakdown and payment receipt log for {customer.name}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.35rem', fontSize: '0.8rem', color: '#64748B' }}>
+                <span>Scheme: <strong style={{ color: '#0F172A' }}>{scheduleLoan?.loan_code || 'LN-MTH'}</strong></span>
+                <span style={{ color: '#CBD5E1' }}>•</span>
+                <span>Start Date: <strong style={{ color: '#0F172A' }}>{scheduleStartDate}</strong></span>
+                <span style={{ color: '#CBD5E1' }}>•</span>
+                <span>End Date (Maturity): <strong style={{ color: '#0F172A' }}>{scheduleEndDate}</strong></span>
+                <span style={{ color: '#CBD5E1' }}>•</span>
+                <span>Tenure: <strong style={{ color: '#0F172A' }}>{scheduleTotalMonths} Months</strong></span>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
@@ -899,10 +989,18 @@ export const MonthlyCollect = () => {
                 </div>
                 <div>
                   <h3 className="mcol-modal-title">
-                    {customer.name} — 12-Month EMI Schedule Log
+                    {customer.name} — {modalLoan?.loan_name || `${modalTotalMonths}-Month EMI Schedule Log`}
                   </h3>
-                  <div className="mcol-modal-sub">
-                    {customer.customer_code} • {customer.phone}
+                  <div className="mcol-modal-sub" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginTop: 4 }}>
+                    <span>Code: <strong>{customer.customer_code}</strong></span>
+                    <span style={{ color: '#CBD5E1' }}>•</span>
+                    <span>Phone: <strong>{customer.phone}</strong></span>
+                    <span style={{ color: '#CBD5E1' }}>•</span>
+                    <span>Start Date: <strong style={{ color: '#0F172A' }}>{modalStartDate}</strong></span>
+                    <span style={{ color: '#CBD5E1' }}>•</span>
+                    <span>End Date (Maturity): <strong style={{ color: '#0F172A' }}>{modalEndDate}</strong></span>
+                    <span style={{ color: '#CBD5E1' }}>•</span>
+                    <span>Tenure: <strong style={{ color: '#0F172A' }}>{modalTotalMonths} Months</strong></span>
                   </div>
                 </div>
               </div>
@@ -932,7 +1030,7 @@ export const MonthlyCollect = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredScheduleItems.map((inst) => {
+                    {filteredModalItems.map((inst) => {
                       const isPaid = inst.status === 'PAID';
                       const isCurrent = inst.status === 'CURRENT_DUE';
                       return (
@@ -976,6 +1074,9 @@ export const MonthlyCollect = () => {
                                 type="button"
                                 className="mc-modal-btn-pay"
                                 onClick={() => {
+                                  if (inst.due_date) {
+                                    setCollectionDate(String(inst.due_date).slice(0, 10));
+                                  }
                                   setShowLogModal(false);
                                   setActiveTab('COLLECT');
                                 }}

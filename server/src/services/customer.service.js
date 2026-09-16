@@ -193,15 +193,32 @@ async function getCustomerById(customerId) {
     `SELECT 
        l.*,
        lp.product_name,
-       lp.repayment_frequency,
+       COALESCE(l.repayment_frequency, lp.repayment_frequency) AS repayment_frequency,
        (SELECT COALESCE(SUM(paid_amount), 0) FROM loan_installments WHERE loan_id = l.id) AS totalPaid,
        (SELECT COALESCE(SUM(outstanding_amount), 0) FROM loan_installments WHERE loan_id = l.id) AS outstandingTotal
      FROM loans l
-     JOIN loan_products lp ON l.product_id = lp.id
+     LEFT JOIN loan_products lp ON l.product_id = lp.id
      WHERE l.customer_id = ?
-     ORDER BY l.id ASC`,
+     ORDER BY l.id DESC`,
     [customerId]
   );
+
+  for (const l of loans) {
+    const installments = await query(
+      `SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`,
+      [l.id]
+    );
+    l.installments = installments;
+    l.schedule = installments.map((i) => ({
+      installment_no: i.installment_number,
+      week_number: i.installment_number,
+      due_date: String(i.due_date).slice(0, 10),
+      amount: Number(i.scheduled_amount || i.installment_amount || 0),
+      paid_amount: Number(i.paid_amount || 0),
+      status: i.status,
+      receipt_no: i.receipt_no || null,
+    }));
+  }
 
   const eligibility = await query(
     `SELECT * FROM loan_eligibility WHERE customer_id = ? ORDER BY evaluated_at DESC LIMIT 1`,
@@ -397,7 +414,11 @@ async function updateCustomerStatus(id, status, reason, updatedBy) {
  * Get Weekly Customers with live active weekly loans, schedule, and installment KPIs
  */
 async function getWeeklyCustomers({ search, status, area, organizationId, branchId } = {}) {
-  let whereClauses = ["c.customer_type IN ('COMMON_CUSTOMER', 'WEEKLY_BORROWER')"];
+  let whereClauses = [
+    `(c.id IN (SELECT customer_id FROM loans WHERE repayment_frequency = 'WEEKLY')
+      OR (c.customer_type IN ('COMMON_CUSTOMER', 'WEEKLY_BORROWER')
+          AND c.id NOT IN (SELECT customer_id FROM loans WHERE repayment_frequency IN ('MONTHLY', 'DAILY'))))`
+  ];
   const params = [];
 
   if (organizationId && organizationId !== 'ALL') {
@@ -438,7 +459,7 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
       `SELECT l.*, lp.repayment_frequency, lp.product_name
        FROM loans l
        LEFT JOIN loan_products lp ON l.product_id = lp.id
-       WHERE l.customer_id = ? AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'PENDING')
+       WHERE l.customer_id = ? AND l.repayment_frequency = 'WEEKLY' AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'PENDING')
        ORDER BY l.id DESC LIMIT 1`,
       [cust.id]
     );
@@ -446,8 +467,9 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
     const loan = loans[0] || null;
     let paidInstallments = 0;
     let totalInstallments = loan ? (loan.total_installments || 10) : 10;
-    let outstandingBalance = loan ? (loan.total_repayment_amount || loan.principal_amount || 20000) : 0;
-    let currentWeekDue = loan ? Math.ceil((loan.total_repayment_amount || loan.principal_amount * 1.1) / totalInstallments) : 2200;
+    let totalRepayable = loan ? Number(loan.total_repayment_amount || (Number(loan.principal_amount) + Number(loan.contracted_income_amount || 0))) : 0;
+    let outstandingBalance = totalRepayable;
+    let currentWeekDue = loan ? Math.ceil(totalRepayable / totalInstallments) : 0;
     let currentWeekStatus = 'UNPAID';
     let schedule = [];
 
@@ -459,49 +481,56 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
 
       if (installments.length > 0) {
         totalInstallments = installments.length;
-        paidInstallments = installments.filter(i => i.status === 'PAID').length;
-        const currentInst = installments.find(i => i.status !== 'PAID') || installments[installments.length - 1];
+        paidInstallments = installments.filter((i) => i.status === 'PAID').length;
+        const currentInst = installments.find((i) => i.status !== 'PAID') || installments[installments.length - 1];
         if (currentInst) {
-          currentWeekDue = Number(currentInst.installment_amount || currentWeekDue);
+          currentWeekDue = Number(currentInst.scheduled_amount || currentInst.installment_amount || currentWeekDue);
           currentWeekStatus = currentInst.status === 'PAID' ? 'PAID' : (new Date(currentInst.due_date) < new Date() ? 'OVERDUE' : 'UNPAID');
         }
-        schedule = installments.map(i => ({
+        const paidAmt = installments.filter((i) => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || 0), 0);
+        outstandingBalance = Math.max(0, totalRepayable - paidAmt);
+        schedule = installments.map((i) => ({
           installment_no: i.installment_number,
           due_date: String(i.due_date).slice(0, 10),
-          amount: Number(i.installment_amount),
+          amount: Number(i.scheduled_amount || i.installment_amount || currentWeekDue),
+          paid_amount: Number(i.paid_amount || 0),
           status: i.status,
           receipt_no: i.receipt_no || null,
         }));
       } else {
-        paidInstallments = 4;
+        const stepDays = 7;
         for (let w = 1; w <= totalInstallments; w++) {
-          const d = new Date();
-          d.setDate(d.getDate() + (w - 1) * 7);
+          const d = new Date(loan.disbursement_date || new Date());
+          d.setDate(d.getDate() + w * stepDays);
           schedule.push({
             installment_no: w,
             due_date: d.toISOString().slice(0, 10),
             amount: currentWeekDue,
-            status: w <= paidInstallments ? 'PAID' : 'PENDING',
-            receipt_no: w <= paidInstallments ? `REC-WK-${cust.id}-${w}` : null,
+            paid_amount: 0,
+            status: 'PENDING',
+            receipt_no: null,
           });
         }
-        currentWeekStatus = paidInstallments >= 4 ? 'UNPAID' : 'PAID';
-      }
-    } else {
-      totalInstallments = 10;
-      paidInstallments = 3;
-      for (let w = 1; w <= 10; w++) {
-        const d = new Date();
-        d.setDate(d.getDate() + (w - 1) * 7);
-        schedule.push({
-          installment_no: w,
-          due_date: d.toISOString().slice(0, 10),
-          amount: 2200,
-          status: w <= paidInstallments ? 'PAID' : 'PENDING',
-          receipt_no: w <= paidInstallments ? `REC-WK-${cust.id}-${w}` : null,
-        });
+        currentWeekStatus = 'UNPAID';
       }
     }
+
+    const activeLoanObj = loan ? {
+      id: loan.id,
+      loan_code: loan.loan_number,
+      loan_name: loan.loan_title || `${totalInstallments}-Week Micro-Loan`,
+      principal: Number(loan.principal_amount),
+      interest_rate: Number(loan.interest_rate || 20.0),
+      total_repayment_amount: totalRepayable,
+      installment_amount: currentWeekDue,
+      total_installments: totalInstallments,
+      paid_installments: paidInstallments,
+      remaining_balance: Number(outstandingBalance),
+      status: loan.status,
+      issue_date: loan.disbursement_date ? String(loan.disbursement_date).slice(0, 10) : '2026-09-16',
+      maturity_date: loan.maturity_date ? String(loan.maturity_date).slice(0, 10) : (schedule.length > 0 ? schedule[schedule.length - 1].due_date : null),
+      schedule,
+    } : null;
 
     result.push({
       id: cust.id,
@@ -510,25 +539,14 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
       phone: cust.phone,
       address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
       occupation: cust.occupation || 'Self Employed',
-      active_loan: loan ? {
-        id: loan.id,
-        loan_code: loan.loan_number,
-        principal: Number(loan.principal_amount),
-        total_installments: totalInstallments,
-        status: loan.status,
-      } : {
-        id: `virtual-${cust.id}`,
-        loan_code: `LN-WK-${cust.customer_code}`,
-        principal: 20000,
-        total_installments: 10,
-        status: 'ACTIVE',
-      },
+      active_loan: activeLoanObj,
+      loans: activeLoanObj ? [activeLoanObj] : [],
       paid_installments: paidInstallments,
       total_installments: totalInstallments,
       current_week_due: currentWeekDue,
       current_week_due_date: new Date().toISOString().slice(0, 10),
       current_week_status: currentWeekStatus,
-      outstanding_balance: Number(outstandingBalance || 14000),
+      outstanding_balance: Number(outstandingBalance),
       schedule,
     });
   }
@@ -745,7 +763,11 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
  * Get Monthly Customers with active monthly loans and EMI data
  */
 async function getMonthlyCustomers({ search, status, organizationId, branchId } = {}) {
-  let whereClauses = ["(c.customer_type IN ('COMMON_CUSTOMER', 'MONTHLY_BORROWER') OR c.customer_type IS NULL)"];
+  let whereClauses = [
+    `(c.id IN (SELECT customer_id FROM loans WHERE repayment_frequency = 'MONTHLY')
+      OR (c.customer_type IN ('MONTHLY_BORROWER', 'SALARIED_BORROWER')
+          AND c.id NOT IN (SELECT customer_id FROM loans WHERE repayment_frequency IN ('WEEKLY', 'DAILY'))))`
+  ];
   const params = [];
 
   if (organizationId && organizationId !== 'ALL') {
@@ -759,9 +781,10 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
   }
 
   if (search) {
-    whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ? OR c.address LIKE ?)');
+    whereClauses.push('(c.full_name LIKE ? OR c.phone LIKE ? OR c.customer_code LIKE ? OR c.address LIKE ? OR c.id = ?)');
     const q = `%${search}%`;
-    params.push(q, q, q, q);
+    const numId = !isNaN(Number(search)) ? Number(search) : 0;
+    params.push(q, q, q, q, numId);
   }
 
   const customers = await query(
@@ -786,73 +809,110 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
       `SELECT l.*, lp.repayment_frequency, lp.product_name
        FROM loans l
        LEFT JOIN loan_products lp ON l.product_id = lp.id
-       WHERE l.customer_id = ? AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')
+       WHERE l.customer_id = ? AND l.repayment_frequency = 'MONTHLY' AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE')
        ORDER BY l.id DESC LIMIT 1`,
       [cust.id]
     );
 
     const loan = loans[0] || null;
+    if (!loan) continue; // Only include customers with active monthly loans
+
     let paidInstallments = 0;
-    let totalInstallments = loan ? (loan.total_installments || 12) : 12;
-    let outstandingBalance = loan ? Number(loan.total_repayment_amount || loan.principal_amount || 50000) : 40000;
-    let monthlyEmi = loan ? Math.ceil(Number(loan.total_repayment_amount || loan.principal_amount * 1.18) / totalInstallments) : 5000;
+    let totalInstallments = loan.total_installments || 12;
+    let totalRepayable = Number(loan.total_repayment_amount || (Number(loan.principal_amount) + Number(loan.contracted_income_amount || 0)));
+    let outstandingBalance = totalRepayable;
+    let monthlyEmi = Math.ceil(totalRepayable / totalInstallments);
     let currentMonthStatus = 'UNPAID';
     let schedule = [];
 
-    if (loan) {
-      const installments = await query(
-        `SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`,
-        [loan.id]
-      );
+    const installments = await query(
+      `SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`,
+      [loan.id]
+    );
 
-      if (installments.length > 0) {
-        totalInstallments = installments.length;
-        paidInstallments = installments.filter(i => i.status === 'PAID').length;
-        const currentInst = installments.find(i => i.status !== 'PAID') || installments[installments.length - 1];
-        if (currentInst) {
-          monthlyEmi = Number(currentInst.installment_amount || monthlyEmi);
-          currentMonthStatus = currentInst.status === 'PAID' ? 'PAID' : (new Date(currentInst.due_date) < new Date() ? 'OVERDUE' : 'UNPAID');
-        }
-        const paidAmt = installments.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || monthlyEmi), 0);
-        outstandingBalance = Math.max(0, Number(loan.total_repayment_amount || loan.principal_amount) - paidAmt);
-        schedule = installments.map(i => ({
-          installment_no: i.installment_number,
-          due_date: String(i.due_date).slice(0, 10),
-          amount: Number(i.installment_amount),
-          status: i.status,
-          receipt_no: i.receipt_no || null,
-        }));
-      } else {
-        paidInstallments = 4;
-        for (let m = 1; m <= totalInstallments; m++) {
-          const d = new Date();
-          d.setMonth(d.getMonth() + (m - 4));
-          schedule.push({
-            installment_no: m,
-            due_date: d.toISOString().slice(0, 10),
-            amount: monthlyEmi,
-            status: m <= paidInstallments ? 'PAID' : 'PENDING',
-            receipt_no: m <= paidInstallments ? `REC-MTH-${cust.id}-${m}` : null,
-          });
-        }
-        currentMonthStatus = paidInstallments >= 4 ? 'UNPAID' : 'PAID';
+    // Check if any payment was made this month
+    const monthPayments = await query(
+      `SELECT p.id, p.payment_number, p.amount, p.payment_date 
+       FROM payments p 
+       WHERE p.loan_id = ? AND p.status = 'COMPLETED'
+         AND (MONTH(p.payment_date) = MONTH(CURRENT_DATE) AND YEAR(p.payment_date) = YEAR(CURRENT_DATE))`,
+      [loan.id]
+    );
+    const hasPaidCurrentMonth = monthPayments && monthPayments.length > 0;
+
+    if (installments.length > 0) {
+      totalInstallments = installments.length;
+      paidInstallments = installments.filter((i) => i.status === 'PAID').length;
+      const currentInst = installments.find((i) => i.status !== 'PAID') || installments[installments.length - 1];
+      if (currentInst) {
+        monthlyEmi = Number(currentInst.scheduled_amount || currentInst.installment_amount || monthlyEmi);
       }
+      currentMonthStatus = hasPaidCurrentMonth
+        ? 'PAID'
+        : (currentInst && new Date(currentInst.due_date) < new Date() ? 'OVERDUE' : 'UNPAID');
+
+      const paidAmt = installments.filter((i) => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || 0), 0);
+      outstandingBalance = Math.max(0, totalRepayable - paidAmt);
+      schedule = installments.map((i) => ({
+        installment_no: i.installment_number,
+        due_date: i.due_date ? new Date(i.due_date).toISOString().slice(0, 10) : '2026-09-21',
+        amount: Number(i.scheduled_amount || i.installment_amount || monthlyEmi),
+        paid_amount: Number(i.paid_amount || 0),
+        status: i.status,
+        receipt_no: i.receipt_no || null,
+      }));
     } else {
-      totalInstallments = 12;
-      paidInstallments = 4;
-      for (let m = 1; m <= 12; m++) {
-        const d = new Date();
-        d.setMonth(d.getMonth() + (m - 4));
+      paidInstallments = 0;
+      currentMonthStatus = hasPaidCurrentMonth ? 'PAID' : 'UNPAID';
+      for (let m = 1; m <= totalInstallments; m++) {
+        const d = new Date(loan.disbursement_date || new Date());
+        d.setMonth(d.getMonth() + m);
         schedule.push({
           installment_no: m,
           due_date: d.toISOString().slice(0, 10),
           amount: monthlyEmi,
-          status: m <= paidInstallments ? 'PAID' : 'PENDING',
-          receipt_no: m <= paidInstallments ? `REC-MTH-${cust.id}-${m}` : null,
+          paid_amount: 0,
+          status: 'PENDING',
+          receipt_no: null,
         });
       }
-      currentMonthStatus = 'UNPAID';
     }
+
+    // Status filter
+    if (status && status !== 'ALL' && currentMonthStatus !== status) {
+      continue;
+    }
+
+    const startIssueDate = loan.disbursement_date
+      ? new Date(loan.disbursement_date).toISOString().slice(0, 10)
+      : (loan.application_date ? new Date(loan.application_date).toISOString().slice(0, 10) : '2026-09-14');
+
+    const lastScheduleDate = schedule && schedule.length > 0 ? schedule[schedule.length - 1].due_date : null;
+    let endMaturityDate = loan.maturity_date ? new Date(loan.maturity_date).toISOString().slice(0, 10) : lastScheduleDate;
+    if (!endMaturityDate) {
+      const d = new Date(startIssueDate);
+      d.setMonth(d.getMonth() + totalInstallments);
+      endMaturityDate = d.toISOString().slice(0, 10);
+    }
+
+    const activeLoanObj = {
+      id: loan.id,
+      loan_code: loan.loan_number,
+      loan_name: loan.loan_title || `${totalInstallments}-Month EMI Scheme`,
+      principal: Number(loan.principal_amount),
+      interest_rate: Number(loan.interest_rate || 18.0),
+      total_repayment_amount: totalRepayable,
+      installment_amount: monthlyEmi,
+      total_installments: totalInstallments,
+      paid_installments: paidInstallments,
+      remaining_balance: outstandingBalance,
+      status: loan.status,
+      start_date: startIssueDate,
+      issue_date: startIssueDate,
+      end_date: endMaturityDate,
+      maturity_date: endMaturityDate,
+      schedule,
+    };
 
     result.push({
       id: cust.id,
@@ -861,25 +921,14 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
       phone: cust.phone,
       address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
       occupation: cust.occupation || 'Salaried Professional',
-      active_loan: loan ? {
-        id: loan.id,
-        loan_code: loan.loan_number,
-        principal: Number(loan.principal_amount),
-        total_installments: totalInstallments,
-        status: loan.status,
-      } : {
-        id: `virtual-${cust.id}`,
-        loan_code: `LN-MTH-${cust.customer_code || cust.id}`,
-        principal: 50000,
-        total_installments: 12,
-        status: 'ACTIVE',
-      },
+      active_loan: activeLoanObj,
+      loans: [activeLoanObj],
       paid_installments: paidInstallments,
       total_installments: totalInstallments,
       monthly_emi: monthlyEmi,
       current_month_due_date: new Date().toISOString().slice(0, 10),
       current_month_status: currentMonthStatus,
-      outstanding_balance: Number(outstandingBalance || 40000),
+      outstanding_balance: Number(outstandingBalance),
       schedule,
     });
   }

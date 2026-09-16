@@ -47,7 +47,7 @@ export const AddUser = () => {
 
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('CAT-BORROWER-WK');
 
-  // Streamlined Form State (Previous content preserved)
+  // Streamlined Form State (Dynamic Interest Rate & Custom Tenure per customer)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -58,6 +58,7 @@ export const AddUser = () => {
     credit_limit: 5000,
     issue_initial_loan: true,
     initial_loan_amount: 2000,
+    interest_rate: '25',
     tenure: '10',
     frequency: 'WEEKLY',
   });
@@ -185,6 +186,7 @@ export const AddUser = () => {
       ...prev,
       credit_limit: cat.default_max_loan,
       initial_loan_amount: cat.default_min_loan,
+      interest_rate: String(cat.default_interest_rate),
       tenure: String(cat.tenure_installments),
       frequency: cat.repayment_frequency,
     }));
@@ -201,6 +203,7 @@ export const AddUser = () => {
       credit_limit: activeCategory.default_max_loan,
       issue_initial_loan: true,
       initial_loan_amount: activeCategory.default_min_loan,
+      interest_rate: String(activeCategory.default_interest_rate),
       tenure: String(activeCategory.tenure_installments),
       frequency: activeCategory.repayment_frequency,
     });
@@ -209,10 +212,14 @@ export const AddUser = () => {
     setCreatedBorrower(null);
   };
 
-  // Financial Calculations
+  // Units
+  const tenureUnit = isShop ? 'Days' : isMonthly ? 'Months' : 'Weeks';
+  const tenureUnitSingular = isShop ? 'Day' : isMonthly ? 'Month' : 'Week';
+
+  // Dynamic Financial Calculations (Real-time recalculation based on admin-defined rate and tenure)
   const principalAmount = parseFloat(formData.initial_loan_amount) || 0;
-  const flatRate = parseFloat(activeCategory.default_interest_rate) || 25.0;
-  const installmentCount = parseInt(formData.tenure) || activeCategory.tenure_installments || 10;
+  const flatRate = parseFloat(formData.interest_rate !== undefined && formData.interest_rate !== '' ? formData.interest_rate : activeCategory.default_interest_rate) || 0;
+  const installmentCount = parseInt(formData.tenure !== undefined && formData.tenure !== '' ? formData.tenure : activeCategory.tenure_installments, 10) || 1;
   const interestAmount = Math.round((principalAmount * flatRate) / 100);
   const totalRepayable = principalAmount + interestAmount;
   const installmentAmount = installmentCount > 0 ? Math.round(totalRepayable / installmentCount) : 0;
@@ -251,6 +258,18 @@ export const AddUser = () => {
 
     if (isMonthly && (!formData.work_profession || !formData.work_profession.trim())) {
       errs.work_profession = 'Work / Profession is required for monthly salaried borrowers';
+    }
+
+    if (formData.issue_initial_loan) {
+      if (!formData.initial_loan_amount || parseFloat(formData.initial_loan_amount) <= 0) {
+        errs.initial_loan_amount = 'Initial loan principal must be greater than 0';
+      }
+      if (formData.interest_rate === '' || isNaN(Number(formData.interest_rate)) || Number(formData.interest_rate) < 0) {
+        errs.interest_rate = 'Interest rate must be 0 or greater';
+      }
+      if (!formData.tenure || parseInt(formData.tenure, 10) <= 0) {
+        errs.tenure = `Tenure must be at least 1 ${tenureUnitSingular.toLowerCase()}`;
+      }
     }
 
     setErrors(errs);
@@ -309,6 +328,7 @@ export const AddUser = () => {
         customerCode,
         categoryName: activeCategory.name,
         principal,
+        interestRate: flatRate,
         installmentAmount,
         installmentCount,
         frequency: freq,
@@ -343,32 +363,39 @@ export const AddUser = () => {
 
   return (
     <div className="onboard-page-container">
-      {/* ── Page Header ────────────────────────────────────────────── */}
-      <header className="onboard-page-header">
-        <div className="onboard-page-title-wrap">
-          <div className="onboard-page-title-icon">
-            <UserPlus size={20} />
+      {/* ── Page Header (Exact Match to Monthly Borrowers Header) ─── */}
+      <div className="directory-page-header">
+        <div className="directory-title-area">
+          <div className="directory-title-row">
+            <h1 className="directory-page-title">
+              Onboard New Borrower
+            </h1>
           </div>
-          <h1 className="onboard-page-title">Onboard New Borrower</h1>
         </div>
 
-        <button
-          type="button"
-          className="onboard-header-action-btn"
-          onClick={() => navigate(getOrgPath('staff'))}
-        >
-          Manage Staff & Collectors <ArrowRight size={14} />
-        </button>
-      </header>
+        <div className="directory-header-actions">
+          <button
+            type="button"
+            className="directory-btn-secondary"
+            onClick={() => navigate(getOrgPath('staff'))}
+            title="Manage Staff & Field Collectors"
+          >
+            <Users size={15} />
+            <span>Manage Staff & Collectors</span>
+          </button>
+          <button
+            type="button"
+            className="directory-btn-primary"
+            onClick={() => navigate(getOrgPath('users'))}
+            title="View Borrower Directory"
+          >
+            <Users size={16} />
+            <span>Borrower Directory</span>
+          </button>
+        </div>
+      </div>
 
       {/* ── Global Alert Banners ───────────────────────────────────── */}
-      {successMsg && (
-        <div className="onboard-alert success">
-          <CheckCircle2 size={18} />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
       {errorMsg && (
         <div className="onboard-alert error">
           <AlertCircle size={18} />
@@ -586,16 +613,81 @@ export const AddUser = () => {
                     </label>
                     <input
                       type="number"
-                      className="onboard-input"
+                      className={`onboard-input ${errors.initial_loan_amount ? 'error' : ''}`}
                       value={formData.initial_loan_amount}
-                      onChange={(e) => setFormData({ ...formData, initial_loan_amount: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, initial_loan_amount: e.target.value });
+                        if (errors.initial_loan_amount) setErrors({ ...errors, initial_loan_amount: null });
+                      }}
                       step={500}
-                      min={1000}
+                      min={500}
                       required
                     />
+                    {errors.initial_loan_amount && (
+                      <span className="onboard-input-error-text">{errors.initial_loan_amount}</span>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* Dynamic Interest Rate & Custom Tenure Inputs */}
+              {formData.issue_initial_loan && (
+                <div className="onboard-fields-row" style={{ marginTop: '0.85rem' }}>
+                  {/* Dynamic Interest Rate (editable by admin with custom rate difference) */}
+                  <div className="onboard-field">
+                    <label className="onboard-label">
+                      Interest Rate (%) <span className="req">*</span>
+                      <span className="onboard-field-hint">
+                        (Default: {activeCategory.default_interest_rate}% Flat)
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      className={`onboard-input ${errors.interest_rate ? 'error' : ''}`}
+                      placeholder={`e.g. ${activeCategory.default_interest_rate}`}
+                      value={formData.interest_rate}
+                      onChange={(e) => {
+                        setFormData({ ...formData, interest_rate: e.target.value });
+                        if (errors.interest_rate) setErrors({ ...errors, interest_rate: null });
+                      }}
+                      step={0.5}
+                      min={0}
+                      max={100}
+                      required
+                    />
+                    {errors.interest_rate && (
+                      <span className="onboard-input-error-text">{errors.interest_rate}</span>
+                    )}
+                  </div>
+
+                  {/* Dynamic Default Tenure (editable by admin for custom duration) */}
+                  <div className="onboard-field">
+                    <label className="onboard-label">
+                      Tenure Duration ({tenureUnit}) <span className="req">*</span>
+                      <span className="onboard-field-hint">
+                        (Default: {activeCategory.tenure_installments} {tenureUnit})
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      className={`onboard-input ${errors.tenure ? 'error' : ''}`}
+                      placeholder={`e.g. ${activeCategory.tenure_installments}`}
+                      value={formData.tenure}
+                      onChange={(e) => {
+                        setFormData({ ...formData, tenure: e.target.value });
+                        if (errors.tenure) setErrors({ ...errors, tenure: null });
+                      }}
+                      step={1}
+                      min={1}
+                      max={365}
+                      required
+                    />
+                    {errors.tenure && (
+                      <span className="onboard-input-error-text">{errors.tenure}</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -730,73 +822,28 @@ export const AddUser = () => {
         </div>
       </div>
 
-      {/* ── Top-Right Green Time-Reducing Countdown Toast ──────────── */}
-      {showSuccessToast && createdBorrower && (
-        <div className="onboard-toast-success">
-          <div className="onboard-toast-head">
-            <div className="onboard-toast-head-title">
-              <Check size={16} strokeWidth={3} />
-              <span>Borrower Onboarded Successfully</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span className="onboard-toast-timer">{toastCountdown}s</span>
-              <button
-                type="button"
-                className="onboard-toast-close"
-                onClick={() => setShowSuccessToast(false)}
-                title="Dismiss"
-              >
-                <X size={15} />
-              </button>
-            </div>
+      {/* ── Cool Top-Right Success Notification ─────────────────────── */}
+      {showSuccessToast && (
+        <div className="onboard-toast-cool">
+          <div className="onboard-toast-cool-icon">
+            <Check size={18} strokeWidth={3} />
           </div>
-
-          <div className="onboard-toast-body">
-            <div className="onboard-toast-user">{createdBorrower.name}</div>
-            <div className="onboard-toast-meta">
-              {createdBorrower.phone} • {createdBorrower.branchName} • ID:{' '}
-              <strong>{createdBorrower.customerCode}</strong>
-            </div>
-
-            <div className="onboard-toast-stat-row">
-              <span>{createdBorrower.categoryName}</span>
-              <strong style={{ color: '#059669' }}>{formatCurrency(createdBorrower.principal)}</strong>
-            </div>
-
-            <div className="onboard-toast-actions">
-              <button
-                type="button"
-                className="onboard-toast-btn-view"
-                onClick={() => {
-                  setShowSuccessToast(false);
-                  if (createdBorrower.isShop) navigate(getOrgPath('shopkeepers'));
-                  else if (createdBorrower.isMonthly) navigate(getOrgPath('monthly-customers'));
-                  else navigate(getOrgPath('weekly-customers'));
-                }}
-              >
-                <span>View in Ledger</span>
-                <ExternalLink size={12} />
-              </button>
-
-              <button
-                type="button"
-                className="onboard-toast-btn-dir"
-                onClick={() => {
-                  setShowSuccessToast(false);
-                  navigate(getOrgPath('users'));
-                }}
-              >
-                Directory
-              </button>
-            </div>
+          <div className="onboard-toast-cool-content">
+            <h4 className="onboard-toast-cool-title">User added successfully!</h4>
+            {createdBorrower?.name && (
+              <p className="onboard-toast-cool-sub">
+                {createdBorrower.name} • {createdBorrower.customerCode}
+              </p>
+            )}
           </div>
-
-          <div className="onboard-toast-progress-track">
-            <div
-              className="onboard-toast-progress-bar"
-              style={{ width: `${(toastCountdown / 6) * 100}%` }}
-            />
-          </div>
+          <button
+            type="button"
+            className="onboard-toast-cool-close"
+            onClick={() => setShowSuccessToast(false)}
+            title="Dismiss"
+          >
+            <X size={15} />
+          </button>
         </div>
       )}
     </div>

@@ -61,23 +61,11 @@ export const WeeklyCollect = () => {
 
   // Initialize selected loans
   const initializeLoanState = (cust) => {
-    const loans = cust.loans || [
-      cust.active_loan || {
-        id: `loan-${cust.id}`,
-        loan_code: `LN-WK-${cust.customer_code || cust.id}`,
-        loan_name: 'Weekly Commercial Advance',
-        principal: 20000,
-        interest_rate: 10.0,
-        total_installments: cust.total_installments || 10,
-        paid_installments: cust.paid_installments || 3,
-        installment_amount: cust.current_week_due || 2200,
-        remaining_balance: cust.outstanding_balance || 15400,
-        issue_date: '2026-08-15',
-        maturity_date: '2026-10-24',
-      },
-    ];
+    const rawLoans = (cust.loans && cust.loans.length > 0)
+      ? cust.loans
+      : (cust.active_loan ? [cust.active_loan] : []);
     const selMap = {};
-    loans.forEach((l) => {
+    rawLoans.forEach((l) => {
       selMap[l.id] = true;
     });
     setSelectedLoans(selMap);
@@ -129,40 +117,60 @@ export const WeeklyCollect = () => {
   };
 
   useEffect(() => {
-    if (initialCustomer) {
+    if (initialCustomer && initialCustomer.loans && initialCustomer.loans.length > 0) {
+      setCustomer(initialCustomer);
       initializeLoanState(initialCustomer);
+      setLoadingCust(false);
     } else if (customerId) {
       setLoadingCust(true);
       api.getCustomerById(customerId)
         .then((cust) => {
           if (cust) {
+            const rawLoans = cust.loans || [];
+            const weeklyLoans = rawLoans.filter((l) => (l.repayment_frequency || '').toUpperCase() === 'WEEKLY' || !l.repayment_frequency);
+            const activeLoanList = (weeklyLoans.length > 0 ? weeklyLoans : rawLoans).map((l) => {
+              const instList = l.installments || l.schedule || [];
+              const totalInst = l.total_installments || (instList.length > 0 ? instList.length : 10);
+              const paidInst = instList.filter((i) => i.status === 'PAID').length;
+              const schedAmt = instList.length > 0
+                ? Number(instList[0].scheduled_amount || instList[0].amount)
+                : Math.ceil(Number(l.total_repayment_amount || l.principal_amount) / totalInst);
+              const totalRepay = Number(l.total_repayment_amount || (Number(l.principal_amount) + Number(l.contracted_income_amount || 0)));
+              const paidAmt = instList.filter((i) => i.status === 'PAID').reduce((s, i) => s + Number(i.paid_amount || schedAmt), 0);
+              const remaining = Math.max(0, totalRepay - paidAmt);
+              return {
+                id: l.id,
+                loan_code: l.loan_number || `LN-WK-${cust.customer_code || cust.id}`,
+                loan_name: l.loan_title || l.product_name || `${totalInst}-Week Micro-Loan`,
+                principal: Number(l.principal_amount),
+                interest_rate: Number(l.interest_rate || 20),
+                total_repayment_amount: totalRepay,
+                installment_amount: schedAmt,
+                total_installments: totalInst,
+                paid_installments: paidInst,
+                remaining_balance: remaining,
+                status: l.status,
+                issue_date: l.disbursement_date ? String(l.disbursement_date).slice(0, 10) : '2026-09-16',
+                maturity_date: l.maturity_date ? String(l.maturity_date).slice(0, 10) : (instList.length > 0 ? String(instList[instList.length - 1].due_date).slice(0, 10) : null),
+                schedule: l.schedule || instList,
+              };
+            });
+
+            const firstLoan = activeLoanList[0] || null;
             const mapped = {
               id: cust.id,
               customer_code: cust.customer_code || `CUST-${cust.id}`,
               name: cust.full_name || cust.name || 'Weekly Borrower',
               phone: cust.phone || '9876543210',
               address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
-              occupation: cust.occupation || 'Retail Vendor',
-              current_week_due: 2200,
-              current_week_status: 'UNPAID',
-              total_installments: 10,
-              paid_installments: 3,
-              outstanding_balance: cust.totalOutstanding || 15400,
-              loans: [
-                {
-                  id: `loan-${cust.id}`,
-                  loan_code: `LN-WK-${cust.customer_code || cust.id}`,
-                  loan_name: 'Weekly Microfinance Scheme',
-                  principal: 20000,
-                  interest_rate: 10.0,
-                  total_installments: 10,
-                  paid_installments: 3,
-                  installment_amount: 2200,
-                  remaining_balance: 15400,
-                  issue_date: '2026-08-15',
-                  maturity_date: '2026-10-24',
-                },
-              ],
+              occupation: cust.occupation || 'Self Employed',
+              current_week_due: firstLoan?.installment_amount || 0,
+              current_week_status: firstLoan?.paid_installments > 0 ? 'PAID' : 'UNPAID',
+              total_installments: firstLoan?.total_installments || 10,
+              paid_installments: firstLoan?.paid_installments || 0,
+              outstanding_balance: firstLoan?.remaining_balance || 0,
+              active_loan: firstLoan,
+              loans: activeLoanList,
             };
             setCustomer(mapped);
             initializeLoanState(mapped);
@@ -171,7 +179,7 @@ export const WeeklyCollect = () => {
         .catch((err) => console.error('Error fetching customer for collection:', err))
         .finally(() => setLoadingCust(false));
     }
-  }, [customerId]);
+  }, [customerId, initialCustomer]);
 
   const activeLoans = customer?.loans || (customer?.active_loan ? [customer.active_loan] : []);
 
@@ -179,14 +187,24 @@ export const WeeklyCollect = () => {
   const getLoanInstallments = (loan) => {
     if (!loan) return [];
     if (Array.isArray(loan.schedule) && loan.schedule.length > 0) {
-      return loan.schedule;
+      return loan.schedule.map((s, idx) => ({
+        week_number: s.installment_no || s.week_number || (idx + 1),
+        due_date: String(s.due_date).slice(0, 10),
+        amount: Number(s.amount || s.scheduled_amount || loan.installment_amount || 0),
+        paid_amount: Number(s.paid_amount || 0),
+        status: s.status,
+        paid_date: s.paid_at ? String(s.paid_at).slice(0, 10) : (s.status === 'PAID' ? String(s.due_date).slice(0, 10) : null),
+        receipt_no: s.receipt_no || null,
+        payment_mode: s.payment_mode || ((idx % 2 === 0) ? 'CASH' : 'UPI'),
+        remaining_after: Math.max(0, (loan.total_repayment_amount || (loan.installment_amount * loan.total_installments)) - ((idx + 1) * (loan.installment_amount || 0))),
+      }));
     }
 
     const total = loan.total_installments || 10;
     const isPaid = customer?.current_week_status === 'PAID' || customer?.current_week_status === 'COLLECTED';
-    const paidCount = loan.paid_installments || (isPaid ? 4 : 3);
-    const weeklyAmt = loan.installment_amount || 2200;
-    const baseDate = new Date(loan.issue_date || '2026-08-15');
+    const paidCount = loan.paid_installments || (isPaid ? 1 : 0);
+    const weeklyAmt = loan.installment_amount || 0;
+    const baseDate = new Date(loan.issue_date || '2026-09-16');
 
     const list = [];
     for (let i = 1; i <= total; i++) {
@@ -579,7 +597,7 @@ export const WeeklyCollect = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '0.85rem', marginTop: 4, fontSize: '0.82rem', color: 'var(--text-secondary)', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span>Code: <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{customer.customer_code}</strong></span>
+                <span>Code: <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{customer.customer_code || `CUST-${customer.id}`}</strong></span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <Phone size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{customer.phone}</strong></span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <MapPin size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{customer.address || 'Chennai'}</strong></span>
                 <span>• Profession: <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{customer.occupation || 'Retail Vendor'}</strong></span>
@@ -597,7 +615,7 @@ export const WeeklyCollect = () => {
             <div style={{ borderLeft: '1px solid #E2E8F0', paddingLeft: '1.25rem' }}>
               <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Total Outstanding</span>
               <strong style={{ fontSize: '1.25rem', fontWeight: 900, color: '#DC2626', letterSpacing: '-0.02em' }}>
-                {formatCurrency(customer.outstanding_balance || 15400)}
+                {formatCurrency(customer.outstanding_balance || 0)}
               </strong>
             </div>
           </div>
@@ -616,14 +634,14 @@ export const WeeklyCollect = () => {
                 Active Weekly Loan Schemes ({activeLoans.length})
               </h3>
               <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
-                Click card to open 10-Week Log
+                Click card to open {activeLoans[0]?.total_installments || 10}-Week Log
               </span>
             </div>
 
             {activeLoans.map((loan, idx) => {
               const isSelected = !!selectedLoans[loan.id];
               const totalWeeks = loan.total_installments || 10;
-              const paidWeeks = loan.paid_installments || (isAlreadyPaid ? 4 : 3);
+              const paidWeeks = loan.paid_installments || (isAlreadyPaid ? 1 : 0);
               const progressPct = totalWeeks > 0 ? Math.round((paidWeeks / totalWeeks) * 100) : 0;
               const isPaidForWeek = isLoanPaidOnDate(loan);
 
@@ -697,11 +715,11 @@ export const WeeklyCollect = () => {
                               color: 'var(--primary)',
                             }}
                           >
-                            {loan.loan_name || 'Weekly Microfinance Scheme'}
+                            {loan.loan_name || `${totalWeeks}-Week Microfinance Scheme`}
                           </span>
                         </div>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                          Issued: {loan.issue_date || '2026-08-15'} • Maturity: {loan.maturity_date || '2026-10-24'}
+                          Issued: {loan.issue_date || '2026-09-16'} {loan.maturity_date ? `• Maturity: ${loan.maturity_date}` : ''}
                         </span>
                       </div>
                     </div>
@@ -709,7 +727,7 @@ export const WeeklyCollect = () => {
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Weekly Due</span>
                       <strong style={{ fontSize: '1.35rem', fontWeight: 900, color: isPaidForWeek ? '#047857' : 'var(--primary)', letterSpacing: '-0.02em' }}>
-                        {formatCurrency(loan.installment_amount || 2200)}
+                        {formatCurrency(loan.installment_amount || 0)}
                       </strong>
                     </div>
                   </div>
@@ -731,19 +749,19 @@ export const WeeklyCollect = () => {
                     <div>
                       <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Principal & Rate</span>
                       <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
-                        {formatCurrency(loan.principal || 20000)} @ {loan.interest_rate || 10}%
+                        {formatCurrency(loan.principal)} @ {loan.interest_rate}%
                       </strong>
                     </div>
                     <div>
                       <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Total Repayable</span>
                       <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
-                        {formatCurrency((loan.principal || 20000) * 1.1)}
+                        {formatCurrency(loan.total_repayment_amount)}
                       </strong>
                     </div>
                     <div>
                       <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Remaining Balance</span>
                       <strong style={{ color: '#DC2626', fontWeight: 900 }}>
-                        {formatCurrency(loan.remaining_balance || 15400)}
+                        {formatCurrency(loan.remaining_balance)}
                       </strong>
                     </div>
                   </div>

@@ -766,26 +766,36 @@ export const api = {
     }
   },
 
-  recordMonthlyCollection: async (customerId, loanCode, paymentMode, amount) => {
+  getMonthlyCustomerById: async (id) => {
     try {
-      return await request('/payments', {
+      const list = await api.getMonthlyCustomers({ search: id });
+      if (Array.isArray(list) && list.length > 0) {
+        return list.find((c) => String(c.id) === String(id) || c.customer_code === id) || list[0];
+      }
+      return null;
+    } catch (err) {
+      console.error('Error fetching monthly customer by id:', err);
+      return null;
+    }
+  },
+
+  recordMonthlyCollection: async (customerId, loanCode, paymentMode, amount, loanId) => {
+    try {
+      const res = await request('/payments', {
         method: 'POST',
         body: JSON.stringify({
-          customerId,
+          customerId: customerId ? Number(customerId) : undefined,
+          loanId: loanId && !String(loanId).startsWith('loan-') && !String(loanId).startsWith('virtual-') ? Number(loanId) : undefined,
           loanCode,
           amount: parseFloat(amount),
           paymentMode,
           paymentType: 'MONTHLY_INSTALLMENT',
         }),
       });
-    } catch {
-      return {
-        receipt_no: `REC-MTH-${Date.now().toString().slice(-6)}`,
-        amount: parseFloat(amount),
-        status: 'COMPLETED',
-        payment_mode: paymentMode,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+      return res?.data || res;
+    } catch (err) {
+      console.error('Error in recordMonthlyCollection:', err);
+      throw err;
     }
   },
 
