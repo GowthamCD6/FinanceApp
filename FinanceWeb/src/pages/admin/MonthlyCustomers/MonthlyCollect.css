@@ -1,0 +1,946 @@
+/* =============================================================================
+   MonthlyCollect.css
+   Theme: Professional Fintech SaaS (Plus Jakarta Sans)
+   Standardized as per Docs/ProfesonalTheme&Content.md
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+.monthly-collect-page {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  color: #0F172A;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.monthly-collect-page *,
+.monthly-collect-page button,
+.monthly-collect-page input,
+.monthly-collect-page select,
+.monthly-collect-page table {
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+/* -----------------------------------------------------------------------------
+   1. Navigation & Mode Switcher Bar
+   ----------------------------------------------------------------------------- */
+.mcol-top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.mcol-btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mcol-btn-back:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+
+.mcol-tab-group {
+  display: flex;
+  background: #F1F5F9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  gap: 2px;
+}
+
+.mcol-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.38rem 0.85rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mcol-tab-btn:hover {
+  color: #0F172A;
+}
+
+.mcol-tab-btn.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* -----------------------------------------------------------------------------
+   2. Borrower Identity Hero Card
+   ----------------------------------------------------------------------------- */
+.mcol-hero-card {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.mcol-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+}
+
+.mcol-hero-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #F1F5F9;
+  color: #1E293B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  border: 1px solid #E2E8F0;
+  flex-shrink: 0;
+}
+
+.mcol-hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.mcol-hero-name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+}
+
+.mcol-scheme-count-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #F1F5F9;
+  color: #334155;
+  border: 1px solid #E2E8F0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mcol-hero-meta {
+  display: flex;
+  gap: 0.85rem;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #64748B;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mcol-hero-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mcol-hero-meta-item strong {
+  color: #0F172A;
+  font-weight: 700;
+}
+
+/* Hero Stats on Right */
+.mcol-hero-stats {
+  display: flex;
+  background: #F8FAFC;
+  padding: 0.65rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  gap: 1.25rem;
+}
+
+.mcol-hero-stat-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.mcol-hero-stat-label {
+  font-size: 0.7rem;
+  color: #64748B;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Strictly solid dark #0F172A */
+.mcol-hero-stat-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  margin-top: 0.15rem;
+}
+
+/* -----------------------------------------------------------------------------
+   3. 2-Column Collection Layout
+   ----------------------------------------------------------------------------- */
+.mcol-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.95fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 960px) {
+  .mcol-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   4. Left Column: Loan Scheme Cards
+   ----------------------------------------------------------------------------- */
+.mcol-shelf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.85rem;
+}
+
+.mcol-shelf-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+}
+
+.mcol-shelf-hint {
+  font-size: 0.75rem;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.mcol-loan-card {
+  padding: 1.15rem 1.25rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  margin-bottom: 0.85rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.mcol-loan-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mcol-loan-card.settled {
+  background: #FAFCF9;
+  border-color: #E2E8F0;
+}
+
+.mcol-loan-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.mcol-loan-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mcol-loan-code {
+  font-weight: 800;
+  color: #0F172A;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+.mcol-loan-name-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #F1F5F9;
+  color: #334155;
+  border: 1px solid #E2E8F0;
+}
+
+.mcol-loan-card-sub {
+  font-size: 0.75rem;
+  color: #64748B;
+  font-weight: 500;
+  margin-top: 0.2rem;
+}
+
+.mcol-loan-card-emi-block {
+  text-align: right;
+}
+
+.mcol-loan-card-emi-label {
+  font-size: 0.68rem;
+  color: #64748B;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+}
+
+.mcol-loan-card-emi-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0F172A; /* Solid black */
+  letter-spacing: -0.02em;
+}
+
+/* 3-Column Financial Grid: Solid #0F172A */
+.mcol-loan-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  background: #F8FAFC;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  border: 1px solid #E2E8F0;
+}
+
+.mcol-metric-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.mcol-metric-label {
+  color: #64748B;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mcol-metric-val {
+  color: #0F172A; /* Solid black */
+  font-weight: 800;
+  font-size: 0.82rem;
+  margin-top: 0.15rem;
+}
+
+/* Timeline Progress */
+.mcol-timeline-wrap {
+  margin-bottom: 0.75rem;
+}
+
+.mcol-timeline-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.mcol-timeline-label {
+  color: #64748B;
+  font-weight: 600;
+}
+
+.mcol-timeline-val {
+  color: #0F172A;
+  font-weight: 800;
+}
+
+.mcol-timeline-track {
+  width: 100%;
+  height: 6px;
+  background: #E2E8F0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mcol-timeline-fill {
+  height: 100%;
+  background: #2563EB;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.mcol-timeline-fill.settled {
+  background: #059669;
+}
+
+/* Card Actions Bottom Bar */
+.mcol-loan-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.65rem;
+  border-top: 1px solid #F1F5F9;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mcol-btn-view-log {
+  font-size: 0.75rem;
+  padding: 0.32rem 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #2563EB;
+  border: 1px solid #DBEAFE;
+  background: #EFF6FF;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mcol-btn-view-log:hover {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.mcol-pill-settled {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mcol-pill-due {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* -----------------------------------------------------------------------------
+   5. Right Column: Quick Collection Form Card
+   ----------------------------------------------------------------------------- */
+.mcol-form-card {
+  padding: 1.35rem 1.45rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+}
+
+.mcol-form-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+/* Date Stepper */
+.mcol-form-date-group {
+  margin-bottom: 1.25rem;
+}
+
+.mcol-form-label {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #1E293B;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mcol-date-stepper-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.mcol-date-step-btn {
+  padding: 0.4rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.mcol-date-step-btn:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+
+.mcol-date-step-btn.active {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: #FFFFFF;
+  font-weight: 800;
+}
+
+.mcol-date-input {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #0F172A;
+  border-radius: 6px;
+  border: 1px solid #D1D5DB;
+  background: #FFFFFF;
+  outline: none;
+}
+
+.mcol-date-input:focus {
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Neutral Amount Banner (No Loud Gradient) */
+.mcol-amount-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.mcol-amount-box-label {
+  font-size: 0.74rem;
+  color: #64748B;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mcol-amount-box-val {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #0F172A; /* Solid high-contrast black */
+  letter-spacing: -0.02em;
+  margin-top: 0.15rem;
+  line-height: 1.2;
+}
+
+.mcol-amount-box-meta {
+  font-size: 0.76rem;
+  color: #64748B;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+/* Payment Mode Segmented Control */
+.mcol-mode-group {
+  margin-bottom: 1.25rem;
+}
+
+.mcol-mode-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  background: #F1F5F9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+}
+
+.mcol-mode-btn {
+  padding: 0.5rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mcol-mode-btn:hover {
+  color: #0F172A;
+}
+
+.mcol-mode-btn.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Primary Submit CTA */
+.mcol-btn-submit {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  border-radius: 8px;
+  background: #2563EB;
+  color: #FFFFFF;
+  border: 1px solid #2563EB;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background 0.15s ease;
+}
+
+.mcol-btn-submit:hover:not(:disabled) {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+}
+
+.mcol-btn-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Already Settled State */
+.mcol-settled-box {
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  background: #F0FDF4;
+  border-radius: 10px;
+  border: 1px solid #A7F3D0;
+}
+
+.mcol-settled-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ECFDF5;
+  border: 2px solid #A7F3D0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
+  color: #059669;
+}
+
+.mcol-settled-title {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #065F46;
+}
+
+.mcol-settled-desc {
+  margin: 0;
+  color: #047857;
+  font-size: 0.85rem;
+}
+
+/* -----------------------------------------------------------------------------
+   6. Post-Payment Official Receipt View
+   ----------------------------------------------------------------------------- */
+.mcol-receipt-container {
+  max-width: 700px;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+}
+
+.mcol-receipt-card {
+  padding: 2.25rem 2rem;
+  text-align: center;
+  border-top: 4px solid #059669;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+}
+
+.mcol-receipt-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #ECFDF5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem auto;
+  border: 2px solid #A7F3D0;
+  color: #059669;
+}
+
+.mcol-receipt-title {
+  margin: 0 0 0.35rem 0;
+  color: #0F172A;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.mcol-receipt-desc {
+  color: #64748B;
+  font-size: 0.88rem;
+  margin-bottom: 1.5rem;
+}
+
+.mcol-receipt-details-box {
+  background: #F8FAFC;
+  border-radius: 10px;
+  padding: 1.25rem;
+  text-align: left;
+  margin-bottom: 1.5rem;
+  border: 1px solid #E2E8F0;
+}
+
+.mcol-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+  font-size: 0.85rem;
+}
+
+.mcol-receipt-row-label {
+  color: #64748B;
+  font-weight: 600;
+}
+
+.mcol-receipt-row-val {
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.mcol-receipt-items {
+  margin: 0.75rem 0;
+}
+
+.mcol-receipt-item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #FFFFFF;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border: 1px solid #E2E8F0;
+}
+
+.mcol-receipt-total-row {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+  border-top: 2px solid #E2E8F0;
+  align-items: center;
+}
+
+.mcol-receipt-total-label {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.mcol-receipt-total-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0F172A; /* Solid dark */
+}
+
+/* -----------------------------------------------------------------------------
+   7. Standardized Schedule Log Modal (Matching Previous Page)
+   ----------------------------------------------------------------------------- */
+.mcol-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.mcol-modal-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #E2E8F0;
+}
+
+.mcol-modal-header {
+  padding: 1.15rem 1.35rem;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #F8FAFC;
+}
+
+.mcol-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mcol-modal-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #EEF2FF;
+  color: #2563EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  border: 1px solid #DBEAFE;
+}
+
+.mcol-modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+.mcol-modal-sub {
+  font-size: 0.78rem;
+  color: #64748B;
+  margin-top: 0.15rem;
+  font-weight: 500;
+}
+
+.mcol-modal-close-btn {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748B;
+  transition: all 0.15s ease;
+}
+
+.mcol-modal-close-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+  border-color: #CBD5E1;
+}
+
+.mcol-modal-body {
+  padding: 1.25rem 1.35rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Schedule Table (Dark #0F172A Uppercase Headers) */
+.mcol-modal-table-wrap {
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mcol-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.mcol-modal-table thead tr {
+  background: #F8FAFC;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.mcol-modal-table th {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0F172A; /* High contrast black */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.mcol-modal-table tbody tr {
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.mcol-modal-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.mcol-modal-table td {
+  padding: 0.65rem 0.85rem;
+  vertical-align: middle;
+}
+
+.mcol-modal-footer {
+  padding: 1rem 1.35rem;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #F8FAFC;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}

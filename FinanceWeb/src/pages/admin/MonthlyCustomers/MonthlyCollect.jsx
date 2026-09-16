@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../../services/api';
 import { useOrg } from '../../../context/OrgContext';
@@ -13,11 +13,9 @@ import {
   User,
   Receipt,
   Printer,
-  Building,
   Clock,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
   Check,
   X,
   Layers,
@@ -28,6 +26,7 @@ import {
   Building2,
   ArrowRight,
 } from 'lucide-react';
+import './MonthlyCollect.css';
 
 export const MonthlyCollect = () => {
   const navigate = useNavigate();
@@ -100,33 +99,7 @@ export const MonthlyCollect = () => {
     setCollectionDate(new Date().toISOString().slice(0, 10));
   };
 
-  const handleSetYesterday = () => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    setCollectionDate(d.toISOString().slice(0, 10));
-  };
-
   const isToday = collectionDate === new Date().toISOString().slice(0, 10);
-  const isYesterday = (() => {
-    const y = new Date();
-    y.setDate(y.getDate() - 1);
-    return collectionDate === y.toISOString().slice(0, 10);
-  })();
-
-  const formatDisplayDate = (dStr) => {
-    try {
-      const [year, month, day] = dStr.split('-');
-      const d = new Date(year, month - 1, day);
-      return d.toLocaleDateString('en-IN', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    } catch {
-      return dStr;
-    }
-  };
 
   useEffect(() => {
     if (initialCustomer) {
@@ -279,17 +252,17 @@ export const MonthlyCollect = () => {
 
   if (loadingCust) {
     return (
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem 0.5rem' }}>
+      <div className="monthly-collect-page" style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem 0.5rem' }}>
         <div className="skeleton-bar" style={{ width: 220, height: 38, marginBottom: '1.5rem', borderRadius: 8 }} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
-          <div className="card" style={{ padding: '2rem', borderRadius: 14 }}>
+          <div className="card" style={{ padding: '2rem', borderRadius: 12 }}>
             <div className="skeleton-bar" style={{ width: '60%', height: 24, marginBottom: 12 }} />
             <div className="skeleton-bar" style={{ width: '40%', height: 16, marginBottom: 20 }} />
-            <div className="skeleton-bar" style={{ width: '100%', height: 140, borderRadius: 10 }} />
+            <div className="skeleton-bar" style={{ width: '100%', height: 140, borderRadius: 8 }} />
           </div>
-          <div className="card" style={{ padding: '2rem', borderRadius: 14 }}>
+          <div className="card" style={{ padding: '2rem', borderRadius: 12 }}>
             <div className="skeleton-bar" style={{ width: '70%', height: 24, marginBottom: 16 }} />
-            <div className="skeleton-bar" style={{ width: '100%', height: 180, borderRadius: 10 }} />
+            <div className="skeleton-bar" style={{ width: '100%', height: 180, borderRadius: 8 }} />
           </div>
         </div>
       </div>
@@ -298,14 +271,19 @@ export const MonthlyCollect = () => {
 
   if (!customer) {
     return (
-      <div style={{ padding: '4rem 1rem', textAlign: 'center' }}>
+      <div className="monthly-collect-page" style={{ padding: '4rem 1rem', textAlign: 'center' }}>
         <CreditCard size={44} style={{ opacity: 0.35, marginBottom: '0.75rem' }} />
-        <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Borrower Record Not Found</h3>
-        <p style={{ color: '#64748B', margin: '0.5rem 0 1.5rem 0' }}>
+        <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0F172A', fontWeight: 800 }}>Borrower Record Not Found</h3>
+        <p style={{ color: '#64748B', margin: '0.5rem 0 1.5rem 0', fontSize: '0.88rem' }}>
           Unable to find active monthly EMI schemes for this borrower.
         </p>
-        <button className="btn btn-secondary" onClick={() => navigate(getOrgPath('monthly-customers'))}>
-          <ArrowLeft size={16} /> Back to Monthly Borrowers
+        <button
+          type="button"
+          className="mcol-btn-back"
+          onClick={() => navigate(getOrgPath('monthly-customers'))}
+        >
+          <ArrowLeft size={16} />
+          <span>Back to Monthly Borrowers</span>
         </button>
       </div>
     );
@@ -316,160 +294,122 @@ export const MonthlyCollect = () => {
   // =========================================================================
   if (receiptData) {
     return (
-      <div style={{ maxWidth: 740, margin: '1.5rem auto', padding: '0 1rem' }}>
-        <div
-          className="card"
-          style={{
-            padding: '2.5rem 2rem',
-            textAlign: 'center',
-            borderTop: '4px solid #059669',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
-            borderRadius: 16,
-            background: '#FFFFFF',
-            border: '1.5px solid #E2E8F0',
-          }}
-        >
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: '#ECFDF5',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.25rem auto',
-              border: '2px solid #A7F3D0',
-            }}
-          >
-            <CheckCircle2 size={36} color="#059669" />
-          </div>
-
-          <h2 style={{ margin: '0 0 0.4rem 0', color: 'var(--text-primary)', fontSize: '1.65rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
-            Monthly EMI Collection Receipt
-          </h2>
-          <p style={{ color: '#64748B', fontSize: '0.9rem', marginBottom: '1.75rem' }}>
-            Monthly EMI installment collection logged into branch loan portfolio.
-          </p>
-
-          <div
-            style={{
-              background: '#F8FAFC',
-              borderRadius: 12,
-              padding: '1.5rem',
-              textAlign: 'left',
-              marginBottom: '1.75rem',
-              border: '1px solid #E2E8F0',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Receipt Number:</span>
-              <strong style={{ color: 'var(--primary)', fontSize: '0.92rem', fontWeight: 800 }}>
-                {receiptData.receipt_master_no}
-              </strong>
+      <div className="monthly-collect-page">
+        <div className="mcol-receipt-container">
+          <div className="mcol-receipt-card">
+            <div className="mcol-receipt-icon">
+              <CheckCircle2 size={32} />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Borrower / Client:</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
-                {receiptData.customer_name} ({receiptData.customer_code})
-              </span>
-            </div>
+            <h2 className="mcol-receipt-title">Monthly EMI Collection Receipt</h2>
+            <p className="mcol-receipt-desc">
+              Monthly EMI installment collection logged into branch loan portfolio.
+            </p>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Phone & Location:</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
-                {receiptData.phone} • {receiptData.address}
-              </span>
-            </div>
+            <div className="mcol-receipt-details-box">
+              <div className="mcol-receipt-row">
+                <span className="mcol-receipt-row-label">Receipt Number:</span>
+                <span className="mcol-receipt-row-val">{receiptData.receipt_master_no}</span>
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Payment Mode:</span>
-              <span
-                style={{
-                  color: '#065F46',
-                  background: '#D1FAE5',
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontWeight: 800,
-                  fontSize: '0.8rem',
-                  border: '1px solid #A7F3D0',
-                }}
-              >
-                {receiptData.payment_mode}
-              </span>
-            </div>
+              <div className="mcol-receipt-row">
+                <span className="mcol-receipt-row-label">Borrower / Client:</span>
+                <span className="mcol-receipt-row-val">
+                  {receiptData.customer_name} ({receiptData.customer_code})
+                </span>
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-              <span style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>Collection Date:</span>
-              <span style={{ color: '#64748B', fontSize: '0.85rem' }}>{receiptData.collection_date} • {receiptData.timestamp}</span>
-            </div>
+              <div className="mcol-receipt-row">
+                <span className="mcol-receipt-row-label">Phone & Location:</span>
+                <span style={{ color: '#475569', fontSize: '0.85rem', fontWeight: 500 }}>
+                  {receiptData.phone} • {receiptData.address}
+                </span>
+              </div>
 
-            <hr style={{ borderColor: '#E2E8F0', margin: '0.75rem 0' }} />
-
-            <div style={{ marginBottom: '0.85rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>
-                Allocated EMI Scheme Dues:
-              </span>
-              {receiptData.items.map((it, idx) => (
-                <div
-                  key={idx}
+              <div className="mcol-receipt-row">
+                <span className="mcol-receipt-row-label">Payment Mode:</span>
+                <span
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    background: '#FFFFFF',
-                    padding: '0.65rem 0.9rem',
-                    borderRadius: 8,
-                    marginBottom: 6,
-                    border: '1px solid #E2E8F0',
+                    color: '#065F46',
+                    background: '#D1FAE5',
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontWeight: 800,
+                    fontSize: '0.78rem',
+                    border: '1px solid #A7F3D0',
                   }}
                 >
-                  <div>
-                    <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 800 }}>{it.loan_code}</strong>
-                    <span style={{ fontSize: '0.78rem', color: '#64748B', marginLeft: 6 }}>({it.loan_name})</span>
-                    <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Ref: {it.receipt_no}</div>
+                  {receiptData.payment_mode}
+                </span>
+              </div>
+
+              <div className="mcol-receipt-row">
+                <span className="mcol-receipt-row-label">Collection Date:</span>
+                <span style={{ color: '#64748B', fontSize: '0.85rem' }}>
+                  {receiptData.collection_date} • {receiptData.timestamp}
+                </span>
+              </div>
+
+              <hr style={{ borderColor: '#E2E8F0', margin: '0.75rem 0' }} />
+
+              <div className="mcol-receipt-items">
+                <span
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: '#64748B',
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  Allocated EMI Scheme Dues:
+                </span>
+                {receiptData.items.map((it, idx) => (
+                  <div key={idx} className="mcol-receipt-item-card">
+                    <div>
+                      <strong style={{ fontSize: '0.85rem', color: '#0F172A', fontWeight: 800 }}>
+                        {it.loan_code}
+                      </strong>
+                      <span style={{ fontSize: '0.78rem', color: '#64748B', marginLeft: 6 }}>
+                        ({it.loan_name})
+                      </span>
+                      <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Ref: {it.receipt_no}</div>
+                    </div>
+                    <strong style={{ color: '#0F172A', fontSize: '1rem', fontWeight: 800 }}>
+                      {formatCurrency(it.amount)}
+                    </strong>
                   </div>
-                  <strong style={{ color: '#047857', fontSize: '1.05rem', fontWeight: 900 }}>
-                    {formatCurrency(it.amount)}
-                  </strong>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              <div className="mcol-receipt-total-row">
+                <span className="mcol-receipt-total-label">Total EMI Collected:</span>
+                <strong className="mcol-receipt-total-val">
+                  {formatCurrency(receiptData.total_collected)}
+                </strong>
+              </div>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                paddingTop: '0.75rem',
-                borderTop: '2px solid #E2E8F0',
-                alignItems: 'center',
-              }}
-            >
-              <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Total EMI Collected:
-              </span>
-              <strong style={{ fontSize: '1.45rem', fontWeight: 900, color: '#047857' }}>
-                {formatCurrency(receiptData.total_collected)}
-              </strong>
+            <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="mcol-btn-back"
+                onClick={() => window.print()}
+              >
+                <Printer size={15} />
+                <span>Print Official Receipt</span>
+              </button>
+              <button
+                type="button"
+                className="mcol-btn-submit"
+                style={{ width: 'auto', padding: '0.55rem 1.25rem' }}
+                onClick={() => navigate(getOrgPath('monthly-customers'))}
+              >
+                <span>Back to Monthly Borrowers</span>
+              </button>
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button
-              className="btn btn-secondary"
-              onClick={() => window.print()}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.35rem', fontWeight: 700 }}
-            >
-              <Printer size={16} /> <span>Print Official Receipt</span>
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate(getOrgPath('monthly-customers'))}
-              style={{ padding: '0.7rem 1.35rem', fontWeight: 800 }}
-            >
-              Back to Monthly Borrowers
-            </button>
           </div>
         </div>
       </div>
@@ -488,118 +428,84 @@ export const MonthlyCollect = () => {
   });
 
   return (
-    <div style={{ width: '100%', maxWidth: '100%', padding: '0 0.5rem' }}>
-      {/* Top Header & Breadcrumb */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+    <div className="monthly-collect-page">
+      {/* 1. Top Navigation & Tab Bar */}
+      <div className="mcol-top-nav">
         <button
-          className="btn btn-secondary"
+          type="button"
+          className="mcol-btn-back"
           onClick={() => navigate(getOrgPath('monthly-customers'))}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}
         >
           <ArrowLeft size={16} />
           <span>Back to Monthly Borrowers</span>
         </button>
 
-        {/* Tab Selector: Collection Mode vs Day-wise Installment Schedule */}
-        <div style={{ display: 'flex', background: '#F1F5F9', padding: '0.25rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+        <div className="mcol-tab-group">
           <button
             type="button"
-            className={`btn btn-sm ${activeTab === 'COLLECT' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
+            className={`mcol-tab-btn ${activeTab === 'COLLECT' ? 'active' : ''}`}
             onClick={() => setActiveTab('COLLECT')}
           >
-            <DollarSign size={14} /> Quick Collection Form
+            <DollarSign size={14} />
+            <span>Quick Collection Form</span>
           </button>
           <button
             type="button"
-            className={`btn btn-sm ${activeTab === 'SCHEDULE' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
+            className={`mcol-tab-btn ${activeTab === 'SCHEDULE' ? 'active' : ''}`}
             onClick={() => setActiveTab('SCHEDULE')}
           >
-            <Calendar size={14} /> 12-Month EMI Schedule
+            <Calendar size={14} />
+            <span>12-Month EMI Schedule</span>
           </button>
         </div>
       </div>
 
-      {/* Borrower Profile Hero Bar */}
-      <div
-        className="card"
-        style={{
-          padding: '1.35rem 1.5rem',
-          marginBottom: '1.25rem',
-          border: '1.5px solid #E2E8F0',
-          borderRadius: 14,
-          background: '#FFFFFF',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                background: '#EEF2FF',
-                color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 900,
-                fontSize: '1.25rem',
-                boxShadow: '0 2px 6px rgba(79, 70, 229, 0.12)',
-              }}
-            >
-              {customer.name?.charAt(0) || 'M'}
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                  {customer.name}
-                </h2>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    padding: '0.25rem 0.6rem',
-                    borderRadius: 6,
-                    background: '#EEF2FF',
-                    border: '1px solid #C7D2FE',
-                    color: 'var(--primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <Layers size={11} /> {activeLoans.length} Active Scheme{activeLoans.length > 1 ? 's' : ''}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.85rem', marginTop: 4, fontSize: '0.82rem', color: 'var(--text-secondary)', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span>Code: <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{customer.customer_code}</strong></span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <Phone size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{customer.phone}</strong></span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>• <MapPin size={13} color="#64748B" /> <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{customer.address || 'Chennai'}</strong></span>
-                <span>• Profession: <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{customer.occupation || 'Salaried Executive'}</strong></span>
-              </div>
-            </div>
+      {/* 2. Borrower Profile Hero Bar */}
+      <div className="mcol-hero-card">
+        <div className="mcol-hero-left">
+          <div className="mcol-hero-avatar">
+            {customer.name?.charAt(0) || 'M'}
           </div>
 
-          <div style={{ display: 'flex', gap: '1.25rem', background: '#F8FAFC', padding: '0.75rem 1.25rem', borderRadius: 10, border: '1px solid #E2E8F0' }}>
-            <div>
-              <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Monthly Combined EMI</span>
-              <strong style={{ fontSize: '1.25rem', fontWeight: 900, color: isAlreadyPaid ? '#059669' : 'var(--primary)', letterSpacing: '-0.02em' }}>
-                {formatCurrency(totalCombinedMonthlyDue)}
-              </strong>
+          <div>
+            <div className="mcol-hero-title-row">
+              <h2 className="mcol-hero-name">{customer.name}</h2>
+              <span className="mcol-scheme-count-pill">
+                <Layers size={12} />
+                <span>{activeLoans.length} Active Scheme{activeLoans.length > 1 ? 's' : ''}</span>
+              </span>
             </div>
-            <div style={{ borderLeft: '1px solid #E2E8F0', paddingLeft: '1.25rem' }}>
-              <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Total Outstanding</span>
-              <strong style={{ fontSize: '1.25rem', fontWeight: 900, color: '#DC2626', letterSpacing: '-0.02em' }}>
-                {formatCurrency(customer.outstanding_balance || 40000)}
-              </strong>
+
+            <div className="mcol-hero-meta">
+              <span className="mcol-hero-meta-item">
+                Code: <strong>{customer.customer_code}</strong>
+              </span>
+              <span className="mcol-hero-meta-item">
+                • <Phone size={13} color="#64748B" /> <strong>{customer.phone}</strong>
+              </span>
+              <span className="mcol-hero-meta-item">
+                • <MapPin size={13} color="#64748B" /> <span>{customer.address || 'Chennai'}</span>
+              </span>
+              <span className="mcol-hero-meta-item">
+                • Profession: <span>{customer.occupation || 'Salaried Executive'}</span>
+              </span>
             </div>
+          </div>
+        </div>
+
+        {/* Solid #0F172A Metric Numbers on Right */}
+        <div className="mcol-hero-stats">
+          <div className="mcol-hero-stat-block">
+            <span className="mcol-hero-stat-label">Monthly Combined EMI</span>
+            <strong className="mcol-hero-stat-val">
+              {formatCurrency(totalCombinedMonthlyDue)}
+            </strong>
+          </div>
+          <div className="mcol-hero-stat-block" style={{ borderLeft: '1px solid #E2E8F0', paddingLeft: '1.25rem' }}>
+            <span className="mcol-hero-stat-label">Total Outstanding</span>
+            <strong className="mcol-hero-stat-val">
+              {formatCurrency(customer.outstanding_balance || 40000)}
+            </strong>
           </div>
         </div>
       </div>
@@ -608,14 +514,14 @@ export const MonthlyCollect = () => {
       {/* TAB 1: QUICK COLLECTION WORKSPACE                                     */}
       {/* ===================================================================== */}
       {activeTab === 'COLLECT' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem' }}>
+        <div className="mcol-workspace-grid">
           {/* Left Column: Active Loan Cards Shelf */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <div>
+            <div className="mcol-shelf-header">
+              <h3 className="mcol-shelf-title">
                 Active Monthly EMI Schemes ({activeLoans.length})
               </h3>
-              <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
+              <span className="mcol-shelf-hint">
                 Click card to open 12-Month Log
               </span>
             </div>
@@ -630,46 +536,29 @@ export const MonthlyCollect = () => {
               return (
                 <div
                   key={loan.id || idx}
-                  className="card"
+                  className={`mcol-loan-card ${isPaidForMonth ? 'settled' : ''}`}
                   onClick={() => handleOpenLoanModal(loan)}
-                  style={{
-                    padding: '1.25rem 1.4rem',
-                    border: `1.5px solid ${isPaidForMonth ? '#A7F3D0' : isSelected ? 'var(--primary)' : '#E2E8F0'}`,
-                    borderRadius: 14,
-                    background: isPaidForMonth ? '#F0FDF4' : isSelected ? '#FFFFFF' : '#F8FAFC',
-                    boxShadow: isSelected ? '0 4px 12px rgba(79, 70, 229, 0.08)' : '0 1px 3px rgba(0,0,0,0.02)',
-                    transition: 'all 0.2s ease',
-                    cursor: 'pointer',
-                    position: 'relative',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = isPaidForMonth ? '#059669' : 'var(--primary)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = isPaidForMonth ? '#A7F3D0' : isSelected ? 'var(--primary)' : '#E2E8F0';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
+                  style={{ cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                  <div className="mcol-loan-card-top">
                     <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
                       {isPaidForMonth ? (
                         <div
                           style={{
-                            width: 22,
-                            height: 22,
+                            width: 20,
+                            height: 20,
                             borderRadius: '50%',
-                            background: '#059669',
-                            color: '#FFFFFF',
+                            background: '#ECFDF5',
+                            color: '#059669',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '0.75rem',
-                            fontWeight: 900,
+                            border: '1px solid #A7F3D0',
                           }}
                           title="Settled for this month"
                         >
-                          <Check size={14} strokeWidth={3} />
+                          <Check size={12} strokeWidth={3} />
                         </div>
                       ) : (
                         <input
@@ -677,165 +566,89 @@ export const MonthlyCollect = () => {
                           checked={isSelected}
                           onClick={(e) => e.stopPropagation()}
                           onChange={() => toggleLoanSelection(loan.id)}
-                          style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                          style={{ width: 17, height: 17, accentColor: '#2563EB', cursor: 'pointer' }}
                         />
                       )}
 
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                          <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                            {loan.loan_code}
-                          </h4>
-                          <span
-                            style={{
-                              fontSize: '0.72rem',
-                              fontWeight: 800,
-                              padding: '0.2rem 0.55rem',
-                              borderRadius: 4,
-                              background: '#EEF2FF',
-                              border: '1px solid #C7D2FE',
-                              color: 'var(--primary)',
-                            }}
-                          >
-                            {loan.loan_name || '12-Month EMI Loan'}
+                        <div className="mcol-loan-card-title-group">
+                          <span className="mcol-loan-code">{loan.loan_code}</span>
+                          <span className="mcol-loan-name-badge">
+                            {loan.loan_name || '12-Month EMI Scheme'}
                           </span>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        <div className="mcol-loan-card-sub">
                           Issued: {loan.issue_date || '2026-05-10'} • Maturity: {loan.maturity_date || '2027-05-10'}
-                        </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Monthly EMI</span>
-                      <strong style={{ fontSize: '1.35rem', fontWeight: 900, color: isPaidForMonth ? '#047857' : 'var(--primary)', letterSpacing: '-0.02em' }}>
+                    <div className="mcol-loan-card-emi-block">
+                      <span className="mcol-loan-card-emi-label">Monthly EMI</span>
+                      <strong className="mcol-loan-card-emi-val">
                         {formatCurrency(loan.installment_amount || 5000)}
                       </strong>
                     </div>
                   </div>
 
-                  {/* Financial Details */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: '0.5rem',
-                      background: isPaidForMonth ? '#FFFFFF' : '#F8FAFC',
-                      padding: '0.65rem 0.85rem',
-                      borderRadius: 8,
-                      marginBottom: '0.75rem',
-                      border: '1px solid #E2E8F0',
-                      fontSize: '0.78rem',
-                    }}
-                  >
-                    <div>
-                      <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Principal & Rate</span>
-                      <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                  {/* 3-Column Financial Grid: Solid #0F172A */}
+                  <div className="mcol-loan-metrics-grid">
+                    <div className="mcol-metric-box">
+                      <span className="mcol-metric-label">Principal & Rate</span>
+                      <strong className="mcol-metric-val">
                         {formatCurrency(loan.principal || 50000)} @ {loan.interest_rate || 18}%
                       </strong>
                     </div>
-                    <div>
-                      <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Total Repayable</span>
-                      <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                    <div className="mcol-metric-box">
+                      <span className="mcol-metric-label">Total Repayable</span>
+                      <strong className="mcol-metric-val">
                         {formatCurrency((loan.principal || 50000) * 1.18)}
                       </strong>
                     </div>
-                    <div>
-                      <span style={{ color: '#64748B', display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>Remaining Balance</span>
-                      <strong style={{ color: '#DC2626', fontWeight: 900 }}>
+                    <div className="mcol-metric-box">
+                      <span className="mcol-metric-label">Remaining Balance</span>
+                      <strong className="mcol-metric-val">
                         {formatCurrency(loan.remaining_balance || 40000)}
                       </strong>
                     </div>
                   </div>
 
                   {/* Timeline Progress */}
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: 4 }}>
-                      <span style={{ color: '#64748B', fontWeight: 600 }}>
-                        Repayment Timeline:
-                      </span>
-                      <strong style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                  <div className="mcol-timeline-wrap">
+                    <div className="mcol-timeline-header">
+                      <span className="mcol-timeline-label">Repayment Timeline</span>
+                      <span className="mcol-timeline-val">
                         Month {paidMonths} of {totalMonths} ({progressPct}%)
-                      </strong>
+                      </span>
                     </div>
-                    <div style={{ width: '100%', height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                    <div className="mcol-timeline-track">
                       <div
-                        style={{
-                          width: `${progressPct}%`,
-                          height: '100%',
-                          background: isPaidForMonth ? '#059669' : 'linear-gradient(90deg, #6366F1, #4F46E5)',
-                          borderRadius: 3,
-                          transition: 'width 0.3s',
-                        }}
+                        className={`mcol-timeline-fill ${isPaidForMonth ? 'settled' : ''}`}
+                        style={{ width: `${progressPct}%` }}
                       />
                     </div>
                   </div>
 
                   {/* Card Actions Bottom Bar */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingTop: '0.65rem',
-                      borderTop: '1px solid #E2E8F0',
-                      flexWrap: 'wrap',
-                      gap: '0.5rem',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="mcol-loan-card-footer" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      className="btn btn-sm btn-secondary"
+                      className="mcol-btn-view-log"
                       onClick={() => handleOpenLoanModal(loan)}
-                      style={{
-                        fontSize: '0.75rem',
-                        padding: '0.35rem 0.75rem',
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        color: 'var(--primary)',
-                        borderColor: '#C7D2FE',
-                        background: '#EEF2FF',
-                      }}
                     >
-                      <Calendar size={13} /> View 12-Month Log ↗
+                      <Calendar size={13} />
+                      <span>View 12-Month Log</span>
                     </button>
 
                     {isPaidForMonth ? (
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          padding: '3px 10px',
-                          borderRadius: 12,
-                          background: '#ECFDF5',
-                          color: '#059669',
-                          border: '1px solid #A7F3D0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}
-                      >
-                        <CheckCircle2 size={13} /> Settled
+                      <span className="mcol-pill-settled">
+                        <CheckCircle2 size={13} />
+                        <span>Settled</span>
                       </span>
                     ) : (
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          padding: '3px 10px',
-                          borderRadius: 12,
-                          background: '#FFFBEB',
-                          color: '#D97706',
-                          border: '1px solid #FDE68A',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}
-                      >
-                        <Clock size={13} /> EMI Due
+                      <span className="mcol-pill-due">
+                        <Clock size={13} />
+                        <span>EMI Due</span>
                       </span>
                     )}
                   </div>
@@ -844,165 +657,112 @@ export const MonthlyCollect = () => {
             })}
           </div>
 
-          {/* Right Column: Payment Form or Settled Screen */}
+          {/* Right Column: Collection Form Card */}
           <div>
-            <div
-              className="card"
-              style={{
-                padding: '1.5rem',
-                border: '1.5px solid #E2E8F0',
-                borderRadius: 14,
-                background: '#FFFFFF',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-              }}
-            >
-              {/* Date Stepper in Form */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
-                  Collection Date
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div className="mcol-form-card">
+              {/* Date Stepper */}
+              <div className="mcol-form-date-group">
+                <label className="mcol-form-label">Collection Date</label>
+                <div className="mcol-date-stepper-row">
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className="mcol-date-step-btn"
                     onClick={handlePrevDay}
-                    style={{ padding: '0.35rem 0.6rem' }}
+                    title="Previous Day"
                   >
                     <ChevronLeft size={15} />
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm ${isToday ? 'btn-primary' : 'btn-secondary'}`}
+                    className={`mcol-date-step-btn ${isToday ? 'active' : ''}`}
                     onClick={handleSetToday}
-                    style={{ fontWeight: 800, fontSize: '0.78rem' }}
                   >
                     Today
                   </button>
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className="mcol-date-step-btn"
                     onClick={handleNextDay}
-                    style={{ padding: '0.35rem 0.6rem' }}
+                    title="Next Day"
                   >
                     <ChevronRight size={15} />
                   </button>
                   <input
                     type="date"
-                    className="form-input"
+                    className="mcol-date-input"
                     value={collectionDate}
                     onChange={(e) => setCollectionDate(e.target.value)}
-                    style={{ flex: 1, padding: '0.35rem 0.65rem', fontSize: '0.85rem', fontWeight: 600, borderRadius: 8, border: '1.5px solid #E2E8F0' }}
                   />
                 </div>
               </div>
 
               {isAlreadyPaid ? (
-                <div
-                  style={{
-                    padding: '2.5rem 1.5rem',
-                    textAlign: 'center',
-                    background: '#F0FDF4',
-                    borderRadius: 12,
-                    border: '1.5px solid #A7F3D0',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: '50%',
-                      background: '#ECFDF5',
-                      border: '2px solid #A7F3D0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      margin: '0 auto 1rem auto',
-                    }}
-                  >
-                    <CheckCircle2 size={32} color="#059669" />
+                <div className="mcol-settled-box">
+                  <div className="mcol-settled-icon">
+                    <CheckCircle2 size={28} />
                   </div>
-                  <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.25rem', fontWeight: 900, color: '#065F46' }}>
-                    Month EMI Dues Settled!
-                  </h4>
-                  <p style={{ margin: 0, color: '#047857', fontSize: '0.85rem' }}>
+                  <h4 className="mcol-settled-title">Month EMI Dues Settled</h4>
+                  <p className="mcol-settled-desc">
                     This customer has completed their monthly installment payment.
                   </p>
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className="mcol-btn-back"
                     onClick={() => setShowLogModal(true)}
-                    style={{ marginTop: '1.25rem', fontWeight: 700 }}
+                    style={{ marginTop: '1.25rem' }}
                   >
                     View Statement History
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmitPayment}>
-                  {/* Amount Banner */}
-                  <div
-                    style={{
-                      background: 'linear-gradient(135deg, #4F46E5, #3730A3)',
-                      borderRadius: 12,
-                      padding: '1.25rem',
-                      color: '#FFFFFF',
-                      marginBottom: '1.25rem',
-                    }}
-                  >
-                    <span style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Selected Monthly EMI
-                    </span>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em', marginTop: '0.15rem' }}>
+                  {/* Clean Amount Box (No Loud Gradient, Solid #0F172A) */}
+                  <div className="mcol-amount-box">
+                    <div className="mcol-amount-box-label">Selected Monthly EMI</div>
+                    <div className="mcol-amount-box-val">
                       {formatCurrency(totalPayableAmount)}
                     </div>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.85 }}>
+                    <div className="mcol-amount-box-meta">
                       Collecting for {payableSelectedLoans.length} active monthly scheme(s)
-                    </span>
+                    </div>
                   </div>
 
-                  {/* Payment Mode Pills */}
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-                      Select Payment Mode
-                    </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                  {/* Payment Mode Segmented Control */}
+                  <div className="mcol-mode-group">
+                    <label className="mcol-form-label">Select Payment Mode</label>
+                    <div className="mcol-mode-selector">
                       {['UPI', 'CASH', 'BANK'].map((mode) => (
                         <button
                           key={mode}
                           type="button"
-                          className={`btn btn-sm ${paymentMode === mode ? 'btn-primary' : 'btn-secondary'}`}
+                          className={`mcol-mode-btn ${paymentMode === mode ? 'active' : ''}`}
                           onClick={() => setPaymentMode(mode)}
-                          style={{ padding: '0.55rem', fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                         >
-                          {mode === 'UPI' ? <Smartphone size={15} /> : mode === 'CASH' ? <Banknote size={15} /> : <Building2 size={15} />}
+                          {mode === 'UPI' ? (
+                            <Smartphone size={15} />
+                          ) : mode === 'CASH' ? (
+                            <Banknote size={15} />
+                          ) : (
+                            <Building2 size={15} />
+                          )}
                           <span>{mode === 'UPI' ? 'UPI' : mode === 'CASH' ? 'Cash' : 'Bank'}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Submit Action */}
+                  {/* Primary Collect Button */}
                   <button
                     type="submit"
-                    className="btn btn-primary"
+                    className="mcol-btn-submit"
                     disabled={submitting || totalPayableAmount <= 0}
-                    style={{
-                      width: '100%',
-                      padding: '0.85rem',
-                      fontSize: '1rem',
-                      fontWeight: 900,
-                      borderRadius: 10,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                    }}
                   >
                     {submitting ? (
                       <span>Recording Collection...</span>
                     ) : (
                       <>
                         <span>Collect {formatCurrency(totalPayableAmount)} Now</span>
-                        <Check size={18} />
+                        <Check size={17} />
                       </>
                     )}
                   </button>
@@ -1017,19 +777,10 @@ export const MonthlyCollect = () => {
       {/* TAB 2: INLINE 12-MONTH LEDGER & SCHEDULE                              */}
       {/* ===================================================================== */}
       {activeTab === 'SCHEDULE' && (
-        <div
-          className="card"
-          style={{
-            padding: '1.5rem',
-            border: '1.5px solid #E2E8F0',
-            borderRadius: 14,
-            background: '#FFFFFF',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-          }}
-        >
+        <div className="directory-table-card" style={{ padding: '1.25rem 1.45rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
                 12-Month EMI Repayment Ledger
               </h3>
               <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748B' }}>
@@ -1037,28 +788,25 @@ export const MonthlyCollect = () => {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <div style={{ display: 'flex', background: '#F8FAFC', padding: 3, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+              <div className="mc-filter-pills">
                 <button
                   type="button"
-                  className={`btn btn-sm ${modalFilterStatus === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+                  className={`mc-filter-pill-btn ${modalFilterStatus === 'ALL' ? 'active' : ''}`}
                   onClick={() => setModalFilterStatus('ALL')}
                 >
                   All ({scheduleItems.length})
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm ${modalFilterStatus === 'PAID' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+                  className={`mc-filter-pill-btn ${modalFilterStatus === 'PAID' ? 'active' : ''}`}
                   onClick={() => setModalFilterStatus('PAID')}
                 >
                   Paid
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm ${modalFilterStatus === 'PENDING' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 700, border: 'none' }}
+                  className={`mc-filter-pill-btn ${modalFilterStatus === 'PENDING' ? 'active' : ''}`}
                   onClick={() => setModalFilterStatus('PENDING')}
                 >
                   Pending
@@ -1067,25 +815,25 @@ export const MonthlyCollect = () => {
 
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
+                className="mcol-btn-back"
                 onClick={() => window.print()}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
               >
-                <Printer size={15} /> Print Ledger
+                <Printer size={15} />
+                <span>Print Ledger</span>
               </button>
             </div>
           </div>
 
-          <div className="table-responsive" style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
-            <table className="table" style={{ margin: 0 }}>
+          <div className="directory-table-responsive" style={{ border: '1px solid #E2E8F0', borderRadius: 8 }}>
+            <table className="directory-table">
               <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
-                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>MONTH #</th>
-                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>DUE DATE</th>
-                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>AMOUNT</th>
-                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>PAID DATE</th>
-                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>PAYMENT INFO</th>
-                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.74rem', fontWeight: 800, color: '#64748B', textAlign: 'right' }}>STATUS</th>
+                <tr>
+                  <th>MONTH #</th>
+                  <th>DUE DATE</th>
+                  <th>AMOUNT</th>
+                  <th>PAID DATE</th>
+                  <th>PAYMENT INFO</th>
+                  <th style={{ textAlign: 'right' }}>STATUS</th>
                 </tr>
               </thead>
               <tbody>
@@ -1093,46 +841,40 @@ export const MonthlyCollect = () => {
                   const isPaid = inst.status === 'PAID';
                   const isCurrent = inst.status === 'CURRENT_DUE';
                   return (
-                    <tr key={inst.month_number} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                    <tr key={inst.month_number}>
+                      <td style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.85rem' }}>
                         Month {inst.month_number}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
+                      <td style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
                         {inst.due_date}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.92rem', fontWeight: 900, color: isPaid ? '#059669' : 'var(--text-primary)' }}>
+                      <td style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0F172A' }}>
                         {formatCurrency(inst.amount)}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.82rem' }}>
+                      <td style={{ fontSize: '0.82rem' }}>
                         {isPaid ? (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', color: '#047857', padding: '3px 8px', borderRadius: 6, fontWeight: 700, border: '1px solid #A7F3D0' }}>
-                            <CheckCircle2 size={13} color="#059669" />
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#059669', fontWeight: 700 }}>
+                            <CheckCircle2 size={13} />
                             <span>{inst.paid_date || inst.due_date}</span>
-                          </div>
+                          </span>
                         ) : (
-                          <span style={{ color: '#94A3B8', fontWeight: 500 }}>—</span>
+                          <span style={{ color: '#94A3B8' }}>—</span>
                         )}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748B' }}>
+                      <td style={{ fontSize: '0.8rem', color: '#64748B' }}>
                         {isPaid ? (
                           <span>
-                            {inst.receipt_no} • <strong style={{ color: 'var(--primary)' }}>{inst.payment_mode}</strong>
+                            {inst.receipt_no} • <strong style={{ color: '#2563EB' }}>{inst.payment_mode}</strong>
                           </span>
                         ) : (
                           <span style={{ color: '#94A3B8' }}>Uncollected</span>
                         )}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right' }}>
                         <span
-                          style={{
-                            padding: '3px 10px',
-                            borderRadius: 12,
-                            fontSize: '0.72rem',
-                            fontWeight: 800,
-                            background: isPaid ? '#ECFDF5' : isCurrent ? '#EFF6FF' : '#FFFBEB',
-                            color: isPaid ? '#059669' : isCurrent ? '#2563EB' : '#D97706',
-                            border: isPaid ? '1px solid #A7F3D0' : isCurrent ? '1px solid #BFDBFE' : '1px solid #FDE68A',
-                          }}
+                          className={`mc-status-badge ${
+                            isPaid ? 'paid' : isCurrent ? 'pending' : 'pending'
+                          }`}
                         >
                           {isPaid ? 'PAID' : isCurrent ? 'DUE NOW' : 'PENDING'}
                         </span>
@@ -1146,101 +888,47 @@ export const MonthlyCollect = () => {
         </div>
       )}
 
-      {/* Monthly Log Modal */}
+      {/* 3. Monthly Log Modal */}
       {showLogModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '1rem',
-          }}
-          onClick={() => setShowLogModal(false)}
-        >
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 16,
-              maxWidth: 760,
-              width: '100%',
-              maxHeight: '90vh',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              border: '1.5px solid #E2E8F0',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                padding: '1.25rem 1.5rem',
-                borderBottom: '1.5px solid #E2E8F0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: '#F8FAFC',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 10,
-                    background: '#EEF2FF',
-                    color: 'var(--primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 900,
-                    fontSize: '1.1rem',
-                  }}
-                >
+        <div className="mcol-modal-overlay" onClick={() => setShowLogModal(false)}>
+          <div className="mcol-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="mcol-modal-header">
+              <div className="mcol-modal-title-group">
+                <div className="mcol-modal-avatar">
                   {customer.name?.charAt(0) || 'M'}
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                  <h3 className="mcol-modal-title">
                     {customer.name} — 12-Month EMI Schedule Log
                   </h3>
-                  <div style={{ fontSize: '0.76rem', color: '#64748B', marginTop: '0.15rem' }}>
+                  <div className="mcol-modal-sub">
                     {customer.customer_code} • {customer.phone}
                   </div>
                 </div>
               </div>
 
               <button
+                type="button"
+                className="mcol-modal-close-btn"
                 onClick={() => setShowLogModal(false)}
-                style={{
-                  background: '#F1F5F9',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '0.4rem',
-                  cursor: 'pointer',
-                  color: '#64748B',
-                }}
+                title="Close"
               >
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
 
-            <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', flex: 1 }}>
-              <div style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
-                <table className="table" style={{ margin: 0 }}>
+            <div className="mcol-modal-body">
+              <div className="mcol-modal-table-wrap">
+                <table className="mcol-modal-table">
                   <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
-                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>MONTH #</th>
-                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>DUE DATE</th>
-                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>AMOUNT</th>
-                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>PAID DATE</th>
-                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>PAYMENT INFO</th>
-                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B' }}>STATUS</th>
-                      <th style={{ padding: '0.65rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#64748B', textAlign: 'right' }}>ACTION</th>
+                    <tr>
+                      <th>MONTH #</th>
+                      <th>DUE DATE</th>
+                      <th>AMOUNT</th>
+                      <th>PAID DATE</th>
+                      <th>PAYMENT INFO</th>
+                      <th>STATUS</th>
+                      <th style={{ textAlign: 'right' }}>ACTION</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1248,73 +936,48 @@ export const MonthlyCollect = () => {
                       const isPaid = inst.status === 'PAID';
                       const isCurrent = inst.status === 'CURRENT_DUE';
                       return (
-                        <tr key={inst.month_number} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                          <td style={{ padding: '0.65rem 0.85rem', fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.82rem' }}>
-                            Month {inst.month_number}
-                          </td>
-                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
-                            {inst.due_date}
-                          </td>
-                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.88rem', fontWeight: 900, color: isPaid ? '#059669' : 'var(--text-primary)' }}>
-                            {formatCurrency(inst.amount)}
-                          </td>
-                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem' }}>
+                        <tr key={inst.month_number}>
+                          <td style={{ fontWeight: 800, color: '#0F172A' }}>Month {inst.month_number}</td>
+                          <td style={{ color: '#475569', fontWeight: 600 }}>{inst.due_date}</td>
+                          <td style={{ fontWeight: 800, color: '#0F172A' }}>{formatCurrency(inst.amount)}</td>
+                          <td style={{ color: isPaid ? '#059669' : '#94A3B8', fontWeight: isPaid ? 700 : 500 }}>
                             {isPaid ? (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', color: '#047857', padding: '2px 7px', borderRadius: 6, fontWeight: 700, border: '1px solid #A7F3D0' }}>
-                                <CheckCircle2 size={12} color="#059669" />
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <CheckCircle2 size={13} color="#059669" />
                                 <span>{inst.paid_date || inst.due_date}</span>
-                              </div>
+                              </span>
                             ) : (
-                              <span style={{ color: '#94A3B8', fontWeight: 500 }}>—</span>
+                              <span>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.78rem', color: '#64748B' }}>
+                          <td style={{ color: '#64748B' }}>
                             {isPaid ? (
                               <span>
-                                {inst.receipt_no} • <strong style={{ color: 'var(--primary)' }}>{inst.payment_mode}</strong>
+                                {inst.receipt_no} • <strong style={{ color: '#2563EB' }}>{inst.payment_mode}</strong>
                               </span>
                             ) : (
                               <span style={{ color: '#94A3B8' }}>Uncollected</span>
                             )}
                           </td>
-                          <td style={{ padding: '0.65rem 0.85rem' }}>
+                          <td>
                             <span
-                              style={{
-                                padding: '3px 8px',
-                                borderRadius: 12,
-                                fontSize: '0.7rem',
-                                fontWeight: 800,
-                                background: isPaid ? '#ECFDF5' : isCurrent ? '#EFF6FF' : '#FFFBEB',
-                                color: isPaid ? '#059669' : isCurrent ? '#2563EB' : '#D97706',
-                                border: isPaid ? '1px solid #A7F3D0' : isCurrent ? '1px solid #BFDBFE' : '1px solid #FDE68A',
-                              }}
+                              className={`mc-status-badge ${
+                                isPaid ? 'paid' : isCurrent ? 'pending' : 'pending'
+                              }`}
                             >
                               {isPaid ? 'PAID' : isCurrent ? 'DUE NOW' : 'PENDING'}
                             </span>
                           </td>
-                          <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
+                          <td style={{ textAlign: 'right' }}>
                             {isPaid ? (
                               <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700 }}>Settled</span>
                             ) : (
                               <button
                                 type="button"
+                                className="mc-modal-btn-pay"
                                 onClick={() => {
                                   setShowLogModal(false);
                                   setActiveTab('COLLECT');
-                                }}
-                                style={{
-                                  padding: '4px 10px',
-                                  borderRadius: 6,
-                                  fontSize: '0.72rem',
-                                  fontWeight: 800,
-                                  background: 'var(--primary)',
-                                  color: '#FFFFFF',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  boxShadow: '0 1px 2px rgba(79, 70, 229, 0.2)',
                                 }}
                               >
                                 <span>Pay</span>
@@ -1330,23 +993,11 @@ export const MonthlyCollect = () => {
               </div>
             </div>
 
-            <div
-              style={{
-                padding: '1rem 1.5rem',
-                borderTop: '1.5px solid #E2E8F0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: '#F8FAFC',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-              }}
-            >
+            <div className="mcol-modal-footer">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="mcol-btn-back"
                 onClick={() => window.print()}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 700 }}
               >
                 <Printer size={15} />
                 <span>Print Borrower Statement</span>
@@ -1355,21 +1006,20 @@ export const MonthlyCollect = () => {
               <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="mcol-btn-back"
                   onClick={() => setShowLogModal(false)}
-                  style={{ fontSize: '0.82rem', fontWeight: 700 }}
                 >
                   Close Log
                 </button>
 
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="mcol-btn-submit"
+                  style={{ width: 'auto', padding: '0.45rem 1rem' }}
                   onClick={() => {
                     setShowLogModal(false);
                     setActiveTab('COLLECT');
                   }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 800 }}
                 >
                   <span>Collect Monthly EMI</span>
                   <ArrowRight size={14} />

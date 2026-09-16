@@ -659,6 +659,15 @@ export const ManageUsers = () => {
       <div className="directory-table-card">
         <div className="directory-table-responsive">
           <table className="directory-table">
+            <colgroup>
+              <col style={{ width: '22%', minWidth: '200px' }} />
+              <col style={{ width: '15%', minWidth: '140px' }} />
+              <col style={{ width: '18%', minWidth: '160px' }} />
+              <col style={{ width: '12%', minWidth: '110px' }} />
+              <col style={{ width: '11%', minWidth: '100px' }} />
+              <col style={{ width: '9%', minWidth: '90px' }} />
+              <col style={{ width: '13%', minWidth: '120px' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th className="sortable" onClick={() => handleSort('name')}>
@@ -702,7 +711,7 @@ export const ManageUsers = () => {
               {loading ? (
                 Array.from({ length: pageSize > 8 ? 8 : pageSize }).map((_, i) => (
                   <tr key={i}>
-                    <td>
+                    <td style={{ textAlign: 'center' }}>
                       <div className="directory-user-cell">
                         <div className="directory-skeleton-avatar" />
                         <div>
@@ -757,7 +766,7 @@ export const ManageUsers = () => {
                       className={isRowActive ? 'row-highlighted' : ''}
                       onClick={() => setActiveRowId(u.id)}
                     >
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <div className="directory-user-cell">
                           <div
                             className={`directory-avatar ${isShop ? 'shopkeeper' : isWeekly ? 'weekly' : 'other'}`}
