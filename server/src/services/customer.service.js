@@ -530,6 +530,17 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
       issue_date: loan.disbursement_date ? String(loan.disbursement_date).slice(0, 10) : '2026-09-16',
       maturity_date: loan.maturity_date ? String(loan.maturity_date).slice(0, 10) : (schedule.length > 0 ? schedule[schedule.length - 1].due_date : null),
       schedule,
+      installments: schedule.map((s, idx) => ({
+        day_number: s.installment_no || idx + 1,
+        week_number: s.installment_no || idx + 1,
+        installment_number: s.installment_no || idx + 1,
+        due_date: s.due_date,
+        amount: s.amount,
+        paid_amount: s.paid_amount,
+        status: s.status,
+        paid_date: s.status === 'PAID' ? s.due_date : null,
+        receipt_no: s.receipt_no,
+      })),
     } : null;
 
     const totalInstWk = activeLoanObj ? Number(activeLoanObj.total_installments || 10) : 10;
@@ -984,6 +995,16 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
       end_date: endMaturityDate,
       maturity_date: endMaturityDate,
       schedule,
+      installments: schedule.map((s, idx) => ({
+        month_number: s.installment_no || idx + 1,
+        installment_number: s.installment_no || idx + 1,
+        due_date: s.due_date,
+        amount: s.amount,
+        paid_amount: s.paid_amount,
+        status: s.status,
+        paid_date: s.status === 'PAID' ? s.due_date : null,
+        receipt_no: s.receipt_no,
+      })),
     };
 
     result.push({

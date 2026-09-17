@@ -657,7 +657,7 @@ export const api = {
     }
   },
 
-  recordWeeklyCollection: async (customerId, loanCode, paymentMode, amount) => {
+  recordWeeklyCollection: async (customerId, loanCode, paymentMode, amount, collectionDate) => {
     try {
       return await request('/payments', {
         method: 'POST',
@@ -667,6 +667,8 @@ export const api = {
           amount: parseFloat(amount),
           paymentMode,
           paymentType: 'WEEKLY_INSTALLMENT',
+          collectionDate: collectionDate || new Date().toISOString().slice(0, 10),
+          paymentDate: collectionDate || new Date().toISOString().slice(0, 10),
         }),
       });
     } catch {
@@ -781,7 +783,7 @@ export const api = {
     }
   },
 
-  recordMonthlyCollection: async (customerId, loanCode, paymentMode, amount, loanId) => {
+  recordMonthlyCollection: async (customerId, loanCode, paymentMode, amount, loanId, collectionDate) => {
     try {
       const res = await request('/payments', {
         method: 'POST',
@@ -792,6 +794,8 @@ export const api = {
           amount: parseFloat(amount),
           paymentMode,
           paymentType: 'MONTHLY_INSTALLMENT',
+          collectionDate: collectionDate || new Date().toISOString().slice(0, 10),
+          paymentDate: collectionDate || new Date().toISOString().slice(0, 10),
         }),
       });
       return res?.data || res;
