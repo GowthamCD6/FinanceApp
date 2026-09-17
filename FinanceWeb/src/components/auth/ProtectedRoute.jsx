@@ -7,7 +7,8 @@ export const ProtectedRoute = ({ allowedRoles = null, children = null }) => {
   const { isAuthenticated, user, userRoles, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  // Only show full-screen auth loader if we have zero cached user data AND loading is actively in progress
+  if (loading && !user) {
     return (
       <div
         style={{
@@ -50,7 +51,7 @@ export const ProtectedRoute = ({ allowedRoles = null, children = null }) => {
   }
 
   // Not authenticated -> redirect to login
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated && !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

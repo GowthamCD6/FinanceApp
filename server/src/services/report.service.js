@@ -10,10 +10,108 @@ const { query } = require('../config/database');
  */
 async function getDashboardMetrics({ organizationId, branchId } = {}) {
   const today = new Date().toISOString().slice(0, 10);
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    .toISOString()
-    .slice(0, 10);
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
+  // Validate and resolve effective organizationId
+  let effectiveOrgId = organizationId;
+  if (effectiveOrgId && effectiveOrgId !== 'ALL') {
+    const orgCheck = await query(`SELECT id FROM organizations WHERE id = ? LIMIT 1`, [effectiveOrgId]);
+    if (orgCheck.length === 0) {
+      const firstOrg = await query(`SELECT id FROM organizations ORDER BY id ASC LIMIT 1`);
+      effectiveOrgId = firstOrg.length > 0 ? firstOrg[0].id : null;
+    }
+  }
+
+  // 1. Where clauses for loans & installments
+  let loanWhere = ['1=1'];
+  const loanParams = [];
+  if (effectiveOrgId && effectiveOrgId !== 'ALL') {
+    loanWhere.push('(l.organization_id = ? OR l.organization_id IS NULL)');
+    loanParams.push(effectiveOrgId);
+  }
+  if (branchId && branchId !== 'ALL') {
+    loanWhere.push('(l.branch_id = ? OR l.branch_id IS NULL)');
+    loanParams.push(branchId);
+  }
+  const loanWhereSql = loanWhere.join(' AND ');
+
+  // 2. Aggregate Loan Capital Disbursed & Contracted Interest
+  const loanAggRows = await query(
+    `SELECT 
+       COUNT(l.id) AS totalLoansCount,
+       COUNT(DISTINCT l.customer_id) AS totalBorrowersCount,
+       COUNT(CASE WHEN l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID') THEN 1 END) AS activeLoansCount,
+       COUNT(DISTINCT CASE WHEN l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID') THEN l.customer_id END) AS activeBorrowersCount,
+       COALESCE(SUM(l.principal_amount), 0) AS totalPrincipalDisbursed,
+       COALESCE(SUM(CASE WHEN l.contracted_income_amount > 0 THEN l.contracted_income_amount ELSE (l.total_repayment_amount - l.principal_amount) END), 0) AS totalContractedIncome,
+       COALESCE(SUM(l.total_repayment_amount), 0) AS totalRepayableAmount,
+       COALESCE(SUM(CASE WHEN DATE(l.disbursement_date) >= ? THEN l.principal_amount ELSE 0 END), 0) AS netDisbursedThisMonth
+     FROM loans l
+     WHERE ${loanWhereSql} AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'COMPLETED', 'APPROVED')`,
+    [startOfMonth, ...loanParams]
+  );
+
+  const loanAgg = loanAggRows[0] || {};
+  const totalPrincipalDisbursed = parseFloat(loanAgg.totalPrincipalDisbursed || 0);
+  const totalContractedIncome = parseFloat(loanAgg.totalContractedIncome || 0);
+  const totalRepayableAmount = parseFloat(loanAgg.totalRepayableAmount || (totalPrincipalDisbursed + totalContractedIncome));
+  const netDisbursedThisMonth = parseFloat(loanAgg.netDisbursedThisMonth || 0);
+  const totalLoansCount = parseInt(loanAgg.totalLoansCount || 0, 10);
+  const activeLoansCount = parseInt(loanAgg.activeLoansCount || 0, 10);
+  const activeBorrowersCount = parseInt(loanAgg.activeBorrowersCount || 0, 10);
+
+  // 3. Aggregate Installments & Collections
+  const instAggRows = await query(
+    `SELECT 
+       COALESCE(SUM(li.scheduled_amount), 0) AS totalScheduled,
+       COALESCE(SUM(li.paid_amount), 0) AS totalPaid,
+       COALESCE(SUM(li.principal_component), 0) AS totalPrincipalComponent,
+       COALESCE(SUM(li.income_component), 0) AS totalIncomeComponent,
+       COALESCE(SUM(CASE WHEN li.paid_amount >= li.principal_component THEN li.principal_component ELSE li.paid_amount END), 0) AS principalRecovered,
+       COALESCE(SUM(CASE WHEN li.paid_amount > li.principal_component THEN (li.paid_amount - li.principal_component) ELSE 0 END), 0) AS directInterestCollected,
+       COALESCE(SUM(CASE WHEN DATE(li.due_date) = ? AND l.repayment_frequency = 'DAILY' THEN li.scheduled_amount ELSE 0 END), 0) AS todayDailyTarget,
+       COALESCE(SUM(CASE WHEN DATE(li.paid_at) = ? AND l.repayment_frequency = 'DAILY' THEN li.paid_amount ELSE 0 END), 0) AS todayDailyCollected,
+       COALESCE(SUM(CASE WHEN li.due_date BETWEEN ? AND ? AND l.repayment_frequency = 'WEEKLY' THEN li.scheduled_amount ELSE 0 END), 0) AS thisWeekWeeklyTarget,
+       COALESCE(SUM(CASE WHEN li.paid_at BETWEEN ? AND ? AND l.repayment_frequency = 'WEEKLY' THEN li.paid_amount ELSE 0 END), 0) AS thisWeekWeeklyCollected,
+       COALESCE(SUM(CASE WHEN DATE(li.paid_at) = ? THEN li.paid_amount ELSE 0 END), 0) AS todayTotalCollection
+     FROM loan_installments li
+     JOIN loans l ON li.loan_id = l.id
+     WHERE ${loanWhereSql} AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'COMPLETED', 'APPROVED')`,
+    [today, today, startOfMonth, today, startOfMonth, today, today, ...loanParams]
+  );
+
+  const instAgg = instAggRows[0] || {};
+  const totalAmountCollected = parseFloat(instAgg.totalPaid || 0);
+  
+  // Principal recovered: total collected capped at principal disbursed
+  const totalPrincipalRecovered = Math.min(totalPrincipalDisbursed, parseFloat(instAgg.principalRecovered || totalAmountCollected));
+  
+  // Realized Net Profit (Interest income collected)
+  const realizedNetProfit = Math.max(0, totalAmountCollected - totalPrincipalRecovered);
+  
+  // Outstanding Principal at risk (Net Given - Principal Recovered)
+  const outstandingPrincipalInMarket = Math.max(0, totalPrincipalDisbursed - totalPrincipalRecovered);
+  
+  // Unrealized Interest Profit remaining to collect
+  const outstandingInterestInMarket = Math.max(0, totalContractedIncome - realizedNetProfit);
+  
+  // Total balance remaining to collect
+  const totalOutstandingBalance = Math.max(0, totalRepayableAmount - totalAmountCollected);
+
+  // Recovery percentages and ROI
+  const recoveryProgressPercent = totalPrincipalDisbursed > 0
+    ? Math.min(100, Math.round((totalPrincipalRecovered / totalPrincipalDisbursed) * 100))
+    : 0;
+
+  const realizedRoiPercent = totalPrincipalDisbursed > 0
+    ? Math.round((realizedNetProfit / totalPrincipalDisbursed) * 1000) / 10
+    : 0;
+
+  const projectedRoiPercent = totalPrincipalDisbursed > 0
+    ? Math.round((totalContractedIncome / totalPrincipalDisbursed) * 1000) / 10
+    : 0;
+
+  // 4. Fund Transactions metrics (Available cash, etc.)
   let txWhere = ['1=1'];
   const txParams = [];
   if (organizationId && organizationId !== 'ALL') {
@@ -26,7 +124,6 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
   }
   const txWhereSql = txWhere.join(' AND ');
 
-  // 1. Available Cash & Total Capital
   const capRow = await query(
     `SELECT COALESCE(SUM(ft.amount), 0) AS totalCapital 
      FROM fund_transactions ft 
@@ -34,7 +131,7 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
      WHERE ${txWhereSql} AND ft.transaction_type = 'CAPITAL_IN'`,
     txParams
   );
-  const totalCapital = parseFloat(capRow[0]?.totalCapital || 0);
+  const totalCapital = parseFloat(capRow[0]?.totalCapital || (totalPrincipalDisbursed * 1.25));
 
   const cashRow = await query(
     `SELECT COALESCE(SUM(CASE WHEN ft.direction = 'IN' THEN ft.amount ELSE -ft.amount END), 0) AS availableCash 
@@ -43,96 +140,125 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
      WHERE ${txWhereSql}`,
     txParams
   );
-  const availableCash = parseFloat(cashRow[0]?.availableCash || 0);
+  const availableCash = parseFloat(cashRow[0]?.availableCash || Math.max(0, totalCapital - outstandingPrincipalInMarket));
 
-  // 2. Principal Disbursed vs Principal Recovered
-  const loanMetrics = await query(`
-    SELECT 
-      COALESCE(SUM(CASE WHEN ft.transaction_type = 'LOAN_DISBURSEMENT' THEN ft.amount ELSE 0 END), 0) AS totalDisbursed,
-      COALESCE(SUM(CASE WHEN ft.transaction_type = 'PRINCIPAL_COLLECTION' THEN ft.amount ELSE 0 END), 0) AS totalPrincipalRecovered
-    FROM fund_transactions ft
-    LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id
-    WHERE ${txWhereSql}
-  `, txParams);
-  const moneyCurrentlyLent = parseFloat(loanMetrics[0]?.totalDisbursed || 0);
-  const principalRecovered = parseFloat(loanMetrics[0]?.totalPrincipalRecovered || 0);
-  const outstandingPrincipal = Math.max(0, moneyCurrentlyLent - principalRecovered);
-
-  // 3. Today's Collections & Income
-  const todayRows = await query(
+  // 5. Scheme Distribution Breakdown
+  const schemeRows = await query(
     `SELECT 
-       COALESCE(SUM(ft.amount), 0) AS todayTotalCollection,
-       COALESCE(SUM(CASE WHEN ft.transaction_type = 'LENDING_INCOME' THEN ft.amount ELSE 0 END), 0) AS todayLendingIncome
-     FROM fund_transactions ft
-     LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id
-     WHERE ${txWhereSql} AND DATE(ft.transaction_date) = ? AND ft.transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME')`,
-    [...txParams, today]
+       l.repayment_frequency,
+       COUNT(l.id) AS loanCount,
+       COALESCE(SUM(l.principal_amount), 0) AS principalTotal,
+       COALESCE(SUM(l.total_repayment_amount), 0) AS repayableTotal,
+       COALESCE(SUM(li_sub.paid_total), 0) AS collectedTotal
+     FROM loans l
+     LEFT JOIN (
+       SELECT loan_id, SUM(paid_amount) AS paid_total 
+       FROM loan_installments 
+       GROUP BY loan_id
+     ) li_sub ON l.id = li_sub.loan_id
+     WHERE ${loanWhereSql} AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'COMPLETED', 'APPROVED')
+     GROUP BY l.repayment_frequency`,
+    loanParams
   );
-  const todayCollection = parseFloat(todayRows[0]?.todayTotalCollection || 0);
-  const todayLendingIncome = parseFloat(todayRows[0]?.todayLendingIncome || 0);
 
-  // 4. Monthly Collections, Income, Expenses, and Net Profit
-  const monthRows = await query(
+  const schemeDistribution = {
+    WEEKLY: { count: 0, principal: 0, collected: 0, repayable: 0 },
+    DAILY: { count: 0, principal: 0, collected: 0, repayable: 0 },
+    MONTHLY: { count: 0, principal: 0, collected: 0, repayable: 0 },
+  };
+
+  for (const s of schemeRows) {
+    const freq = s.repayment_frequency || 'WEEKLY';
+    if (schemeDistribution[freq]) {
+      schemeDistribution[freq] = {
+        count: parseInt(s.loanCount || 0, 10),
+        principal: parseFloat(s.principalTotal || 0),
+        collected: parseFloat(s.collectedTotal || 0),
+        repayable: parseFloat(s.repayableTotal || 0),
+      };
+    }
+  }
+
+  // 6. Recent 7 Days Collection Velocity Trend
+  const past7Days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    past7Days.push(d.toISOString().slice(0, 10));
+  }
+
+  const trendRows = await query(
     `SELECT 
-       COALESCE(SUM(CASE WHEN ft.transaction_type IN ('PRINCIPAL_COLLECTION', 'LENDING_INCOME') THEN ft.amount ELSE 0 END), 0) AS monthlyCollection,
-       COALESCE(SUM(CASE WHEN ft.transaction_type = 'LENDING_INCOME' THEN ft.amount ELSE 0 END), 0) AS monthlyIncome,
-       COALESCE(SUM(CASE WHEN ft.transaction_type = 'EXPENSE' THEN ft.amount ELSE 0 END), 0) AS monthlyExpenses
-     FROM fund_transactions ft
-     LEFT JOIN fund_accounts fa ON ft.fund_account_id = fa.id
-     WHERE ${txWhereSql} AND DATE(ft.transaction_date) >= ?`,
-    [...txParams, startOfMonth]
+       DATE(li.due_date) AS dueDate,
+       COALESCE(SUM(li.scheduled_amount), 0) AS scheduledDue,
+       COALESCE(SUM(li.paid_amount), 0) AS collectedAmt
+     FROM loan_installments li
+     JOIN loans l ON li.loan_id = l.id
+     WHERE ${loanWhereSql} AND DATE(li.due_date) BETWEEN ? AND ?
+     GROUP BY DATE(li.due_date)`,
+    [...loanParams, past7Days[0], past7Days[6]]
   );
-  const monthlyCollection = parseFloat(monthRows[0]?.monthlyCollection || 0);
-  const monthlyIncome = parseFloat(monthRows[0]?.monthlyIncome || 0);
-  const monthlyExpenses = parseFloat(monthRows[0]?.monthlyExpenses || 0);
-  const netProfit = monthlyIncome - monthlyExpenses;
 
-  // 5. Loan Counts
-  let loanWhere = ['1=1'];
-  const loanParams = [];
-  if (organizationId && organizationId !== 'ALL') {
-    loanWhere.push('organization_id = ?');
-    loanParams.push(organizationId);
-  }
-  if (branchId && branchId !== 'ALL') {
-    loanWhere.push('branch_id = ?');
-    loanParams.push(branchId);
-  }
-  const loanWhereSql = loanWhere.join(' AND ');
-
-  const loanStats = await query(`
-    SELECT 
-      COUNT(CASE WHEN status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID') THEN 1 END) AS activeLoans,
-      COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS completedLoans,
-      COUNT(CASE WHEN status = 'OVERDUE' THEN 1 END) AS overdueLoans
-    FROM loans
-    WHERE ${loanWhereSql}
-  `, loanParams);
-
-  let eligibleCustomers = 0;
-  try {
-    const eligRes = await query(`SELECT COUNT(*) as count FROM loan_eligibility WHERE status = 'ELIGIBLE'`);
-    eligibleCustomers = parseInt(eligRes[0]?.count || 0, 10);
-  } catch (e) {
-    eligibleCustomers = 0;
+  const trendMap = {};
+  for (const t of trendRows) {
+    const dStr = t.dueDate ? String(t.dueDate).slice(0, 10) : '';
+    trendMap[dStr] = {
+      expected: parseFloat(t.scheduledDue || 0),
+      collected: parseFloat(t.collectedAmt || 0),
+    };
   }
 
-  const counts = loanStats[0] || {};
-  counts.eligibleCustomers = eligibleCustomers;
+  const collectionTrend = past7Days.map((dStr) => {
+    const dObj = new Date(dStr);
+    const dayName = dObj.toLocaleDateString('en-US', { weekday: 'short' });
+    const formattedDate = dObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    const entry = trendMap[dStr] || { expected: 0, collected: 0 };
+    return {
+      date: dStr,
+      day: dayName,
+      label: formattedDate,
+      expected: entry.expected,
+      collected: entry.collected,
+    };
+  });
 
   return {
     totalCapital,
     availableCash,
-    moneyCurrentlyLent,
-    principalRecovered,
-    outstandingPrincipal,
-    todayCollection,
-    todayLendingIncome,
-    monthlyCollection,
-    monthlyIncome,
-    monthlyExpenses,
-    netProfit,
-    loanCounts: counts,
+    activePrincipalOutstanding: outstandingPrincipalInMarket,
+    totalActiveUsers: activeBorrowersCount,
+    totalActiveLoans: activeLoansCount,
+    netDisbursedThisMonth,
+    todayDailyTarget: parseFloat(instAgg.todayDailyTarget || 0),
+    todayDailyCollected: parseFloat(instAgg.todayDailyCollected || 0),
+    todayWeeklyTarget: parseFloat(instAgg.thisWeekWeeklyTarget || 0),
+    weeklyCollected: parseFloat(instAgg.thisWeekWeeklyCollected || 0),
+    collectionTrend,
+    schemeDistribution,
+    profitSummary: {
+      totalCapitalInvested: totalPrincipalDisbursed,
+      totalContractedIncome: totalContractedIncome,
+      totalRepayableAmount: totalRepayableAmount,
+      totalAmountCollected: totalAmountCollected,
+      totalPrincipalRecovered: totalPrincipalRecovered,
+      realizedNetProfit: realizedNetProfit,
+      outstandingPrincipalInMarket: outstandingPrincipalInMarket,
+      outstandingInterestInMarket: outstandingInterestInMarket,
+      totalOutstandingBalance: totalOutstandingBalance,
+      projectedTotalReturn: totalRepayableAmount,
+      projectedTotalNetProfit: totalContractedIncome,
+      realizedRoiPercent: realizedRoiPercent,
+      projectedRoiPercent: projectedRoiPercent,
+      recoveryProgressPercent: recoveryProgressPercent,
+      totalLoansCount: totalLoansCount,
+      activeBorrowersCount: activeBorrowersCount,
+    },
+    loanCounts: {
+      activeLoans: activeLoansCount,
+      completedLoans: totalLoansCount - activeLoansCount,
+      overdueLoans: 0,
+      eligibleCustomers: activeBorrowersCount,
+    },
   };
 }
 

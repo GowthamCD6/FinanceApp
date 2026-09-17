@@ -24,7 +24,15 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const saved = localStorage.getItem('finance_user');
+    const t = localStorage.getItem('finance_token') || sessionStorage.getItem('finance_token');
+    // If valid cached session exists, never block page render
+    if (t && !isTokenExpired(t) && saved) {
+      return false;
+    }
+    return false;
+  });
   const [sessionNotice, setSessionNotice] = useState(null);
   const lastActivityRef = useRef(Date.now());
 
@@ -49,7 +57,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, token]);
 
-  // 1. Initial Session Validation against Backend /auth/me
+  // 1. Initial Session Validation against Backend /auth/me (Silent Background Sync)
   useEffect(() => {
     let isMounted = true;
     const validateInitialSession = async () => {
@@ -69,9 +77,17 @@ export const AuthProvider = ({ children }) => {
           setToken(activeToken);
         }
       } catch (err) {
-        console.warn('Session verification failed on mount:', err.message);
-        if (isMounted) {
-          logout('Session invalid or expired. Please sign in.');
+        console.warn('Silent background session verification note:', err.message);
+        // Only logout if explicit 401 unauthorized
+        if (
+          err.message &&
+          (err.message.includes('401') ||
+            err.message.toLowerCase().includes('unauthorized') ||
+            err.message.toLowerCase().includes('token has expired'))
+        ) {
+          if (isMounted) {
+            logout('Session invalid or expired. Please sign in.');
+          }
         }
       } finally {
         if (isMounted) {

@@ -12,14 +12,23 @@ export const OrgProvider = ({ children }) => {
   const [activeBranchId, setActiveBranchId] = useState(() => {
     return localStorage.getItem('finance_active_branch_id') || 'ALL';
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Load live organizations from Backend on mount
   const fetchOrganizations = async () => {
     try {
-      setLoading(true);
       const data = await api.organizations.getAll();
-      setOrganizations(Array.isArray(data) ? data : []);
+      const orgList = Array.isArray(data) ? data : [];
+      setOrganizations(orgList);
+      if (orgList.length > 0) {
+        const currentSaved = localStorage.getItem('finance_active_org_id');
+        const exists = orgList.some((o) => String(o.id) === String(currentSaved));
+        if (!exists || !currentSaved) {
+          const defaultId = String(orgList[0].id);
+          setActiveOrgId(defaultId);
+          localStorage.setItem('finance_active_org_id', defaultId);
+        }
+      }
     } catch (err) {
       console.error('Failed to load organizations from API:', err);
     } finally {
@@ -45,7 +54,16 @@ export const OrgProvider = ({ children }) => {
     }
     try {
       const data = await api.organizations.getBranches(targetOrgId);
-      setBranches(Array.isArray(data) ? data : []);
+      const branchList = Array.isArray(data) ? data : [];
+      setBranches(branchList);
+      const currentBranch = localStorage.getItem('finance_active_branch_id');
+      if (currentBranch && currentBranch !== 'ALL') {
+        const branchExists = branchList.some((b) => String(b.id) === String(currentBranch));
+        if (!branchExists) {
+          setActiveBranchId('ALL');
+          localStorage.setItem('finance_active_branch_id', 'ALL');
+        }
+      }
     } catch (err) {
       console.error('Failed to load branches in OrgContext:', err);
       setBranches([]);

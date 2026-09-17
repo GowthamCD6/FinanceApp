@@ -1,84 +1,388 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../../services/api';
-import { StatCard } from '../../../components/common/StatCard';
 import { StatusBadge } from '../../../components/common/Badge';
 import {
   Users,
   UserPlus,
   Receipt,
   Calendar,
-  AlertTriangle,
   CheckCircle2,
   Clock,
   ArrowRight,
   TrendingUp,
-  MapPin,
-  Building,
   CreditCard,
   Store,
   DollarSign,
-  PieChart,
   Percent,
+  PieChart,
+  Activity,
 } from 'lucide-react';
 
 import { useOrg } from '../../../context/OrgContext';
 import { useAuth } from '../../../context/AuthContext';
 import { BranchAdminDashboard } from '../../BranchAdmin/BranchAdminDashboard';
+import './Dashboard.css';
+
+/**
+ * Fintech-Grade Shimmer Skeleton Loader for Admin Dashboard
+ */
+const DashboardSkeleton = () => {
+  return (
+    <div className="admin-dash-page">
+      {/* 1. Header Skeleton */}
+      <div className="dash-page-header">
+        <div className="dash-title-area">
+          <div className="dash-skeleton" style={{ width: '360px', height: '28px' }} />
+        </div>
+        <div className="skeleton-header-actions">
+          <div className="dash-skeleton skeleton-btn" />
+          <div className="dash-skeleton skeleton-btn" />
+          <div className="dash-skeleton skeleton-btn" />
+          <div className="dash-skeleton skeleton-btn" style={{ background: '#bfdbfe' }} />
+        </div>
+      </div>
+
+      {/* 2. Capital Engine Card Skeleton */}
+      <div className="capital-engine-card">
+        <div className="cec-header">
+          <div className="cec-title-group">
+            <div className="dash-skeleton" style={{ width: '42px', height: '42px', borderRadius: '0.65rem' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="dash-skeleton" style={{ width: '280px', height: '20px' }} />
+              <div className="dash-skeleton" style={{ width: '380px', height: '14px' }} />
+            </div>
+          </div>
+          <div className="dash-skeleton" style={{ width: '180px', height: '32px', borderRadius: '0.5rem' }} />
+        </div>
+
+        {/* 4 Stat Boxes Shimmer */}
+        <div className="cec-stats-grid">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="skeleton-stat-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="dash-skeleton" style={{ width: '110px', height: '14px' }} />
+                <div className="dash-skeleton" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+              </div>
+              <div className="dash-skeleton" style={{ width: '140px', height: '28px' }} />
+              <div className="dash-skeleton" style={{ width: '180px', height: '12px' }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Secondary Strip Shimmer */}
+        <div className="skeleton-sub-row">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="dash-skeleton" style={{ width: '90px', height: '12px' }} />
+              <div className="dash-skeleton" style={{ width: '120px', height: '18px' }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Dual-Progress Shimmer */}
+        <div className="dash-skeleton" style={{ width: '100%', height: '42px', borderRadius: '0.65rem' }} />
+      </div>
+
+      {/* 3. Analytics Grid Skeleton */}
+      <div className="dash-analytics-grid">
+        {/* Left Chart Skeleton */}
+        <div className="skeleton-chart-box">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div className="dash-skeleton" style={{ width: '220px', height: '18px' }} />
+              <div className="dash-skeleton" style={{ width: '280px', height: '12px' }} />
+            </div>
+            <div className="dash-skeleton" style={{ width: '140px', height: '20px' }} />
+          </div>
+          <div className="dash-skeleton" style={{ width: '100%', height: '150px', borderRadius: '0.5rem' }} />
+        </div>
+
+        {/* Right Chart Skeleton */}
+        <div className="skeleton-chart-box">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className="dash-skeleton" style={{ width: '180px', height: '18px' }} />
+            <div className="dash-skeleton" style={{ width: '240px', height: '12px' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '0.5rem' }}>
+            <div className="dash-skeleton" style={{ width: '130px', height: '130px', borderRadius: '50%' }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div className="dash-skeleton" style={{ width: '100%', height: '32px' }} />
+              <div className="dash-skeleton" style={{ width: '100%', height: '32px' }} />
+              <div className="dash-skeleton" style={{ width: '100%', height: '32px' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Target Trackers Skeleton */}
+      <div className="dash-targets-grid">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="skeleton-stat-card" style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="dash-skeleton" style={{ width: '38px', height: '38px', borderRadius: '0.55rem' }} />
+              <div className="dash-skeleton" style={{ width: '70px', height: '20px', borderRadius: '9999px' }} />
+            </div>
+            <div className="dash-skeleton" style={{ width: '130px', height: '26px' }} />
+            <div className="dash-skeleton" style={{ width: '110px', height: '12px' }} />
+            <div className="dash-skeleton" style={{ width: '140px', height: '12px' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Minimal Pure SVG Donut Chart for Capital Yield Realization
+ */
+const CapitalYieldDonut = ({ recovered, profit, outstanding, totalRepayable, recoveryPercent }) => {
+  const size = 140;
+  const strokeWidth = 16;
+  const center = size / 2;
+  const radius = center - strokeWidth;
+  const circumference = 2 * Math.PI * radius;
+
+  const total = Math.max(totalRepayable || 0, (recovered + profit + outstanding), 1);
+  const recRatio = Math.min(recovered / total, 1);
+  const profRatio = Math.min(profit / total, 1 - recRatio);
+  const outRatio = Math.max(0, 1 - recRatio - profRatio);
+
+  const recDash = recRatio * circumference;
+  const profDash = profRatio * circumference;
+  const outDash = outRatio * circumference;
+
+  const recOffset = 0;
+  const profOffset = -recDash;
+  const outOffset = -(recDash + profDash);
+
+  return (
+    <div className="donut-svg-wrap">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="#F1F5F9"
+          strokeWidth={strokeWidth}
+        />
+        {outRatio > 0.001 && (
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="#CBD5E1"
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${outDash} ${circumference}`}
+            strokeDashoffset={outOffset}
+            strokeLinecap="round"
+          />
+        )}
+        {recRatio > 0.001 && (
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="#2563EB"
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${recDash} ${circumference}`}
+            strokeDashoffset={recOffset}
+            strokeLinecap="round"
+          />
+        )}
+        {profRatio > 0.001 && (
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="#059669"
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${profDash} ${circumference}`}
+            strokeDashoffset={profOffset}
+            strokeLinecap="round"
+          />
+        )}
+      </svg>
+      <div className="donut-center-text">
+        <div className="donut-center-val">{recoveryPercent}%</div>
+        <div className="donut-center-lbl">Recovered</div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Minimal Pure SVG 7-Day Collection Velocity Trend Chart
+ */
+const CollectionVelocityChart = ({ data = [] }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b', fontSize: '0.825rem' }}>
+        No collection activity logged in the past 7 days.
+      </div>
+    );
+  }
+
+  const width = 520;
+  const height = 150;
+  const paddingX = 35;
+  const paddingTop = 20;
+  const paddingBottom = 28;
+
+  const chartWidth = width - paddingX * 2;
+  const chartHeight = height - paddingTop - paddingBottom;
+
+  const maxVal = Math.max(
+    ...data.map((d) => Math.max(Number(d.expected || 0), Number(d.collected || 0))),
+    1000
+  );
+
+  const stepX = data.length > 1 ? chartWidth / (data.length - 1) : chartWidth;
+
+  const getX = (index) => paddingX + index * stepX;
+  const getY = (val) => paddingTop + chartHeight - (Number(val || 0) / maxVal) * chartHeight;
+
+  const collectedPoints = data.map((d, i) => `${getX(i)},${getY(d.collected)}`);
+  const collectedLinePath = `M ${collectedPoints.join(' L ')}`;
+  const collectedAreaPath = `${collectedLinePath} L ${getX(data.length - 1)},${paddingTop + chartHeight} L ${getX(0)},${paddingTop + chartHeight} Z`;
+
+  const expectedPoints = data.map((d, i) => `${getX(i)},${getY(d.expected)}`);
+  const expectedLinePath = `M ${expectedPoints.join(' L ')}`;
+
+  const formatShortAmt = (val) => (val >= 1000 ? `₹${(val / 1000).toFixed(1)}k` : `₹${val}`);
+
+  return (
+    <div className="svg-chart-container">
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="collAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#059669" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#059669" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+
+        {[0, 0.5, 1].map((ratio, idx) => {
+          const y = paddingTop + chartHeight * (1 - ratio);
+          return (
+            <g key={idx}>
+              <line
+                x1={paddingX}
+                y1={y}
+                x2={width - paddingX}
+                y2={y}
+                stroke="#F1F5F9"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={paddingX - 6}
+                y={y + 3}
+                fill="#94A3B8"
+                fontSize="9"
+                fontWeight="600"
+                textAnchor="end"
+                fontFamily="Plus Jakarta Sans"
+              >
+                {formatShortAmt(Math.round(maxVal * ratio))}
+              </text>
+            </g>
+          );
+        })}
+
+        <path d={collectedAreaPath} fill="url(#collAreaGrad)" />
+
+        <path
+          d={expectedLinePath}
+          fill="none"
+          stroke="#94A3B8"
+          strokeWidth="1.75"
+          strokeDasharray="4 4"
+        />
+
+        <path
+          d={collectedLinePath}
+          fill="none"
+          stroke="#059669"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {data.map((d, i) => {
+          const cx = getX(i);
+          const cy = getY(d.collected);
+          return (
+            <g key={i}>
+              <circle
+                cx={cx}
+                cy={cy}
+                r="3.5"
+                fill="#FFFFFF"
+                stroke="#059669"
+                strokeWidth="2"
+              >
+                <title>{`${d.label}: ₹${d.collected.toLocaleString('en-IN')} collected (Due: ₹${d.expected.toLocaleString('en-IN')})`}</title>
+              </circle>
+              <text
+                x={cx}
+                y={height - 8}
+                fill="#64748B"
+                fontSize="10"
+                fontWeight="700"
+                textAnchor="middle"
+                fontFamily="Plus Jakarta Sans"
+              >
+                {d.day}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { isBranchAdmin } = useAuth();
-  const { activeOrg, activeBranchId, activeBranch } = useOrg();
+  const { activeOrg, activeBranchId } = useOrg();
   const [metrics, setMetrics] = useState(null);
   const [weeklyDues, setWeeklyDues] = useState([]);
-  const [dailyCollections, setDailyCollections] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fallbackMetrics = {
-    todayDailyCollected: 4200,
-    todayDailyTarget: 5850,
-    todayWeeklyTarget: 18000,
-    weeklyCollected: 14500,
-    activeBorrowersCount: 24,
-    totalActiveLoans: 38,
-    activePrincipalOutstanding: 142000,
-    netDisbursedThisMonth: 85000,
-    profitSummary: {
-      totalCapitalInvested: 235000,
-      totalAmountCollected: 142600,
-      totalPrincipalRecovered: 124800,
-      realizedNetProfit: 17800,
-      outstandingPrincipalInMarket: 110200,
-      totalOutstandingBalance: 118650,
-      projectedTotalReturn: 261250,
-      projectedTotalNetProfit: 26250,
-      realizedRoiPercent: 7.6,
-      projectedRoiPercent: 11.2,
-      recoveryProgressPercent: 55,
-    },
+  const getOrgPath = (subpath) => {
+    if (activeOrg?.id) {
+      return `/org/${activeOrg.id}/${subpath}`;
+    }
+    return `/admin/${subpath}`;
+  };
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [dashData, duesData] = await Promise.all([
+        api.getAdminDashboardMetrics({
+          organizationId: activeOrg?.id || undefined,
+          branchId: activeBranchId || undefined,
+        }).catch(() => null),
+        api.getWeeklyDues().catch(() => []),
+      ]);
+
+      setMetrics(dashData || null);
+      setWeeklyDues(Array.isArray(duesData) ? duesData : (duesData?.records || []));
+    } catch (err) {
+      console.error('Failed to load dashboard metrics from live API:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [m, w, d] = await Promise.all([
-          api.getAdminDashboardMetrics().catch(() => null),
-          api.getWeeklyDues().catch(() => []),
-          api.getDailyCollections().catch(() => []),
-        ]);
-        setMetrics(m || fallbackMetrics);
-        setWeeklyDues(Array.isArray(w) ? w : []);
-        setDailyCollections(Array.isArray(d) ? d : []);
-      } catch (err) {
-        console.warn('Dashboard metrics fetch error, fallback applied:', err);
-        setMetrics(fallbackMetrics);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadDashboardData();
   }, [activeOrg?.id, activeBranchId]);
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
@@ -87,500 +391,511 @@ export const AdminDashboard = () => {
     return <BranchAdminDashboard />;
   }
 
-  if (loading || !metrics) return <div className="page-loading">Loading Field Operations Hub...</div>;
+  if (loading || !metrics) {
+    return <DashboardSkeleton />;
+  }
 
   const profitSummary = metrics.profitSummary || {
-    totalCapitalInvested: 235000,
-    totalAmountCollected: 142600,
-    totalPrincipalRecovered: 124800,
-    realizedNetProfit: 17800,
-    outstandingPrincipalInMarket: 110200,
-    totalOutstandingBalance: 118650,
-    projectedTotalReturn: 261250,
-    projectedTotalNetProfit: 26250,
-    realizedRoiPercent: 7.6,
-    projectedRoiPercent: 11.2,
-    recoveryProgressPercent: 55,
+    totalCapitalInvested: 0,
+    totalContractedIncome: 0,
+    totalRepayableAmount: 0,
+    totalAmountCollected: 0,
+    totalPrincipalRecovered: 0,
+    realizedNetProfit: 0,
+    outstandingPrincipalInMarket: 0,
+    outstandingInterestInMarket: 0,
+    totalOutstandingBalance: 0,
+    projectedTotalReturn: 0,
+    projectedTotalNetProfit: 0,
+    realizedRoiPercent: 0,
+    projectedRoiPercent: 0,
+    recoveryProgressPercent: 0,
+    totalLoansCount: 0,
+    activeBorrowersCount: 0,
   };
+
+  const schemeDist = metrics.schemeDistribution || {
+    WEEKLY: { count: 0, principal: 0, collected: 0, repayable: 0 },
+    DAILY: { count: 0, principal: 0, collected: 0, repayable: 0 },
+    MONTHLY: { count: 0, principal: 0, collected: 0, repayable: 0 },
+  };
+
+  const totalSchemePrincipal = (schemeDist.WEEKLY?.principal || 0) + (schemeDist.DAILY?.principal || 0) + (schemeDist.MONTHLY?.principal || 0) || 1;
 
   const dailyProgress = metrics.todayDailyTarget > 0 ? Math.round((metrics.todayDailyCollected / metrics.todayDailyTarget) * 100) : 0;
   const weeklyProgress = metrics.todayWeeklyTarget > 0 ? Math.round((metrics.weeklyCollected / metrics.todayWeeklyTarget) * 100) : 0;
 
   return (
     <div className="admin-dash-page">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <div className="org-pill">
-            <Building size={14} />
-            <span>{activeOrg ? `${activeOrg.name} • ${activeOrg.code}` : 'Apex Finance Ltd • Admin Operations Hub'}</span>
-          </div>
-          <h1 className="page-title">Financial Accounting & Field Operations</h1>
-          <p className="page-subtitle">
-            Real-time capital deployment, collected repayments, realized net profit, and multi-loan operations.
-          </p>
+      {/* 1. Header (Standard Clean Fintech Style) */}
+      <div className="dash-page-header">
+        <div className="dash-title-area">
+          <h1 className="dash-page-title">Financial Accounting & Capital Performance</h1>
         </div>
 
-        <div className="header-actions">
-          <button className="btn btn-emerald" onClick={() => navigate(getOrgPath('shopkeepers'))}>
+        <div className="dash-header-actions">
+          <button className="directory-btn-secondary" onClick={() => navigate(getOrgPath('shopkeepers'))}>
             <Store size={16} />
-            <span>Shopkeeper Ledger</span>
+            <span>Shopkeepers</span>
           </button>
-          <button className="btn btn-primary" onClick={() => navigate(getOrgPath('loans'))}>
+          <button className="directory-btn-secondary" onClick={() => navigate(getOrgPath('weekly-customers'))}>
+            <Calendar size={16} />
+            <span>Weekly Borrowers</span>
+          </button>
+          <button className="directory-btn-secondary" onClick={() => navigate(getOrgPath('loans'))}>
             <CreditCard size={16} />
             <span>Loan Portfolio</span>
           </button>
-          <button className="btn btn-secondary" onClick={() => navigate(getOrgPath('users/add'))}>
+          <button className="directory-btn-primary" onClick={() => navigate(getOrgPath('users/add'))}>
             <UserPlus size={16} />
-            <span>Onboard User</span>
+            <span>Onboard Borrower</span>
           </button>
         </div>
       </div>
 
-      {/* 1. FINANCIAL ACCOUNTING & NET PROFIT ENGINE CARD */}
-      <div className="card profit-engine-card" style={{ marginBottom: '1.75rem' }}>
-        <div className="pec-header">
-          <div className="pec-title-group">
-            <div className="pec-badge">
-              <TrendingUp size={18} />
-              <span>CAPITAL YIELD & PROFIT ENGINE</span>
+      {/* ==================================================================== */}
+      {/* 2. CORE FINANCIAL CAPITAL & NET PROFIT ENGINE (PRINCIPAL VS INTEREST) */}
+      {/* ==================================================================== */}
+      <div className="capital-engine-card">
+        <div className="cec-header">
+          <div className="cec-title-group">
+            <div className="cec-title-icon">
+              <TrendingUp size={22} />
             </div>
-            <h2 className="pec-heading">Financial Summary & Net Profit Accounting</h2>
+            <div className="cec-title-text">
+              <h2>Capital Yield & Profit Realization Engine</h2>
+              <p>Breakdown of Net Principal Disbursed vs. Contracted Interest Profit & Realized Cash</p>
+            </div>
           </div>
-          <div className="pec-roi-badge">
-            <span className="pec-roi-label">Realized ROI</span>
-            <span className="pec-roi-val">+{profitSummary.realizedRoiPercent}%</span>
-            <span className="pec-roi-proj">(Expected: +{profitSummary.projectedRoiPercent}%)</span>
+
+          <div className="cec-roi-badge">
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Capital Recovery:</span>
+            <span className="cec-roi-pill">{profitSummary.recoveryProgressPercent}% Principal Recovered</span>
           </div>
         </div>
 
-        {/* 4-Stat Metric Row */}
-        <div className="pec-stats-grid">
-          {/* Stat 1: Capital Given / Spent */}
-          <div className="pec-stat-box box-invested">
-            <div className="pec-sb-top">
-              <span className="pec-sb-label">TOTAL CAPITAL GIVEN / SPENT</span>
-              <DollarSign size={16} className="pec-icon" />
+        {/* 4 Primary Financial Cards */}
+        <div className="cec-stats-grid">
+          {/* Card 1: Net Principal Given */}
+          <div className="cec-stat-box">
+            <div className="cec-sb-top">
+              <span className="cec-sb-label">NET PRINCIPAL GIVEN</span>
+              <DollarSign size={17} color="#2563eb" />
             </div>
-            <div className="pec-sb-val">{formatCurrency(profitSummary.totalCapitalInvested)}</div>
-            <div className="pec-sb-desc">Total principal disbursed across all {profitSummary.totalLoansCount || 8} loans</div>
-          </div>
-
-          {/* Stat 2: Total Repayments Collected */}
-          <div className="pec-stat-box box-collected">
-            <div className="pec-sb-top">
-              <span className="pec-sb-label">TOTAL REPAYMENTS COLLECTED</span>
-              <Receipt size={16} className="pec-icon" />
-            </div>
-            <div className="pec-sb-val text-emerald">{formatCurrency(profitSummary.totalAmountCollected)}</div>
-            <div className="pec-sb-desc">
-              Principal returned: {formatCurrency(profitSummary.totalPrincipalRecovered)}
+            <div className="cec-sb-val">{formatCurrency(profitSummary.totalCapitalInvested)}</div>
+            <div className="cec-sb-desc">
+              Exact net capital lent across {profitSummary.totalLoansCount || 0} active loans
             </div>
           </div>
 
-          {/* Stat 3: Realized Net Profit */}
-          <div className="pec-stat-box box-profit">
-            <div className="pec-sb-top">
-              <span className="pec-sb-label">REALIZED NET PROFIT (CASH)</span>
-              <TrendingUp size={16} className="pec-icon" />
+          {/* Card 2: Contracted Interest (Profit Amount) */}
+          <div className="cec-stat-box">
+            <div className="cec-sb-top">
+              <span className="cec-sb-label">CONTRACTED INTEREST (PROFIT)</span>
+              <Percent size={17} color="#7c3aed" />
             </div>
-            <div className="pec-sb-val text-indigo">{formatCurrency(profitSummary.realizedNetProfit)}</div>
-            <div className="pec-sb-desc">Net profit in-hand ({profitSummary.realizedRoiPercent}% ROI on disbursed funds)</div>
+            <div className="cec-sb-val">{formatCurrency(profitSummary.totalContractedIncome)}</div>
+            <div className="cec-sb-desc">
+              Total interest scheduled to be earned ({profitSummary.projectedRoiPercent}% yield)
+            </div>
           </div>
 
-          {/* Stat 4: Outstanding Capital in Market */}
-          <div className="pec-stat-box box-market">
-            <div className="pec-sb-top">
-              <span className="pec-sb-label">OUTSTANDING IN MARKET</span>
-              <Clock size={16} className="pec-icon" />
+          {/* Card 3: Principal Capital Recovered */}
+          <div className="cec-stat-box">
+            <div className="cec-sb-top">
+              <span className="cec-sb-label">PRINCIPAL RECOVERED</span>
+              <Receipt size={17} color="#059669" />
             </div>
-            <div className="pec-sb-val text-amber">{formatCurrency(profitSummary.totalOutstandingBalance)}</div>
-            <div className="pec-sb-desc">
-              Projected Final Profit: <strong>+{formatCurrency(profitSummary.projectedTotalNetProfit)}</strong>
+            <div className="cec-sb-val">{formatCurrency(profitSummary.totalPrincipalRecovered)}</div>
+            <div className="cec-sb-desc">
+              Net capital returned to vault ({profitSummary.recoveryProgressPercent}% of disbursed funds)
+            </div>
+          </div>
+
+          {/* Card 4: Realized Net Profit */}
+          <div className="cec-stat-box">
+            <div className="cec-sb-top">
+              <span className="cec-sb-label">REALIZED NET PROFIT (IN-HAND)</span>
+              <CheckCircle2 size={17} color="#059669" />
+            </div>
+            <div className="cec-sb-val">{formatCurrency(profitSummary.realizedNetProfit)}</div>
+            <div className="cec-sb-desc">
+              Pure interest earnings collected in hand (+{profitSummary.realizedRoiPercent}% ROI)
             </div>
           </div>
         </div>
 
-        {/* Capital Recovery Progress Bar */}
-        <div className="pec-progress-bar-container">
-          <div className="pec-pb-header">
-            <span>Capital Recovery & Profit Realization Progress</span>
-            <span className="font-bold text-emerald">{profitSummary.recoveryProgressPercent}% Recovered</span>
+        {/* Secondary Auxiliary Accounting Strip */}
+        <div className="cec-sub-grid">
+          <div className="cec-sub-item">
+            <span className="cec-sub-label">Outstanding Principal at Risk</span>
+            <span className="cec-sub-val" style={{ color: '#0f172a' }}>
+              {formatCurrency(profitSummary.outstandingPrincipalInMarket)}
+            </span>
           </div>
-          <div className="pec-pb-track">
+
+          <div className="cec-sub-item">
+            <span className="cec-sub-label">Unrealized Interest Pending</span>
+            <span className="cec-sub-val" style={{ color: '#0f172a' }}>
+              {formatCurrency(profitSummary.outstandingInterestInMarket)}
+            </span>
+          </div>
+
+          <div className="cec-sub-item">
+            <span className="cec-sub-label">Total Market Collection Due</span>
+            <span className="cec-sub-val" style={{ color: '#0f172a' }}>
+              {formatCurrency(profitSummary.totalOutstandingBalance)}
+            </span>
+          </div>
+
+          <div className="cec-sub-item">
+            <span className="cec-sub-label">Total Collections Inflow</span>
+            <span className="cec-sub-val" style={{ color: '#0f172a' }}>
+              {formatCurrency(profitSummary.totalAmountCollected)}
+            </span>
+          </div>
+        </div>
+
+        {/* Capital Recovery Dual Progress Bar */}
+        <div className="cec-progress-wrap">
+          <div className="cec-pw-header">
+            <span>Capital Recovery & Profit Realization Stream</span>
+            <span style={{ color: '#0f172a', fontWeight: 800 }}>
+              {profitSummary.recoveryProgressPercent}% Principal Recovered
+            </span>
+          </div>
+          <div className="cec-pw-track">
             <div
-              className="pec-pb-fill-principal"
-              style={{ width: `${Math.min(100, Math.round((profitSummary.totalPrincipalRecovered / profitSummary.totalCapitalInvested) * 100))}%` }}
+              className="cec-pw-fill-principal"
+              style={{
+                width: `${profitSummary.totalCapitalInvested > 0 ? Math.min(100, Math.round((profitSummary.totalPrincipalRecovered / profitSummary.totalCapitalInvested) * 100)) : 0}%`,
+              }}
               title="Principal Recovered"
             />
             <div
-              className="pec-pb-fill-profit"
-              style={{ width: `${Math.min(100, Math.round((profitSummary.realizedNetProfit / profitSummary.totalCapitalInvested) * 100))}%` }}
+              className="cec-pw-fill-profit"
+              style={{
+                width: `${profitSummary.totalCapitalInvested > 0 ? Math.min(100, Math.round((profitSummary.realizedNetProfit / profitSummary.totalCapitalInvested) * 100)) : 0}%`,
+              }}
               title="Realized Net Profit"
             />
           </div>
-          <div className="pec-pb-legend">
-            <div className="pec-leg-item">
-              <span className="leg-dot dot-principal" />
+          <div className="cec-pw-legend">
+            <div className="cec-leg-item">
+              <span className="cec-leg-dot dot-blue" />
               <span>Principal Recovered: {formatCurrency(profitSummary.totalPrincipalRecovered)}</span>
             </div>
-            <div className="pec-leg-item">
-              <span className="leg-dot dot-profit" />
+            <div className="cec-leg-item">
+              <span className="cec-leg-dot dot-green" />
               <span>Realized Net Profit: {formatCurrency(profitSummary.realizedNetProfit)}</span>
             </div>
-            <div className="pec-leg-item">
-              <span className="leg-dot dot-remaining" />
-              <span>Remaining to Collect: {formatCurrency(profitSummary.totalOutstandingBalance)}</span>
+            <div className="cec-leg-item">
+              <span className="cec-leg-dot dot-slate" />
+              <span>Remaining Balance: {formatCurrency(profitSummary.totalOutstandingBalance)}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. THREE-TIER RECOVERY TARGET TRACKER (DAILY, WEEKLY, MONTHLY) */}
-      <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
-        <StatCard
-          label="Today's Daily Target"
-          value={formatCurrency(metrics.todayDailyTarget)}
-          icon={Receipt}
-          trend={`${dailyProgress}% Collected`}
-          trendDirection="up"
-          meta={`Collected Today: ${formatCurrency(metrics.todayDailyCollected)}`}
-          accentColor="#059669"
-          accentBg="#ECFDF5"
-        />
-
-        <StatCard
-          label="This Week's Target"
-          value={formatCurrency(metrics.todayWeeklyTarget || 18000)}
-          icon={Calendar}
-          trend={`${weeklyProgress}% Recovered`}
-          trendDirection="up"
-          meta={`Collected This Week: ${formatCurrency(metrics.weeklyCollected || 14500)}`}
-          accentColor="#4F46E5"
-          accentBg="#EEF2FF"
-        />
-
-        <StatCard
-          label="Monthly Target"
-          value={formatCurrency((metrics.todayWeeklyTarget || 18000) * 4)}
-          icon={TrendingUp}
-          trend="Monthly Pace: 78%"
-          trendDirection="up"
-          meta={`Net Disbursed: ${formatCurrency(metrics.netDisbursedThisMonth || 85000)}`}
-          accentColor="#8B5CF6"
-          accentBg="#F5F3FF"
-        />
-
-        <StatCard
-          label="Active Borrowers"
-          value={`${metrics.totalActiveUsers || 24} Clients`}
-          icon={Users}
-          trend={`${metrics.totalActiveLoans || 38} Active Loans`}
-          trendDirection="up"
-          meta={`Outstanding: ${formatCurrency(metrics.activePrincipalOutstanding || 142000)}`}
-          accentColor="#D97706"
-          accentBg="#FFFBEB"
-        />
-      </div>
-
-      {/* Dynamic Lending Model Quick-Bar */}
-      <div className="card" style={{ marginBottom: '1.5rem', background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '1.25rem 1.5rem' }}>
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div style={{ padding: '0.6rem', background: '#EFF6FF', borderRadius: '0.5rem', color: '#2563eb' }}>
-              <Percent size={22} />
-            </div>
+      {/* ==================================================================== */}
+      {/* 3. MINIMAL VISUAL ANALYTICS & GRAPH SECTION                          */}
+      {/* ==================================================================== */}
+      <div className="dash-analytics-grid">
+        {/* Left Chart: 7-Day Collection Velocity Trend */}
+        <div className="dash-chart-card">
+          <div className="dcc-header">
             <div>
-              <h4 className="font-bold text-slate-900 text-sm m-0">Active Organization Lending Schemes & Rates</h4>
-              <p className="text-xs text-slate-500 m-0">Daily 100-day cycles (10% flat) • Weekly 10-week micro-loans (10% flat) • Monthly business EMI (18% p.a.)</p>
+              <h3 className="dcc-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Activity size={17} color="#059669" />
+                <span>Collection Velocity & Inflow Trend</span>
+              </h3>
+              <p className="dcc-subtitle">Past 7 days scheduled obligations vs. actual realized cash inflows</p>
+            </div>
+            <div className="dcc-badge-group">
+              <div className="cec-leg-item" style={{ fontSize: '0.75rem' }}>
+                <span className="cec-leg-dot dot-green" />
+                <span>Collected</span>
+              </div>
+              <div className="cec-leg-item" style={{ fontSize: '0.75rem' }}>
+                <span className="cec-leg-dot dot-slate" />
+                <span>Scheduled</span>
+              </div>
             </div>
           </div>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate(getOrgPath('interest-rates'))}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
-          >
-            <span>Configure Interest Rates</span>
-            <ArrowRight size={14} />
-          </button>
+
+          <CollectionVelocityChart data={metrics.collectionTrend || []} />
+        </div>
+
+        {/* Right Chart: Capital Yield Realization Donut & Scheme Exposure */}
+        <div className="dash-chart-card">
+          <div className="dcc-header">
+            <div>
+              <h3 className="dcc-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <PieChart size={17} color="#2563eb" />
+                <span>Capital Yield Allocation</span>
+              </h3>
+              <p className="dcc-subtitle">Portfolio recovery vs. in-hand profits & risk exposure</p>
+            </div>
+          </div>
+
+          <div className="donut-layout-wrap">
+            <CapitalYieldDonut
+              recovered={profitSummary.totalPrincipalRecovered}
+              profit={profitSummary.realizedNetProfit}
+              outstanding={profitSummary.totalOutstandingBalance}
+              totalRepayable={profitSummary.totalRepayableAmount}
+              recoveryPercent={profitSummary.recoveryProgressPercent}
+            />
+
+            <div className="donut-legend-list">
+              <div className="donut-legend-row">
+                <div className="dlr-left">
+                  <span className="cec-leg-dot dot-blue" />
+                  <span>Principal Back</span>
+                </div>
+                <div className="dlr-val">{formatCurrency(profitSummary.totalPrincipalRecovered)}</div>
+              </div>
+
+              <div className="donut-legend-row">
+                <div className="dlr-left">
+                  <span className="cec-leg-dot dot-green" />
+                  <span>Net Profit (Yield)</span>
+                </div>
+                <div className="dlr-val">{formatCurrency(profitSummary.realizedNetProfit)}</div>
+              </div>
+
+              <div className="donut-legend-row">
+                <div className="dlr-left">
+                  <span className="cec-leg-dot dot-slate" />
+                  <span>Market Balance</span>
+                </div>
+                <div className="dlr-val">{formatCurrency(profitSummary.totalOutstandingBalance)}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Scheme Exposure Breakdown */}
+          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.65rem' }}>
+              Lending Division Volume Breakdown
+            </div>
+            <div className="scheme-breakdown-list">
+              <div className="scheme-row">
+                <div className="sr-header">
+                  <span className="sr-title">
+                    <Calendar size={13} color="#2563eb" />
+                    <span>Weekly Micro-loans ({schemeDist.WEEKLY?.count || 0})</span>
+                  </span>
+                  <span className="sr-amt">{formatCurrency(schemeDist.WEEKLY?.principal)}</span>
+                </div>
+                <div className="sr-progress-track">
+                  <div
+                    className="sr-progress-fill"
+                    style={{
+                      width: `${Math.round(((schemeDist.WEEKLY?.principal || 0) / totalSchemePrincipal) * 100)}%`,
+                      background: '#2563eb',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="scheme-row">
+                <div className="sr-header">
+                  <span className="sr-title">
+                    <Store size={13} color="#059669" />
+                    <span>Daily Merchant Ledger ({schemeDist.DAILY?.count || 0})</span>
+                  </span>
+                  <span className="sr-amt">{formatCurrency(schemeDist.DAILY?.principal)}</span>
+                </div>
+                <div className="sr-progress-track">
+                  <div
+                    className="sr-progress-fill"
+                    style={{
+                      width: `${Math.round(((schemeDist.DAILY?.principal || 0) / totalSchemePrincipal) * 100)}%`,
+                      background: '#059669',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="scheme-row">
+                <div className="sr-header">
+                  <span className="sr-title">
+                    <Clock size={13} color="#7c3aed" />
+                    <span>Monthly Business EMI ({schemeDist.MONTHLY?.count || 0})</span>
+                  </span>
+                  <span className="sr-amt">{formatCurrency(schemeDist.MONTHLY?.principal)}</span>
+                </div>
+                <div className="sr-progress-track">
+                  <div
+                    className="sr-progress-fill"
+                    style={{
+                      width: `${Math.round(((schemeDist.MONTHLY?.principal || 0) / totalSchemePrincipal) * 100)}%`,
+                      background: '#7c3aed',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 3. TWO COLUMN SECTION: QUICK ACTIONS & URGENT DUES */}
-      <div className="dash-grid">
-        {/* Left: Quick Actions & Management Shortcuts */}
-        <div className="card shortcuts-card">
-          <div className="card-header">
-            <h3 className="card-title">
-              <CheckCircle2 size={20} color="var(--emerald)" />
-              Operational Modules & Portals
+      {/* ==================================================================== */}
+      {/* 4. 3-TIER RECOVERY TARGET TRACKERS (DAILY, WEEKLY, MONTHLY)          */}
+      {/* ==================================================================== */}
+      <div className="dash-targets-grid">
+        <div className="dash-target-card">
+          <div className="dtc-header">
+            <div className="dtc-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
+              <Receipt size={18} />
+            </div>
+            <span className="dtc-badge">{dailyProgress}% Realized</span>
+          </div>
+          <div className="dtc-val">{formatCurrency(metrics.todayDailyTarget)}</div>
+          <div className="dtc-label">TODAY'S DAILY TARGET</div>
+          <div className="dtc-meta">Collected Today: {formatCurrency(metrics.todayDailyCollected)}</div>
+        </div>
+
+        <div className="dash-target-card">
+          <div className="dtc-header">
+            <div className="dtc-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+              <Calendar size={18} />
+            </div>
+            <span className="dtc-badge">{weeklyProgress}% Realized</span>
+          </div>
+          <div className="dtc-val">{formatCurrency(metrics.todayWeeklyTarget)}</div>
+          <div className="dtc-label">THIS WEEK'S TARGET</div>
+          <div className="dtc-meta">Collected This Week: {formatCurrency(metrics.weeklyCollected)}</div>
+        </div>
+
+        <div className="dash-target-card">
+          <div className="dtc-header">
+            <div className="dtc-icon" style={{ background: '#faf5ff', color: '#7c3aed' }}>
+              <TrendingUp size={18} />
+            </div>
+            <span className="dtc-badge">Active Deployment</span>
+          </div>
+          <div className="dtc-val">{formatCurrency(metrics.netDisbursedThisMonth)}</div>
+          <div className="dtc-label">DISBURSED THIS MONTH</div>
+          <div className="dtc-meta">New capital lent in active month</div>
+        </div>
+
+        <div className="dash-target-card">
+          <div className="dtc-header">
+            <div className="dtc-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
+              <Users size={18} />
+            </div>
+            <span className="dtc-badge">{metrics.totalActiveLoans || 0} Loans</span>
+          </div>
+          <div className="dtc-val">{metrics.totalActiveUsers || 0} Borrowers</div>
+          <div className="dtc-label">ACTIVE BORROWER BASE</div>
+          <div className="dtc-meta">Outstanding: {formatCurrency(metrics.activePrincipalOutstanding)}</div>
+        </div>
+      </div>
+
+      {/* ==================================================================== */}
+      {/* 5. TWO-COLUMN SECTION: OPERATIONAL MODULES & URGENT DUES             */}
+      {/* ==================================================================== */}
+      <div className="dash-columns-grid">
+        {/* Left: Operational Modules & Portals */}
+        <div className="dash-sec-card">
+          <div className="dash-sec-header">
+            <h3 className="dash-sec-title">
+              <CheckCircle2 size={18} color="#059669" />
+              <span>Operational Management Modules</span>
             </h3>
-            <span className="badge badge-emerald">Field Ready</span>
+            <span className="dtc-badge" style={{ background: '#ecfdf5', color: '#059669' }}>Active</span>
           </div>
 
           <div className="modules-list">
-            {/* Lending Rates & Tenures */}
-            <div className="module-item" onClick={() => navigate(getOrgPath('interest-rates'))}>
-              <div className="mod-icon blue">
-                <Percent size={20} />
-              </div>
-              <div className="mod-info">
-                <span className="mod-title">Lending Rates & Tenures Engine</span>
-                <span className="mod-desc">Configure dynamic interest rates, 100-day daily dues, 10-week micro-loans, and interactive calculator</span>
-              </div>
-              <ArrowRight size={16} className="mod-arrow" />
-            </div>
-
-            {/* Shopkeeper Ledger */}
             <div className="module-item" onClick={() => navigate(getOrgPath('shopkeepers'))}>
-              <div className="mod-icon green">
-                <Store size={20} />
+              <div className="mod-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
+                <Store size={18} />
               </div>
               <div className="mod-info">
-                <span className="mod-title">Shopkeeper Daily Ledger & Collections</span>
-                <span className="mod-desc">25-day / 100-day merchant microfinance, multi-loan tracking per shop, and rapid daily collection</span>
+                <span className="mod-title">Daily Merchant & Shopkeeper Ledger</span>
+                <span className="mod-desc">Track 25-day / 100-day merchant collections and rapid daily routes</span>
               </div>
-              <ArrowRight size={16} className="mod-arrow" />
+              <ArrowRight size={15} className="mod-arrow" />
             </div>
 
-            {/* Loan Portfolio */}
-            <div className="module-item" onClick={() => navigate(getOrgPath('loans'))}>
-              <div className="mod-icon purple">
-                <CreditCard size={20} />
+            <div className="module-item" onClick={() => navigate(getOrgPath('weekly-customers'))}>
+              <div className="mod-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+                <Calendar size={18} />
               </div>
               <div className="mod-info">
-                <span className="mod-title">Loan Portfolio & Disbursals</span>
-                <span className="mod-desc">Issue concurrent multiple loans to existing borrowers with 10-week or 25-day cycles</span>
+                <span className="mod-title">Weekly Borrower Installment Ledger</span>
+                <span className="mod-desc">10-week micro-loans, recurring repayments, and field collections</span>
               </div>
-              <ArrowRight size={16} className="mod-arrow" />
+              <ArrowRight size={15} className="mod-arrow" />
             </div>
 
-            {/* Manage Users */}
-            <div className="module-item" onClick={() => navigate(getOrgPath('users'))}>
-              <div className="mod-icon blue">
-                <Users size={20} />
+            <div className="module-item" onClick={() => navigate(getOrgPath('monthly-customers'))}>
+              <div className="mod-icon" style={{ background: '#faf5ff', color: '#7c3aed' }}>
+                <Clock size={18} />
               </div>
               <div className="mod-info">
-                <span className="mod-title">Manage Users & Multi-Loan Registry</span>
-                <span className="mod-desc">Audit borrower multi-loan exposure, credit limits, and KYC detail profiles</span>
+                <span className="mod-title">Monthly Business & EMI Borrowers</span>
+                <span className="mod-desc">12-month structured EMI loans for businesses and salaried borrowers</span>
               </div>
-              <ArrowRight size={16} className="mod-arrow" />
+              <ArrowRight size={15} className="mod-arrow" />
             </div>
 
-            {/* Onboard User */}
-            <div className="module-item" onClick={() => navigate(getOrgPath('users/add'))}>
-              <div className="mod-icon amber">
-                <UserPlus size={20} />
-              </div>
-              <div className="mod-info">
-                <span className="mod-title">Onboard New Borrower / Merchant</span>
-                <span className="mod-desc">Register weekly borrower or daily shopkeeper with KYC and initial loan</span>
-              </div>
-              <ArrowRight size={16} className="mod-arrow" />
-            </div>
-
-            {/* Collection Reports */}
             <div className="module-item" onClick={() => navigate(getOrgPath('reports'))}>
-              <div className="mod-icon purple">
-                <Receipt size={20} />
+              <div className="mod-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
+                <Receipt size={18} />
               </div>
               <div className="mod-info">
-                <span className="mod-title">Weekly Dues & Daily Collection Sheets</span>
-                <span className="mod-desc">View field schedules, collect overdue payments, and generate PDF receipts</span>
+                <span className="mod-title">Financial Reports & Recovery Audit</span>
+                <span className="mod-desc">Comprehensive repayment obligations, unpaid-first ledgers, and receipts</span>
               </div>
-              <ArrowRight size={16} className="mod-arrow" />
+              <ArrowRight size={15} className="mod-arrow" />
             </div>
           </div>
         </div>
 
-        {/* Right: Urgent Pending Collections Today */}
-        <div className="card">
-          <div className="card-header">
+        {/* Right: Urgent Field Follow-ups Today */}
+        <div className="dash-sec-card">
+          <div className="dash-sec-header">
             <div>
-              <h3 className="card-title">
-                <Clock size={20} color="var(--primary)" />
-                Urgent Field Follow-ups Today
+              <h3 className="dash-sec-title">
+                <Clock size={18} color="#2563eb" />
+                <span>Scheduled Repayment Follow-ups</span>
               </h3>
-              <p className="card-subtitle">Pending daily visits and scheduled weekly dues</p>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => navigate(getOrgPath('reports'))}>
-              View All Dues
+            <button className="directory-btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }} onClick={() => navigate(getOrgPath('reports'))}>
+              View Ledger
             </button>
           </div>
 
           <div className="urgent-list">
-            {weeklyDues.filter((d) => d.status !== 'PAID').slice(0, 4).map((due) => (
-              <div key={due.id} className="urgent-item">
-                <div className="urgent-left">
-                  <span className="urgent-name">{due.customer_name}</span>
-                  <span className="urgent-sub">{due.installment_week} • Due: {due.due_date}</span>
+            {weeklyDues && weeklyDues.length > 0 ? (
+              weeklyDues.filter((d) => d.status !== 'PAID').slice(0, 4).map((due) => (
+                <div key={due.scheduleId || due.id} className="urgent-item">
+                  <div className="urgent-left">
+                    <span className="urgent-name">{due.customerName || due.customer_name}</span>
+                    <span className="urgent-sub">
+                      Loan: {due.loanNumber || due.loan_number} • Due: {due.dueDate || due.due_date}
+                    </span>
+                  </div>
+                  <div className="urgent-right">
+                    <span className="urgent-amt">{formatCurrency(due.expectedAmount || due.due_amount)}</span>
+                    <StatusBadge status={due.status} />
+                  </div>
                 </div>
-                <div className="urgent-right">
-                  <span className="urgent-amt">{formatCurrency(due.due_amount)}</span>
-                  <StatusBadge status={due.status} />
-                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b', fontSize: '0.85rem' }}>
+                <CheckCircle2 size={24} color="#059669" style={{ margin: '0 auto 0.5rem auto' }} />
+                <div>All scheduled dues for current cycle are up to date.</div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
-
-      <style>{`
-        .profit-engine-card {
-          background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
-          border: 1.5px solid #E2E8F0;
-          box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
-          padding: 1.5rem;
-        }
-
-        .pec-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          flex-wrap: wrap;
-          gap: 1rem;
-          margin-bottom: 1.25rem;
-        }
-        .pec-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          font-size: 0.72rem;
-          font-weight: 800;
-          letter-spacing: 0.06em;
-          color: var(--primary);
-          background: #EEF2FF;
-          border: 1px solid #C7D2FE;
-          padding: 0.25rem 0.65rem;
-          border-radius: var(--radius-sm);
-          margin-bottom: 0.4rem;
-        }
-        .pec-heading {
-          font-size: 1.35rem;
-          font-weight: 800;
-          color: var(--text-primary);
-          margin: 0;
-        }
-
-        .pec-roi-badge {
-          background: #ECFDF5;
-          border: 1.5px solid #A7F3D0;
-          padding: 0.5rem 1rem;
-          border-radius: var(--radius-md);
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-        }
-        .pec-roi-label {
-          font-size: 0.7rem;
-          font-weight: 700;
-          color: var(--emerald);
-          text-transform: uppercase;
-        }
-        .pec-roi-val {
-          font-size: 1.4rem;
-          font-weight: 900;
-          color: #047857;
-          line-height: 1.1;
-        }
-        .pec-roi-proj {
-          font-size: 0.68rem;
-          color: var(--text-muted);
-        }
-
-        .pec-stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-          gap: 1rem;
-          margin-bottom: 1.25rem;
-        }
-        .pec-stat-box {
-          background: #FFFFFF;
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-md);
-          padding: 1rem 1.15rem;
-          display: flex;
-          flex-direction: column;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-        }
-        .pec-sb-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.35rem;
-        }
-        .pec-sb-label {
-          font-size: 0.68rem;
-          font-weight: 800;
-          letter-spacing: 0.04em;
-          color: var(--text-muted);
-        }
-        .pec-icon {
-          color: var(--text-muted);
-        }
-        .pec-sb-val {
-          font-size: 1.5rem;
-          font-weight: 900;
-          color: var(--text-primary);
-          margin-bottom: 0.25rem;
-        }
-        .pec-sb-desc {
-          font-size: 0.75rem;
-          color: var(--text-secondary);
-        }
-
-        .pec-progress-bar-container {
-          background: #F8FAFC;
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-md);
-          padding: 1rem 1.25rem;
-        }
-        .pec-pb-header {
-          display: flex;
-          justify-content: space-between;
-          font-size: 0.82rem;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin-bottom: 0.6rem;
-        }
-        .pec-pb-track {
-          height: 10px;
-          border-radius: 5px;
-          background: #E2E8F0;
-          display: flex;
-          overflow: hidden;
-          margin-bottom: 0.75rem;
-        }
-        .pec-pb-fill-principal {
-          background: var(--primary);
-          height: 100%;
-        }
-        .pec-pb-fill-profit {
-          background: var(--emerald);
-          height: 100%;
-        }
-
-        .pec-pb-legend {
-          display: flex;
-          gap: 1.5rem;
-          flex-wrap: wrap;
-          font-size: 0.75rem;
-          color: var(--text-secondary);
-        }
-        .pec-leg-item {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-        }
-        .leg-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-        }
-        .dot-principal { background: var(--primary); }
-        .dot-profit { background: var(--emerald); }
-        .dot-remaining { background: #CBD5E1; }
-      `}</style>
     </div>
   );
 };
+
+export default AdminDashboard;

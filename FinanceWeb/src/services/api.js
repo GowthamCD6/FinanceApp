@@ -861,6 +861,32 @@ export const api = {
   },
 
   // 12. REPORTS & PAYMENT AUDIT
+  getAdminDashboardMetrics: async (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.organizationId && params.organizationId !== 'ALL') query.append('organizationId', params.organizationId);
+    if (params.branchId && params.branchId !== 'ALL') query.append('branchId', params.branchId);
+    const qs = query.toString();
+    return await request(`/reports/dashboard${qs ? '?' + qs : ''}`);
+  },
+
+  getWeeklyDues: async () => {
+    try {
+      const res = await request('/reports/payments?frequency=WEEKLY');
+      return res?.records || [];
+    } catch {
+      return [];
+    }
+  },
+
+  getDailyCollections: async () => {
+    try {
+      const res = await request('/reports/payments?frequency=DAILY');
+      return res?.records || [];
+    } catch {
+      return [];
+    }
+  },
+
   getPaymentReport: async (params = {}) => {
     const query = new URLSearchParams();
     if (params.startDate) query.append('start_date', params.startDate);
