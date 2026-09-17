@@ -17,7 +17,6 @@ import {
   AlertCircle,
   Edit2,
   Power,
-  RotateCw,
   X,
   Layers,
   ShieldCheck,
@@ -35,7 +34,6 @@ export const ManageBranches = () => {
 
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [feedback, setFeedback] = useState(null);
@@ -90,19 +88,16 @@ export const ManageBranches = () => {
   const [submittingAllocate, setSubmittingAllocate] = useState(false);
 
   // Fetch branches from backend API
-  const fetchBranches = useCallback(async (isManual = false) => {
+  const fetchBranches = useCallback(async () => {
     if (!currentOrgId) return;
     try {
-      if (isManual) setRefreshing(true);
-      else setLoading(true);
-
+      setLoading(true);
       const data = await api.organizations.getBranches(currentOrgId);
       setBranches(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load branches from API:', err);
     } finally {
       setLoading(false);
-      if (isManual) setTimeout(() => setRefreshing(false), 400);
     }
   }, [currentOrgId]);
 
@@ -160,7 +155,7 @@ export const ManageBranches = () => {
         manager_password: '',
       });
       setFeedback(`Branch "${addFormData.branch_name}" created successfully!`);
-      await fetchBranches(true);
+      await fetchBranches();
       setTimeout(() => setFeedback(null), 3500);
     } catch (err) {
       setAddErrors({ form: err.message || 'Failed to create branch.' });
@@ -195,7 +190,7 @@ export const ManageBranches = () => {
       await api.organizations.updateBranch(currentOrgId, editFormData.id, editFormData);
       setIsEditModalOpen(false);
       setFeedback(`Branch "${editFormData.branch_name}" updated successfully!`);
-      await fetchBranches(true);
+      await fetchBranches();
       setTimeout(() => setFeedback(null), 3500);
     } catch (err) {
       setEditErrors({ form: err.message || 'Failed to update branch.' });
@@ -256,7 +251,7 @@ export const ManageBranches = () => {
 
       setIsAllocateModalOpen(false);
       setFeedback(`Branch Admin allocated to "${selectedBranchForAdmin.branch_name}" successfully!`);
-      await fetchBranches(true);
+      await fetchBranches();
       setTimeout(() => setFeedback(null), 3500);
     } catch (err) {
       setAllocateErrors({ form: err.message || 'Failed to allocate branch admin.' });
@@ -271,7 +266,7 @@ export const ManageBranches = () => {
     try {
       await api.organizations.updateBranchStatus(currentOrgId, branch.id, nextStatus);
       setFeedback(`Branch "${branch.branch_name}" status set to ${nextStatus}!`);
-      await fetchBranches(true);
+      await fetchBranches();
       setTimeout(() => setFeedback(null), 3000);
     } catch (err) {
       setFeedback(`Failed to update status: ${err.message}`);
@@ -296,42 +291,22 @@ export const ManageBranches = () => {
   const totalBorrowers = branches.reduce((sum, b) => sum + (Number(b.borrower_count) || 0), 0);
   const totalStaff = branches.reduce((sum, b) => sum + (Number(b.staff_count) || 0), 0);
   const totalActiveLoans = branches.reduce((sum, b) => sum + (Number(b.active_loans_count) || 0), 0);
+  const activeBranchesCount = branches.filter((b) => b.status === 'ACTIVE').length;
 
   return (
-    <div className="branches-container">
-      {/* 1. Header */}
-      <div className="branches-header-row">
-        <div className="header-left">
-          <div className="title-wrap">
-            <h1 className="branches-main-title">Branch Network & Admin Allocation</h1>
-            <span className="count-badge">
-              {loading ? (
-                <span className="skeleton-pill" style={{ width: 45, height: 20 }} />
-              ) : (
-                `${branches.length} Operating Branches`
-              )}
-            </span>
+    <div className="branches-page">
+      {/* 1. Header (Clean Page Title, Standard Action Button) */}
+      <div className="directory-page-header">
+        <div className="directory-title-area">
+          <div className="directory-title-row">
+            <h1 className="directory-page-title">Branch Network & Admin Allocation</h1>
           </div>
-          <p className="branches-sub-title">
-            Manage branches, allocate dedicated Branch Admins, and enforce territory isolation for{' '}
-            <strong>{activeOrg?.name || 'Your Organization'}</strong>.
-          </p>
         </div>
 
-        <div className="header-actions">
+        <div className="directory-header-actions">
           <button
             type="button"
-            className={`btn-refresh ${refreshing || loading ? 'is-spinning' : ''}`}
-            onClick={() => fetchBranches(true)}
-            title="Refresh Live Data"
-            disabled={loading || refreshing}
-          >
-            <RotateCw size={16} />
-          </button>
-
-          <button
-            type="button"
-            className="btn-add-branch"
+            className="directory-btn-primary"
             onClick={() => {
               setAddErrors({});
               setIsAddModalOpen(true);
@@ -343,77 +318,77 @@ export const ManageBranches = () => {
         </div>
       </div>
 
-      {/* 2. Feedback Alert */}
+      {/* 2. Feedback Banner */}
       {feedback && (
-        <div className="feedback-banner">
+        <div className="directory-feedback-banner">
           <CheckCircle2 size={18} color="#059669" />
           <span>{feedback}</span>
         </div>
       )}
 
-      {/* 3. Top KPI Cards */}
-      <div className="branches-kpi-grid">
-        <div className="branch-kpi-card">
-          <div className="kpi-top">
-            <span className="kpi-label">Total Branches</span>
-            <div className="kpi-icon-wrap icon-blue">
-              <Building size={18} />
+      {/* 3. Top KPI Cards Strip (Solid #0F172A Metric Numbers) */}
+      <div className="directory-kpi-grid">
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">TOTAL BRANCHES</span>
+            <div className="directory-kpi-icon indigo">
+              <Building size={16} />
             </div>
           </div>
-          <div className="kpi-value">{branches.length}</div>
-          <div className="kpi-footer">
-            <span className="dot-green" />
-            <span>{branches.filter((b) => b.status === 'ACTIVE').length} Active Units</span>
+          <div className="directory-kpi-value">{branches.length}</div>
+          <div className="directory-kpi-desc">
+            <span>{activeBranchesCount} Active Operating Units</span>
           </div>
         </div>
 
-        <div className="branch-kpi-card">
-          <div className="kpi-top">
-            <span className="kpi-label">Registered Borrowers</span>
-            <div className="kpi-icon-wrap icon-green">
-              <Users size={18} />
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">REGISTERED BORROWERS</span>
+            <div className="directory-kpi-icon emerald">
+              <Users size={16} />
             </div>
           </div>
-          <div className="kpi-value">{totalBorrowers.toLocaleString()}</div>
-          <div className="kpi-footer">
-            <span className="highlight-green">Across all branch territories</span>
+          <div className="directory-kpi-value">{totalBorrowers.toLocaleString()}</div>
+          <div className="directory-kpi-desc">
+            <span>Across all branch territories</span>
           </div>
         </div>
 
-        <div className="branch-kpi-card">
-          <div className="kpi-top">
-            <span className="kpi-label">Active Loan Accounts</span>
-            <div className="kpi-icon-wrap icon-purple">
-              <CreditCard size={18} />
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">ACTIVE LOAN ACCOUNTS</span>
+            <div className="directory-kpi-icon purple">
+              <CreditCard size={16} />
             </div>
           </div>
-          <div className="kpi-value">{totalActiveLoans.toLocaleString()}</div>
-          <div className="kpi-footer">
+          <div className="directory-kpi-value">{totalActiveLoans.toLocaleString()}</div>
+          <div className="directory-kpi-desc">
             <span>In active circulation</span>
           </div>
         </div>
 
-        <div className="branch-kpi-card">
-          <div className="kpi-top">
-            <span className="kpi-label">Field Staff & Admins</span>
-            <div className="kpi-icon-wrap icon-amber">
-              <ShieldCheck size={18} />
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">FIELD STAFF & ADMINS</span>
+            <div className="directory-kpi-icon blue">
+              <ShieldCheck size={16} />
             </div>
           </div>
-          <div className="kpi-value">{totalStaff.toLocaleString()}</div>
-          <div className="kpi-footer">
+          <div className="directory-kpi-value">{totalStaff.toLocaleString()}</div>
+          <div className="directory-kpi-desc">
             <span>Branch managers & collectors</span>
           </div>
         </div>
       </div>
 
-      {/* 4. Toolbar: Search & Status Filters */}
-      <div className="branches-toolbar">
-        <div className="search-box">
-          <Search size={16} className="search-icon" />
+      {/* 4. Controls Bar: Search & Status Filter Tabs */}
+      <div className="directory-controls-bar">
+        <div className="mc-search-wrapper">
+          <Search size={16} className="mc-search-icon" />
           <input
             type="text"
-            placeholder="Search branches by code, name, city, admin, phone..."
+            className="mc-search-input"
+            placeholder="Search branches..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             disabled={loading}
@@ -421,7 +396,7 @@ export const ManageBranches = () => {
           {searchTerm && (
             <button
               type="button"
-              className="clear-search-btn"
+              className="mc-search-clear"
               onClick={() => setSearchTerm('')}
             >
               <X size={14} />
@@ -429,17 +404,18 @@ export const ManageBranches = () => {
           )}
         </div>
 
-        <div className="filter-chips">
+        <div className="mc-filter-pills">
           {['ALL', 'ACTIVE', 'INACTIVE'].map((st) => (
             <button
               key={st}
-              className={`filter-chip ${statusFilter === st ? 'active' : ''}`}
+              type="button"
+              className={`mc-filter-pill-btn ${statusFilter === st ? 'active' : ''}`}
               onClick={() => setStatusFilter(st)}
               disabled={loading}
             >
-              {st === 'ALL' ? 'All Branches' : st.charAt(0) + st.slice(1).toLowerCase()}
+              <span>{st === 'ALL' ? 'All Branches' : st.charAt(0) + st.slice(1).toLowerCase()}</span>
               {st !== 'ALL' && (
-                <span className="chip-count">
+                <span className="mc-filter-count-badge">
                   {branches.filter((b) => b.status === st).length}
                 </span>
               )}
@@ -456,13 +432,13 @@ export const ManageBranches = () => {
               <div key={i} className="branch-card skeleton-card">
                 <div className="skeleton-bar" style={{ width: '60%', height: 20 }} />
                 <div className="skeleton-bar" style={{ width: '40%', height: 14, margin: '8px 0' }} />
-                <div className="skeleton-bar" style={{ width: '100%', height: 50, borderRadius: 8 }} />
+                <div className="skeleton-bar" style={{ width: '100%', height: 50, borderRadius: 6 }} />
               </div>
             ))}
           </>
         ) : filteredBranches.length === 0 ? (
           <div className="empty-branches-state">
-            <Building size={48} color="#94a3b8" />
+            <Building size={44} color="#94a3b8" />
             <h3>No branches found</h3>
             <p>Onboard a new operational branch to expand your lending territory.</p>
           </div>
@@ -519,7 +495,10 @@ export const ManageBranches = () => {
                         {adminName ? adminName : <em className="unassigned-text">Unassigned</em>}
                       </span>
                       {adminPhone && (
-                        <span className="admin-badge-phone">📱 {adminPhone}</span>
+                        <span className="admin-badge-phone">
+                          <Phone size={12} className="meta-icon" />
+                          <span>{adminPhone}</span>
+                        </span>
                       )}
                     </div>
                   </div>
@@ -572,7 +551,7 @@ export const ManageBranches = () => {
                     onClick={() => openEditModal(branch)}
                     title="Edit Branch Information"
                   >
-                    <Edit2 size={14} />
+                    <Edit2 size={13} />
                     <span>Edit</span>
                   </button>
 
@@ -582,7 +561,7 @@ export const ManageBranches = () => {
                     onClick={() => handleToggleStatus(branch)}
                     title={branch.status === 'ACTIVE' ? 'Deactivate Branch' : 'Activate Branch'}
                   >
-                    <Power size={14} />
+                    <Power size={13} />
                     <span>{branch.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
                   </button>
                 </div>
@@ -608,7 +587,7 @@ export const ManageBranches = () => {
             )}
 
             <div className="admin-allocation-notice">
-              <ShieldCheck size={18} color="#4f46e5" />
+              <ShieldCheck size={18} color="#4f46e5" style={{ flexShrink: 0, marginTop: 2 }} />
               <p>
                 A <strong>Branch Admin</strong> is restricted to this branch only. They can manage
                 assigned staff, borrowers, loans, collections, and daily passbooks for{' '}
@@ -850,10 +829,14 @@ export const ManageBranches = () => {
               <label className="checkbox-label">
                 <input
                   type="checkbox"
+                  className="checkbox-custom"
                   checked={addFormData.create_branch_admin}
                   onChange={(e) => setAddFormData({ ...addFormData, create_branch_admin: e.target.checked })}
                 />
-                <span className="checkbox-title">Provision Branch Administrator Credentials Immediately</span>
+                <span className="checkbox-text">
+                  <ShieldCheck size={16} color="#4f46e5" />
+                  <span>Provision Login Credentials for Branch Admin Immediately</span>
+                </span>
               </label>
 
               {addFormData.create_branch_admin && (
@@ -868,13 +851,14 @@ export const ManageBranches = () => {
                       className="modal-form-input"
                       value={addFormData.manager_email}
                       onChange={(e) => setAddFormData({ ...addFormData, manager_email: e.target.value })}
-                      placeholder="manager@branch.in"
+                      placeholder="admin@branch.in"
                     />
                   </div>
+
                   <div className="modal-form-group">
                     <label className="modal-form-label">
                       <Key size={14} />
-                      <span>Branch Admin Password</span>
+                      <span>Initial Password</span>
                     </label>
                     <input
                       type="text"
@@ -883,6 +867,9 @@ export const ManageBranches = () => {
                       onChange={(e) => setAddFormData({ ...addFormData, manager_password: e.target.value })}
                       placeholder="Admin@123"
                     />
+                    <span className="field-helper-text">
+                      Default is "Admin@123" if left empty. The admin will be prompted to reset upon first login.
+                    </span>
                   </div>
                 </div>
               )}
@@ -902,7 +889,7 @@ export const ManageBranches = () => {
                 className="btn-modal-submit"
                 disabled={submittingAdd}
               >
-                {submittingAdd ? 'Onboarding Branch...' : 'Create Branch'}
+                {submittingAdd ? 'Creating Branch...' : 'Create & Onboard Branch'}
               </button>
             </div>
           </form>
@@ -941,6 +928,19 @@ export const ManageBranches = () => {
 
             <div className="modal-form-group">
               <label className="modal-form-label">
+                <Layers size={14} />
+                <span>Branch Code</span>
+              </label>
+              <input
+                type="text"
+                className="modal-form-input"
+                value={editFormData.branch_code}
+                onChange={(e) => setEditFormData({ ...editFormData, branch_code: e.target.value.toUpperCase() })}
+              />
+            </div>
+
+            <div className="modal-form-group">
+              <label className="modal-form-label">
                 <MapPin size={14} />
                 <span>Location & Address *</span>
               </label>
@@ -951,13 +951,14 @@ export const ManageBranches = () => {
                 onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
                 required
               />
+              {editErrors.location && <span className="field-error-text">{editErrors.location}</span>}
             </div>
 
             <div className="modal-form-row">
               <div className="modal-form-group">
                 <label className="modal-form-label">
                   <User size={14} />
-                  <span>Branch Manager</span>
+                  <span>Branch Manager Name</span>
                 </label>
                 <input
                   type="text"
@@ -970,15 +971,30 @@ export const ManageBranches = () => {
               <div className="modal-form-group">
                 <label className="modal-form-label">
                   <Phone size={14} />
-                  <span>Manager Phone</span>
+                  <span>Contact Phone</span>
                 </label>
                 <input
                   type="tel"
                   className="modal-form-input"
-                  value={editFormData.manager_phone}
-                  onChange={(e) => setEditFormData({ ...editFormData, manager_phone: e.target.value })}
+                  value={editFormData.phone || editFormData.manager_phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="modal-form-group">
+              <label className="modal-form-label">
+                <ShieldCheck size={14} />
+                <span>Operational Status</span>
+              </label>
+              <select
+                className="modal-form-input"
+                value={editFormData.status}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+              >
+                <option value="ACTIVE">ACTIVE — Full Lending Operations</option>
+                <option value="INACTIVE">INACTIVE — Suspended Operations</option>
+              </select>
             </div>
 
             <div className="modal-actions">
@@ -995,7 +1011,7 @@ export const ManageBranches = () => {
                 className="btn-modal-submit"
                 disabled={submittingEdit}
               >
-                {submittingEdit ? 'Saving Changes...' : 'Update Branch'}
+                {submittingEdit ? 'Saving Changes...' : 'Save Branch Details'}
               </button>
             </div>
           </form>
@@ -1004,6 +1020,3 @@ export const ManageBranches = () => {
     </div>
   );
 };
-
-export default ManageBranches;
-

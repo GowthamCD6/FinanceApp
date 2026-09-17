@@ -194,27 +194,27 @@ export const LendingInterestRates = () => {
     : [];
 
   // ==========================================
-  // SKELETON LOADING STATE (Admin Dashboard Style)
+  // SKELETON LOADING STATE
   // ==========================================
   if (loading) {
     return (
-      <div className="lir-page">
+      <div className="lending-rates-page">
         {/* Header Skeleton */}
-        <div className="lir-header">
+        <div className="directory-page-header">
           <div className="skeleton-bar" style={{ width: 340, height: 32, borderRadius: 8 }} />
-          <div className="skeleton-bar" style={{ width: 170, height: 42, borderRadius: 10 }} />
+          <div className="skeleton-bar" style={{ width: 170, height: 42, borderRadius: 6 }} />
         </div>
 
         {/* 3 KPI Summary Strip Skeletons */}
-        <div className="lir-kpi-grid">
+        <div className="directory-kpi-grid">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="lir-kpi-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <div className="skeleton-bar" style={{ width: '45%', height: 14 }} />
-                <div className="skeleton-circle" style={{ width: 36, height: 36, borderRadius: 10 }} />
+            <div key={i} className="directory-kpi-card">
+              <div className="directory-kpi-top">
+                <div className="skeleton-bar" style={{ width: '50%', height: 13 }} />
+                <div className="skeleton-circle" style={{ width: 32, height: 32, borderRadius: 6 }} />
               </div>
-              <div className="skeleton-bar" style={{ width: '70%', height: 26, marginBottom: '0.4rem' }} />
-              <div className="skeleton-bar" style={{ width: '55%', height: 12 }} />
+              <div className="skeleton-bar" style={{ width: '65%', height: 28, margin: '0.4rem 0' }} />
+              <div className="skeleton-bar" style={{ width: '40%', height: 11 }} />
             </div>
           ))}
         </div>
@@ -234,19 +234,19 @@ export const LendingInterestRates = () => {
               <div className="lir-form-grid">
                 <div className="lir-field">
                   <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
-                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 42, borderRadius: 6 }} />
                 </div>
                 <div className="lir-field">
                   <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
-                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 42, borderRadius: 6 }} />
                 </div>
                 <div className="lir-field">
                   <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
-                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 42, borderRadius: 6 }} />
                 </div>
                 <div className="lir-field">
                   <div className="skeleton-bar" style={{ width: '70%', height: 12, marginBottom: 5 }} />
-                  <div className="skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 8 }} />
+                  <div className="skeleton-bar" style={{ width: '100%', height: 42, borderRadius: 6 }} />
                 </div>
                 <div className="lir-field-full">
                   <div className="skeleton-bar" style={{ width: '50%', height: 14, marginBottom: 8 }} />
@@ -270,98 +270,111 @@ export const LendingInterestRates = () => {
   // REAL CONTENT STATE
   // ==========================================
   return (
-    <div className="lir-page">
-      {/* Header */}
-      <div className="lir-header">
-        <div>
-          <h1 className="lir-title">Lending Models & Collection Schedule</h1>
+    <div className="lending-rates-page">
+      {/* 1. Header (Matching Shopkeeper & Manage Users Page Standard) */}
+      <div className="directory-page-header">
+        <div className="directory-title-area">
+          <div className="directory-title-row">
+            <h1 className="directory-page-title">
+              Lending Rates & Collection Schedule
+            </h1>
+          </div>
         </div>
 
-        <button className="btn btn-primary lir-save-btn" onClick={handleSave} disabled={saving}>
-          <Save size={16} />
-          <span>{saving ? 'Saving...' : 'Save Configuration'}</span>
-        </button>
+        <div className="directory-header-actions">
+          <button
+            type="button"
+            className="directory-btn-primary"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            <Save size={16} />
+            <span>{saving ? 'Saving...' : 'Save Configuration'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* 1. Admin Dashboard-Style 3 KPI Summary Strip */}
-      <div className="lir-kpi-grid">
+      {/* Toast / Feedback Banner */}
+      {toastMessage && (
+        <div className="directory-feedback-banner">
+          <CheckCircle2 size={18} color="#059669" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* 2. Three KPI Metric Cards (Solid #0F172A Numbers) */}
+      <div className="directory-kpi-grid">
         {/* KPI 1: Daily Model */}
-        <div className="lir-kpi-card kpi-daily">
-          <div className="lir-kpi-top">
-            <span className="lir-kpi-label">Daily Merchant Scheme</span>
-            <div className="lir-kpi-icon-wrap icon-daily">
-              <Store size={18} />
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">Daily Merchant Scheme</span>
+            <div className="directory-kpi-icon emerald">
+              <Store size={16} />
             </div>
           </div>
-          <div className="lir-kpi-value">
-            {config.daily_tenure_days} Days <span className="lir-kpi-rate">@{config.daily_interest_rate}%</span>
+          <div className="directory-kpi-value">
+            {config.daily_tenure_days} Days <span className="directory-kpi-rate-tag">@{config.daily_interest_rate}%</span>
           </div>
-          <div className="lir-kpi-footer">
-            <span className="lir-kpi-badge badge-daily">
+          <div className="directory-kpi-desc">
+            <span className={`directory-kpi-status-badge ${config.daily_loan_enabled ? 'active' : 'disabled'}`}>
               {config.daily_loan_enabled ? 'Active' : 'Disabled'}
             </span>
-            <span className="lir-kpi-subtext">
-              {parsedDailyDays.length} operating days/week
-            </span>
+            <span>• {parsedDailyDays.length} operating days/week</span>
           </div>
         </div>
 
         {/* KPI 2: Weekly Model */}
-        <div className="lir-kpi-card kpi-weekly">
-          <div className="lir-kpi-top">
-            <span className="lir-kpi-label">Weekly Micro-Loan Scheme</span>
-            <div className="lir-kpi-icon-wrap icon-weekly">
-              <Calendar size={18} />
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">Weekly Micro-Loan Scheme</span>
+            <div className="directory-kpi-icon indigo">
+              <Calendar size={16} />
             </div>
           </div>
-          <div className="lir-kpi-value">
-            {config.weekly_tenure_weeks} Weeks <span className="lir-kpi-rate">@{config.weekly_interest_rate}%</span>
+          <div className="directory-kpi-value">
+            {config.weekly_tenure_weeks} Weeks <span className="directory-kpi-rate-tag">@{config.weekly_interest_rate}%</span>
           </div>
-          <div className="lir-kpi-footer">
-            <span className="lir-kpi-badge badge-weekly">
+          <div className="directory-kpi-desc">
+            <span className={`directory-kpi-status-badge ${config.weekly_loan_enabled ? 'active' : 'disabled'}`}>
               {config.weekly_loan_enabled ? 'Active' : 'Disabled'}
             </span>
-            <span className="lir-kpi-subtext">
-              {parsedWeeklyDays.length} days/wk • {config.weekly_collection_grace_days}d grace
-            </span>
+            <span>• {parsedWeeklyDays.length} days/wk ({config.weekly_collection_grace_days}d grace)</span>
           </div>
         </div>
 
         {/* KPI 3: Monthly Model */}
-        <div className="lir-kpi-card kpi-monthly">
-          <div className="lir-kpi-top">
-            <span className="lir-kpi-label">Monthly Business Scheme</span>
-            <div className="lir-kpi-icon-wrap icon-monthly">
-              <TrendingUp size={18} />
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">Monthly Business Scheme</span>
+            <div className="directory-kpi-icon purple">
+              <TrendingUp size={16} />
             </div>
           </div>
-          <div className="lir-kpi-value">
-            {config.monthly_tenure_months} Months <span className="lir-kpi-rate">@{config.monthly_interest_rate}% p.a.</span>
+          <div className="directory-kpi-value">
+            {config.monthly_tenure_months} Months <span className="directory-kpi-rate-tag">@{config.monthly_interest_rate}%</span>
           </div>
-          <div className="lir-kpi-footer">
-            <span className="lir-kpi-badge badge-monthly">
+          <div className="directory-kpi-desc">
+            <span className={`directory-kpi-status-badge ${config.monthly_loan_enabled ? 'active' : 'disabled'}`}>
               {config.monthly_loan_enabled ? 'Active' : 'Disabled'}
             </span>
-            <span className="lir-kpi-subtext">
-              Day {config.monthly_collection_start_day}–{config.monthly_collection_end_day} • {config.monthly_collection_grace_days}d grace
-            </span>
+            <span>• Day {config.monthly_collection_start_day}–{config.monthly_collection_end_day} ({config.monthly_collection_grace_days}d grace)</span>
           </div>
         </div>
       </div>
 
-      {/* 2. Scheme Configuration Grid (3 Uniform Cards) */}
+      {/* 3. Scheme Configuration Grid (3 Uniform Cards) */}
       <div className="lir-schemes-grid">
         {/* =========================================
             1. DAILY MERCHANT SCHEME CARD
             ========================================= */}
         <div className={`lir-scheme-card ${!config.daily_loan_enabled ? 'lir-scheme-disabled' : ''}`}>
           <div className="lir-sc-header">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900">1. Daily Merchant Scheme</h3>
+            <div className="lir-sc-title-wrap">
+              <div className="lir-sc-title-row">
+                <h3>1. Daily Merchant Scheme</h3>
                 <span className="lir-sc-badge badge-daily">Daily Cycle</span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Daily merchant loan & recovery cycle</p>
+              <p className="lir-sc-subtitle">Daily merchant loan & recovery cycle</p>
             </div>
             <label className="lir-switch" title="Toggle Daily Scheme Active/Disabled">
               <input
@@ -456,12 +469,12 @@ export const LendingInterestRates = () => {
             ========================================= */}
         <div className={`lir-scheme-card ${!config.weekly_loan_enabled ? 'lir-scheme-disabled' : ''}`}>
           <div className="lir-sc-header">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900">2. Weekly Micro-Loan Scheme</h3>
+            <div className="lir-sc-title-wrap">
+              <div className="lir-sc-title-row">
+                <h3>2. Weekly Micro-Loan Scheme</h3>
                 <span className="lir-sc-badge badge-weekly">Weekly Cycle</span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Weekly micro-lending & group loan cycle</p>
+              <p className="lir-sc-subtitle">Weekly micro-lending & group loan cycle</p>
             </div>
             <label className="lir-switch" title="Toggle Weekly Scheme Active/Disabled">
               <input
@@ -573,12 +586,12 @@ export const LendingInterestRates = () => {
             ========================================= */}
         <div className={`lir-scheme-card ${!config.monthly_loan_enabled ? 'lir-scheme-disabled' : ''}`}>
           <div className="lir-sc-header">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900">3. Monthly Business Scheme</h3>
+            <div className="lir-sc-title-wrap">
+              <div className="lir-sc-title-row">
+                <h3>3. Monthly Business Scheme</h3>
                 <span className="lir-sc-badge badge-monthly">Monthly Cycle</span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Monthly business EMI & commercial loans</p>
+              <p className="lir-sc-subtitle">Monthly business EMI & commercial loans</p>
             </div>
             <label className="lir-switch" title="Toggle Monthly Scheme Active/Disabled">
               <input
@@ -700,14 +713,18 @@ export const LendingInterestRates = () => {
         </div>
       </div>
 
-      {/* Save Action Footer */}
+      {/* 4. Save Action Footer */}
       <div className="lir-save-footer">
         <div className="lir-footer-info">
-          <Info size={15} className="text-blue-500 flex-shrink-0" />
-          <span>Configured terms automatically apply to all newly issued loans and field agent collection rounds.</span>
+          <Info size={16} color="#4F46E5" style={{ flexShrink: 0 }} />
+          <span>Configured interest rates and collection cycles automatically apply to newly disbursed micro-loans and field agent routes.</span>
         </div>
-        {toastMessage && <div className="lir-toast">{toastMessage}</div>}
-        <button className="btn btn-primary lir-save-btn" onClick={handleSave} disabled={saving}>
+        <button
+          type="button"
+          className="directory-btn-primary"
+          onClick={handleSave}
+          disabled={saving}
+        >
           <Save size={16} />
           <span>{saving ? 'Saving...' : 'Save Lending Schemes'}</span>
         </button>

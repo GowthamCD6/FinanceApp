@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../../services/api';
 import { useOrg } from '../../../context/OrgContext';
-import { StatusBadge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
-import { StatCard } from '../../../components/common/StatCard';
 import {
   ShieldCheck,
   UserPlus,
   Search,
   Phone,
   Mail,
-  MapPin,
   Power,
   Edit2,
   Navigation,
@@ -19,11 +16,10 @@ import {
   Users,
   CheckCircle2,
   Building,
-  Key,
   List,
   LayoutGrid,
-  RefreshCw,
-  User,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import './ManageStaff.css';
 
@@ -107,7 +103,7 @@ export const ManageStaff = () => {
         prev.map((s) => (s.id === userId ? { ...s, status: nextStatus } : s))
       );
     } catch (err) {
-      alert(err.message || 'Failed to update status');
+      showFeedback(`Failed to update status: ${err.message}`);
     }
   };
 
@@ -143,7 +139,16 @@ export const ManageStaff = () => {
       await api.updateUser(editFormData.id, editFormData);
       showFeedback(`Staff member "${editFormData.name}" updated successfully!`);
       setStaffList((prev) =>
-        prev.map((s) => (s.id === editFormData.id ? { ...s, ...editFormData, assignedRoute: editFormData.assigned_route, dailyTarget: editFormData.daily_target } : s))
+        prev.map((s) =>
+          s.id === editFormData.id
+            ? {
+                ...s,
+                ...editFormData,
+                assignedRoute: editFormData.assigned_route,
+                dailyTarget: editFormData.daily_target,
+              }
+            : s
+        )
       );
       setIsEditModalOpen(false);
       await loadStaff();
@@ -176,7 +181,13 @@ export const ManageStaff = () => {
         role: addFormData.role,
         assigned_route: addFormData.role === 'FIELD_AGENT' ? addFormData.assigned_route : null,
         daily_target: addFormData.role === 'FIELD_AGENT' ? parseFloat(addFormData.daily_quota || 0) : 0,
-        designation: addFormData.designation || (addFormData.role === 'BRANCH_ADMIN' ? 'Branch Administrator' : addFormData.role === 'ORG_ADMIN' ? 'Organization Admin' : 'Route Collector'),
+        designation:
+          addFormData.designation ||
+          (addFormData.role === 'BRANCH_ADMIN'
+            ? 'Branch Administrator'
+            : addFormData.role === 'ORG_ADMIN'
+            ? 'Organization Admin'
+            : 'Route Collector'),
         status: 'ACTIVE',
       });
 
@@ -215,9 +226,9 @@ export const ManageStaff = () => {
     const sRole = (s.role || s.roleType || '').toUpperCase();
     const matchRole =
       roleFilter === 'ALL' ||
+      (roleFilter === 'FIELD_AGENT' && sRole === 'FIELD_AGENT') ||
       (roleFilter === 'BRANCH_ADMIN' && sRole === 'BRANCH_ADMIN') ||
-      (roleFilter === 'ORG_ADMIN' && (sRole === 'ORG_ADMIN' || sRole === 'ADMIN')) ||
-      (roleFilter === 'FIELD_AGENT' && sRole === 'FIELD_AGENT');
+      (roleFilter === 'ORG_ADMIN' && (sRole === 'ORG_ADMIN' || sRole === 'ADMIN'));
 
     const matchStatus = statusFilter === 'ALL' || s.status === statusFilter;
 
@@ -226,29 +237,26 @@ export const ManageStaff = () => {
 
   const totalCollectors = staffList.filter((s) => (s.role || s.roleType) === 'FIELD_AGENT').length;
   const totalBranchAdmins = staffList.filter((s) => (s.role || s.roleType) === 'BRANCH_ADMIN').length;
-  const totalOrgAdmins = staffList.filter((s) => (s.role || s.roleType) === 'ORG_ADMIN' || (s.role || s.roleType) === 'ADMIN').length;
   const totalDailyTarget = staffList.reduce((sum, s) => sum + (s.dailyTarget || 0), 0);
 
   return (
     <div className="manage-staff-page">
-      {/* 1. Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Staff & Field Collectors</h1>
+      {/* 1. Header (Clean Page Title, Standard Action Button) */}
+      <div className="directory-page-header">
+        <div className="directory-title-area">
+          <div className="directory-title-row">
+            <h1 className="directory-page-title">Staff & Field Collectors</h1>
+          </div>
         </div>
 
-        <div className="header-actions">
+        <div className="directory-header-actions">
           <button
-            className="btn btn-secondary"
-            onClick={loadStaff}
-            title="Refresh Staff List"
-          >
-            <RefreshCw size={16} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => setIsAddModalOpen(true)}
+            type="button"
+            className="directory-btn-primary"
+            onClick={() => {
+              setAddError('');
+              setIsAddModalOpen(true);
+            }}
           >
             <UserPlus size={16} />
             <span>Add Staff / Collector</span>
@@ -256,88 +264,94 @@ export const ManageStaff = () => {
         </div>
       </div>
 
+      {/* 2. Feedback Banner */}
       {feedback && (
-        <div className="feedback-banner" style={{ marginBottom: '1.5rem' }}>
-          <CheckCircle2 size={18} color="var(--emerald)" />
+        <div className="directory-feedback-banner">
+          <CheckCircle2 size={18} color="#059669" />
           <span>{feedback}</span>
         </div>
       )}
 
-      {/* 2. Four KPI Summary Cards with Skeleton Loading */}
-      <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
-        {loading ? (
-          [1, 2, 3, 4].map((i) => (
-            <div key={i} className="card stat-card" style={{ minHeight: 120 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-                <div className="skeleton-bar" style={{ width: '50%', height: 12 }} />
-                <div className="skeleton-circle" style={{ width: 38, height: 38, borderRadius: 8 }} />
-              </div>
-              <div className="skeleton-bar" style={{ width: '70%', height: 28, marginBottom: '0.5rem' }} />
-              <div className="skeleton-bar" style={{ width: '60%', height: 12 }} />
+      {/* 3. Top KPI Metric Cards Strip (Solid #0F172A Numbers) */}
+      <div className="directory-kpi-grid">
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">TOTAL STAFF MEMBERS</span>
+            <div className="directory-kpi-icon indigo">
+              <Users size={16} />
             </div>
-          ))
-        ) : (
-          <>
-            <StatCard
-              label="TOTAL STAFF MEMBERS"
-              value={staffList.length}
-              icon={Users}
-              trend="Registered Staff"
-              trendDirection="up"
-              meta="Full team count"
-              accentColor="#4F46E5"
-              accentBg="#EEF2FF"
-            />
-            <StatCard
-              label="ROUTE COLLECTORS"
-              value={totalCollectors}
-              icon={Briefcase}
-              trend="Active in Field"
-              trendDirection="up"
-              meta="Territory agents"
-              accentColor="#059669"
-              accentBg="#ECFDF5"
-            />
-            <StatCard
-              label="BRANCH ADMINISTRATORS"
-              value={totalBranchAdmins}
-              icon={ShieldCheck}
-              trend="Branch Managers"
-              trendDirection="up"
-              meta="Branch isolations"
-              accentColor="#2563EB"
-              accentBg="#EFF6FF"
-            />
-            <StatCard
-              label="DAILY COLLECTION QUOTA"
-              value={formatCurrency(totalDailyTarget)}
-              icon={DollarSign}
-              trend="Combined Target"
-              trendDirection="up"
-              meta="Across all routes"
-              accentColor="#D97706"
-              accentBg="#FFFBEB"
-            />
-          </>
-        )}
+          </div>
+          <div className="directory-kpi-value">{staffList.length}</div>
+          <div className="directory-kpi-desc">
+            <span>Registered organization personnel</span>
+          </div>
+        </div>
+
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">ROUTE COLLECTORS</span>
+            <div className="directory-kpi-icon emerald">
+              <Briefcase size={16} />
+            </div>
+          </div>
+          <div className="directory-kpi-value">{totalCollectors}</div>
+          <div className="directory-kpi-desc">
+            <span>Active field agents</span>
+          </div>
+        </div>
+
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">BRANCH ADMINISTRATORS</span>
+            <div className="directory-kpi-icon blue">
+              <ShieldCheck size={16} />
+            </div>
+          </div>
+          <div className="directory-kpi-value">{totalBranchAdmins}</div>
+          <div className="directory-kpi-desc">
+            <span>Branch managers & officers</span>
+          </div>
+        </div>
+
+        <div className="directory-kpi-card">
+          <div className="directory-kpi-top">
+            <span className="directory-kpi-label">DAILY COLLECTION QUOTA</span>
+            <div className="directory-kpi-icon amber">
+              <DollarSign size={16} />
+            </div>
+          </div>
+          <div className="directory-kpi-value">{formatCurrency(totalDailyTarget)}</div>
+          <div className="directory-kpi-desc">
+            <span>Combined target across routes</span>
+          </div>
+        </div>
       </div>
 
-      {/* 3. Search & Filter Bar */}
-      <div className="staff-toolbar">
-        <div className="staff-search-wrap">
-          <Search size={16} className="staff-search-icon" />
+      {/* 4. Controls Bar: Search, Role, Status & View Toggle */}
+      <div className="directory-controls-bar">
+        <div className="mc-search-wrapper">
+          <Search size={16} className="mc-search-icon" />
           <input
             type="text"
-            className="staff-search-input"
-            placeholder="Search by staff name, phone, email, branch or route..."
+            className="mc-search-input"
+            placeholder="Search staff members..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              className="mc-search-clear"
+              onClick={() => setSearchTerm('')}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        <div className="staff-filters-group">
+        <div className="directory-filter-controls">
           <select
-            className="staff-select"
+            className="directory-filter-select"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -348,7 +362,7 @@ export const ManageStaff = () => {
           </select>
 
           <select
-            className="staff-select"
+            className="directory-filter-select"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -357,16 +371,18 @@ export const ManageStaff = () => {
             <option value="INACTIVE">Inactive Status</option>
           </select>
 
-          <div className="staff-view-toggle">
+          <div className="directory-view-toggle">
             <button
-              className={`staff-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              type="button"
+              className={`directory-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
               onClick={() => setViewMode('grid')}
               title="Card Grid View"
             >
               <LayoutGrid size={16} />
             </button>
             <button
-              className={`staff-view-btn ${viewMode === 'table' ? 'active' : ''}`}
+              type="button"
+              className={`directory-view-btn ${viewMode === 'table' ? 'active' : ''}`}
               onClick={() => setViewMode('table')}
               title="Table Ledger View"
             >
@@ -376,54 +392,56 @@ export const ManageStaff = () => {
         </div>
       </div>
 
-      {/* 4. Staff Content: Card View or Table View */}
+      {/* 5. Staff Content: Card View or Table View */}
       {loading ? (
         viewMode === 'table' ? (
-          <div className="staff-table-container">
-            <table className="staff-table">
-              <thead>
-                <tr>
-                  <th>Staff Member</th>
-                  <th>Role & Designation</th>
-                  <th>Assigned Branch</th>
-                  <th>Contact Info</th>
-                  <th>Assigned Territory</th>
-                  <th>Daily Quota</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3, 4].map((i) => (
-                  <tr key={i} className="staff-skeleton-row">
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div className="skeleton-circle" style={{ width: 40, height: 40, borderRadius: 8 }} />
-                        <div style={{ width: 130 }}>
-                          <div className="skeleton-bar" style={{ height: 14, marginBottom: 4 }} />
-                          <div className="skeleton-bar" style={{ height: 10, width: '60%' }} />
-                        </div>
-                      </div>
-                    </td>
-                    <td><div className="skeleton-bar" style={{ width: 110, height: 14 }} /></td>
-                    <td><div className="skeleton-bar" style={{ width: 90, height: 14 }} /></td>
-                    <td><div className="skeleton-bar" style={{ width: 100, height: 14 }} /></td>
-                    <td><div className="skeleton-bar" style={{ width: 120, height: 14 }} /></td>
-                    <td><div className="skeleton-bar" style={{ width: 80, height: 14 }} /></td>
-                    <td><div className="skeleton-pill" style={{ width: 70, height: 22 }} /></td>
-                    <td style={{ textAlign: 'right' }}><div className="skeleton-bar" style={{ width: 80, height: 28, marginLeft: 'auto', borderRadius: 6 }} /></td>
+          <div className="directory-table-card">
+            <div className="directory-table-responsive">
+              <table className="directory-table">
+                <thead>
+                  <tr>
+                    <th><div className="directory-th-content">Staff Member</div></th>
+                    <th><div className="directory-th-content">Role & Designation</div></th>
+                    <th><div className="directory-th-content">Assigned Branch</div></th>
+                    <th><div className="directory-th-content">Contact Info</div></th>
+                    <th><div className="directory-th-content">Assigned Territory</div></th>
+                    <th><div className="directory-th-content">Daily Quota</div></th>
+                    <th><div className="directory-th-content">Status</div></th>
+                    <th><div className="directory-th-content">Actions</div></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4].map((i) => (
+                    <tr key={i} className="skeleton-row">
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className="skeleton-circle" style={{ width: 38, height: 38, borderRadius: 6 }} />
+                          <div style={{ width: 130 }}>
+                            <div className="skeleton-bar" style={{ height: 14, marginBottom: 4 }} />
+                            <div className="skeleton-bar" style={{ height: 10, width: '60%' }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td><div className="skeleton-bar" style={{ width: 110, height: 14, margin: '0 auto' }} /></td>
+                      <td><div className="skeleton-bar" style={{ width: 90, height: 14, margin: '0 auto' }} /></td>
+                      <td><div className="skeleton-bar" style={{ width: 100, height: 14, margin: '0 auto' }} /></td>
+                      <td><div className="skeleton-bar" style={{ width: 120, height: 14, margin: '0 auto' }} /></td>
+                      <td><div className="skeleton-bar" style={{ width: 80, height: 14, margin: '0 auto' }} /></td>
+                      <td><div className="skeleton-pill" style={{ width: 70, height: 22, margin: '0 auto' }} /></td>
+                      <td><div className="skeleton-bar" style={{ width: 80, height: 28, margin: '0 auto', borderRadius: 6 }} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="staff-cards-grid">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="card staff-skeleton-card">
+              <div key={i} className="staff-card-item skeleton-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <div className="skeleton-circle" style={{ width: 44, height: 44, borderRadius: 10 }} />
+                    <div className="skeleton-circle" style={{ width: 42, height: 42, borderRadius: 6 }} />
                     <div style={{ width: 140 }}>
                       <div className="skeleton-bar" style={{ height: 16, marginBottom: 5 }} />
                       <div className="skeleton-bar" style={{ height: 12, width: '70%' }} />
@@ -431,162 +449,160 @@ export const ManageStaff = () => {
                   </div>
                   <div className="skeleton-pill" style={{ width: 65, height: 22 }} />
                 </div>
-                <div className="skeleton-bar" style={{ height: 45, borderRadius: 8, marginBottom: '0.85rem' }} />
-                <div className="skeleton-bar" style={{ height: 50, borderRadius: 8 }} />
+                <div className="skeleton-bar" style={{ height: 45, borderRadius: 6, marginBottom: '0.85rem' }} />
+                <div className="skeleton-bar" style={{ height: 50, borderRadius: 6 }} />
               </div>
             ))}
           </div>
         )
       ) : filteredStaff.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--text-muted)' }}>
-          <ShieldCheck size={40} style={{ opacity: 0.35, marginBottom: '0.75rem' }} />
-          <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.15rem' }}>
-            No staff members or collectors found
-          </h3>
-          <p style={{ margin: '0.4rem 0 0', fontSize: '0.875rem' }}>
-            Click "Add Staff / Collector" above to onboard your branch team members.
-          </p>
+        <div className="empty-staff-state">
+          <ShieldCheck size={44} color="#94a3b8" />
+          <h3>No staff members or collectors found</h3>
+          <p>Click "Add Staff / Collector" above to onboard your branch team members.</p>
         </div>
       ) : viewMode === 'table' ? (
-        /* ========================
-           TABLE LEDGER VIEW
-           ======================== */
-        <div className="staff-table-container">
-          <table className="staff-table">
-            <thead>
-              <tr>
-                <th>Staff Member</th>
-                <th>Role & Designation</th>
-                <th>Assigned Branch</th>
-                <th>Contact Info</th>
-                <th>Assigned Route</th>
-                <th>Daily Quota</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStaff.map((staff) => {
-                const sRole = (staff.role || staff.roleType || '').toUpperCase();
-                const isAgent = sRole === 'FIELD_AGENT';
-                const isBranchAdmin = sRole === 'BRANCH_ADMIN';
-                const initials = staff.name
-                  ? staff.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
-                  : 'ST';
+        /* TABLE VIEW */
+        <div className="directory-table-card">
+          <div className="directory-table-responsive">
+            <table className="directory-table">
+              <thead>
+                <tr>
+                  <th><div className="directory-th-content">Staff Member</div></th>
+                  <th><div className="directory-th-content">Role & Designation</div></th>
+                  <th><div className="directory-th-content">Assigned Branch</div></th>
+                  <th><div className="directory-th-content">Contact Info</div></th>
+                  <th><div className="directory-th-content">Assigned Route</div></th>
+                  <th><div className="directory-th-content">Daily Quota</div></th>
+                  <th><div className="directory-th-content">Status</div></th>
+                  <th><div className="directory-th-content">Actions</div></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStaff.map((staff) => {
+                  const sRole = (staff.role || staff.roleType || '').toUpperCase();
+                  const isAgent = sRole === 'FIELD_AGENT';
+                  const isBranchAdmin = sRole === 'BRANCH_ADMIN';
+                  const initials = staff.name
+                    ? staff.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
+                    : 'ST';
 
-                return (
-                  <tr key={staff.id}>
-                    {/* Staff Member */}
-                    <td>
-                      <div className="staff-member-cell">
-                        <div className={`staff-avatar ${isAgent ? 'avatar-agent' : isBranchAdmin ? 'avatar-branch' : 'avatar-admin'}`}>
-                          {initials}
-                        </div>
-                        <div>
-                          <div className="staff-name">{staff.name}</div>
-                          <div className="staff-sub">
-                            <span>ID: #{staff.id}</span>
+                  return (
+                    <tr key={staff.id}>
+                      {/* Staff Member */}
+                      <td>
+                        <div className="staff-member-cell">
+                          <div className={`staff-avatar ${isAgent ? 'avatar-agent' : isBranchAdmin ? 'avatar-branch' : 'avatar-admin'}`}>
+                            {initials}
+                          </div>
+                          <div>
+                            <div className="staff-name">{staff.name}</div>
+                            <div className="staff-sub">
+                              <span>ID: #{staff.id}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Role & Designation */}
-                    <td>
-                      <div>
-                        <span className={`staff-role-badge ${isAgent ? 'role-agent' : isBranchAdmin ? 'role-branch' : 'role-admin'}`}>
-                          {isAgent ? 'FIELD COLLECTOR' : isBranchAdmin ? 'BRANCH ADMIN' : 'ORG ADMIN'}
+                      {/* Role & Designation */}
+                      <td>
+                        <div style={{ textAlign: 'center' }}>
+                          <span className={`staff-role-badge ${isAgent ? 'role-agent' : isBranchAdmin ? 'role-branch' : 'role-admin'}`}>
+                            {isAgent ? 'FIELD COLLECTOR' : isBranchAdmin ? 'BRANCH ADMIN' : 'ORG ADMIN'}
+                          </span>
+                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 3, fontWeight: 500 }}>
+                            {staff.designation || (isAgent ? 'Route Collector' : isBranchAdmin ? 'Branch Administrator' : 'Administrator')}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Assigned Branch */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontWeight: 600, color: '#0f172a', fontSize: '0.84rem' }}>
+                          <Building size={13} color="#4f46e5" />
+                          <span>{staff.branchName || staff.branch_name || 'Main Branch'}</span>
+                        </div>
+                      </td>
+
+                      {/* Contact Info */}
+                      <td>
+                        <div style={{ fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                          <Phone size={13} color="#64748b" />
+                          <span>{staff.phone}</span>
+                        </div>
+                        {staff.email && (
+                          <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 2 }}>
+                            <Mail size={13} />
+                            <span>{staff.email}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Assigned Route */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontWeight: 600, color: '#0f172a' }}>
+                          <Navigation size={14} color="#4f46e5" />
+                          <span>{staff.assignedRoute || 'General Territory'}</span>
+                        </div>
+                      </td>
+
+                      {/* Daily Quota */}
+                      <td style={{ textAlign: 'center' }}>
+                        {isAgent ? (
+                          <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                            {formatCurrency(staff.dailyTarget || 25000)}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>N/A</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`staff-role-badge ${staff.status === 'ACTIVE' ? 'role-agent' : 'role-admin'}`} style={{ textTransform: 'uppercase' }}>
+                          {staff.status || 'ACTIVE'}
                         </span>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 3 }}>
-                          {staff.designation || (isAgent ? 'Route Collector' : isBranchAdmin ? 'Branch Administrator' : 'Administrator')}
+                      </td>
+
+                      {/* Actions */}
+                      <td>
+                        <div className="staff-action-cell">
+                          <button
+                            type="button"
+                            className="btn-action-edit"
+                            onClick={() => openEditModal(staff)}
+                            title="Edit Staff Member"
+                          >
+                            <Edit2 size={13} />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`btn-action-power ${staff.status === 'ACTIVE' ? 'power-suspend' : 'power-activate'}`}
+                            onClick={() =>
+                              handleStatusChange(
+                                staff.id,
+                                staff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
+                                staff.name
+                              )
+                            }
+                            title={staff.status === 'ACTIVE' ? 'Deactivate staff account' : 'Activate staff account'}
+                          >
+                            <Power size={13} />
+                            <span>{staff.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
+                          </button>
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Assigned Branch */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.84rem' }}>
-                        <Building size={13} color="var(--primary)" />
-                        <span>{staff.branchName || staff.branch_name || 'Main Branch'}</span>
-                      </div>
-                    </td>
-
-                    {/* Contact Info */}
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <Phone size={13} color="var(--text-muted)" />
-                        <span>{staff.phone}</span>
-                      </div>
-                      {staff.email && (
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                          <Mail size={13} />
-                          <span>{staff.email}</span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Assigned Route */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--text-primary)' }}>
-                        <Navigation size={14} color="var(--primary)" />
-                        <span>{staff.assignedRoute || 'General Territory'}</span>
-                      </div>
-                    </td>
-
-                    {/* Daily Quota */}
-                    <td>
-                      {isAgent ? (
-                        <div style={{ fontWeight: 750, color: '#d97706' }}>
-                          {formatCurrency(staff.dailyTarget || 25000)}
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>N/A</span>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td>
-                      <StatusBadge status={staff.status || 'ACTIVE'} />
-                    </td>
-
-                    {/* Actions */}
-                    <td>
-                      <div className="staff-action-cell">
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => openEditModal(staff)}
-                          title="Edit Staff Member"
-                        >
-                          <Edit2 size={13} />
-                          <span>Edit</span>
-                        </button>
-
-                        <button
-                          className={`btn btn-sm ${staff.status === 'ACTIVE' ? 'btn-danger' : 'btn-emerald'}`}
-                          onClick={() =>
-                            handleStatusChange(
-                              staff.id,
-                              staff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-                              staff.name
-                            )
-                          }
-                          title={staff.status === 'ACTIVE' ? 'Deactivate staff account' : 'Activate staff account'}
-                        >
-                          <Power size={13} />
-                          <span>{staff.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
-        /* ========================
-           CARD GRID VIEW
-           ======================== */
+        /* CARD GRID VIEW */
         <div className="staff-cards-grid">
           {filteredStaff.map((staff) => {
             const sRole = (staff.role || staff.roleType || '').toUpperCase();
@@ -599,7 +615,7 @@ export const ManageStaff = () => {
             return (
               <div
                 key={staff.id}
-                className={`staff-card-item ${isAgent ? 'card-agent' : isBranchAdmin ? 'card-branch' : 'card-admin'}`}
+                className="staff-card-item"
               >
                 <div>
                   {/* Card Header */}
@@ -610,17 +626,19 @@ export const ManageStaff = () => {
                       </div>
                       <div>
                         <div className="staff-name">{staff.name}</div>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
                           {staff.designation || (isAgent ? 'Route Field Collector' : isBranchAdmin ? 'Branch Administrator' : 'Administrator')}
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: '#1976d2', fontWeight: 600, marginTop: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: '#4f46e5', fontWeight: 600, marginTop: 2 }}>
                           <Building size={12} />
                           <span>{staff.branchName || staff.branch_name || 'Main Branch'}</span>
                         </div>
                       </div>
                     </div>
 
-                    <StatusBadge status={staff.status || 'ACTIVE'} />
+                    <span className={`staff-role-badge ${staff.status === 'ACTIVE' ? 'role-agent' : 'role-admin'}`} style={{ textTransform: 'uppercase' }}>
+                      {staff.status || 'ACTIVE'}
+                    </span>
                   </div>
 
                   {/* Role Badge */}
@@ -631,14 +649,14 @@ export const ManageStaff = () => {
                   </div>
 
                   {/* Contact Info */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.85rem', color: '#334155', marginBottom: '0.85rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Phone size={14} color="var(--text-muted)" />
-                      <strong style={{ color: 'var(--text-primary)' }}>{staff.phone}</strong>
+                      <Phone size={14} color="#64748b" />
+                      <strong style={{ color: '#0f172a' }}>{staff.phone}</strong>
                     </div>
                     {staff.email && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Mail size={14} color="var(--text-muted)" />
+                        <Mail size={14} color="#64748b" />
                         <span>{staff.email}</span>
                       </div>
                     )}
@@ -646,18 +664,18 @@ export const ManageStaff = () => {
 
                   {/* Operational Route & Target Box */}
                   <div className="staff-route-box">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      <Navigation size={13} color="var(--primary)" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: '#64748b' }}>
+                      <Navigation size={13} color="#4f46e5" />
                       <span>Assigned Territory Route:</span>
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>
                       {staff.assignedRoute || 'Branch Operations'}
                     </div>
 
                     {isAgent && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Daily Target:</span>
-                        <strong style={{ color: '#d97706', fontSize: '0.925rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', borderTop: '1px solid #e2e8f0', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                        <span style={{ color: '#64748b' }}>Daily Target:</span>
+                        <strong style={{ color: '#0f172a', fontSize: '0.925rem', fontWeight: 800 }}>
                           {formatCurrency(staff.dailyTarget || 25000)}
                         </strong>
                       </div>
@@ -666,9 +684,10 @@ export const ManageStaff = () => {
                 </div>
 
                 {/* Card Actions Footer */}
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '0.85rem', marginTop: 'auto' }}>
+                <div className="staff-card-footer">
                   <button
-                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    className="btn-action-edit"
                     onClick={() => openEditModal(staff)}
                   >
                     <Edit2 size={13} />
@@ -676,7 +695,8 @@ export const ManageStaff = () => {
                   </button>
 
                   <button
-                    className={`btn btn-sm ${staff.status === 'ACTIVE' ? 'btn-danger' : 'btn-emerald'}`}
+                    type="button"
+                    className={`btn-action-power ${staff.status === 'ACTIVE' ? 'power-suspend' : 'power-activate'}`}
                     onClick={() =>
                       handleStatusChange(
                         staff.id,
@@ -700,54 +720,55 @@ export const ManageStaff = () => {
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title="Edit Staff Member Credentials"
+          title={`Edit Staff: ${editFormData.name}`}
         >
-          <form onSubmit={handleEditSubmit} className="space-y-4">
+          <form onSubmit={handleEditSubmit} className="modal-form">
             {editError && (
-              <div className="feedback-banner" style={{ background: '#FFF1F2', color: '#E11D48', borderColor: '#FDA4AF' }}>
+              <div className="modal-error-alert">
+                <AlertCircle size={16} color="#ef4444" />
                 <span>{editError}</span>
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">Full Legal Name *</label>
+            <div className="modal-form-group">
+              <label className="modal-form-label">Full Legal Name *</label>
               <input
                 type="text"
-                className="form-input"
+                className="modal-form-input"
                 required
                 value={editFormData.name}
                 onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
               />
             </div>
 
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Mobile Phone *</label>
+            <div className="modal-form-row">
+              <div className="modal-form-group">
+                <label className="modal-form-label">Mobile Phone *</label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="modal-form-input"
                   required
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
+              <div className="modal-form-group">
+                <label className="modal-form-label">Email Address</label>
                 <input
                   type="email"
-                  className="form-input"
+                  className="modal-form-input"
                   value={editFormData.email}
                   onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">System Role</label>
+            <div className="modal-form-row">
+              <div className="modal-form-group">
+                <label className="modal-form-label">System Role</label>
                 <select
-                  className="form-select"
+                  className="modal-form-select"
                   value={editFormData.role}
                   onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                 >
@@ -757,28 +778,28 @@ export const ManageStaff = () => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Allocated Branch</label>
+              <div className="modal-form-group">
+                <label className="modal-form-label">Allocated Branch</label>
                 <select
-                  className="form-select"
+                  className="modal-form-select"
                   value={editFormData.branch_id || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, branch_id: e.target.value })}
                 >
                   <option value="">-- Main Branch --</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.name} ({b.code})
+                      {b.name || b.branch_name} ({b.code || b.branch_code})
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Job Title / Designation</label>
+            <div className="modal-form-group">
+              <label className="modal-form-label">Job Title / Designation</label>
               <input
                 type="text"
-                className="form-input"
+                className="modal-form-input"
                 placeholder="e.g. Senior Route Collector"
                 value={editFormData.designation}
                 onChange={(e) => setEditFormData({ ...editFormData, designation: e.target.value })}
@@ -786,22 +807,22 @@ export const ManageStaff = () => {
             </div>
 
             {editFormData.role === 'FIELD_AGENT' && (
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label">Assigned Route / Territory</label>
+              <div className="modal-form-row">
+                <div className="modal-form-group">
+                  <label className="modal-form-label">Assigned Route / Territory</label>
                   <input
                     type="text"
-                    className="form-input"
+                    className="modal-form-input"
                     value={editFormData.assigned_route}
                     onChange={(e) => setEditFormData({ ...editFormData, assigned_route: e.target.value })}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Daily Target (₹)</label>
+                <div className="modal-form-group">
+                  <label className="modal-form-label">Daily Target (₹)</label>
                   <input
                     type="number"
-                    className="form-input"
+                    className="modal-form-input"
                     value={editFormData.daily_target}
                     onChange={(e) => setEditFormData({ ...editFormData, daily_target: e.target.value })}
                   />
@@ -809,17 +830,17 @@ export const ManageStaff = () => {
               </div>
             )}
 
-            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <div className="modal-actions">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn-modal-cancel"
                 onClick={() => setIsEditModalOpen(false)}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="btn btn-primary"
+                className="btn-modal-submit"
                 disabled={savingEdit}
               >
                 {savingEdit ? 'Saving Changes...' : 'Update Staff Member'}
@@ -836,18 +857,19 @@ export const ManageStaff = () => {
           onClose={() => setIsAddModalOpen(false)}
           title="Onboard New Staff or Collector"
         >
-          <form onSubmit={handleAddSubmit} className="space-y-4">
+          <form onSubmit={handleAddSubmit} className="modal-form">
             {addError && (
-              <div className="feedback-banner" style={{ background: '#FFF1F2', color: '#E11D48', borderColor: '#FDA4AF' }}>
+              <div className="modal-error-alert">
+                <AlertCircle size={16} color="#ef4444" />
                 <span>{addError}</span>
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">Full Legal Name *</label>
+            <div className="modal-form-group">
+              <label className="modal-form-label">Full Legal Name *</label>
               <input
                 type="text"
-                className="form-input"
+                className="modal-form-input"
                 required
                 placeholder="e.g. Ramesh Kumar"
                 value={addFormData.name}
@@ -855,12 +877,12 @@ export const ManageStaff = () => {
               />
             </div>
 
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Mobile Phone *</label>
+            <div className="modal-form-row">
+              <div className="modal-form-group">
+                <label className="modal-form-label">Mobile Phone *</label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="modal-form-input"
                   required
                   placeholder="e.g. 9876543210"
                   value={addFormData.phone}
@@ -868,11 +890,11 @@ export const ManageStaff = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
+              <div className="modal-form-group">
+                <label className="modal-form-label">Email Address</label>
                 <input
                   type="email"
-                  className="form-input"
+                  className="modal-form-input"
                   placeholder="ramesh@branch.com"
                   value={addFormData.email}
                   onChange={(e) => setAddFormData({ ...addFormData, email: e.target.value })}
@@ -880,11 +902,11 @@ export const ManageStaff = () => {
               </div>
             </div>
 
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">System Role *</label>
+            <div className="modal-form-row">
+              <div className="modal-form-group">
+                <label className="modal-form-label">System Role *</label>
                 <select
-                  className="form-select"
+                  className="modal-form-select"
                   value={addFormData.role}
                   onChange={(e) => setAddFormData({ ...addFormData, role: e.target.value })}
                 >
@@ -894,28 +916,28 @@ export const ManageStaff = () => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Allocated Branch *</label>
+              <div className="modal-form-group">
+                <label className="modal-form-label">Allocated Branch *</label>
                 <select
-                  className="form-select"
+                  className="modal-form-select"
                   value={addFormData.branch_id || ''}
                   onChange={(e) => setAddFormData({ ...addFormData, branch_id: e.target.value })}
                 >
                   <option value="">-- Main Branch --</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.name} ({b.code})
+                      {b.name || b.branch_name} ({b.code || b.branch_code})
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Job Title / Designation</label>
+            <div className="modal-form-group">
+              <label className="modal-form-label">Job Title / Designation</label>
               <input
                 type="text"
-                className="form-input"
+                className="modal-form-input"
                 placeholder="e.g. Senior Route Collector"
                 value={addFormData.designation}
                 onChange={(e) => setAddFormData({ ...addFormData, designation: e.target.value })}
@@ -923,23 +945,23 @@ export const ManageStaff = () => {
             </div>
 
             {addFormData.role === 'FIELD_AGENT' && (
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label">Assigned Route / Territory</label>
+              <div className="modal-form-row">
+                <div className="modal-form-group">
+                  <label className="modal-form-label">Assigned Route / Territory</label>
                   <input
                     type="text"
-                    className="form-input"
+                    className="modal-form-input"
                     placeholder="e.g. T.Nagar Commercial Node"
                     value={addFormData.assigned_route}
                     onChange={(e) => setAddFormData({ ...addFormData, assigned_route: e.target.value })}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Daily Collection Quota (₹)</label>
+                <div className="modal-form-group">
+                  <label className="modal-form-label">Daily Collection Quota (₹)</label>
                   <input
                     type="number"
-                    className="form-input"
+                    className="modal-form-input"
                     value={addFormData.daily_quota}
                     onChange={(e) => setAddFormData({ ...addFormData, daily_quota: e.target.value })}
                   />
@@ -947,28 +969,28 @@ export const ManageStaff = () => {
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">Initial Password</label>
+            <div className="modal-form-group">
+              <label className="modal-form-label">Initial Password</label>
               <input
                 type="password"
-                className="form-input"
+                className="modal-form-input"
                 placeholder="Leave blank to use default (Phone@123)"
                 value={addFormData.password}
                 onChange={(e) => setAddFormData({ ...addFormData, password: e.target.value })}
               />
             </div>
 
-            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <div className="modal-actions">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn-modal-cancel"
                 onClick={() => setIsAddModalOpen(false)}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="btn btn-primary"
+                className="btn-modal-submit"
                 disabled={submittingAdd}
               >
                 {submittingAdd ? 'Creating Staff Member...' : 'Confirm & Onboard'}
