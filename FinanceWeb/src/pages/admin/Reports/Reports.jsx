@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../../services/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
-import { StatCard } from '../../../components/common/StatCard';
 import {
   Calendar,
   Receipt,
@@ -14,21 +13,12 @@ import {
   DollarSign,
   Printer,
   Download,
-  Filter,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
-  User,
-  ArrowRight,
   TrendingUp,
   AlertCircle,
-  FileText,
-  RefreshCw,
   LayoutGrid,
   List,
-  Store,
-  Check,
-  Building,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
 import './Reports.css';
@@ -57,15 +47,15 @@ const getWeekRange = (refDate = new Date()) => {
 };
 
 export const AdminReports = () => {
-  const { activeOrg } = useOrg();
+  const { activeOrg, activeBranchId } = useOrg();
 
   // Active anchor date for week navigation
   const [currentAnchorDate, setCurrentAnchorDate] = useState(new Date());
 
-  // Date Filtering State
-  const [datePreset, setDatePreset] = useState('THIS_WEEK');
-  const [startDate, setStartDate] = useState(getWeekRange().start);
-  const [endDate, setEndDate] = useState(getWeekRange().end);
+  // Date Filtering State (Default: 'ALL' so all backend records are visible immediately)
+  const [datePreset, setDatePreset] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Filters & Tabs
   const [frequencyFilter, setFrequencyFilter] = useState('ALL'); // 'ALL' | 'WEEKLY' | 'DAILY' | 'MONTHLY'
@@ -101,19 +91,22 @@ export const AdminReports = () => {
   // Payment Receipt Success Modal
   const [receiptSuccess, setReceiptSuccess] = useState(null);
 
-  // Load Dynamic Report Data from backend / API
+  // Load Live Report Data from backend API
   const fetchReport = async (from, to, freq, stat) => {
     setLoading(true);
     try {
       const data = await api.getPaymentReport({
-        startDate: from,
-        endDate: to,
+        startDate: from && from !== 'ALL' ? from : '',
+        endDate: to && to !== 'ALL' ? to : '',
         frequency: freq,
         status: stat,
+        organizationId: activeOrg?.id,
+        branchId: activeBranchId,
       });
       setReport(data || { summary: {}, records: [] });
     } catch (err) {
-      console.error('Failed to load payment report:', err);
+      console.error('Failed to load payment report from API:', err);
+      setReport({ summary: {}, records: [] });
     } finally {
       setLoading(false);
     }
@@ -121,19 +114,22 @@ export const AdminReports = () => {
 
   useEffect(() => {
     fetchReport(startDate, endDate, frequencyFilter, statusFilter);
-  }, [startDate, endDate, frequencyFilter, statusFilter]);
+  }, [startDate, endDate, frequencyFilter, statusFilter, activeOrg?.id, activeBranchId]);
 
   // Reset pagination on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, frequencyFilter, statusFilter, startDate, endDate]);
+  }, [searchTerm, frequencyFilter, statusFilter, startDate, endDate, activeOrg?.id, activeBranchId]);
 
   // Handle Preset Changes
   const handlePresetChange = (preset) => {
     setDatePreset(preset);
     const today = new Date();
 
-    if (preset === 'TODAY') {
+    if (preset === 'ALL') {
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'TODAY') {
       const t = formatDateStr(today);
       setStartDate(t);
       setEndDate(t);
@@ -257,8 +253,8 @@ export const AdminReports = () => {
           return new Date(a.dueDate) - new Date(b.dueDate);
         });
 
-        const newCollected = prev.summary.collected + parsedAmt;
-        const newOutstanding = Math.max(0, prev.summary.outstanding - parsedAmt);
+        const newCollected = (prev.summary.collected || 0) + parsedAmt;
+        const newOutstanding = Math.max(0, (prev.summary.outstanding || 0) - parsedAmt);
         const wasUnpaid = collectTarget.status === 'UNPAID' || collectTarget.status === 'OVERDUE';
 
         return {
@@ -267,9 +263,9 @@ export const AdminReports = () => {
             ...prev.summary,
             collected: newCollected,
             outstanding: newOutstanding,
-            paid_count: nextStatus === 'PAID' ? prev.summary.paid_count + 1 : prev.summary.paid_count,
-            unpaid_count: wasUnpaid && nextStatus === 'PAID' ? Math.max(0, prev.summary.unpaid_count - 1) : prev.summary.unpaid_count,
-            partial_count: nextStatus === 'PARTIAL' ? prev.summary.partial_count + 1 : prev.summary.partial_count,
+            paid_count: nextStatus === 'PAID' ? (prev.summary.paid_count || 0) + 1 : (prev.summary.paid_count || 0),
+            unpaid_count: wasUnpaid && nextStatus === 'PAID' ? Math.max(0, (prev.summary.unpaid_count || 0) - 1) : (prev.summary.unpaid_count || 0),
+            partial_count: nextStatus === 'PARTIAL' ? (prev.summary.partial_count || 0) + 1 : (prev.summary.partial_count || 0),
           },
           records: updatedRecords,
         };
@@ -318,7 +314,7 @@ export const AdminReports = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `collections_report_${startDate}_to_${endDate}.csv`);
+    link.setAttribute('download', `collections_report_${startDate || 'all'}_to_${endDate || 'all'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -326,9 +322,9 @@ export const AdminReports = () => {
 
   // Filtered records by search query
   const displayRecords = useMemo(() => {
-    if (!searchTerm.trim()) return report.records;
+    if (!searchTerm.trim()) return report.records || [];
     const q = searchTerm.toLowerCase();
-    return report.records.filter(
+    return (report.records || []).filter(
       (r) =>
         r.customerName?.toLowerCase().includes(q) ||
         r.customerPhone?.includes(q) ||
@@ -345,7 +341,7 @@ export const AdminReports = () => {
   }, [displayRecords, currentPage, pageSize]);
 
   const summary = report.summary || {};
-  const recoveryRate = summary.expected > 0 ? Math.round((summary.collected / summary.expected) * 100) : 0;
+  const recoveryRate = summary.expected > 0 ? Math.round((summary.collected / summary.expected) * 100) : (summary.recovery_rate || 0);
 
   // Grouped for Card View
   const overdueOrUnpaid = displayRecords.filter((r) => r.status === 'OVERDUE' || r.status === 'UNPAID');
@@ -354,123 +350,132 @@ export const AdminReports = () => {
 
   return (
     <div className="admin-reports-page">
-      {/* 1. Page Header (Admin Dashboard Style) */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Financial Reports & Recovery Audit</h1>
+      {/* 1. Page Header (Strictly Standardized Header without verbose subtitles) */}
+      <div className="directory-page-header">
+        <div className="directory-title-area">
+          <h1 className="directory-page-title">Reports & Recovery Audit</h1>
         </div>
 
-        <div className="header-actions">
-          <button className="btn btn-secondary" onClick={handleExportCSV} title="Export Filtered Report to CSV">
+        <div className="directory-header-actions">
+          <button className="directory-btn-secondary" onClick={handleExportCSV} title="Export Filtered Report to CSV">
             <Download size={16} />
             <span>Export CSV</span>
           </button>
-          <button className="btn btn-secondary" onClick={() => window.print()} title="Print Report">
+          <button className="directory-btn-secondary" onClick={() => window.print()} title="Print Audit Ledger">
             <Printer size={16} />
             <span>Print Report</span>
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => fetchReport(startDate, endDate, frequencyFilter, statusFilter)}
-            title="Refresh Collections Data"
-          >
-            <RefreshCw size={16} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
           </button>
         </div>
       </div>
 
       {/* 2. Interactive Date Range Navigator Bar */}
-      <div className="rep-nav-bar">
+      <div className="rep-nav-card">
         <div className="rep-nav-left">
-          <button className="btn btn-secondary btn-sm" onClick={() => handleShiftWeek(-1)}>
+          <button className="directory-btn-secondary" style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }} onClick={() => handleShiftWeek(-1)}>
             <ChevronLeft size={15} />
             <span>Prev Week</span>
           </button>
 
           <div className="rep-nav-badge">
             <Calendar size={15} />
-            <span>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
+            <span>{startDate && endDate ? `${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}` : 'All Dates & Cycles'}</span>
           </div>
 
-          <button className="btn btn-secondary btn-sm" onClick={() => handleShiftWeek(1)}>
+          <button className="directory-btn-secondary" style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }} onClick={() => handleShiftWeek(1)}>
             <span>Next Week</span>
             <ChevronRight size={15} />
           </button>
 
-          <button className={`btn btn-sm ${datePreset === 'THIS_WEEK' ? 'btn-primary' : 'btn-secondary'}`} onClick={handleCurrentWeek}>
+          <button
+            className={datePreset === 'THIS_WEEK' ? 'directory-btn-primary' : 'directory-btn-secondary'}
+            style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
+            onClick={handleCurrentWeek}
+          >
             Current Week
           </button>
         </div>
 
         <div className="rep-presets">
-          {['TODAY', 'THIS_WEEK', 'LAST_WEEK', 'THIS_MONTH', 'LAST_MONTH'].map((p) => (
+          {['ALL', 'TODAY', 'THIS_WEEK', 'LAST_WEEK', 'THIS_MONTH', 'LAST_MONTH'].map((p) => (
             <button
               key={p}
               onClick={() => handlePresetChange(p)}
               className={`rep-preset-chip ${datePreset === p ? 'active' : ''}`}
             >
-              {p.replace('_', ' ')}
+              {p === 'ALL' ? 'ALL TIME' : p.replace('_', ' ')}
             </button>
           ))}
         </div>
       </div>
 
-      {/* 3. Four KPI Financial Overview Strip (Admin Dashboard StatCards with Shimmer) */}
-      <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
+      {/* 3. Four KPI Financial Overview Strip (Solid #0F172A Metric Numbers - Strictly no green/amber numbers) */}
+      <div className="directory-kpi-grid">
         {loading ? (
           [1, 2, 3, 4].map((i) => (
-            <div key={i} className="card stat-card" style={{ minHeight: 120 }}>
+            <div key={i} className="directory-kpi-card" style={{ minHeight: 110 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-                <div className="skeleton-bar" style={{ width: '50%', height: 12 }} />
-                <div className="skeleton-circle" style={{ width: 38, height: 38, borderRadius: 8 }} />
+                <div className="skeleton-circle" style={{ width: 36, height: 36, borderRadius: 8 }} />
+                <div className="skeleton-bar" style={{ width: '40%', height: 14 }} />
               </div>
-              <div className="skeleton-bar" style={{ width: '70%', height: 28, marginBottom: '0.5rem' }} />
-              <div className="skeleton-bar" style={{ width: '60%', height: 12 }} />
+              <div className="skeleton-bar" style={{ width: '70%', height: 26, marginBottom: '0.4rem' }} />
+              <div className="skeleton-bar" style={{ width: '50%', height: 12 }} />
             </div>
           ))
         ) : (
           <>
-            <StatCard
-              label="TOTAL EXPECTED DUE"
-              value={formatCurrency(summary.expected)}
-              icon={DollarSign}
-              trend="Across scheduled dues"
-              trendDirection="neutral"
-              meta="All active schemes"
-              accentColor="#2563EB"
-              accentBg="#EFF6FF"
-            />
-            <StatCard
-              label="REALIZED COLLECTIONS"
-              value={formatCurrency(summary.collected)}
-              icon={TrendingUp}
-              trend={`${recoveryRate}% Recovery`}
-              trendDirection="up"
-              meta={`${summary.paid_count || 0} settled`}
-              accentColor="#059669"
-              accentBg="#ECFDF5"
-            />
-            <StatCard
-              label="REMAINING BALANCE"
-              value={formatCurrency(summary.outstanding)}
-              icon={Clock}
-              trend={`${summary.overdue_count || 0} Overdue`}
-              trendDirection="down"
-              meta={`${summary.unpaid_count || 0} pending`}
-              accentColor="#D97706"
-              accentBg="#FFFBEB"
-            />
-            <StatCard
-              label="SETTLEMENT RATE"
-              value={`${recoveryRate}%`}
-              icon={CheckCircle2}
-              trend={`${summary.paid_count || 0} Paid`}
-              trendDirection="up"
-              meta={`${summary.overdue_count || 0} Overdue`}
-              accentColor="#7C3AED"
-              accentBg="#FAF5FF"
-            />
+            <div className="directory-kpi-card">
+              <div className="directory-kpi-header">
+                <div className="directory-kpi-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+                  <DollarSign size={20} />
+                </div>
+                <span className="directory-kpi-badge">Total Scheduled</span>
+              </div>
+              <div className="directory-kpi-value">{formatCurrency(summary.expected)}</div>
+              <div className="directory-kpi-label">TOTAL EXPECTED DUE</div>
+              <div className="directory-kpi-meta">Across active loan schedules</div>
+            </div>
+
+            <div className="directory-kpi-card">
+              <div className="directory-kpi-header">
+                <div className="directory-kpi-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
+                  <TrendingUp size={20} />
+                </div>
+                <span className="directory-kpi-badge" style={{ background: '#ecfdf5', color: '#059669' }}>
+                  {recoveryRate}% Realized
+                </span>
+              </div>
+              <div className="directory-kpi-value">{formatCurrency(summary.collected)}</div>
+              <div className="directory-kpi-label">REALIZED COLLECTIONS</div>
+              <div className="directory-kpi-meta">{summary.paid_count || 0} installments collected</div>
+            </div>
+
+            <div className="directory-kpi-card">
+              <div className="directory-kpi-header">
+                <div className="directory-kpi-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
+                  <Clock size={20} />
+                </div>
+                <span className="directory-kpi-badge" style={{ background: '#fffbeb', color: '#d97706' }}>
+                  {summary.overdue_count || 0} Overdue
+                </span>
+              </div>
+              <div className="directory-kpi-value">{formatCurrency(summary.outstanding)}</div>
+              <div className="directory-kpi-label">REMAINING BALANCE</div>
+              <div className="directory-kpi-meta">{summary.unpaid_count || 0} pending dues</div>
+            </div>
+
+            <div className="directory-kpi-card">
+              <div className="directory-kpi-header">
+                <div className="directory-kpi-icon" style={{ background: '#faf5ff', color: '#7c3aed' }}>
+                  <CheckCircle2 size={20} />
+                </div>
+                <span className="directory-kpi-badge" style={{ background: '#faf5ff', color: '#7c3aed' }}>
+                  Efficiency
+                </span>
+              </div>
+              <div className="directory-kpi-value">{recoveryRate}%</div>
+              <div className="directory-kpi-label">RECOVERY RATE</div>
+              <div className="directory-kpi-meta">{summary.paid_count || 0} Settled • {summary.partial_count || 0} Partial</div>
+            </div>
           </>
         )}
       </div>
@@ -533,70 +538,72 @@ export const AdminReports = () => {
 
       {/* 5. Main Content: Table View or Card View */}
       {loading ? (
-        <div className="rep-table-container">
-          <table className="rep-table">
-            <thead>
-              <tr>
-                <th>Borrower & Shop</th>
-                <th>Loan Number</th>
-                <th>Installment & Due</th>
-                <th>Expected</th>
-                <th>Paid</th>
-                <th>Balance</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <tr key={i} className="rep-skeleton-row">
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div className="skeleton-circle" style={{ width: 34, height: 34, borderRadius: 8 }} />
-                      <div style={{ width: 120 }}>
-                        <div className="skeleton-bar" style={{ height: 14, marginBottom: 4 }} />
-                        <div className="skeleton-bar" style={{ height: 10, width: '60%' }} />
-                      </div>
-                    </div>
-                  </td>
-                  <td><div className="skeleton-bar" style={{ width: 80, height: 14 }} /></td>
-                  <td><div className="skeleton-bar" style={{ width: 100, height: 14 }} /></td>
-                  <td><div className="skeleton-bar" style={{ width: 65, height: 14 }} /></td>
-                  <td><div className="skeleton-bar" style={{ width: 65, height: 14 }} /></td>
-                  <td><div className="skeleton-bar" style={{ width: 65, height: 14 }} /></td>
-                  <td><div className="skeleton-pill" style={{ width: 70, height: 22 }} /></td>
-                  <td style={{ textAlign: 'right' }}><div className="skeleton-bar" style={{ width: 80, height: 28, marginLeft: 'auto', borderRadius: 6 }} /></td>
+        <div className="directory-table-card">
+          <div className="directory-table-responsive">
+            <table className="directory-table">
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left' }}>Borrower & Shop</th>
+                  <th style={{ textAlign: 'center' }}>Loan & Scheme</th>
+                  <th style={{ textAlign: 'center' }}>Due Date & Installment</th>
+                  <th style={{ textAlign: 'center' }}>Expected (₹)</th>
+                  <th style={{ textAlign: 'center' }}>Paid (₹)</th>
+                  <th style={{ textAlign: 'center' }}>Balance (₹)</th>
+                  <th style={{ textAlign: 'center' }}>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="rep-skeleton-row">
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className="skeleton-circle" style={{ width: 34, height: 34, borderRadius: 8 }} />
+                        <div style={{ width: 120 }}>
+                          <div className="skeleton-bar" style={{ height: 14, marginBottom: 4 }} />
+                          <div className="skeleton-bar" style={{ height: 10, width: '60%' }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}><div className="skeleton-bar" style={{ width: 80, height: 14, margin: '0 auto' }} /></td>
+                    <td style={{ textAlign: 'center' }}><div className="skeleton-bar" style={{ width: 100, height: 14, margin: '0 auto' }} /></td>
+                    <td style={{ textAlign: 'center' }}><div className="skeleton-bar" style={{ width: 65, height: 14, margin: '0 auto' }} /></td>
+                    <td style={{ textAlign: 'center' }}><div className="skeleton-bar" style={{ width: 65, height: 14, margin: '0 auto' }} /></td>
+                    <td style={{ textAlign: 'center' }}><div className="skeleton-bar" style={{ width: 65, height: 14, margin: '0 auto' }} /></td>
+                    <td style={{ textAlign: 'center' }}><div className="skeleton-pill" style={{ width: 70, height: 22, margin: '0 auto' }} /></td>
+                    <td style={{ textAlign: 'right' }}><div className="skeleton-bar" style={{ width: 80, height: 28, marginLeft: 'auto', borderRadius: 6 }} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : displayRecords.length === 0 ? (
         <div className="rep-empty-state">
           <div className="rep-empty-icon">
-            <Calendar size={28} />
+            <Calendar size={26} />
           </div>
-          <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>No payment records found</h3>
+          <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 700 }}>No payment records found</h3>
           <p style={{ margin: 0, fontSize: '0.85rem' }}>
-            Try adjusting your search query, switching schemes, or shifting to another date range.
+            Try selecting <strong>ALL TIME</strong>, adjusting your search query, or switching schemes.
           </p>
         </div>
       ) : viewMode === 'table' ? (
         /* ========================
            TABLE LEDGER VIEW
            ======================== */
-        <>
-          <div className="rep-table-container">
-            <table className="rep-table">
+        <div className="directory-table-card">
+          <div className="directory-table-responsive">
+            <table className="directory-table">
               <thead>
                 <tr>
-                  <th>Borrower & Shop</th>
-                  <th>Loan & Scheme</th>
-                  <th>Due Date & Installment</th>
-                  <th>Expected (₹)</th>
-                  <th>Paid (₹)</th>
-                  <th>Balance (₹)</th>
-                  <th>Status</th>
+                  <th style={{ textAlign: 'left' }}>Borrower & Shop</th>
+                  <th style={{ textAlign: 'center' }}>Loan & Scheme</th>
+                  <th style={{ textAlign: 'center' }}>Due Date & Installment</th>
+                  <th style={{ textAlign: 'center' }}>Expected (₹)</th>
+                  <th style={{ textAlign: 'center' }}>Paid (₹)</th>
+                  <th style={{ textAlign: 'center' }}>Balance (₹)</th>
+                  <th style={{ textAlign: 'center' }}>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -625,7 +632,7 @@ export const AdminReports = () => {
                       </td>
 
                       {/* Loan & Scheme */}
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <div style={{ fontWeight: 700, color: '#0f172a' }}>{rec.loanNumber}</div>
                         <span className={`rep-scheme-badge ${rec.frequency === 'DAILY' ? 'scheme-daily' : rec.frequency === 'MONTHLY' ? 'scheme-monthly' : 'scheme-weekly'}`}>
                           {rec.frequency}
@@ -633,7 +640,7 @@ export const AdminReports = () => {
                       </td>
 
                       {/* Installment & Due Date */}
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <div style={{ fontWeight: 700, color: isOverdue ? '#dc2626' : '#0f172a' }}>
                           {rec.dueDate}
                         </div>
@@ -643,28 +650,28 @@ export const AdminReports = () => {
                       </td>
 
                       {/* Expected Amount */}
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <div style={{ fontWeight: 700, color: '#0f172a' }}>
                           {formatCurrency(rec.expectedAmount)}
                         </div>
                       </td>
 
                       {/* Paid Amount */}
-                      <td>
-                        <div style={{ fontWeight: 700, color: isPaid ? '#059669' : rec.paidAmount > 0 ? '#2563eb' : '#94a3b8' }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ fontWeight: 700, color: isPaid ? '#059669' : rec.paidAmount > 0 ? '#2563eb' : '#64748b' }}>
                           {formatCurrency(rec.paidAmount || 0)}
                         </div>
                       </td>
 
                       {/* Balance */}
-                      <td>
-                        <div style={{ fontWeight: 800, color: rec.balance === 0 ? '#059669' : '#d97706' }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ fontWeight: 800, color: rec.balance <= 0 ? '#059669' : '#0f172a' }}>
                           {formatCurrency(rec.balance || 0)}
                         </div>
                       </td>
 
                       {/* Status */}
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <StatusBadge status={rec.status} />
                       </td>
 
@@ -743,7 +750,7 @@ export const AdminReports = () => {
               </button>
             </div>
           </div>
-        </>
+        </div>
       ) : (
         /* ========================
            CARD GRID VIEW
@@ -839,7 +846,7 @@ export const AdminReports = () => {
                 padding: '0.85rem 1rem',
                 background: '#f8fafc',
                 borderRadius: 8,
-                border: '1.5px solid #e2e8f0',
+                border: '1px solid #e2e8f0',
                 marginBottom: '1.25rem',
               }}
             >
@@ -856,7 +863,7 @@ export const AdminReports = () => {
                 <div>Loan: <strong>{collectTarget.loanNumber}</strong></div>
                 <div>Expected: <strong>{formatCurrency(collectTarget.expectedAmount)}</strong></div>
                 <div>
-                  Remaining: <strong style={{ color: '#d97706' }}>{formatCurrency(collectTarget.balance || collectTarget.expectedAmount)}</strong>
+                  Remaining: <strong style={{ color: '#0f172a' }}>{formatCurrency(collectTarget.balance || collectTarget.expectedAmount)}</strong>
                 </div>
               </div>
             </div>
@@ -864,14 +871,14 @@ export const AdminReports = () => {
             {/* Payment Fields */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
-                  Payment Amount (₹) *
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                  Payment Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="number"
                   step="any"
                   className="rep-search-input"
-                  style={{ padding: '0.55rem 0.75rem' }}
+                  style={{ padding: '0.55rem 0.75rem', height: 42 }}
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                   required
@@ -879,13 +886,13 @@ export const AdminReports = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
-                  Payment Date *
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                  Payment Date <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="date"
                   className="rep-search-input"
-                  style={{ padding: '0.55rem 0.75rem' }}
+                  style={{ padding: '0.55rem 0.75rem', height: 42 }}
                   value={paymentForm.paymentDate}
                   onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
                   required
@@ -895,12 +902,12 @@ export const AdminReports = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
                   Payment Mode
                 </label>
                 <select
                   className="rep-select"
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', height: 42 }}
                   value={paymentForm.paymentMethod}
                   onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
                 >
@@ -912,13 +919,13 @@ export const AdminReports = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
                   Receipt / Ref Number
                 </label>
                 <input
                   type="text"
                   className="rep-search-input"
-                  style={{ padding: '0.55rem 0.75rem' }}
+                  style={{ padding: '0.55rem 0.75rem', height: 42 }}
                   value={paymentForm.referenceNumber}
                   onChange={(e) => setPaymentForm({ ...paymentForm, referenceNumber: e.target.value })}
                 />
@@ -926,13 +933,13 @@ export const AdminReports = () => {
             </div>
 
             <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-              <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+              <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
                 Collection Notes
               </label>
               <input
                 type="text"
                 className="rep-search-input"
-                style={{ padding: '0.55rem 0.75rem' }}
+                style={{ padding: '0.55rem 0.75rem', height: 42 }}
                 placeholder="e.g. Full installment collected on route"
                 value={paymentForm.notes}
                 onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
@@ -940,10 +947,10 @@ export const AdminReports = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setIsCollectModalOpen(false)}>
+              <button type="button" className="directory-btn-secondary" onClick={() => setIsCollectModalOpen(false)}>
                 Cancel
               </button>
-              <button type="submit" disabled={submittingPayment} className="btn btn-primary">
+              <button type="submit" disabled={submittingPayment} className="directory-btn-primary">
                 {submittingPayment ? 'Recording...' : 'Record Payment & Save'}
               </button>
             </div>
@@ -973,7 +980,7 @@ export const AdminReports = () => {
               <CheckCircle2 size={30} />
             </div>
 
-            <h3 style={{ margin: '0 0 0.35rem 0', color: '#0f172a', fontSize: '1.25rem' }}>
+            <h3 style={{ margin: '0 0 0.35rem 0', color: '#0f172a', fontSize: '1.25rem', fontWeight: 800 }}>
               {formatCurrency(receiptSuccess.amount)} Collected
             </h3>
             <p style={{ margin: 0, color: '#64748b', fontSize: '0.825rem' }}>
@@ -985,7 +992,7 @@ export const AdminReports = () => {
                 background: '#f8fafc',
                 padding: '0.95rem',
                 borderRadius: 8,
-                border: '1.5px solid #e2e8f0',
+                border: '1px solid #e2e8f0',
                 margin: '1.15rem 0',
                 textAlign: 'left',
                 display: 'grid',
@@ -995,19 +1002,19 @@ export const AdminReports = () => {
               }}
             >
               <div>Borrower: <strong>{receiptSuccess.borrower}</strong></div>
-              <div>Mode: <span className="rep-kpi-pill pill-blue">{receiptSuccess.mode}</span></div>
+              <div>Mode: <span className="rep-scheme-badge scheme-weekly">{receiptSuccess.mode}</span></div>
               <div>Date: {receiptSuccess.date}</div>
               <div>
-                Remaining: <strong style={{ color: receiptSuccess.balance === 0 ? '#059669' : '#d97706' }}>{formatCurrency(receiptSuccess.balance)}</strong>
+                Remaining: <strong style={{ color: '#0f172a' }}>{formatCurrency(receiptSuccess.balance)}</strong>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-              <button className="btn btn-secondary" onClick={() => window.print()}>
+              <button className="directory-btn-secondary" onClick={() => window.print()}>
                 <Printer size={15} />
                 <span>Print Receipt</span>
               </button>
-              <button className="btn btn-primary" onClick={() => setReceiptSuccess(null)}>
+              <button className="directory-btn-primary" onClick={() => setReceiptSuccess(null)}>
                 <span>Done</span>
               </button>
             </div>
@@ -1050,13 +1057,13 @@ const PaymentCardItem = ({ record, onRecordPayment, formatCurrency }) => {
         </div>
         <div>
           <div className="rep-matrix-label">Paid</div>
-          <div className="rep-matrix-val" style={{ color: isPaid ? '#059669' : '#2563eb' }}>
+          <div className="rep-matrix-val" style={{ color: isPaid ? '#059669' : '#0f172a' }}>
             {formatCurrency(record.paidAmount || 0)}
           </div>
         </div>
         <div>
           <div className="rep-matrix-label">Balance</div>
-          <div className="rep-matrix-val" style={{ color: record.balance === 0 ? '#059669' : '#d97706' }}>
+          <div className="rep-matrix-val" style={{ color: '#0f172a' }}>
             {formatCurrency(record.balance || 0)}
           </div>
         </div>

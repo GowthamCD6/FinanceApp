@@ -867,6 +867,8 @@ export const api = {
     if (params.endDate) query.append('end_date', params.endDate);
     if (params.frequency && params.frequency !== 'ALL') query.append('frequency', params.frequency);
     if (params.status && params.status !== 'ALL') query.append('status', params.status);
+    if (params.organizationId) query.append('organizationId', params.organizationId);
+    if (params.branchId) query.append('branchId', params.branchId);
     const res = await request(`/reports/payments?${query.toString()}`);
     return res || { summary: {}, records: [] };
   },

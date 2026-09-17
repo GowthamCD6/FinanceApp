@@ -17,8 +17,10 @@ async function getDashboard(req, res) {
 
 async function getCashFlow(req, res) {
   try {
+    const orgId = req.query.organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
+    const branchId = req.query.branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
     const { from, to } = req.query;
-    const data = await reportService.getCashFlowReport(from, to);
+    const data = await reportService.getCashFlowReport(from, to, orgId, branchId);
     return res.json({ success: true, data });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -27,7 +29,9 @@ async function getCashFlow(req, res) {
 
 async function getOverdue(req, res) {
   try {
-    const data = await reportService.getOverdueReport();
+    const orgId = req.query.organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
+    const branchId = req.query.branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
+    const data = await reportService.getOverdueReport(orgId, branchId);
     return res.json({ success: true, data });
   } catch (error) {
     console.error('Overdue report error:', error);
@@ -37,12 +41,16 @@ async function getOverdue(req, res) {
 
 async function getPaymentReport(req, res) {
   try {
+    const orgId = req.query.organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
+    const branchId = req.query.branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
     const { start_date, end_date, frequency, status } = req.query;
     const data = await reportService.getPaymentReport({
       startDate: start_date,
       endDate: end_date,
       frequency,
       status,
+      organizationId: orgId,
+      branchId: branchId,
     });
     return res.json({ success: true, data });
   } catch (error) {
