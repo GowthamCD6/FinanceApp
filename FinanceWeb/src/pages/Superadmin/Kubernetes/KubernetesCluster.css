@@ -1,0 +1,150 @@
+/* ==========================================================================
+   SuperAdmin Kubernetes & Infra Styles
+   Strict adherence to Docs/ProfesonalTheme&Content.md
+   ========================================================================== */
+
+.k8s-cluster-page {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.k8s-cluster-page *,
+.k8s-cluster-page *::before,
+.k8s-cluster-page *::after {
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header */
+.k8s-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.k8s-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.k8s-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* KPI Cards */
+.k8s-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.k8s-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.k8s-kpi-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.k8s-kpi-val {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #0f172a !important; /* Solid #0F172A */
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+.k8s-kpi-sub {
+  font-size: 0.775rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Table Card */
+.k8s-table-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-bottom: 1.5rem;
+}
+
+.k8s-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.k8s-table thead {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.k8s-table th {
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.k8s-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s ease;
+}
+
+.k8s-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.k8s-table td {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #334155;
+  vertical-align: middle;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .k8s-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .k8s-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .k8s-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}

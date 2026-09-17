@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrg } from '../../../context/OrgContext';
 import { api } from '../../../services/api';
+import { Modal } from '../../../components/common/Modal';
+import { Pagination } from '../../../components/common/Pagination';
+import { CardSkeleton } from '../../../components/common/Skeleton';
 import {
   Building,
   Plus,
@@ -29,7 +32,7 @@ import {
   Activity,
   Globe,
 } from 'lucide-react';
-import { Modal } from '../../../components/common/Modal';
+import './Dashboard.css';
 
 const PLAN_CONFIG = {
   STARTER:    { label: 'Starter',    color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
@@ -56,6 +59,14 @@ export const SuperAdminDashboard = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [clusterData, setClusterData] = useState(null);
   const [clusterLoading, setClusterLoading] = useState(true);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
 
   // Edit Org Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -180,21 +191,21 @@ export const SuperAdminDashboard = () => {
     setTimeout(() => setFeedbackMsg(''), 3000);
   };
 
+  const paginatedTenants = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   return (
-    <div className="sa-dash-container">
-      {/* 1. Header Row */}
-      <div className="sa-header-row">
+    <div className="sa-dashboard-container">
+      {/* 1. Header */}
+      <div className="sa-header">
         <div className="sa-header-left">
-          <div className="title-wrap">
-            <h1 className="sa-main-title">SuperAdmin Platform Overview</h1>
-            <span className="sa-badge-count">
-              {loading ? (
-                <span className="skeleton-pill" style={{ width: 45, height: 20 }} />
-              ) : (
-                `${organizations.length} Tenants Active`
-              )}
-            </span>
-          </div>
+          <h1 className="sa-title">SuperAdmin Global Command Center</h1>
+          <span className="sa-badge-pill">
+            <span className="dot-green" />
+            <span>Platform Online</span>
+          </span>
         </div>
 
         <div className="sa-header-actions">
@@ -229,18 +240,7 @@ export const SuperAdminDashboard = () => {
       {/* 2. Platform KPI Cards */}
       <div className="sa-kpi-grid">
         {loading ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="sa-kpi-card skeleton-card">
-                <div className="kpi-top-row">
-                  <div className="skeleton-bar" style={{ width: '45%', height: 14 }} />
-                  <div className="skeleton-circle" style={{ width: 36, height: 36 }} />
-                </div>
-                <div className="skeleton-bar" style={{ width: '60%', height: 28, margin: '10px 0' }} />
-                <div className="skeleton-bar" style={{ width: '75%', height: 12 }} />
-              </div>
-            ))}
-          </>
+          <CardSkeleton count={4} />
         ) : (
           <>
             <div className="sa-kpi-card">
@@ -266,7 +266,7 @@ export const SuperAdminDashboard = () => {
               </div>
               <div className="kpi-value">{platformStats.totalCustomers.toLocaleString()}</div>
               <div className="kpi-footer">
-                <span className="highlight-green">Across all branch networks</span>
+                <span style={{ color: '#059669', fontWeight: 700 }}>Across all branch networks</span>
               </div>
             </div>
 
@@ -299,37 +299,26 @@ export const SuperAdminDashboard = () => {
         )}
       </div>
 
-      {/* 2.5 Kubernetes Infrastructure & Cluster Health Banner */}
-      <div className="sa-k8s-banner">
-        <div className="sa-k8s-banner-left">
-          <div className="sa-k8s-icon-wrap">
-            <Server size={22} color="#0284c7" />
+      {/* 3. Infra Cluster Telemetry Strip */}
+      <div className="sa-k8s-strip">
+        <div className="sa-k8s-left">
+          <div className="sa-k8s-icon">
+            <Server size={20} />
           </div>
           <div className="sa-k8s-info">
             <div className="sa-k8s-title-row">
-              <h3 className="sa-k8s-title">
-                {clusterData?.cluster_name || 'k8s-prod-cluster-01'}
-              </h3>
+              <span className="sa-k8s-title">{clusterData?.cluster_name || 'k8s-finance-production-cluster'}</span>
               <span className="sa-k8s-status-badge">
-                <span className="sa-k8s-pulse-dot" />
-                {clusterData?.status || 'HEALTHY'} (5/5 Nodes Ready)
-              </span>
-              <span className="sa-k8s-tag">
-                <Globe size={12} /> {clusterData?.region || 'ap-southeast-1'}
+                <span className="dot-green" style={{ width: 6, height: 6 }} />
+                <span>{clusterData?.status || 'HEALTHY'}</span>
               </span>
             </div>
             <div className="sa-k8s-metrics-row">
-              <span className="k8s-m-item">
-                <strong>{clusterData?.active_pods || 178}</strong> / {clusterData?.max_pods || 830} Pods
-              </span>
+              <span>{clusterData?.nodes_ready ?? 3}/{clusterData?.total_nodes ?? 3} Worker Nodes Online</span>
               <span className="k8s-m-sep">•</span>
-              <span className="k8s-m-item">
-                Fleet CPU: <strong>{clusterData?.avg_cpu_usage_percent || '28.6'}%</strong> ({clusterData?.total_cpu_cores || 104} vCPUs)
-              </span>
+              <span>{clusterData?.running_pods ?? 24} Microservice Pods Active</span>
               <span className="k8s-m-sep">•</span>
-              <span className="k8s-m-item">
-                Fleet RAM: <strong>{clusterData?.used_memory_gb || '177.4'} GB</strong> / {clusterData?.total_memory_gb || 416} GB
-              </span>
+              <span>TiDB Cloud Clustered DB: Connected</span>
             </div>
           </div>
         </div>
@@ -339,188 +328,129 @@ export const SuperAdminDashboard = () => {
           className="btn-manage-k8s"
           onClick={() => navigate('/superadmin/kubernetes')}
         >
-          <span>Manage Cluster & Nodes</span>
-          <ArrowRight size={15} />
+          <Activity size={15} />
+          <span>Infra Health & Pods</span>
         </button>
       </div>
 
-      {/* 3. Search & Filter Bar */}
-      <div className="sa-toolbar">
-        <div className="sa-search-box">
-          <Search size={18} className="search-icon" />
+      {/* 4. Filter & Search Controls */}
+      <div className="sa-filter-card">
+        <div className="sa-search-wrap">
+          <Search size={16} className="sa-search-icon" />
           <input
             type="text"
-            placeholder="Search organizations by name, code, admin, or phone..."
+            className="sa-search-input"
+            placeholder="Search organizations by name, code, or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            disabled={loading}
           />
-          {search && (
-            <button
-              type="button"
-              className="clear-search-btn"
-              onClick={() => setSearch('')}
-            >
-              <X size={14} />
-            </button>
-          )}
         </div>
 
-        <div className="sa-filter-chips">
-          {['ALL', 'ACTIVE', 'SUSPENDED'].map((st) => (
+        <div className="sa-filter-tabs">
+          {['ALL', 'ACTIVE', 'SUSPENDED'].map((status) => (
             <button
-              key={st}
-              className={`filter-chip ${statusFilter === st ? 'active' : ''}`}
-              onClick={() => setStatusFilter(st)}
-              disabled={loading}
+              key={status}
+              type="button"
+              className={`sa-filter-tab ${statusFilter === status ? 'active' : ''}`}
+              onClick={() => setStatusFilter(status)}
             >
-              {st === 'ALL' ? 'All Tenants' : st.charAt(0) + st.slice(1).toLowerCase()}
-              {st !== 'ALL' && (
-                <span className="chip-count">
-                  {organizations.filter((o) => o.status === st).length}
-                </span>
-              )}
+              {status === 'ALL' ? 'All Tenants' : status.charAt(0) + status.slice(1).toLowerCase()}
             </button>
           ))}
         </div>
       </div>
 
-      {/* 4. Organization Cards Grid */}
+      {/* 5. Organization Cards Grid */}
       <div className="sa-org-grid">
         {loading ? (
-          <>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="org-card skeleton-card">
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <div className="skeleton-circle" style={{ width: 44, height: 44 }} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                    <div className="skeleton-bar" style={{ width: '70%', height: 16 }} />
-                    <div className="skeleton-bar" style={{ width: '40%', height: 12 }} />
-                  </div>
-                </div>
-                <div className="skeleton-bar" style={{ width: '100%', height: 48, borderRadius: 8, margin: '8px 0' }} />
-                <div className="skeleton-bar" style={{ width: '90%', height: 14 }} />
-                <div className="skeleton-bar" style={{ width: '60%', height: 14 }} />
+          Array.from({ length: pageSize }).map((_, i) => (
+            <div key={i} className="sa-org-card skeleton-shimmer" style={{ minHeight: 220, padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div className="skeleton-circle" style={{ width: 44, height: 44 }} />
+                <div className="skeleton-pill" style={{ width: 70, height: 24 }} />
               </div>
-            ))}
-          </>
-        ) : filtered.length === 0 ? (
-          <div className="empty-state">
-            <Building size={48} color="#94a3b8" />
-            <h3>No organizations found</h3>
-            <p>Try adjusting your search filters or onboard a new organization.</p>
+              <div className="skeleton-bar" style={{ width: '65%', height: 18, marginBottom: 8 }} />
+              <div className="skeleton-bar" style={{ width: '40%', height: 12, marginBottom: 16 }} />
+              <div className="skeleton-bar" style={{ width: '85%', height: 12, marginBottom: 6 }} />
+              <div className="skeleton-bar" style={{ width: '75%', height: 12, marginBottom: 16 }} />
+              <div className="skeleton-bar" style={{ width: '100%', height: 36, borderRadius: 6 }} />
+            </div>
+          ))
+        ) : paginatedTenants.length === 0 ? (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3.5rem 1rem', background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', color: '#64748b' }}>
+            <Building size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a' }}>No organizations found</div>
+            <div style={{ fontSize: '0.85rem', marginTop: 4 }}>Try changing your search term or filter tabs.</div>
           </div>
         ) : (
-          filtered.map((org) => {
-            const plan = PLAN_CONFIG[org.plan] || PLAN_CONFIG.PRO;
+          paginatedTenants.map((org) => {
+            const planMeta = PLAN_CONFIG[org.plan] || PLAN_CONFIG.PRO;
+            const isActive = org.status === 'ACTIVE';
 
             return (
-              <div className="org-card" key={org.id}>
-                {/* Header */}
-                <div className="org-card-header">
-                  <div className="org-avatar" style={{ background: plan.bg, color: plan.color, borderColor: plan.border }}>
-                    {org.name?.charAt(0).toUpperCase() || 'O'}
+              <div key={org.id} className="sa-org-card">
+                <div className="sa-org-card-top">
+                  <div className="sa-org-avatar">
+                    {org.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="org-header-text">
-                    <h3 className="org-name" title={org.name}>{org.name}</h3>
-                    <span className="org-code">{org.code}</span>
-                  </div>
-                  <div className="org-badges">
-                    <span className={`plan-pill plan-${org.plan?.toLowerCase() || 'pro'}`}>
-                      {org.plan || 'PRO'}
+                  <div className="sa-org-badges">
+                    <span
+                      className="plan-badge"
+                      style={{ background: planMeta.bg, color: planMeta.color, border: `1px solid ${planMeta.border}` }}
+                    >
+                      {planMeta.label}
                     </span>
-                    <span className={`status-pill status-${org.status?.toLowerCase() || 'active'}`}>
-                      <span className="status-indicator-dot" />
-                      {org.status || 'ACTIVE'}
+                    <span className={isActive ? 'status-badge-active' : 'status-badge-suspended'}>
+                      {org.status}
                     </span>
                   </div>
                 </div>
 
-                {/* Stats Strip */}
-                <div className="org-stats-strip">
-                  <div className="org-stat-col">
-                    <span className="org-stat-num">{org.total_customers || org.customer_count || 0}</span>
-                    <span className="org-stat-lbl">Borrowers</span>
+                <h3 className="sa-org-title">{org.name}</h3>
+                <span className="sa-org-code">{org.code}</span>
+
+                <div className="sa-org-meta-list">
+                  <div className="sa-org-meta-item">
+                    <Users size={14} color="#64748b" />
+                    <span>Admin: {org.admin_name || 'Primary Admin'}</span>
                   </div>
-                  <div className="org-stat-divider" />
-                  <div className="org-stat-col">
-                    <span className="org-stat-num">{org.branch_count || 1}</span>
-                    <span className="org-stat-lbl">Branches</span>
+                  <div className="sa-org-meta-item">
+                    <Phone size={14} color="#64748b" />
+                    <span>Phone: {org.admin_phone || 'Unset'}</span>
                   </div>
-                  <div className="org-stat-divider" />
-                  <div className="org-stat-col">
-                    <span className="org-stat-num">{formatCurrency(org.active_portfolio || 0)}</span>
-                    <span className="org-stat-lbl">Portfolio</span>
+                  <div className="sa-org-meta-item">
+                    <Calendar size={14} color="#64748b" />
+                    <span>Onboarded: {org.created_at ? new Date(org.created_at).toLocaleDateString('en-IN') : 'Recent'}</span>
                   </div>
                 </div>
 
-                {/* Meta details */}
-                <div className="org-meta-list">
-                  <div className="org-meta-item">
-                    <Users size={14} className="meta-icon" />
-                    <span>Admin: <strong>{org.admin_name || 'Branch Admin'}</strong></span>
-                  </div>
-                  {(org.admin_phone || org.phone) && (
-                    <div className="org-meta-item">
-                      <Phone size={14} className="meta-icon" />
-                      <span>{org.admin_phone || org.phone}</span>
-                    </div>
-                  )}
-                  {org.city && (
-                    <div className="org-meta-item">
-                      <MapPin size={14} className="meta-icon" />
-                      <span>{org.city}, {org.state || 'Tamil Nadu'}</span>
-                    </div>
-                  )}
-                  <div className="org-meta-item">
-                    <Calendar size={14} className="meta-icon" />
-                    <span>Registered: {org.created_at ? new Date(org.created_at).toLocaleDateString('en-GB') : '10/01/2026'}</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="org-card-actions">
+                <div className="sa-org-actions">
                   <button
                     type="button"
-                    className="btn-card-edit"
+                    className="btn-org-manage"
+                    onClick={() => handleManageOrg(org)}
+                  >
+                    <span>Enter Organization</span>
+                    <ArrowRight size={14} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-org-icon"
                     title="Edit Organization Details"
                     onClick={() => openEditModal(org)}
                   >
-                    <Edit2 size={14} />
-                    <span>Edit</span>
+                    <Edit2 size={15} />
                   </button>
 
                   <button
                     type="button"
-                    className="btn-card-edit"
-                    title="Manage Branches"
-                    onClick={() => {
-                      setActiveOrg(org.id);
-                      navigate(`/org/${org.id}/branches`);
-                    }}
-                  >
-                    <Building size={14} />
-                    <span>Branches</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`btn-card-power ${org.status === 'ACTIVE' ? 'power-suspend' : 'power-activate'}`}
-                    title={org.status === 'ACTIVE' ? 'Suspend Organization' : 'Activate Organization'}
+                    className="btn-org-icon"
+                    title={isActive ? 'Suspend Tenant Access' : 'Activate Tenant Access'}
                     onClick={() => handleToggleStatus(org)}
+                    style={{ color: isActive ? '#e11d48' : '#059669' }}
                   >
-                    <Power size={14} />
-                    <span>{org.status === 'ACTIVE' ? 'Suspend' : 'Activate'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn-card-workspace"
-                    onClick={() => handleManageOrg(org)}
-                  >
-                    <Briefcase size={14} />
-                    <span>Open</span>
-                    <ArrowRight size={13} />
+                    <Power size={15} />
                   </button>
                 </div>
               </div>
@@ -529,933 +459,116 @@ export const SuperAdminDashboard = () => {
         )}
       </div>
 
-      {/* 5. Edit Organization Modal */}
-      {isEditModalOpen && (
-        <Modal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          title={`Edit Organization: ${editFormData.name}`}
-        >
-          <form onSubmit={handleSaveEdit} className="sa-modal-form">
-            {editErrors.form && (
-              <div className="modal-error-alert">
-                <AlertCircle size={16} color="#ef4444" />
-                <span>{editErrors.form}</span>
-              </div>
-            )}
-
-            <div className="modal-form-group">
-              <label className="modal-form-label">
-                <Building size={14} />
-                <span>Organization Name *</span>
-              </label>
-              <input
-                type="text"
-                className={`modal-form-input ${editErrors.name ? 'input-error' : ''}`}
-                value={editFormData.name}
-                onChange={(e) => {
-                  setEditFormData({ ...editFormData, name: e.target.value });
-                  if (editErrors.name) setEditErrors({ ...editErrors, name: null });
-                }}
-                required
-              />
-              {editErrors.name && <span className="field-error-text">{editErrors.name}</span>}
-            </div>
-
-            <div className="modal-form-row">
-              <div className="modal-form-group">
-                <label className="modal-form-label">
-                  <Users size={14} />
-                  <span>Admin Name *</span>
-                </label>
-                <input
-                  type="text"
-                  className={`modal-form-input ${editErrors.admin_name ? 'input-error' : ''}`}
-                  value={editFormData.admin_name}
-                  onChange={(e) => {
-                    setEditFormData({ ...editFormData, admin_name: e.target.value });
-                    if (editErrors.admin_name) setEditErrors({ ...editErrors, admin_name: null });
-                  }}
-                  required
-                />
-                {editErrors.admin_name && <span className="field-error-text">{editErrors.admin_name}</span>}
-              </div>
-
-              <div className="modal-form-group">
-                <label className="modal-form-label">
-                  <Phone size={14} />
-                  <span>Admin Phone *</span>
-                </label>
-                <input
-                  type="text"
-                  className={`modal-form-input ${editErrors.admin_phone ? 'input-error' : ''}`}
-                  value={editFormData.admin_phone}
-                  onChange={(e) => {
-                    setEditFormData({ ...editFormData, admin_phone: e.target.value });
-                    if (editErrors.admin_phone) setEditErrors({ ...editErrors, admin_phone: null });
-                  }}
-                  required
-                />
-                {editErrors.admin_phone && <span className="field-error-text">{editErrors.admin_phone}</span>}
-              </div>
-            </div>
-
-            <div className="modal-form-row">
-              <div className="modal-form-group">
-                <label className="modal-form-label">Plan Tier</label>
-                <select
-                  className="modal-form-select"
-                  value={editFormData.plan}
-                  onChange={(e) => setEditFormData({ ...editFormData, plan: e.target.value })}
-                >
-                  <option value="PRO">PRO</option>
-                  <option value="STARTER">STARTER</option>
-                  <option value="ENTERPRISE">ENTERPRISE</option>
-                </select>
-              </div>
-
-              <div className="modal-form-group">
-                <label className="modal-form-label">Status</label>
-                <select
-                  className="modal-form-select"
-                  value={editFormData.status}
-                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
-                >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="SUSPENDED">SUSPENDED</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="modal-actions-row">
-              <button
-                type="button"
-                className="btn-modal-secondary"
-                onClick={() => setIsEditModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={savingEdit}
-                className="btn-modal-primary"
-              >
-                <Save size={15} />
-                <span>{savingEdit ? 'Saving...' : 'Save Changes'}</span>
-              </button>
-            </div>
-          </form>
-        </Modal>
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: '1.25rem' }}>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            pageSizeOptions={[6, 12, 24, 48]}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="organizations"
+          />
+        </div>
       )}
 
-      {/* Embedded Component Styles */}
-      <style>{`
-        .sa-dash-container {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-          color: #0f172a;
-          font-family: inherit;
-        }
-
-        .sa-header-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1.5rem;
-          flex-wrap: wrap;
-        }
-
-        .title-wrap {
-          display: flex;
-          align-items: center;
-          gap: 0.85rem;
-        }
-
-        .sa-main-title {
-          font-size: 1.65rem;
-          font-weight: 800;
-          color: #0f172a;
-          letter-spacing: -0.025em;
-          margin: 0;
-          line-height: 1.2;
-        }
-
-        .sa-badge-count {
-          background: #eff6ff;
-          border: 1px solid #bfdbfe;
-          color: #1976d2;
-          font-size: 0.75rem;
-          font-weight: 700;
-          padding: 0.25rem 0.6rem;
-          border-radius: 9999px;
-          display: inline-flex;
-          align-items: center;
-        }
-
-        .sa-header-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .btn-refresh-data {
-          width: 38px;
-          height: 38px;
-          border-radius: 8px;
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          color: #475569;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .btn-refresh-data:hover:not(:disabled) {
-          background: #f1f5f9;
-          color: #1976d2;
-          border-color: #93c5fd;
-        }
-
-        .btn-refresh-data.is-spinning svg {
-          animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .btn-create-org {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #1976d2;
-          color: #ffffff;
-          border: none;
-          padding: 0.65rem 1.15rem;
-          border-radius: 8px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 2px 6px rgba(25, 118, 210, 0.25);
-          transition: all 0.2s ease;
-        }
-
-        .btn-create-org:hover {
-          background: #1565c0;
-          box-shadow: 0 4px 10px rgba(25, 118, 210, 0.35);
-          transform: translateY(-1px);
-        }
-
-        .feedback-banner-success {
-          display: flex;
-          align-items: center;
-          gap: 0.65rem;
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
-          background: #ecfdf5;
-          border: 1px solid #a7f3d0;
-          color: #065f46;
-          font-size: 0.85rem;
-          font-weight: 600;
-        }
-
-        /* KPI Cards */
-        .sa-kpi-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 1rem;
-        }
-
-        .sa-kpi-card {
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 1.25rem;
-          display: flex;
-          flex-direction: column;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .sa-kpi-card:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-          transform: translateY(-2px);
-        }
-
-        .kpi-top-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .kpi-label {
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: #475569;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .kpi-icon-wrap {
-          width: 38px;
-          height: 38px;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .icon-blue { background: #eff6ff; color: #1976d2; }
-        .icon-green { background: #ecfdf5; color: #059669; }
-        .icon-amber { background: #fffbeb; color: #d97706; }
-        .icon-purple { background: #f5f3ff; color: #7c3aed; }
-
-        .kpi-value {
-          font-size: 1.65rem;
-          font-weight: 800;
-          color: #0f172a;
-          margin: 0.45rem 0 0.35rem 0;
-          letter-spacing: -0.02em;
-        }
-
-        .kpi-footer {
-          display: flex;
-          align-items: center;
-          gap: 0.45rem;
-          font-size: 0.75rem;
-          color: #64748b;
-          font-weight: 600;
-        }
-
-        .dot-green {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #059669;
-          box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
-        }
-
-        .highlight-green {
-          color: #059669;
-          font-weight: 700;
-        }
-
-        /* Toolbar */
-        .sa-toolbar {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .sa-search-box {
-          flex: 1;
-          min-width: 280px;
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-
-        .sa-search-box .search-icon {
-          position: absolute;
-          left: 12px;
-          color: #64748b;
-          pointer-events: none;
-        }
-
-        .sa-search-box input {
-          width: 100%;
-          padding: 0.65rem 2.2rem 0.65rem 2.4rem;
-          background: #ffffff;
-          border: 1px solid #cbd5e1;
-          border-radius: 8px;
-          font-size: 0.875rem;
-          color: #0f172a;
-          outline: none;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .sa-search-box input:focus {
-          border-color: #1976d2;
-          box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
-        }
-
-        .clear-search-btn {
-          position: absolute;
-          right: 10px;
-          background: transparent;
-          border: none;
-          color: #94a3b8;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .sa-filter-chips {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .filter-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          padding: 0.45rem 0.85rem;
-          border-radius: 9999px;
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          color: #475569;
-          font-size: 0.8rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-
-        .filter-chip.active {
-          background: #eff6ff;
-          border-color: #93c5fd;
-          color: #1976d2;
-          font-weight: 700;
-        }
-
-        .chip-count {
-          background: #f1f5f9;
-          padding: 0.1rem 0.45rem;
-          border-radius: 9999px;
-          font-size: 0.7rem;
-          font-weight: 700;
-        }
-
-        /* Grid */
-        .sa-org-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-          gap: 1.25rem;
-        }
-
-        .org-card {
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 1.25rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .org-card:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-          transform: translateY(-2px);
-        }
-
-        .org-card-header {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.85rem;
-        }
-
-        .org-avatar {
-          width: 44px;
-          height: 44px;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 800;
-          font-size: 1.2rem;
-          border: 1px solid;
-          flex-shrink: 0;
-        }
-
-        .org-header-text {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .org-name {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #0f172a;
-          margin: 0;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .org-code {
-          font-size: 0.72rem;
-          color: #64748b;
-          font-weight: 700;
-          letter-spacing: 0.04em;
-        }
-
-        .org-badges {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          gap: 0.35rem;
-        }
-
-        .plan-pill {
-          display: inline-block;
-          padding: 0.2rem 0.55rem;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
-
-        .plan-enterprise { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
-        .plan-pro { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-        .plan-starter { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-
-        .status-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.2rem 0.55rem;
-          border-radius: 9999px;
-          font-size: 0.7rem;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
-
-        .status-active { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-        .status-suspended { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-
-        .status-indicator-dot {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: currentColor;
-        }
-
-        .org-stats-strip {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 0.65rem 0.85rem;
-        }
-
-        .org-stat-col {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          flex: 1;
-        }
-
-        .org-stat-num {
-          font-size: 0.85rem;
-          font-weight: 800;
-          color: #0f172a;
-        }
-
-        .org-stat-lbl {
-          font-size: 0.65rem;
-          color: #64748b;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .org-stat-divider {
-          width: 1px;
-          height: 24px;
-          background: #e2e8f0;
-        }
-
-        .org-meta-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.35rem;
-        }
-
-        .org-meta-item {
-          display: flex;
-          align-items: center;
-          gap: 0.45rem;
-          font-size: 0.8rem;
-          color: #475569;
-        }
-
-        .meta-icon {
-          color: #64748b;
-          flex-shrink: 0;
-        }
-
-        .org-card-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding-top: 0.75rem;
-          border-top: 1px solid #f1f5f9;
-        }
-
-        .btn-card-edit, .btn-card-power {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.65rem;
-          border-radius: 6px;
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          color: #334155;
-          font-size: 0.78rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-
-        .btn-card-edit:hover {
-          border-color: #1976d2;
-          color: #1976d2;
-          background: #eff6ff;
-        }
-
-        .power-suspend:hover {
-          border-color: #ef4444;
-          color: #ef4444;
-          background: #fef2f2;
-        }
-
-        .power-activate:hover {
-          border-color: #059669;
-          color: #059669;
-          background: #ecfdf5;
-        }
-
-        .btn-card-workspace {
-          flex: 1;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.75rem;
-          border-radius: 6px;
-          border: none;
-          background: #1976d2;
-          color: #ffffff;
-          font-size: 0.78rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-
-        .btn-card-workspace:hover {
-          background: #1565c0;
-        }
-
-        .empty-state {
-          grid-column: 1 / -1;
-          text-align: center;
-          padding: 3rem 1rem;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .empty-state h3 {
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: #0f172a;
-          margin: 0.5rem 0 0 0;
-        }
-
-        .empty-state p {
-          color: #64748b;
-          font-size: 0.85rem;
-          margin: 0;
-        }
-
-        /* Modal */
-        .sa-modal-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.1rem;
-        }
-
-        .modal-error-alert {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.65rem 0.85rem;
-          border-radius: 6px;
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          color: #b91c1c;
-          font-size: 0.82rem;
-          font-weight: 600;
-        }
-
-        .modal-form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.35rem;
-        }
-
-        .modal-form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-        }
-
-        .modal-form-label {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: #334155;
-        }
-
-        .modal-form-input, .modal-form-select {
-          width: 100%;
-          padding: 0.65rem 0.85rem;
-          border-radius: 6px;
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          font-size: 0.875rem;
-          color: #0f172a;
-          outline: none;
-          transition: border-color 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .modal-form-input:focus, .modal-form-select:focus {
-          border-color: #1976d2;
-          box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
-        }
-
-        .input-error {
-          border-color: #ef4444 !important;
-        }
-
-        .field-error-text {
-          font-size: 0.75rem;
-          color: #ef4444;
-          font-weight: 600;
-        }
-
-        .modal-actions-row {
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 0.85rem;
-          margin-top: 1rem;
-          padding-top: 1rem;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        .btn-modal-secondary {
-          padding: 0.55rem 1.1rem;
-          border-radius: 6px;
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          color: #334155;
-          font-size: 0.85rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-
-        .btn-modal-secondary:hover {
-          background: #f1f5f9;
-          color: #0f172a;
-        }
-
-        .btn-modal-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          padding: 0.55rem 1.25rem;
-          border-radius: 6px;
-          border: none;
-          background: #1976d2;
-          color: #ffffff;
-          font-size: 0.85rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-
-        .btn-modal-primary:hover:not(:disabled) {
-          background: #1565c0;
-        }
-
-        .btn-modal-primary:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        /* Skeleton Styles */
-        .skeleton-bar {
-          background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-          background-size: 200% 100%;
-          border-radius: 4px;
-          animation: shimmer 1.5s infinite;
-        }
-
-        .skeleton-circle {
-          background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-          background-size: 200% 100%;
-          border-radius: 50%;
-          animation: shimmer 1.5s infinite;
-          flex-shrink: 0;
-        }
-
-        .skeleton-pill {
-          background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-          background-size: 200% 100%;
-          border-radius: 9999px;
-          animation: shimmer 1.5s infinite;
-        }
-
-        /* Kubernetes Banner */
-        .sa-k8s-banner {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-left: 4px solid #0284c7;
-          border-radius: 12px;
-          padding: 16px 20px;
-          margin-bottom: 20px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        }
-
-        .sa-k8s-banner-left {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .sa-k8s-icon-wrap {
-          width: 44px;
-          height: 44px;
-          border-radius: 10px;
-          background: #e0f2fe;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .sa-k8s-info {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .sa-k8s-title-row {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
-        }
-
-        .sa-k8s-title {
-          font-size: 15px;
-          font-weight: 700;
-          color: #0f172a;
-          margin: 0;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        }
-
-        .sa-k8s-status-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: #ecfdf5;
-          color: #059669;
-          font-weight: 600;
-          font-size: 11px;
-          padding: 2px 8px;
-          border-radius: 6px;
-          border: 1px solid #a7f3d0;
-        }
-
-        .sa-k8s-pulse-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: #10b981;
-          box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
-        }
-
-        .sa-k8s-tag {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 11px;
-          color: #64748b;
-          background: #f1f5f9;
-          padding: 2px 6px;
-          border-radius: 4px;
-        }
-
-        .sa-k8s-metrics-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 13px;
-          color: #475569;
-        }
-
-        .k8s-m-sep {
-          color: #cbd5e1;
-        }
-
-        .btn-manage-k8s {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: #f0f9ff;
-          color: #0284c7;
-          border: 1px solid #bae6fd;
-          padding: 8px 14px;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
-        }
-
-        .btn-manage-k8s:hover {
-          background: #0284c7;
-          color: #ffffff;
-          border-color: #0284c7;
-        }
-
-        @media (max-width: 1024px) {
-          .sa-kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 640px) {
-          .sa-kpi-grid {
-            grid-template-columns: 1fr;
-          }
-          .sa-org-grid {
-            grid-template-columns: 1fr;
-          }
-          .modal-form-row {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
+      {/* 6. Edit Organization Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Organization: ${editFormData.name || 'Tenant'}`}
+      >
+        <form onSubmit={handleSaveEdit}>
+          {editErrors.form && (
+            <div style={{ color: '#e11d48', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 600 }}>
+              {editErrors.form}
+            </div>
+          )}
+
+          <div className="modal-form-group">
+            <label className="modal-form-label">Organization Legal Name *</label>
+            <input
+              type="text"
+              className="modal-form-input"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+              required
+            />
+            {editErrors.name && <span style={{ color: '#e11d48', fontSize: '0.78rem' }}>{editErrors.name}</span>}
+          </div>
+
+          <div className="modal-form-row">
+            <div className="modal-form-group">
+              <label className="modal-form-label">Primary Admin Name *</label>
+              <input
+                type="text"
+                className="modal-form-input"
+                value={editFormData.admin_name}
+                onChange={(e) => setEditFormData({ ...editFormData, admin_name: e.target.value })}
+                required
+              />
+              {editErrors.admin_name && <span style={{ color: '#e11d48', fontSize: '0.78rem' }}>{editErrors.admin_name}</span>}
+            </div>
+
+            <div className="modal-form-group">
+              <label className="modal-form-label">Admin Phone Number *</label>
+              <input
+                type="tel"
+                className="modal-form-input"
+                value={editFormData.admin_phone}
+                onChange={(e) => setEditFormData({ ...editFormData, admin_phone: e.target.value })}
+                required
+              />
+              {editErrors.admin_phone && <span style={{ color: '#e11d48', fontSize: '0.78rem' }}>{editErrors.admin_phone}</span>}
+            </div>
+          </div>
+
+          <div className="modal-form-row">
+            <div className="modal-form-group">
+              <label className="modal-form-label">Subscription Tier</label>
+              <select
+                className="modal-form-input"
+                value={editFormData.plan}
+                onChange={(e) => setEditFormData({ ...editFormData, plan: e.target.value })}
+              >
+                <option value="STARTER">Starter Tier</option>
+                <option value="PRO">Pro Tier</option>
+                <option value="ENTERPRISE">Enterprise Tier</option>
+              </select>
+            </div>
+
+            <div className="modal-form-group">
+              <label className="modal-form-label">Tenant Status</label>
+              <select
+                className="modal-form-input"
+                value={editFormData.status}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="SUSPENDED">Suspended</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="modal-form-actions">
+            <button
+              type="button"
+              className="btn-cancel"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-submit"
+              disabled={savingEdit}
+            >
+              {savingEdit ? 'Saving...' : 'Update Organization'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

@@ -1,0 +1,132 @@
+/* Standardized Directory Pagination Bar */
+.directory-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  border-radius: 0 0 12px 12px;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 0.825rem;
+  color: #64748b;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.directory-pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
+}
+
+.directory-rows-select-wrap {
+  display: inline-flex;
+}
+
+.directory-rows-select {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.825rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.directory-rows-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.directory-items-range {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.directory-items-range strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.directory-pagination-center {
+  color: #64748b;
+  font-size: 0.825rem;
+}
+
+.directory-pagination-center strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.directory-pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.directory-page-btn-prev,
+.directory-page-btn-next,
+.directory-page-btn-num {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.directory-page-btn-prev:hover:not(:disabled),
+.directory-page-btn-next:hover:not(:disabled),
+.directory-page-btn-num:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #2563eb;
+}
+
+.directory-page-btn-prev:disabled,
+.directory-page-btn-next:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.directory-page-btn-num.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.pagination-ellipsis {
+  padding: 0 0.25rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .directory-pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .directory-pagination-left,
+  .directory-pagination-center,
+  .directory-pagination-right {
+    justify-content: center;
+  }
+}

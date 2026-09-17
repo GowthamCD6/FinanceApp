@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../../services/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
+import { Pagination } from '../../../components/common/Pagination';
+import { TableSkeleton } from '../../../components/common/Skeleton';
 import {
   Shield,
   Bell,
@@ -44,12 +46,26 @@ export const AuditLogsBroadcast = () => {
   const [selectedAuditLog, setSelectedAuditLog] = useState(null);
   const [copiedPayload, setCopiedPayload] = useState(false);
 
+  // Pagination State
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(10);
+  const [broadcastPage, setBroadcastPage] = useState(1);
+  const [broadcastPageSize, setBroadcastPageSize] = useState(6);
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditSearch, actionFilter]);
+
   // Broadcast modal & form
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [deletingBroadcast, setDeletingBroadcast] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [submittingBroadcast, setSubmittingBroadcast] = useState(false);
   const [broadcastAudienceFilter, setBroadcastAudienceFilter] = useState('ALL');
+
+  useEffect(() => {
+    setBroadcastPage(1);
+  }, [broadcastAudienceFilter]);
 
   const [broadcastForm, setBroadcastForm] = useState({
     title: '',
@@ -458,14 +474,7 @@ export const AuditLogsBroadcast = () => {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr>
-                      <td colSpan="8" style={{ padding: '2.5rem', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-                          <span className="skeleton-bar" style={{ width: 220, height: 16 }} />
-                          <span className="skeleton-bar" style={{ width: 140, height: 12 }} />
-                        </div>
-                      </td>
-                    </tr>
+                    <TableSkeleton rows={auditPageSize} cols={8} />
                   ) : filteredAuditLogs.length === 0 ? (
                     <tr>
                       <td colSpan="8">
@@ -477,92 +486,105 @@ export const AuditLogsBroadcast = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredAuditLogs.map((log) => {
-                      const isAuth = log.action?.includes('LOGIN') || log.action?.includes('AUTH');
-                      const isLoan = log.action?.includes('LOAN') || log.action?.includes('DISBURS');
-                      const isPayment = log.action?.includes('PAYMENT') || log.action?.includes('COLLECT');
-                      const isPolicy = log.action?.includes('POLICY') || log.action?.includes('CATEGORY') || log.action?.includes('ORG');
+                    filteredAuditLogs
+                      .slice((auditPage - 1) * auditPageSize, auditPage * auditPageSize)
+                      .map((log) => {
+                        const isAuth = log.action?.includes('LOGIN') || log.action?.includes('AUTH');
+                        const isLoan = log.action?.includes('LOAN') || log.action?.includes('DISBURS');
+                        const isPayment = log.action?.includes('PAYMENT') || log.action?.includes('COLLECT');
+                        const isPolicy = log.action?.includes('POLICY') || log.action?.includes('CATEGORY') || log.action?.includes('ORG');
 
-                      const actionBadgeClass = isAuth
-                        ? 'badge-blue'
-                        : isLoan
-                        ? 'badge-purple'
-                        : isPayment
-                        ? 'badge-emerald'
-                        : isPolicy
-                        ? 'badge-indigo'
-                        : 'badge-gray';
+                        const actionBadgeClass = isAuth
+                          ? 'badge-blue'
+                          : isLoan
+                          ? 'badge-purple'
+                          : isPayment
+                          ? 'badge-emerald'
+                          : isPolicy
+                          ? 'badge-indigo'
+                          : 'badge-gray';
 
-                      return (
-                        <tr key={log.id} className="audit-row">
-                          <td>
-                            <div className="timestamp-cell">
-                              <Clock size={13} className="time-icon" />
-                              <span>
-                                {log.created_at
-                                  ? new Date(log.created_at).toLocaleString('en-GB', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      second: '2-digit',
-                                    })
-                                  : 'Just now'}
+                        return (
+                          <tr key={log.id} className="audit-row">
+                            <td>
+                              <div className="timestamp-cell">
+                                <Clock size={13} className="time-icon" />
+                                <span>
+                                  {log.created_at
+                                    ? new Date(log.created_at).toLocaleString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                      })
+                                    : 'Just now'}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td>
+                              <div className="actor-cell">
+                                <strong className="actor-name">{log.user_name || 'System Engine'}</strong>
+                                <span className="actor-email">{log.user_email || 'internal@fundlending.com'}</span>
+                              </div>
+                            </td>
+
+                            <td>
+                              <span className={`action-pill ${actionBadgeClass}`}>{log.action}</span>
+                            </td>
+
+                            <td>
+                              <code className="entity-code">{log.entity_type}</code>
+                            </td>
+
+                            <td>
+                              <span className="ip-text">{log.ip_address || '127.0.0.1'}</span>
+                            </td>
+
+                            <td>
+                              <span className="status-pill status-success">
+                                <span className="status-indicator-dot" />
+                                {log.status || 'SUCCESS'}
                               </span>
-                            </div>
-                          </td>
+                            </td>
 
-                          <td>
-                            <div className="actor-cell">
-                              <strong className="actor-name">{log.user_name || 'System Engine'}</strong>
-                              <span className="actor-email">{log.user_email || 'internal@fundlending.com'}</span>
-                            </div>
-                          </td>
+                            <td className="details-cell">
+                              <span className="details-text" title={log.reason}>
+                                {log.reason || `Executed ${log.action} on ${log.entity_type}`}
+                              </span>
+                            </td>
 
-                          <td>
-                            <span className={`action-pill ${actionBadgeClass}`}>{log.action}</span>
-                          </td>
-
-                          <td>
-                            <code className="entity-code">{log.entity_type}</code>
-                          </td>
-
-                          <td>
-                            <span className="ip-text">{log.ip_address || '127.0.0.1'}</span>
-                          </td>
-
-                          <td>
-                            <span className="status-pill status-success">
-                              <span className="status-indicator-dot" />
-                              {log.status || 'SUCCESS'}
-                            </span>
-                          </td>
-
-                          <td className="details-cell">
-                            <span className="details-text" title={log.reason}>
-                              {log.reason || `Executed ${log.action} on ${log.entity_type}`}
-                            </span>
-                          </td>
-
-                          <td className="td-actions">
-                            <button
-                              type="button"
-                              className="btn-inspect-log"
-                              title="Inspect Full Audit Payload"
-                              onClick={() => setSelectedAuditLog(log)}
-                            >
-                              <Eye size={14} />
-                              <span>Inspect</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
+                            <td className="td-actions">
+                              <button
+                                type="button"
+                                className="btn-inspect-log"
+                                title="Inspect Full Audit Payload"
+                                onClick={() => setSelectedAuditLog(log)}
+                              >
+                                <Eye size={14} />
+                                <span>Inspect</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {!loading && filteredAuditLogs.length > 0 && (
+              <Pagination
+                currentPage={auditPage}
+                totalItems={filteredAuditLogs.length}
+                pageSize={auditPageSize}
+                onPageChange={setAuditPage}
+                onPageSizeChange={setAuditPageSize}
+                itemLabel="audit logs"
+              />
+            )}
           </div>
         </>
       )}
@@ -578,15 +600,15 @@ export const AuditLogsBroadcast = () => {
                 { id: 'ALL', label: 'All Audiences' },
                 { id: 'ALL_USERS', label: 'Entire Network' },
                 { id: 'ALL_FIELD_AGENTS', label: 'Field Collectors' },
-                { id: 'BRANCH_ADMINS', label: 'Branch Admins' },
-                { id: 'BORROWERS', label: 'Borrowers' },
-              ].map((p) => (
+                { id: 'BRANCH_MANAGERS', label: 'Branch Managers' },
+              ].map((pill) => (
                 <button
-                  key={p.id}
-                  className={`pill-filter-btn ${broadcastAudienceFilter === p.id ? 'active' : ''}`}
-                  onClick={() => setBroadcastAudienceFilter(p.id)}
+                  key={pill.id}
+                  type="button"
+                  className={`filter-pill-btn ${broadcastAudienceFilter === pill.id ? 'active' : ''}`}
+                  onClick={() => setBroadcastAudienceFilter(pill.id)}
                 >
-                  {p.label}
+                  {pill.label}
                 </button>
               ))}
             </div>
@@ -627,84 +649,99 @@ export const AuditLogsBroadcast = () => {
               </button>
             </div>
           ) : (
-            <div className="broadcast-grid">
-              {filteredBroadcasts.map((bc) => {
-                const isCritical = bc.priority === 'CRITICAL';
-                const isImportant = bc.priority === 'IMPORTANT';
+            <>
+              <div className="broadcast-grid">
+                {filteredBroadcasts
+                  .slice((broadcastPage - 1) * broadcastPageSize, broadcastPage * broadcastPageSize)
+                  .map((bc) => {
+                    const isCritical = bc.priority === 'CRITICAL';
+                    const isImportant = bc.priority === 'IMPORTANT';
 
-                const priorityColor = isCritical ? '#ef4444' : isImportant ? '#f59e0b' : '#1976d2';
+                    const priorityColor = isCritical ? '#ef4444' : isImportant ? '#f59e0b' : '#1976d2';
 
-                return (
-                  <div key={bc.id} className="broadcast-card">
-                    <div className="broadcast-card-top">
-                      <div className="broadcast-title-group">
-                        <div
-                          className="broadcast-icon-box"
-                          style={{ background: `${priorityColor}14`, color: priorityColor }}
-                        >
-                          <Radio size={18} />
-                        </div>
-                        <div>
-                          <h3 className="broadcast-title">{bc.title}</h3>
-                          <div className="broadcast-meta-strip">
-                            <span
-                              className="priority-tag"
-                              style={{ background: `${priorityColor}15`, color: priorityColor }}
+                    return (
+                      <div key={bc.id} className="broadcast-card">
+                        <div className="broadcast-card-top">
+                          <div className="broadcast-title-group">
+                            <div
+                              className="broadcast-icon-box"
+                              style={{ background: `${priorityColor}14`, color: priorityColor }}
                             >
-                              {bc.priority || 'NORMAL'}
-                            </span>
-                            <span className="audience-tag">{bc.audience || 'ALL_USERS'}</span>
+                              <Radio size={18} />
+                            </div>
+                            <div>
+                              <h3 className="broadcast-title">{bc.title}</h3>
+                              <div className="broadcast-meta-strip">
+                                <span
+                                  className="badge-audience"
+                                  style={{ background: `${priorityColor}14`, color: priorityColor, border: `1px solid ${priorityColor}33` }}
+                                >
+                                  {bc.audience?.replace(/_/g, ' ') || 'GLOBAL'}
+                                </span>
+                                <span
+                                  className="badge-priority"
+                                  style={{ background: `${priorityColor}22`, color: priorityColor, fontWeight: 700 }}
+                                >
+                                  {bc.priority || 'NORMAL'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
+
+                          <button
+                            type="button"
+                            className="btn-delete-broadcast"
+                            title="Delete Broadcast Notification"
+                            onClick={() => handleDeleteBroadcast(bc)}
+                            disabled={deletingBroadcast === bc.id}
+                          >
+                            <Trash2 size={15} color="#e11d48" />
+                          </button>
+                        </div>
+
+                        <p className="broadcast-msg">{bc.message}</p>
+
+                        <div className="broadcast-footer">
+                          <div className="broadcast-channels">
+                            {Array.isArray(bc.channels) &&
+                              bc.channels.map((ch, idx) => (
+                                <span key={idx} className="channel-chip">
+                                  {ch === 'PUSH' ? <Smartphone size={12} /> : <FileText size={12} />}
+                                  <span>{ch}</span>
+                                </span>
+                              ))}
+                          </div>
+                          <span className="broadcast-date-text">
+                            {bc.created_at
+                              ? new Date(bc.created_at).toLocaleDateString('en-GB', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Recent'}
+                          </span>
                         </div>
                       </div>
+                    );
+                  })}
+              </div>
 
-                      <button
-                        type="button"
-                        className="btn-delete-bc"
-                        title="Delete Broadcast"
-                        onClick={() => setDeletingBroadcast(bc)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-
-                    <p className="broadcast-message-text">{bc.message}</p>
-
-                    <div className="broadcast-channels-row">
-                      <span className="channels-label">Dispatched via:</span>
-                      <span className="channel-pill">
-                        <Smartphone size={12} />
-                        Push Notification
-                      </span>
-                      <span className="channel-pill">
-                        <Globe size={12} />
-                        Portal Banner
-                      </span>
-                    </div>
-
-                    <div className="broadcast-footer">
-                      <div className="footer-left-stat">
-                        <Users size={14} color="#64748b" />
-                        <span>
-                          Estimated Audience: <strong>{bc.reach_count || 248} endpoints</strong>
-                        </span>
-                      </div>
-                      <span className="broadcast-date-text">
-                        {bc.created_at
-                          ? new Date(bc.created_at).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : 'Recent'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+              {filteredBroadcasts.length > 0 && (
+                <div style={{ marginTop: '1.25rem' }}>
+                  <Pagination
+                    currentPage={broadcastPage}
+                    totalItems={filteredBroadcasts.length}
+                    pageSize={broadcastPageSize}
+                    pageSizeOptions={[6, 12, 24, 48]}
+                    onPageChange={setBroadcastPage}
+                    onPageSizeChange={setBroadcastPageSize}
+                    itemLabel="broadcasts"
+                  />
+                </div>
+              )}
+            </>
           )}
         </>
       )}
