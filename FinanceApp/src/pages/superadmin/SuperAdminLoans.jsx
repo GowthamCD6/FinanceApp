@@ -1,11 +1,43 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { Badge } from '../../components/common/Badge';
-import { FadeInView } from '../../animations/FadeInView';
-import DisburseLoanModal from '../../components/modals/DisburseLoanModal';
-import Icon from '../../components/common/Icon';
+import { FadeInView } from '../../animation/FadeInView';
+import DisburseLoanModal from './modal/DisburseLoanModal';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    neutral: { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 export const SuperAdminLoans = ({ onSelectLoan }) => {
   const { loans } = useApp();
@@ -36,7 +68,7 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
       {/* Search and Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.searchRow}>
-          <Icon name="search" size={15} color="#64748B" style={{ marginRight: 8 }} />
+          <MaterialCommunityIcons name="magnify" size={18} color="#64748B" style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by loan #, borrower, or shop..."
@@ -46,7 +78,7 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Icon name="close" size={14} color="#94A3B8" />
+              <MaterialCommunityIcons name="close-circle" size={16} color="#94A3B8" />
             </TouchableOpacity>
           )}
         </View>
@@ -83,7 +115,7 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
             onPress={() => setShowDisburseModal(true)}
             activeOpacity={0.8}
           >
-            <Icon name="plus" size={12} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
             <Text style={styles.disburseBtnText}>Disburse Loan</Text>
           </TouchableOpacity>
         </View>
@@ -127,12 +159,11 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
                       )}
                     </View>
                     <Text style={styles.custName}>{custName}</Text>
-                    {l.shop_name && <Text style={styles.shopName}>{l.shop_name}</Text>}
+                    {l.shop_name ? <Text style={styles.shopName}>{l.shop_name}</Text> : null}
                   </View>
                   <Badge
                     label={l.status || 'ACTIVE'}
                     variant={isCompleted ? 'success' : isOverdue ? 'danger' : 'primary'}
-                    size="sm"
                   />
                 </View>
 
@@ -175,7 +206,7 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
                   </Text>
                   <View style={styles.viewLinkRow}>
                     <Text style={styles.viewLink}>Inspect Loan</Text>
-                    <Icon name="arrow-right" size={11} color="#2563EB" />
+                    <MaterialCommunityIcons name="arrow-right" size={13} color="#2563EB" />
                   </View>
                 </View>
               </TouchableOpacity>

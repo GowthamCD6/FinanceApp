@@ -1,10 +1,40 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { Badge } from '../../components/common/Badge';
-import { FadeInView } from '../../animations/FadeInView';
-import Icon from '../../components/common/Icon';
+import { FadeInView } from '../../animation/FadeInView';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 export const SuperAdminReports = () => {
   const { fundMetrics, loans, expenses, customers } = useApp();
@@ -56,7 +86,7 @@ export const SuperAdminReports = () => {
                   <Text style={styles.stepDesc}>Injected into Central Fund Cash Pool</Text>
                 </View>
 
-                <Icon name="arrow-right" size={14} color="#94A3B8" style={{ transform: [{ rotate: '90deg' }] }} />
+                <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
 
                 <View style={styles.flowStep}>
                   <Text style={styles.stepTitle}>2. Borrower Loans Disbursed</Text>
@@ -64,7 +94,7 @@ export const SuperAdminReports = () => {
                   <Text style={styles.stepDesc}>Earning 10% (Weekly) & 12.5% (Daily)</Text>
                 </View>
 
-                <Icon name="arrow-right" size={14} color="#94A3B8" style={{ transform: [{ rotate: '90deg' }] }} />
+                <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
 
                 <View style={styles.flowStep}>
                   <Text style={styles.stepTitle}>3. Installment Recoveries Recycled</Text>
@@ -72,7 +102,7 @@ export const SuperAdminReports = () => {
                   <Text style={styles.stepDesc}>Principal ₹4,72,000 (Recycled) + Fee Income ₹48,000</Text>
                 </View>
 
-                <Icon name="arrow-right" size={14} color="#94A3B8" style={{ transform: [{ rotate: '90deg' }] }} />
+                <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
 
                 <View style={styles.flowStep}>
                   <Text style={styles.stepTitle}>4. Central Fund Pool Recharged</Text>
@@ -126,7 +156,7 @@ export const SuperAdminReports = () => {
                 <View key={l.id || idx} style={styles.outItem}>
                   <View style={styles.outHeader}>
                     <Text style={styles.outCust}>{l.customer_name || l.customerName} ({l.loan_number || l.loanNumber})</Text>
-                    <Badge label={l.status} variant={l.status === 'OVERDUE' ? 'danger' : 'primary'} size="sm" />
+                    <Badge label={l.status} variant={l.status === 'OVERDUE' ? 'danger' : 'primary'} />
                   </View>
                   <View style={styles.outNums}>
                     <Text style={styles.outNumText}>Contract: {formatINR(l.total_repayment_amount || l.totalRepayment)}</Text>

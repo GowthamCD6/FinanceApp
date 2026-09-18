@@ -1,10 +1,42 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
-import Badge from '../../components/common/Badge';
-import Icon from '../../components/common/Icon';
-import AdjustCreditLimitModal from '../../components/modals/AdjustCreditLimitModal';
+import AdjustCreditLimitModal from './modal/AdjustCreditLimitModal';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    neutral: { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
   const { customers, loans } = useApp();
@@ -47,7 +79,7 @@ const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
       {/* Top Bar with Back Button */}
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.7}>
-          <Icon name="arrow-left" size={13} color="#2563EB" style={{ marginRight: 6 }} />
+          <MaterialCommunityIcons name="arrow-left" size={15} color="#2563EB" style={{ marginRight: 4 }} />
           <Text style={styles.backBtnText}>Back to Borrowers</Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -65,7 +97,7 @@ const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
       <View style={styles.heroCard}>
         <View style={styles.heroRow}>
           <View style={[styles.avatarBox, { backgroundColor: isShopkeeper ? '#EFF6FF' : '#F1F5F9' }]}>
-            <Icon name={isShopkeeper ? 'shop' : 'user'} size={20} color={isShopkeeper ? '#2563EB' : '#64748B'} />
+            <MaterialCommunityIcons name={isShopkeeper ? 'storefront-outline' : 'account-outline'} size={22} color={isShopkeeper ? '#2563EB' : '#64748B'} />
           </View>
           <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
@@ -73,7 +105,6 @@ const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
               <Badge 
                 label={customerStatus} 
                 variant={customerStatus === 'ACTIVE' ? 'success' : 'danger'} 
-                size="sm"
               />
             </View>
             <Text style={styles.customerType}>
@@ -83,12 +114,12 @@ const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
           </View>
         </View>
 
-        {customer.shop_name && (
+        {customer.shop_name ? (
           <View style={styles.shopBox}>
             <Text style={styles.shopLabel}>Shop Name:</Text>
             <Text style={styles.shopVal}>{customer.shop_name}</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
       {/* Financial Exposure & Profit Contribution */}
@@ -184,7 +215,6 @@ const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
                   <Badge 
                     label={l.status || 'ACTIVE'} 
                     variant={isCompleted ? 'success' : isOverdue ? 'danger' : 'primary'} 
-                    size="sm"
                   />
                 </View>
 
@@ -209,7 +239,7 @@ const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
                   <Text style={styles.dateMeta}>Disbursed: {formatDate(l.disbursement_date || '2026-01-01')}</Text>
                   <View style={styles.inspectRow}>
                     <Text style={styles.tapToViewText}>Inspect Loan</Text>
-                    <Icon name="arrow-right" size={11} color="#2563EB" />
+                    <MaterialCommunityIcons name="arrow-right" size={13} color="#2563EB" />
                   </View>
                 </View>
               </TouchableOpacity>

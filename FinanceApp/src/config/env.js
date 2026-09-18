@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
  * Automatically handles Android emulator host IP (10.0.2.2) vs iOS/desktop (localhost).
  */
 
-const DEFAULT_DEV_HOST = 'http://10.10.70.39:5000/api';
+const DEFAULT_DEV_HOST = 'http://10.10.71.15:5000/api';
 
 export const ENV = {
   // Base REST API URL configured from .env

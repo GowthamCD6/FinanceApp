@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR, formatDate } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animations/FadeInView';
-import Icon from '../../components/common/Icon';
-import AddCapitalModal from '../../components/modals/AddCapitalModal';
+import { FadeInView } from '../../animation/FadeInView';
+import AddCapitalModal from './modal/AddCapitalModal';
 
 export const SuperAdminFund = ({ onOpenAudit }) => {
   const { fundTransactions, fundMetrics, addCapital } = useApp();
@@ -39,7 +39,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
           onPress={() => setShowCapitalModal(true)}
           activeOpacity={0.8}
         >
-          <Icon name="plus" size={12} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
           <Text style={styles.addCapBtnText}>Add Capital</Text>
         </TouchableOpacity>
       </View>
@@ -56,7 +56,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
           <View style={styles.accountSplits}>
             <View style={styles.accPill}>
               <View style={styles.accIconBox}>
-                <Icon name="collections" size={14} color="#2563EB" />
+                <MaterialCommunityIcons name="wallet-outline" size={16} color="#2563EB" />
               </View>
               <View>
                 <Text style={styles.accName}>Cash Drawer</Text>
@@ -65,7 +65,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
             </View>
             <View style={styles.accPill}>
               <View style={styles.accIconBox}>
-                <Icon name="fund" size={14} color="#059669" />
+                <MaterialCommunityIcons name="bank-outline" size={16} color="#059669" />
               </View>
               <View>
                 <Text style={styles.accName}>Bank Main</Text>
@@ -74,7 +74,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
             </View>
             <View style={styles.accPill}>
               <View style={styles.accIconBox}>
-                <Icon name="phone" size={14} color="#7C3AED" />
+                <MaterialCommunityIcons name="cellphone" size={16} color="#7C3AED" />
               </View>
               <View>
                 <Text style={styles.accName}>UPI QR Pool</Text>
@@ -94,14 +94,14 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
         >
           <View style={styles.auditLeft}>
             <View style={styles.auditIconBox}>
-              <Icon name="reports" size={18} color="#2563EB" />
+              <MaterialCommunityIcons name="history" size={20} color="#2563EB" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.auditTitle}>Inspect Central Audit Ledger</Text>
               <Text style={styles.auditSub}>View timeline of all {fundTransactions.length} inflows, disbursements & expenses</Text>
             </View>
           </View>
-          <Icon name="arrow-right" size={15} color="#2563EB" />
+          <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
         </TouchableOpacity>
       </FadeInView>
 
@@ -156,7 +156,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
       <FadeInView delay={250}>
         <View style={styles.circCard}>
           <View style={styles.circHeader}>
-            <Icon name="refresh" size={16} color="#2563EB" />
+            <MaterialCommunityIcons name="sync" size={18} color="#2563EB" />
             <Text style={styles.circTitle}>Continuous Circulation Principle</Text>
           </View>
           <Text style={styles.circDesc}>
@@ -251,44 +251,39 @@ const styles = StyleSheet.create({
   accIconBox: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 6,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  accName: { fontSize: 9, color: '#64748B', textTransform: 'uppercase', fontWeight: '700' },
-  accAmt: { fontSize: 12, fontWeight: '800', color: '#0F172A', marginTop: 1 },
+  accName: { fontSize: 9, fontWeight: '700', color: '#64748B' },
+  accAmt: { fontSize: 11, fontWeight: '800', color: '#0F172A', marginTop: 1 },
   auditBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
     marginBottom: 14,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  auditLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  auditLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 8 },
   auditIconBox: {
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: '#BFDBFE',
   },
-  auditTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
-  auditSub: { fontSize: 11, color: '#64748B', marginTop: 2 },
+  auditTitle: { fontSize: 13, fontWeight: '800', color: '#1E40AF' },
+  auditSub: { fontSize: 10, color: '#64748B', marginTop: 2 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -297,31 +292,38 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     marginBottom: 14,
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 2,
   },
   cardEyebrow: { fontSize: 10, fontWeight: '800', color: '#2563EB', letterSpacing: 1.1 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginTop: 2, marginBottom: 12 },
-  statsTable: { gap: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  statsTable: { gap: 8 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   rowLabel: { fontSize: 12, color: '#64748B' },
   rowVal: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  totalRow: { backgroundColor: '#F8FAFC', padding: 8, borderRadius: 6, marginVertical: 4, borderWidth: 1, borderColor: '#E2E8F0' },
-  totalLabel: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
-  totalVal: { fontSize: 14, fontWeight: '900', color: '#2563EB' },
-  divider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 6 },
-  profitRow: { backgroundColor: '#ECFDF5', padding: 8, borderRadius: 6, marginTop: 6, borderWidth: 1, borderColor: '#A7F3D0' },
-  profitLabel: { fontSize: 13, fontWeight: '800', color: '#059669' },
-  profitVal: { fontSize: 14, fontWeight: '900', color: '#059669' },
-  circCard: { backgroundColor: '#EFF6FF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 14 },
-  circHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  circTitle: { fontSize: 13, fontWeight: '800', color: '#2563EB' },
-  circDesc: { fontSize: 11, color: '#334155', lineHeight: 16 },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionHeader: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
-  viewAllText: { fontSize: 12, color: '#2563EB', fontWeight: '700' },
+  totalRow: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8 },
+  totalLabel: { fontSize: 12, fontWeight: '800', color: '#0F172A' },
+  totalVal: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
+  divider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 4 },
+  profitRow: { backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0' },
+  profitLabel: { fontSize: 12, fontWeight: '800', color: '#059669' },
+  profitVal: { fontSize: 15, fontWeight: '900', color: '#059669' },
+  circCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+  },
+  circHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  circTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  circDesc: { fontSize: 11, color: '#64748B', lineHeight: 17 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, marginBottom: 10 },
+  sectionHeader: { fontSize: 12, fontWeight: '800', color: '#0F172A', textTransform: 'uppercase', letterSpacing: 0.5 },
+  viewAllText: { fontSize: 11, fontWeight: '700', color: '#2563EB' },
   txList: { gap: 8 },
   txItem: {
     flexDirection: 'row',
@@ -333,11 +335,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  txLeft: { flex: 1 },
-  txDate: { fontSize: 9, color: '#64748B' },
-  txItemTitle: { fontSize: 12, fontWeight: '700', color: '#0F172A', marginTop: 1 },
-  txItemDesc: { fontSize: 10, color: '#64748B', marginTop: 2 },
-  txItemAmount: { fontSize: 13, fontWeight: '800' },
+  txLeft: { flex: 1, marginRight: 10 },
+  txDate: { fontSize: 9, color: '#94A3B8', fontWeight: '600' },
+  txItemTitle: { fontSize: 12, fontWeight: '800', color: '#0F172A', marginTop: 2 },
+  txItemDesc: { fontSize: 10, color: '#64748B', marginTop: 1 },
+  txItemAmount: { fontSize: 14, fontWeight: '900' },
 });
 
 export default SuperAdminFund;

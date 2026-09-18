@@ -1,11 +1,43 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
-import Badge from '../../components/common/Badge';
-import Icon from '../../components/common/Icon';
-import RestructureLoanModal from '../../components/modals/RestructureLoanModal';
-import EarlySettlementModal from '../../components/modals/EarlySettlementModal';
+import RestructureLoanModal from './modal/RestructureLoanModal';
+import EarlySettlementModal from './modal/EarlySettlementModal';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    neutral: { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudit }) => {
   const { loans, customers, collectPayment } = useApp();
@@ -42,7 +74,7 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
       {/* Top Header & Back Button */}
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.7}>
-          <Icon name="arrow-left" size={13} color="#2563EB" style={{ marginRight: 6 }} />
+          <MaterialCommunityIcons name="arrow-left" size={15} color="#2563EB" style={{ marginRight: 4 }} />
           <Text style={styles.backBtnText}>Back to Loans</Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -50,7 +82,7 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
           onPress={() => onOpenAudit && onOpenAudit(loanNumber)}
           activeOpacity={0.7}
         >
-          <Icon name="reports" size={13} color="#2563EB" style={{ marginRight: 6 }} />
+          <MaterialCommunityIcons name="history" size={15} color="#2563EB" style={{ marginRight: 4 }} />
           <Text style={styles.auditShortcutText}>Central Audit</Text>
         </TouchableOpacity>
       </View>
@@ -75,7 +107,6 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
           <Badge 
             label={status} 
             variant={isCompleted ? 'success' : isOverdue ? 'danger' : 'primary'} 
-            size="md"
           />
         </View>
 
@@ -190,7 +221,6 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
                   <Badge 
                     label={instStatus} 
                     variant={isInstPaid ? 'success' : isInstOverdue ? 'danger' : 'neutral'} 
-                    size="sm"
                   />
                 </View>
               </View>
@@ -211,13 +241,13 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
             activeOpacity={0.8}
           >
             <View style={styles.actionIconBox}>
-              <Icon name="calendar" size={18} color="#2563EB" />
+              <MaterialCommunityIcons name="calendar-refresh-outline" size={18} color="#2563EB" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.actionBtnTitle}>Restructure Loan Tenor</Text>
               <Text style={styles.actionBtnDesc}>Extend tenor or split pending dues into smaller installments</Text>
             </View>
-            <Icon name="arrow-right" size={14} color="#94A3B8" />
+            <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -226,13 +256,13 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-              <Icon name="check" size={18} color="#059669" />
+              <MaterialCommunityIcons name="check-all" size={18} color="#059669" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.actionBtnTitle}>Early Settlement & Closure</Text>
               <Text style={styles.actionBtnDesc}>Grant settlement waiver, return principal, and close portfolio</Text>
             </View>
-            <Icon name="arrow-right" size={14} color="#94A3B8" />
+            <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
           </TouchableOpacity>
         </View>
       </View>

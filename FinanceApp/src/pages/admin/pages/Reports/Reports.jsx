@@ -11,8 +11,87 @@ import {
 } from 'react-native';
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
-import MetricCard from '../../../../components/common/MetricCard';
-import Icon from '../../../../components/common/Icon';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
+// Inline MetricCard
+const MetricCard = ({ title, value, change, isPositive, color = '#2563EB', iconName }) => {
+  const iconMap = {
+    receipt: 'receipt',
+    check: 'check-circle-outline',
+  };
+  return (
+    <View style={metricStyles.card}>
+      <View style={metricStyles.topRow}>
+        <Text style={metricStyles.title} numberOfLines={1}>{title}</Text>
+        {iconName ? (
+          <View style={[metricStyles.iconBox, { backgroundColor: `${color}15` }]}>
+            <MaterialCommunityIcons name={iconMap[iconName] || 'chart-line'} size={14} color={color} />
+          </View>
+        ) : null}
+      </View>
+      <Text style={metricStyles.value} numberOfLines={1}>{value}</Text>
+      {change ? (
+        <Text
+          style={[
+            metricStyles.change,
+            isPositive !== undefined && { color: isPositive ? '#059669' : '#DC2626' },
+          ]}
+          numberOfLines={1}
+        >
+          {change}
+        </Text>
+      ) : null}
+    </View>
+  );
+};
+
+const metricStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    flex: 1,
+  },
+  iconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  value: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  change: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+});
 
 const INITIAL_WEEKLY_DUES = [
   { id: 'WD-101', customer_id: 101, customer_name: 'Kumar Swaminathan', phone: '98765 43210', loan_code: 'LN-WK-2024-001', week_number: 6, total_weeks: 10, due_amount: 600, due_date: '2026-09-12', status: 'PENDING', route: 'Triplicane High Rd' },
@@ -33,8 +112,8 @@ const INITIAL_DAILY_COLLECTIONS = [
 ];
 
 const AdminReports = () => {
-  const { collectPayment } = useApp();
-  const [activeTab, setActiveTab] = useState('WEEKLY'); // 'WEEKLY' | 'DAILY'
+  const { collectPayment, fundMetrics, expenses } = useApp();
+  const [activeTab, setActiveTab] = useState('WEEKLY'); // 'WEEKLY' | 'DAILY' | 'PNL'
   const [weeklyList, setWeeklyList] = useState(INITIAL_WEEKLY_DUES);
   const [dailyList, setDailyList] = useState(INITIAL_DAILY_COLLECTIONS);
   const [search, setSearch] = useState('');
@@ -55,6 +134,10 @@ const AdminReports = () => {
   const dailyCollected = dailyList.filter((i) => i.status === 'COLLECTED').reduce((s, i) => s + i.collected_amount, 0);
   const dailyPending = dailyTotal - dailyCollected;
   const dailyMissed = dailyList.filter((i) => i.status === 'MISSED').length;
+
+  const totalExpenseAmount = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 1250);
+  const totalInterestEarned = fundMetrics?.totalContractedInterest || 87500;
+  const netBranchProfit = totalInterestEarned - totalExpenseAmount;
 
   const handleOpenCollect = (item) => {
     setSelectedItem(item);
@@ -130,15 +213,6 @@ const AdminReports = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.tag}>RECOVERY LEDGERS</Text>
-          <Text style={styles.title}>Field Operations Reports</Text>
-          <Text style={styles.sub}>Track weekly borrower schedules & merchant daily collections</Text>
-        </View>
-      </View>
-
       {/* SEGMENTED TAB SWITCHER */}
       <View style={styles.tabBar}>
         <TouchableOpacity
@@ -149,9 +223,9 @@ const AdminReports = () => {
           }}
           activeOpacity={0.8}
         >
-          <Icon name="calendar" size={16} color={activeTab === 'WEEKLY' ? '#2563EB' : '#64748B'} />
+          <MaterialCommunityIcons name="calendar-blank" size={14} color={activeTab === 'WEEKLY' ? '#2563EB' : '#64748B'} />
           <Text style={[styles.tabButtonText, activeTab === 'WEEKLY' && styles.tabButtonTextActive]}>
-            Weekly Dues ({weeklyList.length})
+            Weekly ({weeklyList.length})
           </Text>
         </TouchableOpacity>
 
@@ -163,9 +237,22 @@ const AdminReports = () => {
           }}
           activeOpacity={0.8}
         >
-          <Icon name="collections" size={16} color={activeTab === 'DAILY' ? '#059669' : '#64748B'} />
+          <MaterialCommunityIcons name="wallet-outline" size={14} color={activeTab === 'DAILY' ? '#059669' : '#64748B'} />
           <Text style={[styles.tabButtonText, activeTab === 'DAILY' && styles.tabButtonTextActive]}>
-            Daily Collections ({dailyList.length})
+            Daily ({dailyList.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'PNL' && styles.tabButtonActive]}
+          onPress={() => {
+            setActiveTab('PNL');
+          }}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="chart-pie" size={14} color={activeTab === 'PNL' ? '#7C3AED' : '#64748B'} />
+          <Text style={[styles.tabButtonText, activeTab === 'PNL' && { color: '#7C3AED' }]}>
+            P&L Margin
           </Text>
         </TouchableOpacity>
       </View>
@@ -197,7 +284,7 @@ const AdminReports = () => {
       {/* SEARCH AND FILTERS */}
       <View style={styles.filterSection}>
         <View style={styles.searchBox}>
-          <Icon name="search" size={16} color="#94A3B8" />
+          <MaterialCommunityIcons name="magnify" size={16} color="#94A3B8" />
           <TextInput
             style={styles.searchInput}
             placeholder={activeTab === 'WEEKLY' ? "Search borrower, phone, loan code..." : "Search shop, merchant, phone..."}
@@ -294,7 +381,7 @@ const AdminReports = () => {
                           onPress={() => handleOpenCollect(item)}
                           activeOpacity={0.8}
                         >
-                          <Icon name="check" size={14} color="#FFFFFF" />
+                          <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
                           <Text style={styles.collectBtnText}>Collect ₹{item.due_amount}</Text>
                         </TouchableOpacity>
                       )}
@@ -380,7 +467,7 @@ const AdminReports = () => {
                           onPress={() => handleOpenCollect(item)}
                           activeOpacity={0.8}
                         >
-                          <Icon name="check" size={14} color="#FFFFFF" />
+                          <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
                           <Text style={styles.collectBtnText}>Collect ₹{item.due_amount}</Text>
                         </TouchableOpacity>
                       )}
@@ -390,6 +477,75 @@ const AdminReports = () => {
               })
             )}
           </>
+        )}
+
+        {/* TAB 3: P&L AND FINANCIAL MARGINS */}
+        {activeTab === 'PNL' && (
+          <View style={styles.pnlContainer}>
+            <Text style={styles.listHeaderTitle}>BRANCH PROFITABILITY & CASH FLOW STATEMENT</Text>
+
+            {/* Net Branch Profit Card */}
+            <View style={styles.profitHeroCard}>
+              <Text style={styles.profitHeroLabel}>NET OPERATIONAL PROFIT (MTD)</Text>
+              <Text style={styles.profitHeroValue}>{formatINR(netBranchProfit)}</Text>
+              <Text style={styles.profitHeroSub}>Interest Yield − Operating Costs</Text>
+            </View>
+
+            {/* Income & Expense Breakdown */}
+            <View style={styles.breakdownCard}>
+              <Text style={styles.breakdownHeader}>REVENUE & COST BREAKDOWN</Text>
+
+              <View style={styles.breakdownRow}>
+                <View style={styles.breakdownItemLeft}>
+                  <View style={[styles.dot, { backgroundColor: '#059669' }]} />
+                  <Text style={styles.breakdownLabel}>Contracted Interest Yield</Text>
+                </View>
+                <Text style={[styles.breakdownVal, { color: '#059669' }]}>+{formatINR(totalInterestEarned)}</Text>
+              </View>
+
+              <View style={styles.breakdownRow}>
+                <View style={styles.breakdownItemLeft}>
+                  <View style={[styles.dot, { backgroundColor: '#2563EB' }]} />
+                  <Text style={styles.breakdownLabel}>Principal Capital Realized</Text>
+                </View>
+                <Text style={[styles.breakdownVal, { color: '#2563EB' }]}>{formatINR(fundMetrics?.totalPrincipalRecovered || 145000)}</Text>
+              </View>
+
+              <View style={styles.breakdownRow}>
+                <View style={styles.breakdownItemLeft}>
+                  <View style={[styles.dot, { backgroundColor: '#DC2626' }]} />
+                  <Text style={styles.breakdownLabel}>Field Travel & Staff Commission</Text>
+                </View>
+                <Text style={[styles.breakdownVal, { color: '#DC2626' }]}>−{formatINR(totalExpenseAmount)}</Text>
+              </View>
+
+              <View style={styles.breakdownDivider} />
+
+              <View style={styles.breakdownRow}>
+                <Text style={[styles.breakdownLabel, { fontWeight: '800', color: '#0F172A' }]}>Net Operational Return</Text>
+                <Text style={[styles.breakdownVal, { fontWeight: '900', color: '#059669', fontSize: 14 }]}>
+                  {formatINR(netBranchProfit)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Payment Channel Mix */}
+            <View style={styles.breakdownCard}>
+              <Text style={styles.breakdownHeader}>PAYMENT CHANNEL RECOVERY MIX</Text>
+              <View style={styles.channelRow}>
+                <View style={styles.channelBox}>
+                  <Text style={styles.channelTitle}>CASH VAULT (74%)</Text>
+                  <Text style={styles.channelAmount}>{formatINR(Math.round((fundMetrics?.totalRecoveredCash || 185000) * 0.74))}</Text>
+                  <Text style={styles.channelSub}>Field door-to-door</Text>
+                </View>
+                <View style={styles.channelBox}>
+                  <Text style={styles.channelTitle}>UPI DIGITAL (26%)</Text>
+                  <Text style={[styles.channelAmount, { color: '#2563EB' }]}>{formatINR(Math.round((fundMetrics?.totalRecoveredCash || 185000) * 0.26))}</Text>
+                  <Text style={styles.channelSub}>Direct QR scan</Text>
+                </View>
+              </View>
+            </View>
+          </View>
         )}
       </ScrollView>
 
@@ -403,7 +559,7 @@ const AdminReports = () => {
                 <Text style={styles.modalSub}>{selectedItem?.customer_name}</Text>
               </View>
               <TouchableOpacity onPress={() => setCollectModalVisible(false)} style={styles.modalCloseBtn}>
-                <Icon name="close" size={16} color="#64748B" />
+                <MaterialCommunityIcons name="close" size={16} color="#64748B" />
               </TouchableOpacity>
             </View>
 
@@ -432,7 +588,7 @@ const AdminReports = () => {
               </View>
 
               <TouchableOpacity style={styles.confirmCollectBtn} onPress={handleConfirmCollect}>
-                <Icon name="check" size={16} color="#FFFFFF" />
+                <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
                 <Text style={styles.confirmCollectBtnText}>Confirm & Print Receipt</Text>
               </TouchableOpacity>
             </View>
@@ -807,6 +963,105 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  pnlContainer: {
+    gap: 12,
+  },
+  profitHeroCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 18,
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  profitHeroLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  profitHeroValue: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#10B981',
+  },
+  profitHeroSub: {
+    fontSize: 11,
+    color: '#CBD5E1',
+    marginTop: 4,
+  },
+  breakdownCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    gap: 10,
+  },
+  breakdownHeader: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  breakdownItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  breakdownLabel: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  breakdownVal: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  breakdownDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 4,
+  },
+  channelRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  channelBox: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  channelTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  channelAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  channelSub: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 2,
   },
 });
 

@@ -52,10 +52,11 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ identifier, password }),
     });
-    if (res.data?.token) {
-      this.setToken(res.data.token);
+    const token = res.data?.token || res.token;
+    if (token) {
+      this.setToken(token);
     }
-    return res.data;
+    return res.data || res;
   }
 
   // 2. CUSTOMERS

@@ -1,9 +1,41 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
-import Badge from '../../components/common/Badge';
-import Icon from '../../components/common/Icon';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    neutral: { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 const SuperAdminAudit = ({ onBack, initialFilterQuery = '' }) => {
   const { fundTransactions, fundMetrics } = useApp();
@@ -48,7 +80,7 @@ const SuperAdminAudit = ({ onBack, initialFilterQuery = '' }) => {
       {/* Top Header */}
       <View style={styles.topHeader}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.7}>
-          <Icon name="arrow-left" size={13} color="#2563EB" style={{ marginRight: 6 }} />
+          <MaterialCommunityIcons name="arrow-left" size={15} color="#2563EB" style={{ marginRight: 4 }} />
           <Text style={styles.backBtnText}>Back to Fund</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Central Audit Ledger</Text>
@@ -74,7 +106,7 @@ const SuperAdminAudit = ({ onBack, initialFilterQuery = '' }) => {
 
       {/* Search Input */}
       <View style={styles.searchContainer}>
-        <Icon name="search" size={15} color="#64748B" style={{ marginRight: 8 }} />
+        <MaterialCommunityIcons name="magnify" size={18} color="#64748B" style={{ marginRight: 8 }} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search by loan #, borrower, or note..."
@@ -84,7 +116,7 @@ const SuperAdminAudit = ({ onBack, initialFilterQuery = '' }) => {
         />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch('')}>
-            <Icon name="close" size={14} color="#94A3B8" />
+            <MaterialCommunityIcons name="close-circle" size={16} color="#94A3B8" />
           </TouchableOpacity>
         )}
       </View>
@@ -123,9 +155,9 @@ const SuperAdminAudit = ({ onBack, initialFilterQuery = '' }) => {
               <View style={styles.txTopRow}>
                 <View style={styles.txTypeRow}>
                   <View style={[styles.txIconBox, { backgroundColor: isIn ? '#EFF6FF' : '#FEF2F2' }]}>
-                    <Icon
-                      name={isCapital ? 'fund' : isCollection ? 'collections' : isDisbursement ? 'loans' : 'receipt'}
-                      size={15}
+                    <MaterialCommunityIcons
+                      name={isCapital ? 'bank-plus' : isCollection ? 'wallet-plus-outline' : isDisbursement ? 'file-document-outline' : 'receipt-text-outline'}
+                      size={18}
                       color={isIn ? '#2563EB' : '#DC2626'}
                     />
                   </View>
@@ -141,15 +173,14 @@ const SuperAdminAudit = ({ onBack, initialFilterQuery = '' }) => {
                   <Badge 
                     label={tx.paymentMethod || (isDisbursement ? 'CASH/BANK' : 'CASH')} 
                     variant="neutral" 
-                    size="sm" 
                   />
                 </View>
               </View>
 
               {/* Description & Component breakdown */}
-              {tx.description && (
+              {tx.description ? (
                 <Text style={styles.txDesc}>{tx.description}</Text>
-              )}
+              ) : null}
 
               {isCollection && (tx.principal !== undefined || tx.income !== undefined) && (
                 <View style={styles.splitRow}>

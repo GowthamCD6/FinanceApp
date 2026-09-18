@@ -1,10 +1,84 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/helpers';
-import MetricCard from '../../components/common/MetricCard';
-import Icon from '../../components/common/Icon';
-import DigitalReceiptModal from '../../components/modals/DigitalReceiptModal';
+import DigitalReceiptModal from './modal/DigitalReceiptModal';
+
+// Inline MetricCard
+const MetricCard = ({ title, value, change, isPositive, color = '#2563EB', iconName }) => {
+  const iconMap = {
+    loans: 'file-document-outline',
+    check: 'check-circle-outline',
+    receipt: 'receipt-text-outline',
+    calendar: 'calendar-clock-outline',
+  };
+
+  return (
+    <View style={metricCardStyles.card}>
+      <View style={metricCardStyles.topRow}>
+        <Text style={metricCardStyles.title} numberOfLines={1}>{title}</Text>
+        {iconName ? (
+          <View style={[metricCardStyles.iconBox, { backgroundColor: `${color}15` }]}>
+            <MaterialCommunityIcons name={iconMap[iconName] || 'chart-line'} size={14} color={color} />
+          </View>
+        ) : null}
+      </View>
+      <Text style={[metricCardStyles.value, { color }]}>{value}</Text>
+      {change ? (
+        <Text style={[metricCardStyles.change, isPositive !== undefined && { color: isPositive ? '#059669' : '#DC2626' }]}>
+          {change}
+        </Text>
+      ) : null}
+    </View>
+  );
+};
+
+const metricCardStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  title: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  iconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  value: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  change: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+});
 
 const UserDashboard = ({ onNavigate }) => {
   const { 
@@ -229,7 +303,7 @@ const UserDashboard = ({ onNavigate }) => {
           activeOpacity={0.8}
         >
           <Text style={styles.scheduleActionBtnText}>View Full Repayment Schedule</Text>
-          <Icon name="arrow-right" size={13} color="#2563EB" />
+          <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
         </TouchableOpacity>
       </View>
 
@@ -241,7 +315,7 @@ const UserDashboard = ({ onNavigate }) => {
           activeOpacity={0.8}
         >
           <View style={styles.quickIconBox}>
-            <Icon name="loans" size={16} color="#2563EB" />
+            <MaterialCommunityIcons name="file-document-outline" size={18} color="#2563EB" />
           </View>
           <Text style={styles.quickBtnTitle}>My Loan Cycles</Text>
           <Text style={styles.quickBtnSub}>View #001 to #004 history</Text>
@@ -253,7 +327,7 @@ const UserDashboard = ({ onNavigate }) => {
           activeOpacity={0.8}
         >
           <View style={styles.quickIconBox}>
-            <Icon name="receipt" size={16} color="#059669" />
+            <MaterialCommunityIcons name="receipt-text-outline" size={18} color="#059669" />
           </View>
           <Text style={styles.quickBtnTitle}>Payment Receipts</Text>
           <Text style={styles.quickBtnSub}>Digital vouchers & history</Text>

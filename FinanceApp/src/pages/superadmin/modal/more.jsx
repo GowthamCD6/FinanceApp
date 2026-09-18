@@ -1,11 +1,11 @@
-﻿import React from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
-import Icon from '../../../components/common/Icon';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const ACTIONS = [
-  { id: 'add_organization', label: 'Add Organization', iconName: 'building',  color: '#7C3AED' },
-  { id: 'manage_admins',    label: 'Manage Admins',   iconName: 'users',     color: '#2563EB' },
-  { id: 'system_settings',  label: 'System Settings', iconName: 'settings',  color: '#0EA5E9' },
+  { id: 'add_organization', label: 'Add Organization', icon: 'office-building', color: '#7C3AED' },
+  { id: 'manage_admins',    label: 'Manage Admins',    icon: 'account-group',   color: '#2563EB' },
+  { id: 'system_settings',  label: 'System Settings',  icon: 'cog-outline',     color: '#0EA5E9' },
 ];
 
 const SuperAdminMoreModal = ({ visible, onClose, onAction }) => (
@@ -17,10 +17,10 @@ const SuperAdminMoreModal = ({ visible, onClose, onAction }) => (
       {ACTIONS.map((a) => (
         <TouchableOpacity key={a.id} style={styles.row} onPress={() => onAction && onAction(a.id)} activeOpacity={0.75}>
           <View style={[styles.iconBox, { backgroundColor: a.color + '18' }]}>
-            <Icon name={a.iconName} size={18} color={a.color} />
+            <MaterialCommunityIcons name={a.icon} size={18} color={a.color} />
           </View>
           <Text style={styles.label}>{a.label}</Text>
-          <Icon name="chevron-right" size={16} color="#94A3B8" />
+          <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
         </TouchableOpacity>
       ))}
     </View>

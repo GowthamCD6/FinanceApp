@@ -1,11 +1,144 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { MetricCard } from '../../components/common/MetricCard';
-import { Badge } from '../../components/common/Badge';
-import { FadeInView } from '../../animations/FadeInView';
-import Icon from '../../components/common/Icon';
+import { FadeInView } from '../../animation/FadeInView';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
+
+// Inline MetricCard
+const MetricCard = ({ title, amount, subtitle, accentColor = '#2563EB', iconName, trend, trendType, onPress }) => {
+  const iconMap = {
+    fund: 'bank-outline',
+    collections: 'wallet-outline',
+    loans: 'file-document-outline',
+    reports: 'chart-line',
+    calendar: 'calendar-month-outline',
+    receipt: 'receipt-text-outline',
+    chart: 'trending-up',
+  };
+
+  return (
+    <TouchableOpacity 
+      style={metricStyles.card} 
+      onPress={onPress} 
+      activeOpacity={onPress ? 0.75 : 1}
+    >
+      <View style={metricStyles.topRow}>
+        <View style={metricStyles.titleWrap}>
+          <Text style={metricStyles.title}>{title}</Text>
+          {subtitle && <Text style={metricStyles.subtitle}>{subtitle}</Text>}
+        </View>
+        {iconName && (
+          <View style={[metricStyles.iconBox, { backgroundColor: `${accentColor}15` }]}>
+            <MaterialCommunityIcons name={iconMap[iconName] || 'chart-line'} size={18} color={accentColor} />
+          </View>
+        )}
+      </View>
+      <View style={metricStyles.bottomRow}>
+        <Text style={[metricStyles.amount, { color: accentColor }]}>{formatINR(amount)}</Text>
+        {trend && (
+          <View style={[metricStyles.trendBadge, { backgroundColor: trendType === 'positive' ? '#ECFDF5' : '#FEF2F2' }]}>
+            <Text style={[metricStyles.trendText, { color: trendType === 'positive' ? '#059669' : '#DC2626' }]}>
+              {trend}
+            </Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const metricStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  titleWrap: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  subtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  amount: {
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  trendBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  trendText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 export const SuperAdminDashboard = ({ onNavigate }) => {
   const { fundMetrics } = useApp();
@@ -27,7 +160,7 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
       <FadeInView delay={180}>
         <View style={styles.circCard}>
           <View style={styles.circHeader}>
-            <Icon name="refresh" size={16} color="#2563EB" />
+            <MaterialCommunityIcons name="sync" size={18} color="#2563EB" />
             <Text style={styles.circHeading}>Central Fund Circulation Mechanism</Text>
           </View>
           <View style={styles.circRow}>
@@ -35,14 +168,14 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
               <Text style={styles.circLabel}>Total Capital</Text>
               <Text style={styles.circVal}>{formatINR(fundMetrics.totalCapital)}</Text>
             </View>
-            <Icon name="arrow-right" size={14} color="#94A3B8" />
+            <MaterialCommunityIcons name="arrow-right" size={16} color="#94A3B8" />
             <View style={styles.circCol}>
               <Text style={styles.circLabel}>Available Cash</Text>
               <Text style={[styles.circVal, { color: '#059669' }]}>
                 {formatINR(fundMetrics.availableCash)}
               </Text>
             </View>
-            <Icon name="arrow-right" size={14} color="#94A3B8" />
+            <MaterialCommunityIcons name="arrow-right" size={16} color="#94A3B8" />
             <View style={styles.circCol}>
               <Text style={styles.circLabel}>Currently Lent</Text>
               <Text style={[styles.circVal, { color: '#2563EB' }]}>
@@ -168,25 +301,25 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
         <Text style={styles.sectionTitle}>Operational Hubs</Text>
         <View style={styles.controlsGrid}>
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('customers')} activeOpacity={0.7}>
-            <Icon name="customers" size={20} color="#2563EB" />
+            <MaterialCommunityIcons name="account-group-outline" size={22} color="#2563EB" />
             <Text style={styles.controlTitle}>Borrowers</Text>
             <Text style={styles.controlSub}>Profiles & Repeat Cycles</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('loans')} activeOpacity={0.7}>
-            <Icon name="loans" size={20} color="#2563EB" />
+            <MaterialCommunityIcons name="file-document-outline" size={22} color="#2563EB" />
             <Text style={styles.controlTitle}>Master Loans</Text>
             <Text style={styles.controlSub}>Weekly & Daily Portfolio</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('fund')} activeOpacity={0.7}>
-            <Icon name="fund" size={20} color="#2563EB" />
+            <MaterialCommunityIcons name="safe" size={22} color="#2563EB" />
             <Text style={styles.controlTitle}>Central Vault</Text>
             <Text style={styles.controlSub}>Cash, Bank & Audit Log</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('reports')} activeOpacity={0.7}>
-            <Icon name="reports" size={20} color="#2563EB" />
+            <MaterialCommunityIcons name="chart-bar" size={22} color="#2563EB" />
             <Text style={styles.controlTitle}>Executive Reports</Text>
             <Text style={styles.controlSub}>P&L, Cash Velocity & PAR</Text>
           </TouchableOpacity>

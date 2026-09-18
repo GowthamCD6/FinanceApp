@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR, formatDate } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animations/FadeInView';
-import Icon from '../../components/common/Icon';
-import AddExpenseModal from '../../components/modals/AddExpenseModal';
+import { FadeInView } from '../../animation/FadeInView';
+import AddExpenseModal from './modal/AddExpenseModal';
 
 export const SuperAdminExpenses = () => {
   const { expenses, fundMetrics, addExpense } = useApp();
@@ -23,7 +23,7 @@ export const SuperAdminExpenses = () => {
           onPress={() => setShowAddModal(true)}
           activeOpacity={0.8}
         >
-          <Icon name="plus" size={12} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
           <Text style={styles.addBtnText}>Log Expense</Text>
         </TouchableOpacity>
       </View>
@@ -104,8 +104,8 @@ const styles = StyleSheet.create({
     padding: 14, 
     marginBottom: 10, 
     borderWidth: 1, 
-    borderColor: '#E2E8F0',
-    borderLeftWidth: 4,
+    borderColor: '#E2E8F0', 
+    borderLeftWidth: 4, 
     borderLeftColor: '#DC2626',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },

@@ -1,10 +1,40 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
-import Badge from '../../components/common/Badge';
-import Icon from '../../components/common/Icon';
-import DigitalReceiptModal from '../../components/modals/DigitalReceiptModal';
+import DigitalReceiptModal from './modal/DigitalReceiptModal';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 const UserPayments = () => {
   const { fundTransactions, loans, customers } = useApp();
@@ -84,7 +114,7 @@ const UserPayments = () => {
             Loan #{item.loanNumber} • Installment #{item.installmentNumber}
           </Text>
         </View>
-        <Badge label={item.status} variant="success" size="sm" />
+        <Badge label={item.status} variant="success" />
       </View>
 
       <View style={styles.amountRow}>
@@ -97,7 +127,7 @@ const UserPayments = () => {
 
       <View style={styles.cardFooter}>
         <Text style={styles.viewReceiptLink}>View Official Digital Receipt</Text>
-        <Icon name="arrow-right" size={12} color="#2563EB" />
+        <MaterialCommunityIcons name="arrow-right" size={14} color="#2563EB" />
       </View>
     </TouchableOpacity>
   );

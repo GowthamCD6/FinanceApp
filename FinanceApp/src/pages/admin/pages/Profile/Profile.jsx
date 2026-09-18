@@ -1,513 +1,685 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  Modal,
+  StyleSheet,
+  Platform,
+  StatusBar,
   Alert,
+  Image,
+  Share,
+  Linking,
 } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
+let AsyncStorage;
+try {
+  AsyncStorage = require('@react-native-async-storage/async-storage').default;
+} catch {
+  AsyncStorage = {
+    getItem: async () => null,
+    setItem: async () => {},
+  };
+}
 import { useApp } from '../../../../context/AppContext';
+import { useLanguage } from '../../../../utils/LanguageContext';
+import Colors from '../../../../theme/colors';
 import { formatINR } from '../../../../utils/helpers';
-import Icon from '../../../../components/common/Icon';
 
-const AdminProfile = () => {
-  const { currentUser, currentOrganization, logout, fundMetrics, customers } = useApp();
+// Settings Sub-Page Modals
+import {
+  EditProfileModal,
+  PasswordManagementModal,
+  SecurityPermModal,
+  NotificationSettingsModal,
+  LanguageSettingsModal,
+  OTPRequestsModal,
+  AuctionSettingsModal,
+  DataExportModal,
+  BlockUserModal,
+  UserLocationMapModal,
+  LocationSharingModal,
+  HelpSupportModal,
+  PrivacyPolicyModal,
+} from './subpages/SettingsPages';
 
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [name, setName] = useState(currentUser?.name || 'Admin Officer');
-  const [phone, setPhone] = useState(currentUser?.phone || '+91 98401 55678');
-  const [email, setEmail] = useState(currentUser?.email || 'admin@apexmicro.in');
-  const [route, setRoute] = useState('Triplicane & Mylapore Route 4');
+export const AdminProfile = () => {
+  const { currentUser, logout, fundMetrics, customers, loans } = useApp();
+  const { t, language } = useLanguage();
 
-  const handleSaveProfile = () => {
-    Alert.alert('Profile Updated', 'Officer field credentials successfully updated.');
-    setEditModalVisible(false);
+  const [imageError, setImageError] = useState(false);
+  const [userData, setUserData] = useState({
+    name: currentUser?.name || 'Gowtham Admin',
+    role: currentUser?.role_type || currentUser?.role || 'Admin',
+    phone: currentUser?.phone || '+91 98401 55678',
+    email: currentUser?.email || 'admin@apexfinance.in',
+    branch: 'Apex Central Branch - Route 4',
+    userImage: '',
+  });
+
+  // Modal active states
+  const [activeModal, setActiveModal] = useState(null);
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const storedName = await AsyncStorage.getItem('userName');
+      const storedPhone = await AsyncStorage.getItem('userPhone');
+      const storedRole = await AsyncStorage.getItem('userRole');
+      const storedImage = await AsyncStorage.getItem('userImage');
+
+      setUserData(prev => ({
+        ...prev,
+        name: storedName || currentUser?.name || prev.name,
+        phone: storedPhone || currentUser?.phone || prev.phone,
+        role: storedRole || currentUser?.role_type || prev.role,
+        userImage: storedImage || prev.userImage,
+      }));
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
   };
 
+  const displayName = userData.name || 'Admin';
+  const displayPhone = userData.phone || '';
+  const profileInitial = displayName ? displayName.charAt(0).toUpperCase() : 'A';
+
+  const handleLogout = () => {
+    Alert.alert(
+      t('Logout'),
+      'Are you sure you want to logout from this device?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: t('Logout'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              logout();
+            } catch (error) {
+              console.error('Error logging out:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleOpenSocial = async (url, fallbackName) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Follow Us', `Join Apex Finance on ${fallbackName}!`);
+      }
+    } catch {
+      Alert.alert('Follow Us', `Join Apex Finance on ${fallbackName}!`);
+    }
+  };
+
+  const handleShareApp = async () => {
+    try {
+      await Share.share({
+        title: 'Apex Microfinance Platform',
+        message: 'Manage your micro-lending loans, daily collections, and portfolio records securely with Apex Finance App!\nDownload now: https://play.google.com/store/apps/details?id=com.apexfinance',
+      });
+    } catch (error) {
+      console.log('Error sharing app:', error);
+    }
+  };
+
+  const handleRateApp = () => {
+    Alert.alert('Rate App', 'Thank you for rating Apex Microfinance App on Play Store!');
+  };
+
+  const settingSections = [
+    {
+      title: t('Account'),
+      items: [
+        {
+          icon: 'account-edit',
+          title: t('Edit Profile'),
+          subtitle: t('Update your personal information'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('EDIT_PROFILE'),
+        },
+        {
+          icon: 'key-change',
+          title: t('Password Management'),
+          subtitle: t('View and manage user passwords'),
+          iconColor: '#6B46C1',
+          onPress: () => setActiveModal('PASSWORD_MGMT'),
+        },
+        {
+          icon: 'shield-account',
+          title: t('Password & Security'),
+          subtitle: t('Password and authentication'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('SECURITY_PERM'),
+        },
+      ],
+    },
+    {
+      title: t('App Settings'),
+      items: [
+        {
+          icon: 'bell-outline',
+          title: t('Notifications'),
+          subtitle: t('Manage notification preferences'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('NOTIFICATIONS'),
+        },
+        {
+          icon: 'earth',
+          title: t('Language'),
+          subtitle: language === 'ta' ? 'தமிழ் (Tamil)' : 'English, Tamil',
+          iconColor: '#555555',
+          onPress: () => setActiveModal('LANGUAGE'),
+        },
+      ],
+    },
+    {
+      title: t('Group Management'),
+      items: [
+        {
+          icon: 'key-chain',
+          title: t('OTP Requests'),
+          subtitle: t('Manage user OTP verification requests'),
+          iconColor: '#3B82F6',
+          onPress: () => setActiveModal('OTP_REQUESTS'),
+        },
+        {
+          icon: 'gavel',
+          title: t('Auction Settings'),
+          subtitle: t('Set default auction rules and duration'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('AUCTION_SETTINGS'),
+        },
+      ],
+    },
+    {
+      title: t('Data & Privacy'),
+      items: [
+        {
+          icon: 'download',
+          title: t('Data Export'),
+          subtitle: t('Download all your group data and history'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('DATA_EXPORT'),
+        },
+        {
+          icon: 'account-cancel',
+          title: t('Block User'),
+          subtitle: 'Manage blocked or defaulting accounts',
+          iconColor: '#EF4444',
+          onPress: () => setActiveModal('BLOCK_USER'),
+        },
+      ],
+    },
+    {
+      title: t('Location & Tracking'),
+      items: [
+        {
+          icon: 'map-marker-radius',
+          title: t('User Location Map'),
+          subtitle: 'Live collection route & borrower map',
+          iconColor: '#10B981',
+          onPress: () => setActiveModal('USER_LOCATION'),
+        },
+        {
+          icon: 'crosshairs-gps',
+          title: t('Location Sharing'),
+          subtitle: t('Control location sharing preferences'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('MY_LOCATION'),
+        },
+      ],
+    },
+    {
+      title: t('Support'),
+      items: [
+        {
+          icon: 'help-circle',
+          title: t('Help & Support'),
+          subtitle: t('FAQs, tutorials, contact support'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('HELP_SUPPORT'),
+        },
+        {
+          icon: 'lock-outline',
+          title: t('Privacy Controls'),
+          subtitle: t('Control privacy policies and profile data'),
+          iconColor: '#555555',
+          onPress: () => setActiveModal('PRIVACY_POLICY'),
+        },
+        {
+          icon: 'share-variant-outline',
+          title: t('Share App'),
+          subtitle: t('Invite friends to join'),
+          iconColor: '#555555',
+          onPress: handleShareApp,
+        },
+        {
+          icon: 'star-outline',
+          title: t('Rate App'),
+          subtitle: t('Rate us on Play Store'),
+          iconColor: '#555555',
+          onPress: handleRateApp,
+        },
+      ],
+    },
+  ];
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Officer Hero Banner */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroTop}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{name.charAt(0)}</Text>
-          </View>
-          <View style={styles.heroDetails}>
-            <View style={styles.roleTag}>
-              <Text style={styles.roleTagText}>FIELD OPERATIONS ADMIN</Text>
-            </View>
-            <Text style={styles.heroName}>{name}</Text>
-            <Text style={styles.heroOrg}>{currentOrganization?.name || 'Apex Microfinance Ltd'}</Text>
-          </View>
-        </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-        <View style={styles.heroDivider} />
-
-        <View style={styles.heroFooter}>
-          <View style={styles.statusPill}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>ACTIVE ON-FIELD</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.editProfileBtn}
-            onPress={() => setEditModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <Icon name="user" size={13} color="#2563EB" />
-            <Text style={styles.editProfileBtnText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* 4 FIELD METRICS SUMMARY */}
-      <Text style={styles.sectionTitle}>Operating Scorecard</Text>
-      <View style={styles.metricGrid}>
-        <View style={styles.metricBox}>
-          <Text style={styles.metricLabel}>TODAY RECOVERED</Text>
-          <Text style={[styles.metricValue, { color: '#059669' }]}>
-            {formatINR(fundMetrics?.todayCollection || 14200)}
-          </Text>
-          <Text style={styles.metricSub}>92% daily target</Text>
-        </View>
-
-        <View style={styles.metricBox}>
-          <Text style={styles.metricLabel}>TOTAL COLLECTED</Text>
-          <Text style={[styles.metricValue, { color: '#2563EB' }]}>
-            ₹5,20,000
-          </Text>
-          <Text style={styles.metricSub}>Lifetime field recovery</Text>
-        </View>
-
-        <View style={styles.metricBox}>
-          <Text style={styles.metricLabel}>ASSIGNED BORROWERS</Text>
-          <Text style={[styles.metricValue, { color: '#7C3AED' }]}>
-            {customers.length || 38}
-          </Text>
-          <Text style={styles.metricSub}>Active portfolio</Text>
-        </View>
-
-        <View style={styles.metricBox}>
-          <Text style={styles.metricLabel}>COMPLIANCE SCORE</Text>
-          <Text style={[styles.metricValue, { color: '#0284C7' }]}>
-            99.4%
-          </Text>
-          <Text style={styles.metricSub}>Audit grade A+</Text>
-        </View>
-      </View>
-
-      {/* OFFICER CONTACT & ROUTE CREDENTIALS */}
-      <Text style={styles.sectionTitle}>Officer Identity & Territory</Text>
-      <View style={styles.credentialsCard}>
-        <View style={styles.credentialRow}>
-          <View style={styles.credIconBox}>
-            <Icon name="user" size={15} color="#475569" />
-          </View>
-          <View style={styles.credInfo}>
-            <Text style={styles.credLabel}>EMPLOYEE ID</Text>
-            <Text style={styles.credValue}>EMP-ADM-0428</Text>
-          </View>
-        </View>
-
-        <View style={styles.rowDivider} />
-
-        <View style={styles.credentialRow}>
-          <View style={styles.credIconBox}>
-            <Icon name="receipt" size={15} color="#475569" />
-          </View>
-          <View style={styles.credInfo}>
-            <Text style={styles.credLabel}>PHONE NUMBER</Text>
-            <Text style={styles.credValue}>{phone}</Text>
-          </View>
-        </View>
-
-        <View style={styles.rowDivider} />
-
-        <View style={styles.credentialRow}>
-          <View style={styles.credIconBox}>
-            <Icon name="document" size={15} color="#475569" />
-          </View>
-          <View style={styles.credInfo}>
-            <Text style={styles.credLabel}>OFFICIAL EMAIL</Text>
-            <Text style={styles.credValue}>{email}</Text>
-          </View>
-        </View>
-
-        <View style={styles.rowDivider} />
-
-        <View style={styles.credentialRow}>
-          <View style={styles.credIconBox}>
-            <Icon name="dashboard" size={15} color="#475569" />
-          </View>
-          <View style={styles.credInfo}>
-            <Text style={styles.credLabel}>ASSIGNED ROUTE TERRITORY</Text>
-            <Text style={styles.credValue}>{route}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* PRIVILEGES & SECURITY */}
-      <Text style={styles.sectionTitle}>System Governance & Privileges</Text>
-      <View style={styles.privilegeCard}>
-        <View style={styles.privilegeItem}>
-          <Icon name="check" size={15} color="#059669" />
-          <Text style={styles.privilegeText}>Daily field cash & UPI collection authorization</Text>
-        </View>
-        <View style={styles.privilegeItem}>
-          <Icon name="check" size={15} color="#059669" />
-          <Text style={styles.privilegeText}>Borrower onboarding & credit limit inspection</Text>
-        </View>
-        <View style={styles.privilegeItem}>
-          <Icon name="check" size={15} color="#059669" />
-          <Text style={styles.privilegeText}>Account suspension and NPA flag governance</Text>
-        </View>
-        <View style={styles.privilegeItem}>
-          <Icon name="check" size={15} color="#059669" />
-          <Text style={styles.privilegeText}>Day-end vault settlement submission</Text>
-        </View>
-      </View>
-
-      {/* LOGOUT BUTTON */}
-      <TouchableOpacity
-        style={styles.logoutBtn}
-        onPress={() => {
-          Alert.alert(
-            'Confirm Sign Out',
-            'Are you sure you want to end your active administrative shift?',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Sign Out', style: 'destructive', onPress: logout },
-            ]
-          );
-        }}
-        activeOpacity={0.8}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Icon name="close" size={15} color="#DC2626" />
-        <Text style={styles.logoutBtnText}>Sign Out of Admin Console</Text>
-      </TouchableOpacity>
+        {/* Profile Card Header */}
+        <View style={styles.profileSection}>
+          <View style={styles.avatar}>
+            {userData.userImage && !imageError ? (
+              <Image
+                source={{ uri: userData.userImage }}
+                style={styles.avatarImage}
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <Text style={styles.avatarInitial}>{profileInitial}</Text>
+            )}
+          </View>
+          <Text style={styles.userName}>{displayName.toUpperCase()}</Text>
+          {Boolean(displayPhone) && (
+            <Text style={styles.userPhone}>{displayPhone}</Text>
+          )}
+          <Text style={styles.userStatus}>{userData.role || 'Admin'} Account</Text>
 
-      {/* EDIT PROFILE MODAL */}
-      <Modal visible={editModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Officer Profile</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Icon name="close" size={16} color="#64748B" />
-              </TouchableOpacity>
+          {/* Officer Metrics Bar */}
+          <View style={styles.scorecardContainer}>
+            <View style={styles.scorecardItem}>
+              <Text style={styles.scorecardVal}>{customers?.length || 18}</Text>
+              <Text style={styles.scorecardLbl}>Borrowers</Text>
             </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>FULL NAME</Text>
-              <TextInput style={styles.fieldInput} value={name} onChangeText={setName} />
+            <View style={styles.scorecardDivider} />
+            <View style={styles.scorecardItem}>
+              <Text style={styles.scorecardVal}>{loans?.length || 12}</Text>
+              <Text style={styles.scorecardLbl}>Active Loans</Text>
             </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>CONTACT PHONE</Text>
-              <TextInput style={styles.fieldInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+            <View style={styles.scorecardDivider} />
+            <View style={styles.scorecardItem}>
+              <Text style={[styles.scorecardVal, { color: '#10B981' }]}>
+                {formatINR(fundMetrics?.todayCollected || 48500)}
+              </Text>
+              <Text style={styles.scorecardLbl}>Collected Today</Text>
             </View>
+          </View>
+        </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
-              <TextInput style={styles.fieldInput} value={email} onChangeText={setEmail} keyboardType="email-address" />
+        {/* Grouped Settings Sections */}
+        {settingSections.map((section, sectionIndex) => (
+          <View key={sectionIndex} style={styles.settingsContainer}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.menuCard}>
+              {section.items.map((item, itemIndex) => (
+                <React.Fragment key={itemIndex}>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={item.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.menuItemContent}>
+                      <MaterialCommunityIcons
+                        name={item.icon}
+                        size={24}
+                        color={item.iconColor}
+                      />
+                      <View style={styles.menuItemTextBox}>
+                        <Text style={styles.menuItemText}>{item.title}</Text>
+                        {item.subtitle ? (
+                          <Text style={styles.menuItemSubtitle}>
+                            {item.subtitle}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={24}
+                      color="#CCCCCC"
+                    />
+                  </TouchableOpacity>
+                  {itemIndex < section.items.length - 1 && (
+                    <View style={styles.divider} />
+                  )}
+                </React.Fragment>
+              ))}
             </View>
+          </View>
+        ))}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>ASSIGNED ROUTE TERRITORY</Text>
-              <TextInput style={styles.fieldInput} value={route} onChangeText={setRoute} />
-            </View>
-
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}>
-              <Icon name="check" size={16} color="#FFFFFF" />
-              <Text style={styles.saveBtnText}>Save Credentials</Text>
+        {/* Follow Us & Social Handles */}
+        <View style={styles.followSection}>
+          <Text style={styles.followText}>{t('Follow Us')}</Text>
+          <View style={styles.socialIcons}>
+            <TouchableOpacity
+              style={styles.socialIcon}
+              onPress={() => handleOpenSocial('https://facebook.com', 'Facebook')}
+            >
+              <MaterialCommunityIcons name="facebook" size={24} color="#1877F2" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialIcon}
+              onPress={() => handleOpenSocial('https://instagram.com', 'Instagram')}
+            >
+              <MaterialCommunityIcons name="instagram" size={24} color="#E4405F" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialIcon}
+              onPress={() => handleOpenSocial('https://youtube.com', 'YouTube')}
+            >
+              <MaterialCommunityIcons name="youtube" size={24} color="#FF0000" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialIcon}
+              onPress={() => handleOpenSocial('https://wa.me', 'WhatsApp')}
+            >
+              <MaterialCommunityIcons name="whatsapp" size={24} color="#25D366" />
             </TouchableOpacity>
           </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>{t('Logout')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.versionText}>{t('Version')} 1.0.0 • Apex Finance</Text>
         </View>
-      </Modal>
+      </ScrollView>
 
-      <View style={{ height: 40 }} />
-    </ScrollView>
+      {/* Subpage Modals */}
+      <EditProfileModal
+        visible={activeModal === 'EDIT_PROFILE'}
+        onClose={() => setActiveModal(null)}
+        userData={userData}
+        onSave={(updated) => setUserData(prev => ({ ...prev, ...updated }))}
+      />
+
+      <PasswordManagementModal
+        visible={activeModal === 'PASSWORD_MGMT'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <SecurityPermModal
+        visible={activeModal === 'SECURITY_PERM'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <NotificationSettingsModal
+        visible={activeModal === 'NOTIFICATIONS'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <LanguageSettingsModal
+        visible={activeModal === 'LANGUAGE'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <OTPRequestsModal
+        visible={activeModal === 'OTP_REQUESTS'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <AuctionSettingsModal
+        visible={activeModal === 'AUCTION_SETTINGS'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <DataExportModal
+        visible={activeModal === 'DATA_EXPORT'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <BlockUserModal
+        visible={activeModal === 'BLOCK_USER'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <UserLocationMapModal
+        visible={activeModal === 'USER_LOCATION'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <LocationSharingModal
+        visible={activeModal === 'MY_LOCATION'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <HelpSupportModal
+        visible={activeModal === 'HELP_SUPPORT'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <PrivacyPolicyModal
+        visible={activeModal === 'PRIVACY_POLICY'}
+        onClose={() => setActiveModal(null)}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7F7F7',
   },
-  content: {
-    padding: 16,
-    paddingBottom: 50,
+  scrollContent: {
+    paddingBottom: 90,
   },
-  heroCard: {
+  profileSection: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 18,
-    marginBottom: 20,
-  },
-  heroTop: {
-    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#6B46C1',
     justifyContent: 'center',
-    marginRight: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#6B46C1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  avatarText: {
-    fontSize: 22,
-    fontWeight: '800',
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  avatarInitial: {
+    fontSize: 34,
+    fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  heroDetails: {
+  userName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'android' ? 'Roboto-Regular' : 'System',
+  },
+  userPhone: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  userStatus: {
+    fontSize: 13,
+    color: '#6B46C1',
+    fontWeight: '600',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  scorecardContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginTop: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: '100%',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  scorecardItem: {
+    alignItems: 'center',
     flex: 1,
   },
-  roleTag: {
-    backgroundColor: '#EFF6FF',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  roleTagText: {
-    fontSize: 9,
+  scorecardVal: {
+    fontSize: 15,
     fontWeight: '800',
-    color: '#2563EB',
-    letterSpacing: 0.5,
+    color: '#111827',
   },
-  heroName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  heroOrg: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  heroDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 14,
-  },
-  heroFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#059669',
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#059669',
-    letterSpacing: 0.5,
-  },
-  editProfileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
-  },
-  editProfileBtnText: {
+  scorecardLbl: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#2563EB',
+    color: '#6B7280',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  scorecardDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E5E7EB',
+  },
+  settingsContainer: {
+    paddingHorizontal: 16,
+    marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#475569',
-    letterSpacing: 0.6,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F2937',
     marginBottom: 10,
   },
-  metricGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
-  },
-  metricBox: {
-    width: '48%',
+  menuCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
+    borderColor: '#F0F0F0',
   },
-  metricLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#64748B',
-    marginBottom: 6,
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  metricSub: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 4,
-  },
-  credentialsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 14,
-    marginBottom: 20,
-  },
-  credentialRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  credIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  credInfo: {
-    flex: 1,
-  },
-  credLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  credValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginTop: 2,
-  },
-  rowDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  privilegeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
-    gap: 10,
-    marginBottom: 20,
-  },
-  privilegeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  privilegeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
-    flex: 1,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FEE2E2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  logoutBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 36,
-  },
-  modalHeader: {
+  menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    padding: 16,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  formGroup: {
-    marginBottom: 12,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 4,
-  },
-  fieldInput: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 13,
-    color: '#0F172A',
-  },
-  saveBtn: {
+  menuItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#2563EB',
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginTop: 10,
+    flex: 1,
   },
-  saveBtnText: {
-    fontSize: 13,
+  menuItemTextBox: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  menuItemSubtitle: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginLeft: 56,
+  },
+  followSection: {
+    alignItems: 'center',
+    marginTop: 32,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  followText: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 14,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'android' ? 'Roboto-Regular' : 'System',
+  },
+  socialIcons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 20,
+  },
+  socialIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  logoutButton: {
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 20,
+  },
+  logoutText: {
+    fontSize: 15,
+    color: '#EF4444',
     fontWeight: '700',
-    color: '#FFFFFF',
+  },
+  versionText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    fontFamily: Platform.OS === 'android' ? 'Roboto-Regular' : 'System',
   },
 });
 

@@ -1,9 +1,40 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
-import Badge from '../../components/common/Badge';
-import Icon from '../../components/common/Icon';
+
+// Inline Badge component
+const Badge = ({ label, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
+    neutral: { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' },
+    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+  };
+  const current = variantStyles[variant] || variantStyles.primary;
+
+  return (
+    <View style={[badgeStyles.badge, { backgroundColor: current.bg, borderColor: current.border }]}>
+      <Text style={[badgeStyles.text, { color: current.text }]}>{label}</Text>
+    </View>
+  );
+};
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});
 
 const UserRepaymentSchedule = ({ onBack }) => {
   const { loans, customers } = useApp();
@@ -19,7 +50,7 @@ const UserRepaymentSchedule = ({ onBack }) => {
       {/* Top back action */}
       {onBack && (
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.7}>
-          <Icon name="arrow-left" size={14} color="#2563EB" />
+          <MaterialCommunityIcons name="arrow-left" size={16} color="#2563EB" />
           <Text style={styles.backBtnText}>Back</Text>
         </TouchableOpacity>
       )}
@@ -87,7 +118,6 @@ const UserRepaymentSchedule = ({ onBack }) => {
                   <Badge 
                     label={isPaid ? 'PAID' : isNext ? 'DUE SOON' : 'UPCOMING'} 
                     variant={isPaid ? 'success' : isNext ? 'warning' : 'neutral'} 
-                    size="sm"
                   />
                 </View>
               </View>
@@ -100,7 +130,7 @@ const UserRepaymentSchedule = ({ onBack }) => {
 
       <View style={styles.infoBox}>
         <View style={styles.infoTitleRow}>
-          <Icon name="shield" size={14} color="#2563EB" />
+          <MaterialCommunityIcons name="shield-check-outline" size={16} color="#2563EB" />
           <Text style={styles.infoTitle}>Payment Tip</Text>
         </View>
         <Text style={styles.infoText}>

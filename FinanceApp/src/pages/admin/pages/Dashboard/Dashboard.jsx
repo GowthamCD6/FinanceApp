@@ -5,178 +5,365 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
-import MetricCard from '../../../../components/common/MetricCard';
-import Icon from '../../../../components/common/Icon';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const AdminDashboard = ({ onNavigate, onOpenAddUser, onOpenManageUsers }) => {
-  const { fundMetrics, loans, customers, currentOrganization } = useApp();
+// Inline MetricCard
+const MetricCard = ({ title, value, change, isPositive, color = '#2563EB', subtitle, iconName }) => {
+  const iconMap = {
+    fund: 'cash-multiple',
+    trending: 'trending-up',
+    collections: 'wallet-outline',
+    calendar: 'calendar-clock',
+  };
+  return (
+    <View style={metricCardStyles.card}>
+      <View style={metricCardStyles.topRow}>
+        <Text style={metricCardStyles.title} numberOfLines={1}>{title}</Text>
+        {iconName ? (
+          <View style={[metricCardStyles.iconBox, { backgroundColor: `${color}15` }]}>
+            <MaterialCommunityIcons name={iconMap[iconName] || 'chart-line'} size={14} color={color} />
+          </View>
+        ) : null}
+      </View>
+      <Text style={metricCardStyles.value} numberOfLines={1}>{value}</Text>
+      {change ? (
+        <Text
+          style={[
+            metricCardStyles.change,
+            isPositive !== undefined && { color: isPositive ? '#059669' : '#DC2626' },
+          ]}
+          numberOfLines={1}
+        >
+          {change}
+        </Text>
+      ) : subtitle ? (
+        <Text style={metricCardStyles.subtitle} numberOfLines={1}>{subtitle}</Text>
+      ) : null}
+    </View>
+  );
+};
 
-  const activeBorrowersCount = customers.filter((c) => (c.status || 'ACTIVE') === 'ACTIVE').length;
-  const overdueLoans = loans.filter((l) => l.status === 'OVERDUE');
-  const activeLoans = loans.filter((l) => l.status === 'ACTIVE');
+const metricCardStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  title: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    flex: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  iconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
+  },
+  value: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  change: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  subtitle: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+});
+
+export const AdminDashboard = ({
+  onNavigate,
+  onOpenAddUser,
+  onOpenDisburse,
+  onOpenCollect,
+  onOpenExpense,
+  onOpenCapital,
+  onOpenSettlement,
+  onOpenLedger,
+}) => {
+  const {
+    fundMetrics,
+    loans,
+    customers,
+    currentOrganization,
+    loading,
+    refreshData,
+  } = useApp();
+
+  // Find due loans for today (weekly and daily)
+  const dueTodayLoans = loans.filter(
+    (l) => l.status === 'ACTIVE' || l.status === 'DISBURSED' || l.status === 'PARTIALLY_PAID' || l.status === 'OVERDUE'
+  ).slice(0, 5);
+
+  const todayTargetProgress = fundMetrics.todayTarget > 0
+    ? Math.min(1, fundMetrics.todayCollected / fundMetrics.todayTarget)
+    : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Header Banner */}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={refreshData} colors={['#2563EB']} />
+      }
+    >
+      {/* 1. Header Hero Banner */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.roleTag}>
             <Text style={styles.roleTagText}>{currentOrganization?.name || 'APEX MICROFINANCE'}</Text>
           </View>
           <Text style={styles.title}>Admin Control Center</Text>
-          <Text style={styles.subtitle}>Daily Collections, Lending & User Governance</Text>
+          <Text style={styles.subtitle}>Daily Collections, Lending Capital & Borrower Ledgers</Text>
         </View>
-        <View style={styles.dateBadge}>
-          <Text style={styles.dateText}>LIVE</Text>
-        </View>
+
+        <TouchableOpacity style={styles.refreshBtn} onPress={refreshData} activeOpacity={0.8}>
+          <MaterialCommunityIcons name="refresh" size={14} color="#2563EB" />
+          <Text style={styles.refreshBtnText}>Sync</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* QUICK ACTIONS ROW */}
+      {/* 2. Vault Liquidity & Day Settlement Quick Card */}
+      <View style={styles.vaultCard}>
+        <View style={styles.vaultTop}>
+          <View>
+            <Text style={styles.vaultTitle}>BRANCH CASH VAULT & FLOAT</Text>
+            <Text style={styles.vaultAmount}>₹3,45,000</Text>
+            <Text style={styles.vaultSub}>Available lending liquidity in safe</Text>
+          </View>
+          <View style={styles.vaultBtnCol}>
+            <TouchableOpacity
+              style={styles.btnInject}
+              onPress={onOpenCapital}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="bank" size={12} color="#059669" />
+              <Text style={styles.btnInjectText}>+ Capital</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.btnExpense}
+              onPress={onOpenExpense}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="receipt" size={12} color="#DC2626" />
+              <Text style={styles.btnExpenseText}>- Expense</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.settlementBar}
+          onPress={onOpenSettlement}
+          activeOpacity={0.85}
+        >
+          <View style={styles.settlementLeft}>
+            <MaterialCommunityIcons name="lock" size={14} color="#0F172A" />
+            <Text style={styles.settlementText}>Day-End Cash Reconciliation & Vault Lock</Text>
+          </View>
+          <Text style={styles.settlementArrow}>Review →</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 3. Quick Operations Strip */}
       <View style={styles.quickActionsContainer}>
         <TouchableOpacity
           style={[styles.quickActionBtn, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
-          onPress={onOpenAddUser}
-          activeOpacity={0.8}
+          onPress={onOpenDisburse}
+          activeOpacity={0.85}
         >
           <View style={[styles.actionIconBox, { backgroundColor: '#2563EB' }]}>
-            <Icon name="plus" size={15} color="#FFFFFF" />
+            <MaterialCommunityIcons name="plus" size={15} color="#FFFFFF" />
           </View>
-          <Text style={[styles.actionBtnLabel, { color: '#1E40AF' }]}>Add User</Text>
+          <Text style={[styles.actionBtnLabel, { color: '#1E40AF' }]}>Disburse Loan</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.quickActionBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
-          onPress={onOpenManageUsers}
-          activeOpacity={0.8}
+          onPress={() => onOpenCollect && onOpenCollect(dueTodayLoans[0] || null)}
+          activeOpacity={0.85}
         >
           <View style={[styles.actionIconBox, { backgroundColor: '#059669' }]}>
-            <Icon name="users" size={15} color="#FFFFFF" />
+            <MaterialCommunityIcons name="wallet" size={15} color="#FFFFFF" />
           </View>
-          <Text style={[styles.actionBtnLabel, { color: '#065F46' }]}>Manage Users</Text>
+          <Text style={[styles.actionBtnLabel, { color: '#065F46' }]}>Collect EMI</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.quickActionBtn, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}
-          onPress={() => onNavigate && onNavigate('reports')}
-          activeOpacity={0.8}
+          style={[styles.quickActionBtn, { backgroundColor: '#FAF5FF', borderColor: '#DDD6FE' }]}
+          onPress={onOpenAddUser}
+          activeOpacity={0.85}
         >
-          <View style={[styles.actionIconBox, { backgroundColor: '#D97706' }]}>
-            <Icon name="reports" size={15} color="#FFFFFF" />
+          <View style={[styles.actionIconBox, { backgroundColor: '#7C3AED' }]}>
+            <MaterialCommunityIcons name="account-group" size={15} color="#FFFFFF" />
           </View>
-          <Text style={[styles.actionBtnLabel, { color: '#92400E' }]}>Reports</Text>
+          <Text style={[styles.actionBtnLabel, { color: '#6B21A8' }]}>Add Borrower</Text>
         </TouchableOpacity>
       </View>
 
-      {/* TODAY'S COLLECTION PERFORMANCE */}
-      <Text style={styles.sectionTitle}>Daily Collection Target</Text>
+      {/* 3. Core Financial Metric Cards (Solid #0F172A figures) */}
+      <Text style={styles.sectionTitle}>Capital Accounting & Profit</Text>
       <View style={styles.metricRow}>
         <View style={styles.metricHalf}>
           <MetricCard
-            title="Today's Collected"
-            value={formatINR(fundMetrics?.todayCollection || 14200)}
-            change="Recovered Today"
+            title="Principal Given"
+            value={formatINR(fundMetrics.totalPrincipalGiven)}
+            change="Capital Disbursed"
+            color="#2563EB"
+            subtitle="To Active Borrowers"
+            iconName="fund"
+          />
+        </View>
+        <View style={styles.metricHalf}>
+          <MetricCard
+            title="Interest Profit"
+            value={formatINR(fundMetrics.totalContractedInterest)}
+            change="Contracted Profit"
             isPositive={true}
             color="#059669"
-            subtitle="Field Collections"
+            subtitle="Contracted Return"
+            iconName="trending"
+          />
+        </View>
+      </View>
+
+      <View style={styles.metricRow}>
+        <View style={styles.metricHalf}>
+          <MetricCard
+            title="Recovered Cash"
+            value={formatINR(fundMetrics.totalRecoveredCash)}
+            change="Inflows Realized"
+            isPositive={true}
+            color="#059669"
+            subtitle="Repayments Collected"
             iconName="collections"
           />
         </View>
         <View style={styles.metricHalf}>
           <MetricCard
-            title="Scheduled Dues"
-            value={formatINR(fundMetrics?.todayExpected || 18500)}
-            change="Daily Target"
-            color="#2563EB"
-            subtitle="Today's Target"
+            title="Outstanding Due"
+            value={formatINR(fundMetrics.outstandingTotal)}
+            change="Circulating"
+            color="#D97706"
+            subtitle="Ledger Balance"
             iconName="calendar"
           />
         </View>
       </View>
 
-      <View style={styles.metricRow}>
-        <View style={styles.metricHalf}>
-          <MetricCard
-            title="Pending Recovery"
-            value={formatINR(fundMetrics?.pendingCollection || 4300)}
-            change="Requires Visit"
-            isPositive={false}
-            color="#D97706"
-            subtitle="Immediate Action"
-            iconName="receipt"
-          />
-        </View>
-        <View style={styles.metricHalf}>
-          <MetricCard
-            title="Active Borrowers"
-            value={activeBorrowersCount.toString()}
-            change={`${customers.length} total enrolled`}
-            isPositive={true}
-            color="#7C3AED"
-            subtitle="Governed Clients"
-            iconName="users"
-          />
-        </View>
-      </View>
-
-      {/* RECOVERY & CAPITAL STATS */}
-      <Text style={styles.sectionTitle}>Portfolio Health</Text>
-      <View style={styles.portfolioCard}>
-        <View style={styles.portfolioRow}>
-          <View style={styles.portfolioStat}>
-            <Text style={styles.statLabel}>ACTIVE RUNNING LOANS</Text>
-            <Text style={[styles.statValue, { color: '#0284C7' }]}>{activeLoans.length}</Text>
-            <Text style={styles.statSub}>10-Wk & 25-Day loans</Text>
+      {/* 4. Today's Collection Performance Banner */}
+      <View style={styles.todayCard}>
+        <View style={styles.todayHeader}>
+          <View>
+            <Text style={styles.todayTitle}>Today's Collection Target</Text>
+            <Text style={styles.todaySubtitle}>Field recovery vs scheduled daily installments</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.portfolioStat}>
-            <Text style={styles.statLabel}>OVERDUE DEFAULTS</Text>
-            <Text style={[styles.statValue, { color: '#DC2626' }]}>{overdueLoans.length}</Text>
-            <Text style={styles.statSub}>Follow-up required</Text>
+          <View style={styles.todayBadge}>
+            <Text style={styles.todayBadgeText}>{Math.round(todayTargetProgress * 100)}% Recovered</Text>
+          </View>
+        </View>
+
+        <View style={styles.todayProgressTrack}>
+          <View style={[styles.todayProgressFill, { width: `${todayTargetProgress * 100}%` }]} />
+        </View>
+
+        <View style={styles.todayStatsRow}>
+          <View>
+            <Text style={styles.todayStatLabel}>Recovered Today</Text>
+            <Text style={[styles.todayStatVal, { color: '#059669' }]}>
+              {formatINR(fundMetrics.todayCollected)}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.todayStatLabel}>Daily Target Due</Text>
+            <Text style={styles.todayStatVal}>
+              {formatINR(fundMetrics.todayTarget)}
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* CRITICAL URGENT FOLLOW-UPS */}
+      {/* 5. Due Today Borrower Queue */}
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Urgent Field Follow-ups</Text>
-        <TouchableOpacity onPress={() => onNavigate && onNavigate('reports')}>
-          <Text style={styles.viewAllText}>View Reports ›</Text>
+        <Text style={styles.sectionTitle}>Due Today Collection Queue</Text>
+        <TouchableOpacity onPress={() => onNavigate && onNavigate('customers')} activeOpacity={0.7}>
+          <Text style={styles.sectionActionText}>View All Borrowers →</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.listContainer}>
-        {loans.slice(0, 4).map((loan) => {
-          const isOverdue = loan.status === 'OVERDUE';
-          return (
-            <View key={loan.id} style={styles.urgentItem}>
-              <View style={[styles.urgentIconBox, { backgroundColor: isOverdue ? '#FEE2E2' : '#F1F5F9' }]}>
-                <Icon name={isOverdue ? 'receipt' : 'calendar'} size={16} color={isOverdue ? '#DC2626' : '#64748B'} />
-              </View>
-              <View style={styles.urgentDetails}>
-                <Text style={styles.urgentName}>{loan.customerName || loan.customer_name || 'Borrower'}</Text>
-                <Text style={styles.urgentMeta}>
-                  {loan.loan_number || `LN-00${loan.id}`} • {loan.type || loan.loan_type || 'WEEKLY'}
-                </Text>
-              </View>
-              <View style={styles.urgentAmountBox}>
-                <Text style={styles.urgentAmount}>
-                  {formatINR(loan.installment_amount || loan.next_payment_amount || 600)}
-                </Text>
-                <View style={[styles.dueBadge, { backgroundColor: isOverdue ? '#FEE2E2' : '#EFF6FF' }]}>
-                  <Text style={[styles.dueBadgeText, { color: isOverdue ? '#DC2626' : '#2563EB' }]}>
-                    {isOverdue ? 'OVERDUE' : 'DUE TODAY'}
+      <View style={styles.dueList}>
+        {dueTodayLoans.length === 0 ? (
+          <View style={styles.emptyDueCard}>
+            <Text style={styles.emptyDueText}>All daily collections for today are balanced! 🎉</Text>
+          </View>
+        ) : (
+          dueTodayLoans.map((loan) => (
+            <TouchableOpacity
+              key={loan.id}
+              style={styles.dueCard}
+              onPress={() => onOpenLedger && onOpenLedger(loan)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.dueLeft}>
+                <View style={styles.dueAvatar}>
+                  <Text style={styles.dueAvatarText}>
+                    {(loan.customer_name || 'B').charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.dueBorrowerName}>{loan.customer_name || 'Borrower Account'}</Text>
+                  <Text style={styles.dueLoanSub}>
+                    {loan.repayment_frequency || 'WEEKLY'} • {loan.loan_code || `LN-${loan.id}`}
                   </Text>
                 </View>
               </View>
-            </View>
-          );
-        })}
-      </View>
 
-      <View style={{ height: 40 }} />
+              <View style={styles.dueRight}>
+                <Text style={styles.dueAmount}>{formatINR(loan.emi_amount || 1000)}</Text>
+                <TouchableOpacity
+                  style={styles.btnQuickCollect}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (onOpenCollect) onOpenCollect(loan);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.btnQuickCollectText}>Collect</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
     </ScrollView>
   );
 };
@@ -188,35 +375,32 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    marginBottom: 14,
   },
   headerLeft: {
     flex: 1,
   },
   roleTag: {
-    backgroundColor: '#EFF6FF',
     alignSelf: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   roleTagText: {
     fontSize: 10,
     fontWeight: '800',
     color: '#2563EB',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   title: {
     fontSize: 20,
@@ -224,164 +408,318 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '500',
     color: '#64748B',
     marginTop: 2,
   },
-  dateBadge: {
-    backgroundColor: '#059669',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
   },
-  dateText: {
-    fontSize: 10,
+  refreshBtnText: {
+    fontSize: 11,
     fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    color: '#2563EB',
   },
   quickActionsContainer: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 16,
   },
   quickActionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
+    gap: 8,
   },
   actionIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionBtnLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 12,
+    letterSpacing: 0.5,
+    marginBottom: 10,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  viewAllText: {
-    fontSize: 12,
-    fontWeight: '600',
+  sectionActionText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#2563EB',
   },
   metricRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 10,
   },
   metricHalf: {
     flex: 1,
   },
-  portfolioCard: {
+  todayCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  portfolioRow: {
+  todayHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
   },
-  portfolioStat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#E2E8F0',
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 22,
+  todayTitle: {
+    fontSize: 14,
     fontWeight: '800',
+    color: '#0F172A',
   },
-  statSub: {
-    fontSize: 11,
-    color: '#94A3B8',
+  todaySubtitle: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  todayBadge: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  todayBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  todayProgressTrack: {
+    height: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  todayProgressFill: {
+    height: '100%',
+    backgroundColor: '#059669',
+    borderRadius: 4,
+  },
+  todayStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  todayStatLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  todayStatVal: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0F172A',
     marginTop: 2,
   },
-  listContainer: {
+  dueList: {
+    gap: 8,
+  },
+  emptyDueCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    overflow: 'hidden',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
   },
-  urgentItem: {
+  emptyDueText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  dueCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 10,
+  },
+  dueLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    gap: 10,
+    flex: 1,
   },
-  urgentIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+  dueAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  urgentDetails: {
+  dueAvatarText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  dueBorrowerName: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  dueLoanSub: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  dueRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  dueAmount: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  btnQuickCollect: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  btnQuickCollectText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  vaultCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginBottom: 14,
+  },
+  vaultTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  vaultTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.6,
+  },
+  vaultAmount: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  vaultSub: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  vaultBtnCol: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  btnInject: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  btnInjectText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  btnExpense: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  btnExpenseText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  settlementBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  settlementLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     flex: 1,
   },
-  urgentName: {
-    fontSize: 14,
+  settlementText: {
+    fontSize: 11,
     fontWeight: '700',
     color: '#0F172A',
   },
-  urgentMeta: {
+  settlementArrow: {
     fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  urgentAmountBox: {
-    alignItems: 'flex-end',
-  },
-  urgentAmount: {
-    fontSize: 14,
     fontWeight: '800',
-    color: '#0F172A',
-  },
-  dueBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  dueBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
+    color: '#2563EB',
   },
 });
 
