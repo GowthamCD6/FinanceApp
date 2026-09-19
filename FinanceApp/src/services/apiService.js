@@ -196,6 +196,57 @@ class ApiService {
     });
     return res.data;
   }
+
+  // 8. LENDING CONFIG & INTEREST RATES
+  async getLendingConfig(orgId = 1) {
+    const res = await this.request(`/organizations/${orgId}/lending-config`);
+    return res.data || res;
+  }
+
+  async updateLendingConfig(orgId = 1, config) {
+    const res = await this.request(`/organizations/${orgId}/lending-config`, {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+    return res.data || res;
+  }
+
+  // 9. BORROWERS / USERS MANAGEMENT
+  async getUsers(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const endpoint = queryString ? `/users?${queryString}` : '/users';
+    const res = await this.request(endpoint);
+    return res.data?.users || res.data || res || [];
+  }
+
+  async getUserById(id) {
+    const res = await this.request(`/users/${id}`);
+    return res.data || res;
+  }
+
+  async createUser(userData) {
+    const res = await this.request('/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+    return res.data || res;
+  }
+
+  async updateUser(id, userData) {
+    const res = await this.request(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+    return res.data || res;
+  }
+
+  async updateUserStatus(id, status, reason = '') {
+    const res = await this.request(`/users/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, reason }),
+    });
+    return res.data || res;
+  }
 }
 
 export const apiService = new ApiService();

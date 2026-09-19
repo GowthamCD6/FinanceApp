@@ -28,12 +28,7 @@ import SuperAdminMoreModal from '../../pages/superadmin/modal/more';
 import MoreModal from '../../pages/Admin/Modals/more';
 import AddU from '../../pages/Admin/Modals/page/AddUser/AddU';
 import ManageU from '../../pages/Admin/Modals/page/ManageUser/ManageU';
-import DisburseLoanModal from '../../pages/Admin/Modals/page/disburseloan/DisburseLoanModal';
-import CollectPaymentModal from '../../pages/Admin/Modals/page/collect/CollectPaymentModal';
-import RecordExpenseModal from '../../pages/Admin/Modals/page/expense/RecordExpenseModal';
-import InjectCapitalModal from '../../pages/Admin/Modals/page/capital/InjectCapitalModal';
-import DayEndSettlementModal from '../../pages/Admin/Modals/page/settlement/DayEndSettlementModal';
-import LoanLedgerModal from '../../pages/Admin/Modals/page/ledger/LoanLedgerModal';
+import InterestRatesModal from '../../pages/Admin/Modals/page/InterestRates/InterestRatesModal';
 
 import AdminDashboard from '../../pages/Admin/pages/Dashboard/Dashboard';
 import CustomersScreen from '../../pages/Admin/pages/Customers/CustomersScreen';
@@ -61,11 +56,17 @@ export const Routes = () => {
 
   // Modal state
   const [activeModal, setActiveModal] = useState(null);
-  const [modalTargetItem, setModalTargetItem] = useState(null);
 
   // Selected item state for detail views
   const [selectedLoanId, setSelectedLoanId] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+
+  // Handle Tab navigation
+  const handleTabPress = (tabId) => {
+    setActiveTab(tabId);
+    setSelectedLoanId(null);
+    setSelectedCustomerId(null);
+  };
 
   // If not signed in, show Fronter Login
   if (!isAuthenticated) {
@@ -77,95 +78,38 @@ export const Routes = () => {
     );
   }
 
-  const handleTabPress = (tabId) => {
-    setActiveTab(tabId);
-  };
-
-  const getHeaderTitle = () => {
-    if (currentRole === 'SUPER_ADMIN') {
-      if (activeTab === 'dashboard') return 'Super Admin • Executive Core';
-      if (activeTab === 'loans') return 'Master Loan Book';
-      if (activeTab === 'customers') return 'Borrowers Directory';
-      if (activeTab === 'fund') return 'Central Fund Vault';
-      if (activeTab === 'reports') return 'Executive Reports';
-      if (activeTab === 'expenses') return 'Operating Expenses';
-      if (activeTab === 'audit') return 'Master Audit Log';
-      if (activeTab === 'loan_detail') return 'Loan Overview';
-      if (activeTab === 'customer_detail') return 'Borrower Credit Profile';
-      if (activeTab === 'profile') return 'Executive Profile';
-      return 'Super Admin Portal';
-    }
-
-    if (currentRole === 'ADMIN') {
-      if (activeTab === 'dashboard') return currentOrganization?.name || 'Apex Microfinance';
-      if (activeTab === 'customers') return 'Borrowers Directory';
-      if (activeTab === 'reports') return 'Daily Reports';
-      if (activeTab === 'profile') return 'Branch Admin Profile';
-      return 'Branch Admin Portal';
-    }
-
-    // USER
-    if (activeTab === 'dashboard') return 'Borrower Portal';
-    if (activeTab === 'loans') return 'My Active Loans';
-    if (activeTab === 'payments') return 'Payment Receipts';
-    if (activeTab === 'profile') return 'My Profile';
-    return 'Finance App';
-  };
-
-  const handleHeaderBack = () => {
-    if (activeTab === 'loan_detail') {
-      setActiveTab('loans');
-    } else if (activeTab === 'customer_detail') {
-      setActiveTab('customers');
-    } else if (activeTab === 'audit') {
-      setActiveTab('fund');
-    } else if (activeTab === 'expenses') {
-      setActiveTab('dashboard');
-    } else {
-      setActiveTab('dashboard');
-    }
-  };
-
-  const isDetailOrSubScreen = ['loan_detail', 'customer_detail', 'audit', 'expenses'].includes(activeTab);
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Clean Header */}
-      {activeTab === 'dashboard' && !isDetailOrSubScreen ? (
-        <Header
-          title={getHeaderTitle()}
-          showBackButton={false}
-          showDivider={true}
-          rightComponent={
+      {/* Top Header */}
+      <Header
+        title={
+          currentRole === 'SUPER_ADMIN'
+            ? 'Executive Portal'
+            : currentRole === 'ADMIN'
+            ? currentOrganization?.name || 'Admin Console'
+            : currentOrganization?.name || 'Borrower Portal'
+        }
+        showBackButton={false}
+        rightComponent={
+          organizations && organizations.length > 1 ? (
             <TouchableOpacity
               style={styles.tenantPill}
               onPress={() => {
-                if (organizations?.length > 1) {
-                  const currentIndex = organizations.findIndex((o) => o.id === currentOrganization?.id);
-                  const nextIndex = (currentIndex + 1) % organizations.length;
-                  switchOrganization(organizations[nextIndex].id);
-                }
+                const nextOrg = organizations.find((o) => o.id !== currentOrganization?.id) || organizations[0];
+                switchOrganization(nextOrg.id);
               }}
-              activeOpacity={0.8}
             >
               <Text style={styles.tenantPillText}>
-                {currentOrganization?.code || (currentRole === 'SUPER_ADMIN' ? 'SUPER-ADMIN' : 'ORG-APEX')}
+                {currentOrganization?.code || 'Switch Org'}
               </Text>
             </TouchableOpacity>
-          }
-        />
-      ) : (
-        <Header
-          title={getHeaderTitle()}
-          onBack={handleHeaderBack}
-          showBackButton={true}
-          showDivider={true}
-        />
-      )}
+          ) : null
+        }
+      />
 
-      {/* Screen Viewport */}
+      {/* Main Screen Body based on Role & Active Tab */}
       <View style={styles.viewport}>
         {/* SUPER ADMIN SCREENS */}
         {currentRole === 'SUPER_ADMIN' && (
@@ -177,82 +121,63 @@ export const Routes = () => {
                   else if (page === 'customers') setActiveTab('customers');
                   else if (page === 'fund') setActiveTab('fund');
                   else if (page === 'reports') setActiveTab('reports');
-                  else if (page === 'expenses') setActiveTab('expenses');
                   else if (page === 'audit') setActiveTab('audit');
-                  else if (page === 'collections') setActiveTab('reports');
-                  else setActiveTab(page);
+                  else if (page === 'expenses') setActiveTab('expenses');
+                }}
+                onOpenLoan={(id) => {
+                  setSelectedLoanId(id);
+                  setActiveTab('loan_detail');
                 }}
               />
             )}
 
             {activeTab === 'loans' && (
               <SuperAdminLoans
-                onSelectLoan={(loan) => {
-                  setSelectedLoanId(loan?.id || loan?.loan_number);
+                onOpenLoanDetail={(loan) => {
+                  setSelectedLoanId(loan?.id || loan);
                   setActiveTab('loan_detail');
+                }}
+              />
+            )}
+
+            {activeTab === 'loan_detail' && selectedLoanId && (
+              <SuperAdminLoanDetail
+                loanId={selectedLoanId}
+                onBack={() => {
+                  setSelectedLoanId(null);
+                  setActiveTab('loans');
                 }}
               />
             )}
 
             {activeTab === 'customers' && (
               <SuperAdminCustomers
-                onSelectCustomer={(cust) => {
-                  setSelectedCustomerId(cust?.id);
+                onOpenCustomerDetail={(customer) => {
+                  setSelectedCustomerId(customer?.id || customer);
                   setActiveTab('customer_detail');
                 }}
               />
             )}
 
-            {activeTab === 'fund' && (
-              <SuperAdminFund
-                onOpenAudit={() => setActiveTab('audit')}
-              />
-            )}
-
-            {activeTab === 'reports' && (
-              <SuperAdminReports />
-            )}
-
-            {activeTab === 'expenses' && (
-              <SuperAdminExpenses />
-            )}
-
-            {activeTab === 'audit' && (
-              <SuperAdminAudit
-                onBack={() => setActiveTab('fund')}
-              />
-            )}
-
-            {activeTab === 'loan_detail' && (
-              <SuperAdminLoanDetail
-                loanId={selectedLoanId}
-                onBack={() => setActiveTab('loans')}
-                onNavigateToCustomer={(cust) => {
-                  setSelectedCustomerId(typeof cust === 'object' ? cust.id : cust);
-                  setActiveTab('customer_detail');
-                }}
-                onOpenAudit={() => setActiveTab('audit')}
-              />
-            )}
-
-            {activeTab === 'customer_detail' && (
+            {activeTab === 'customer_detail' && selectedCustomerId && (
               <SuperAdminCustomerDetail
                 customerId={selectedCustomerId}
-                onBack={() => setActiveTab('customers')}
-                onNavigateToLoan={(loan) => {
-                  setSelectedLoanId(typeof loan === 'object' ? loan.id : loan);
-                  setActiveTab('loan_detail');
+                onBack={() => {
+                  setSelectedCustomerId(null);
+                  setActiveTab('customers');
                 }}
               />
             )}
 
-            {activeTab === 'profile' && (
-              <AdminProfile />
-            )}
+            {activeTab === 'fund' && <SuperAdminFund />}
+            {activeTab === 'reports' && <SuperAdminReports />}
+            {activeTab === 'audit' && <SuperAdminAudit />}
+            {activeTab === 'expenses' && <SuperAdminExpenses />}
+            {activeTab === 'profile' && <SuperAdminProfile />}
           </>
         )}
 
-        {/* BRANCH ADMIN SCREENS */}
+        {/* ADMIN SCREENS */}
         {currentRole === 'ADMIN' && (
           <>
             {activeTab === 'dashboard' && (
@@ -264,39 +189,14 @@ export const Routes = () => {
                 }}
                 onOpenAddUser={() => setActiveModal('ADD_USER')}
                 onOpenManageUsers={() => setActiveModal('MANAGE_USERS')}
-                onOpenDisburse={(cust) => {
-                  setModalTargetItem(cust || null);
-                  setActiveModal('DISBURSE_LOAN');
-                }}
-                onOpenCollect={(item) => {
-                  setModalTargetItem(item || null);
-                  setActiveModal('COLLECT');
-                }}
-                onOpenExpense={() => setActiveModal('EXPENSE')}
-                onOpenCapital={() => setActiveModal('CAPITAL')}
-                onOpenSettlement={() => setActiveModal('SETTLEMENT')}
-                onOpenLedger={(loan) => {
-                  setModalTargetItem(loan);
-                  setActiveModal('LEDGER');
-                }}
+                onOpenInterestRates={() => setActiveModal('INTEREST_RATES')}
               />
             )}
 
             {activeTab === 'customers' && (
               <CustomersScreen
-                onOpenDisburse={(cust) => {
-                  setModalTargetItem(cust || null);
-                  setActiveModal('DISBURSE_LOAN');
-                }}
-                onOpenCollect={(item) => {
-                  setModalTargetItem(item || null);
-                  setActiveModal('COLLECT');
-                }}
-                onOpenLedger={(loan) => {
-                  setModalTargetItem(loan);
-                  setActiveModal('LEDGER');
-                }}
                 onOpenAddBorrower={() => setActiveModal('ADD_USER')}
+                onOpenManageUsers={() => setActiveModal('MANAGE_USERS')}
               />
             )}
 
@@ -356,22 +256,12 @@ export const Routes = () => {
           onClose={() => setActiveModal(null)}
           onAction={(actionId) => {
             setActiveModal(null);
-            if (actionId === 'disburse_loan') {
-              setModalTargetItem(null);
-              setTimeout(() => setActiveModal('DISBURSE_LOAN'), 200);
-            } else if (actionId === 'collect_payment') {
-              setModalTargetItem(null);
-              setTimeout(() => setActiveModal('COLLECT'), 200);
-            } else if (actionId === 'record_expense') {
-              setTimeout(() => setActiveModal('EXPENSE'), 200);
-            } else if (actionId === 'inject_capital') {
-              setTimeout(() => setActiveModal('CAPITAL'), 200);
-            } else if (actionId === 'day_settlement') {
-              setTimeout(() => setActiveModal('SETTLEMENT'), 200);
-            } else if (actionId === 'add_user') {
+            if (actionId === 'add_user') {
               setTimeout(() => setActiveModal('ADD_USER'), 200);
             } else if (actionId === 'manage_users') {
               setTimeout(() => setActiveModal('MANAGE_USERS'), 200);
+            } else if (actionId === 'interest_rates') {
+              setTimeout(() => setActiveModal('INTEREST_RATES'), 200);
             }
           }}
         />
@@ -389,40 +279,7 @@ export const Routes = () => {
         />
       )}
 
-      {/* Admin Operations Modals */}
-      <DisburseLoanModal
-        visible={activeModal === 'DISBURSE_LOAN'}
-        onClose={() => {
-          setActiveModal(null);
-          setModalTargetItem(null);
-        }}
-        initialCustomer={modalTargetItem}
-      />
-
-      <CollectPaymentModal
-        visible={activeModal === 'COLLECT'}
-        onClose={() => {
-          setActiveModal(null);
-          setModalTargetItem(null);
-        }}
-        initialItem={modalTargetItem}
-      />
-
-      <RecordExpenseModal
-        visible={activeModal === 'EXPENSE'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <InjectCapitalModal
-        visible={activeModal === 'CAPITAL'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <DayEndSettlementModal
-        visible={activeModal === 'SETTLEMENT'}
-        onClose={() => setActiveModal(null)}
-      />
-
+      {/* Active Admin Modals */}
       <AddU
         visible={activeModal === 'ADD_USER'}
         onClose={() => setActiveModal(null)}
@@ -437,13 +294,9 @@ export const Routes = () => {
         }}
       />
 
-      <LoanLedgerModal
-        visible={activeModal === 'LEDGER'}
-        onClose={() => {
-          setActiveModal(null);
-          setModalTargetItem(null);
-        }}
-        loan={modalTargetItem}
+      <InterestRatesModal
+        visible={activeModal === 'INTEREST_RATES'}
+        onClose={() => setActiveModal(null)}
       />
     </SafeAreaView>
   );
