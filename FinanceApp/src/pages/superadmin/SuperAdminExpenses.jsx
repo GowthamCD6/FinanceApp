@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR, formatDate } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animation/FadeInView';
 import AddExpenseModal from './modal/AddExpenseModal';
 
 export const SuperAdminExpenses = () => {
@@ -39,18 +38,16 @@ export const SuperAdminExpenses = () => {
         <Text style={styles.countText}>{expenses.length} Expense Entries Logged</Text>
 
         {expenses.map((e, idx) => (
-          <FadeInView key={e.id || idx} delay={idx * 30}>
-            <View style={styles.expenseCard}>
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={styles.expCategory}>{e.category}</Text>
-                  <Text style={styles.expDate}>{formatDate(e.date || '2026-09-08')} • Paid via {e.payment_method || e.account || 'CASH'}</Text>
-                </View>
-                <Text style={styles.expAmount}>−{formatINR(e.amount)}</Text>
+          <View key={e.id || idx} style={styles.expenseCard}>
+            <View style={styles.cardHeader}>
+              <View>
+                <Text style={styles.expCategory}>{e.category}</Text>
+                <Text style={styles.expDate}>{formatDate(e.date || '2026-09-08')} • Paid via {e.payment_method || e.account || 'CASH'}</Text>
               </View>
-              {e.description && <Text style={styles.expDesc}>{e.description}</Text>}
+              <Text style={styles.expAmount}>−{formatINR(e.amount)}</Text>
             </View>
-          </FadeInView>
+            {e.description && <Text style={styles.expDesc}>{e.description}</Text>}
+          </View>
         ))}
       </ScrollView>
 

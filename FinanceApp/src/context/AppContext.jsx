@@ -30,6 +30,8 @@ export const AppProvider = ({ children }) => {
   const [expenses, setExpenses] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loanProducts, setLoanProducts] = useState([]);
+  const [defaultCategories, setDefaultCategories] = useState([]);
+  const [lendingConfig, setLendingConfig] = useState(null);
   const [isServerConnected, setIsServerConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -42,13 +44,15 @@ export const AppProvider = ({ children }) => {
   const fetchAllLiveData = async () => {
     try {
       setLoading(true);
-      const [orgsData, custsData, loansData, fundData, txData, prodsData] = await Promise.all([
+      const [orgsData, custsData, loansData, fundData, txData, prodsData, catsData, lendingCfgData] = await Promise.all([
         apiService.getOrganizations().catch(() => []),
         apiService.getCustomers().catch(() => []),
         apiService.getLoans().catch(() => []),
         apiService.getFundSummary().catch(() => null),
         apiService.getFundCirculationTrail().catch(() => []),
         apiService.getProducts().catch(() => []),
+        apiService.getDefaultCategories().catch(() => []),
+        apiService.getLendingConfig().catch(() => null),
       ]);
 
       const orgs = Array.isArray(orgsData) ? orgsData : [];
@@ -57,11 +61,25 @@ export const AppProvider = ({ children }) => {
         setCurrentOrganization(orgs[0]);
       }
 
-      const rawCusts = Array.isArray(custsData) ? custsData : (custsData?.customers || []);
-      setCustomers(rawCusts.length > 0 ? rawCusts : INITIAL_DEMO_CUSTOMERS);
+      // Live Customers array directly from backend (format normalization)
+      const rawCusts = Array.isArray(custsData) ? custsData : (custsData?.customers || custsData?.data?.customers || custsData?.data || []);
+      const normalizedCusts = rawCusts.map((c) => ({
+        ...c,
+        name: c.name || c.full_name || 'Customer',
+        phone: c.phone || '',
+      }));
+      setCustomers(normalizedCusts.length > 0 ? normalizedCusts : rawCusts);
 
-      const rawLoans = Array.isArray(loansData) ? loansData : (loansData?.loans || []);
-      setLoans(rawLoans.length > 0 ? rawLoans : INITIAL_DEMO_LOANS);
+      // Live Loans array directly from backend
+      const rawLoans = Array.isArray(loansData) ? loansData : (loansData?.loans || loansData?.data?.loans || loansData?.data || []);
+      setLoans(rawLoans);
+
+      // Live Default Categories & Lending Configurations
+      const rawCats = Array.isArray(catsData) ? catsData : (catsData?.data || []);
+      setDefaultCategories(rawCats);
+      if (lendingCfgData) {
+        setLendingConfig(lendingCfgData?.data || lendingCfgData);
+      }
 
       setFundTransactions(Array.isArray(txData) ? txData : []);
       setLoanProducts(Array.isArray(prodsData) ? prodsData : []);
@@ -96,6 +114,12 @@ export const AppProvider = ({ children }) => {
         if (storedToken && storedUserData) {
           const user = JSON.parse(storedUserData);
           apiService.setToken(storedToken);
+          const effectiveOrgId = user?.organization_id || user?.org_id || user?.organizationId || 2;
+          apiService.setOrganizationId(effectiveOrgId);
+          if (user?.branch_id) {
+            apiService.setBranchId(user.branch_id);
+          }
+
           setLoggedInUser(user);
           setIsAuthenticated(true);
 
@@ -136,6 +160,11 @@ export const AppProvider = ({ children }) => {
       if (serverRes && (serverRes.token || serverRes.data?.token)) {
         const token = serverRes.token || serverRes.data?.token;
         const user = serverRes.user || serverRes.data?.user;
+        const effectiveOrgId = user?.organization_id || user?.org_id || user?.organizationId || 2;
+        apiService.setOrganizationId(effectiveOrgId);
+        if (user?.branch_id) {
+          apiService.setBranchId(user.branch_id);
+        }
         const roles = user?.roles || [user?.role_type || user?.role];
         const roleToSet = roles?.includes('SUPER_ADMIN')
           ? 'SUPER_ADMIN'
@@ -386,10 +415,18 @@ export const AppProvider = ({ children }) => {
         addUser,
         updateCustomer,
         disburseLoan,
-        collectPayment,
-        injectCapital,
-        addCapital: injectCapital,
-        addExpense,
+        defaultCategories,
+        lendingConfig,
+        updateDefaultCategory: async (code, data) => {
+          const res = await apiService.updateDefaultCategory(code, data);
+          await fetchAllLiveData();
+          return res;
+        },
+        updateLendingConfig: async (orgId, config) => {
+          const res = await apiService.updateLendingConfig(orgId, config);
+          await fetchAllLiveData();
+          return res;
+        },
         refreshData: fetchAllLiveData,
       }}
     >

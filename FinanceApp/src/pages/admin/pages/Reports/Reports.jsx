@@ -223,7 +223,7 @@ const AdminReports = () => {
           }}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="calendar-blank" size={14} color={activeTab === 'WEEKLY' ? '#2563EB' : '#64748B'} />
+          <MaterialCommunityIcons name="calendar-blank" size={15} color={activeTab === 'WEEKLY' ? '#2842C4' : '#64748B'} />
           <Text style={[styles.tabButtonText, activeTab === 'WEEKLY' && styles.tabButtonTextActive]}>
             Weekly ({weeklyList.length})
           </Text>
@@ -237,7 +237,7 @@ const AdminReports = () => {
           }}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="wallet-outline" size={14} color={activeTab === 'DAILY' ? '#059669' : '#64748B'} />
+          <MaterialCommunityIcons name="wallet-outline" size={15} color={activeTab === 'DAILY' ? '#2842C4' : '#64748B'} />
           <Text style={[styles.tabButtonText, activeTab === 'DAILY' && styles.tabButtonTextActive]}>
             Daily ({dailyList.length})
           </Text>
@@ -250,8 +250,8 @@ const AdminReports = () => {
           }}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="chart-pie" size={14} color={activeTab === 'PNL' ? '#7C3AED' : '#64748B'} />
-          <Text style={[styles.tabButtonText, activeTab === 'PNL' && { color: '#7C3AED' }]}>
+          <MaterialCommunityIcons name="chart-pie" size={15} color={activeTab === 'PNL' ? '#2842C4' : '#64748B'} />
+          <Text style={[styles.tabButtonText, activeTab === 'PNL' && styles.tabButtonTextActive]}>
             P&L Margin
           </Text>
         </TouchableOpacity>
@@ -649,9 +649,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   tabButtonActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: '#93C5FD',
+    borderColor: '#C7D2FE',
   },
   tabButtonText: {
     fontSize: 12,
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   tabButtonTextActive: {
-    color: '#1E40AF',
+    color: '#2842C4',
   },
   metricRow: {
     flexDirection: 'row',
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   chipActive: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#2842C4',
   },
   chipText: {
     fontSize: 11,
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#EEF2FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#2842C4',
   },
   cardTitleBox: {
     flex: 1,
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#2842C4',
   },
   cardActions: {
     flexDirection: 'row',
@@ -845,14 +845,14 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#2842C4',
     borderRadius: 3,
   },
   collectBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#2842C4',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
@@ -939,8 +939,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modeBtnActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
+    backgroundColor: '#2842C4',
+    borderColor: '#2842C4',
   },
   modeBtnText: {
     fontSize: 11,

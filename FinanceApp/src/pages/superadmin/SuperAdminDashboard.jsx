@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animation/FadeInView';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
@@ -146,51 +145,47 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Executive Welcome & Mode Banner */}
-      <FadeInView delay={100}>
-        <View style={styles.roleBanner}>
-          <View>
-            <Text style={styles.roleEyebrow}>SUPER ADMIN • EXECUTIVE GOVERNANCE</Text>
-            <Text style={styles.roleTitle}>Central Fund & Master Portfolio</Text>
-          </View>
-          <Badge label="Complete Access" variant="primary" />
+      <View style={styles.roleBanner}>
+        <View>
+          <Text style={styles.roleEyebrow}>SUPER ADMIN • EXECUTIVE GOVERNANCE</Text>
+          <Text style={styles.roleTitle}>Central Fund & Master Portfolio</Text>
         </View>
-      </FadeInView>
+        <Badge label="Complete Access" variant="primary" />
+      </View>
 
       {/* Central Circulation Mechanism Card */}
-      <FadeInView delay={180}>
-        <View style={styles.circCard}>
-          <View style={styles.circHeader}>
-            <MaterialCommunityIcons name="sync" size={18} color="#2563EB" />
-            <Text style={styles.circHeading}>Central Fund Circulation Mechanism</Text>
-          </View>
-          <View style={styles.circRow}>
-            <View style={styles.circCol}>
-              <Text style={styles.circLabel}>Total Capital</Text>
-              <Text style={styles.circVal}>{formatINR(fundMetrics.totalCapital)}</Text>
-            </View>
-            <MaterialCommunityIcons name="arrow-right" size={16} color="#94A3B8" />
-            <View style={styles.circCol}>
-              <Text style={styles.circLabel}>Available Cash</Text>
-              <Text style={[styles.circVal, { color: '#059669' }]}>
-                {formatINR(fundMetrics.availableCash)}
-              </Text>
-            </View>
-            <MaterialCommunityIcons name="arrow-right" size={16} color="#94A3B8" />
-            <View style={styles.circCol}>
-              <Text style={styles.circLabel}>Currently Lent</Text>
-              <Text style={[styles.circVal, { color: '#2563EB' }]}>
-                {formatINR(fundMetrics.moneyCurrentlyLent)}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.circSub}>
-            Principal recovered from installments is recycled directly into Available Cash for subsequent lending cycles.
-          </Text>
+      <View style={styles.circCard}>
+        <View style={styles.circHeader}>
+          <MaterialCommunityIcons name="sync" size={18} color="#2563EB" />
+          <Text style={styles.circHeading}>Central Fund Circulation Mechanism</Text>
         </View>
-      </FadeInView>
+        <View style={styles.circRow}>
+          <View style={styles.circCol}>
+            <Text style={styles.circLabel}>Total Capital</Text>
+            <Text style={styles.circVal}>{formatINR(fundMetrics.totalCapital)}</Text>
+          </View>
+          <MaterialCommunityIcons name="arrow-right" size={16} color="#94A3B8" />
+          <View style={styles.circCol}>
+            <Text style={styles.circLabel}>Available Cash</Text>
+            <Text style={[styles.circVal, { color: '#059669' }]}>
+              {formatINR(fundMetrics.availableCash)}
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="arrow-right" size={16} color="#94A3B8" />
+          <View style={styles.circCol}>
+            <Text style={styles.circLabel}>Currently Lent</Text>
+            <Text style={[styles.circVal, { color: '#2563EB' }]}>
+              {formatINR(fundMetrics.moneyCurrentlyLent)}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.circSub}>
+          Principal recovered from installments is recycled directly into Available Cash for subsequent lending cycles.
+        </Text>
+      </View>
 
       {/* Key Super Admin Figures */}
-      <FadeInView delay={250}>
+      <View>
         <Text style={styles.sectionTitle}>Portfolio Balance Sheet</Text>
         <View style={styles.metricsList}>
           <MetricCard
@@ -226,10 +221,10 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
             onPress={() => onNavigate && onNavigate('loans')}
           />
         </View>
-      </FadeInView>
+      </View>
 
       {/* Collections & Profitability */}
-      <FadeInView delay={320}>
+      <View>
         <Text style={styles.sectionTitle}>Cash Flow & Profit Performance</Text>
         <View style={styles.metricsList}>
           <MetricCard
@@ -275,10 +270,10 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
             onPress={() => onNavigate && onNavigate('reports')}
           />
         </View>
-      </FadeInView>
+      </View>
 
       {/* Loan Status Snapshot */}
-      <FadeInView delay={400}>
+      <View>
         <Text style={styles.sectionTitle}>Loan Portfolio Health</Text>
         <View style={styles.healthRow}>
           <View style={[styles.healthCard, { borderTopColor: '#2563EB' }]}>
@@ -294,10 +289,10 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
             <Text style={styles.healthLabel}>Overdue</Text>
           </View>
         </View>
-      </FadeInView>
+      </View>
 
       {/* Super Admin Quick Navigation Controls */}
-      <FadeInView delay={480}>
+      <View>
         <Text style={styles.sectionTitle}>Operational Hubs</Text>
         <View style={styles.controlsGrid}>
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('customers')} activeOpacity={0.7}>
@@ -324,7 +319,7 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
             <Text style={styles.controlSub}>P&L, Cash Velocity & PAR</Text>
           </TouchableOpacity>
         </View>
-      </FadeInView>
+      </View>
     </ScrollView>
   );
 };

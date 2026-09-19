@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animation/FadeInView';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
@@ -73,196 +72,184 @@ export const SuperAdminReports = () => {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* 1. FUND CIRCULATION REPORT */}
         {activeReport === 'CIRCULATION' && (
-          <FadeInView delay={100}>
-            <View style={styles.card}>
-              <Text style={styles.reportEyebrow}>FUND RE-CIRCULATION</Text>
-              <Text style={styles.reportTitle}>Continuous Capital Velocity</Text>
-              <Text style={styles.reportSub}>Continuous capital recycling into subsequent loans</Text>
+          <View style={styles.card}>
+            <Text style={styles.reportEyebrow}>FUND RE-CIRCULATION</Text>
+            <Text style={styles.reportTitle}>Continuous Capital Velocity</Text>
+            <Text style={styles.reportSub}>Continuous capital recycling into subsequent loans</Text>
 
-              <View style={styles.flowChain}>
-                <View style={styles.flowStep}>
-                  <Text style={styles.stepTitle}>1. Initial Equity Capital Pool</Text>
-                  <Text style={styles.stepAmount}>+₹10,00,000</Text>
-                  <Text style={styles.stepDesc}>Injected into Central Fund Cash Pool</Text>
-                </View>
+            <View style={styles.flowChain}>
+              <View style={styles.flowStep}>
+                <Text style={styles.stepTitle}>1. Initial Equity Capital Pool</Text>
+                <Text style={styles.stepAmount}>+₹10,00,000</Text>
+                <Text style={styles.stepDesc}>Injected into Central Fund Cash Pool</Text>
+              </View>
 
-                <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
+              <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
 
-                <View style={styles.flowStep}>
-                  <Text style={styles.stepTitle}>2. Borrower Loans Disbursed</Text>
-                  <Text style={[styles.stepAmount, { color: '#2563EB' }]}>−₹7,60,000 Active Principal</Text>
-                  <Text style={styles.stepDesc}>Earning 10% (Weekly) & 12.5% (Daily)</Text>
-                </View>
+              <View style={styles.flowStep}>
+                <Text style={styles.stepTitle}>2. Borrower Loans Disbursed</Text>
+                <Text style={[styles.stepAmount, { color: '#2563EB' }]}>−₹7,60,000 Active Principal</Text>
+                <Text style={styles.stepDesc}>Earning 10% (Weekly) & 12.5% (Daily)</Text>
+              </View>
 
-                <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
+              <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
 
-                <View style={styles.flowStep}>
-                  <Text style={styles.stepTitle}>3. Installment Recoveries Recycled</Text>
-                  <Text style={[styles.stepAmount, { color: '#059669' }]}>+₹5,20,000 Recovered</Text>
-                  <Text style={styles.stepDesc}>Principal ₹4,72,000 (Recycled) + Fee Income ₹48,000</Text>
-                </View>
+              <View style={styles.flowStep}>
+                <Text style={styles.stepTitle}>3. Installment Recoveries Recycled</Text>
+                <Text style={[styles.stepAmount, { color: '#059669' }]}>+₹5,20,000 Recovered</Text>
+                <Text style={styles.stepDesc}>Principal ₹4,72,000 (Recycled) + Fee Income ₹48,000</Text>
+              </View>
 
-                <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
+              <MaterialCommunityIcons name="arrow-down" size={18} color="#94A3B8" />
 
-                <View style={styles.flowStep}>
-                  <Text style={styles.stepTitle}>4. Central Fund Pool Recharged</Text>
-                  <Text style={[styles.stepAmount, { color: '#D97706' }]}>₹2,40,000 Available Cash</Text>
-                  <Text style={styles.stepDesc}>Ready for immediate new loan originations</Text>
-                </View>
+              <View style={styles.flowStep}>
+                <Text style={styles.stepTitle}>4. Central Fund Pool Recharged</Text>
+                <Text style={[styles.stepAmount, { color: '#D97706' }]}>₹2,40,000 Available Cash</Text>
+                <Text style={styles.stepDesc}>Ready for immediate new loan originations</Text>
               </View>
             </View>
-          </FadeInView>
+          </View>
         )}
 
         {/* 2. COLLECTION REPORT */}
         {activeReport === 'COLLECTIONS' && (
-          <FadeInView delay={100}>
-            <View style={styles.card}>
-              <Text style={styles.reportEyebrow}>COLLECTION PERFORMANCE</Text>
-              <Text style={styles.reportTitle}>Field Collections & Target Ratios</Text>
-              <Text style={styles.reportSub}>Daily and monthly recovery efficiency</Text>
+          <View style={styles.card}>
+            <Text style={styles.reportEyebrow}>COLLECTION PERFORMANCE</Text>
+            <Text style={styles.reportTitle}>Field Collections & Target Ratios</Text>
+            <Text style={styles.reportSub}>Daily and monthly recovery efficiency</Text>
 
-              <View style={styles.summaryTable}>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Today's Field Collection</Text>
-                  <Text style={[styles.tVal, { color: '#059669' }]}>{formatINR(fundMetrics.todayCollection)}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Today's Scheduled Target</Text>
-                  <Text style={styles.tVal}>{formatINR(fundMetrics.todayExpected)}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Pending Collection Remaining</Text>
-                  <Text style={[styles.tVal, { color: '#DC2626' }]}>{formatINR(fundMetrics.pendingCollection)}</Text>
-                </View>
-                <View style={[styles.tableRow, styles.subtotal]}>
-                  <Text style={styles.subLabel}>This Month's Total Inflow</Text>
-                  <Text style={styles.subVal}>{formatINR(fundMetrics.thisMonthCollection)}</Text>
-                </View>
+            <View style={styles.summaryTable}>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Today's Field Collection</Text>
+                <Text style={[styles.tVal, { color: '#059669' }]}>{formatINR(fundMetrics.todayCollection)}</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Today's Scheduled Target</Text>
+                <Text style={styles.tVal}>{formatINR(fundMetrics.todayExpected)}</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Pending Collection Remaining</Text>
+                <Text style={[styles.tVal, { color: '#DC2626' }]}>{formatINR(fundMetrics.pendingCollection)}</Text>
+              </View>
+              <View style={[styles.tableRow, styles.subtotal]}>
+                <Text style={styles.subLabel}>This Month's Total Inflow</Text>
+                <Text style={styles.subVal}>{formatINR(fundMetrics.thisMonthCollection)}</Text>
               </View>
             </View>
-          </FadeInView>
+          </View>
         )}
 
         {/* 3. OUTSTANDING REPORT */}
         {activeReport === 'OUTSTANDING' && (
-          <FadeInView delay={100}>
-            <View style={styles.card}>
-              <Text style={styles.reportEyebrow}>PORTFOLIO AT RISK (PAR)</Text>
-              <Text style={styles.reportTitle}>Outstanding Balances by Borrower</Text>
-              <Text style={styles.reportSub}>Active balances awaiting collection</Text>
+          <View style={styles.card}>
+            <Text style={styles.reportEyebrow}>PORTFOLIO AT RISK (PAR)</Text>
+            <Text style={styles.reportTitle}>Outstanding Balances by Borrower</Text>
+            <Text style={styles.reportSub}>Active balances awaiting collection</Text>
 
-              {loans.filter((l) => (l.outstanding_amount || l.remainingAmount || 0) > 0).map((l, idx) => (
-                <View key={l.id || idx} style={styles.outItem}>
-                  <View style={styles.outHeader}>
-                    <Text style={styles.outCust}>{l.customer_name || l.customerName} ({l.loan_number || l.loanNumber})</Text>
-                    <Badge label={l.status} variant={l.status === 'OVERDUE' ? 'danger' : 'primary'} />
-                  </View>
-                  <View style={styles.outNums}>
-                    <Text style={styles.outNumText}>Contract: {formatINR(l.total_repayment_amount || l.totalRepayment)}</Text>
-                    <Text style={styles.outNumText}>Paid: {formatINR(l.total_paid || l.paidAmount || 0)}</Text>
-                    <Text style={[styles.outNumText, { color: '#D97706', fontWeight: '800' }]}>
-                      Due: {formatINR(l.outstanding_amount || l.remainingAmount)}
-                    </Text>
-                  </View>
+            {loans.filter((l) => (l.outstanding_amount || l.remainingAmount || 0) > 0).map((l, idx) => (
+              <View key={l.id || idx} style={styles.outItem}>
+                <View style={styles.outHeader}>
+                  <Text style={styles.outCust}>{l.customer_name || l.customerName} ({l.loan_number || l.loanNumber})</Text>
+                  <Badge label={l.status} variant={l.status === 'OVERDUE' ? 'danger' : 'primary'} />
                 </View>
-              ))}
-            </View>
-          </FadeInView>
+                <View style={styles.outNums}>
+                  <Text style={styles.outNumText}>Contract: {formatINR(l.total_repayment_amount || l.totalRepayment)}</Text>
+                  <Text style={styles.outNumText}>Paid: {formatINR(l.total_paid || l.paidAmount || 0)}</Text>
+                  <Text style={[styles.outNumText, { color: '#D97706', fontWeight: '800' }]}>
+                    Due: {formatINR(l.outstanding_amount || l.remainingAmount)}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
         )}
 
         {/* 4. LOAN REPORT */}
         {activeReport === 'LOANS' && (
-          <FadeInView delay={100}>
-            <View style={styles.card}>
-              <Text style={styles.reportEyebrow}>PORTFOLIO COMPOSITION</Text>
-              <Text style={styles.reportTitle}>Loan Status Distribution</Text>
-              <Text style={styles.reportSub}>Overall portfolio distribution across tenors</Text>
+          <View style={styles.card}>
+            <Text style={styles.reportEyebrow}>PORTFOLIO COMPOSITION</Text>
+            <Text style={styles.reportTitle}>Loan Status Distribution</Text>
+            <Text style={styles.reportSub}>Overall portfolio distribution across tenors</Text>
 
-              <View style={styles.summaryTable}>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Active Running Loans</Text>
-                  <Text style={[styles.tVal, { color: '#2563EB' }]}>{fundMetrics.activeLoans}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Completed / Settled Loans</Text>
-                  <Text style={[styles.tVal, { color: '#059669' }]}>{fundMetrics.completedLoans}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Overdue Delinquent Loans</Text>
-                  <Text style={[styles.tVal, { color: '#DC2626' }]}>{fundMetrics.overdueLoans}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Today's New Loans Disbursed</Text>
-                  <Text style={styles.tVal}>{fundMetrics.todayNewLoans}</Text>
-                </View>
+            <View style={styles.summaryTable}>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Active Running Loans</Text>
+                <Text style={[styles.tVal, { color: '#2563EB' }]}>{fundMetrics.activeLoans}</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Completed / Settled Loans</Text>
+                <Text style={[styles.tVal, { color: '#059669' }]}>{fundMetrics.completedLoans}</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Overdue Delinquent Loans</Text>
+                <Text style={[styles.tVal, { color: '#DC2626' }]}>{fundMetrics.overdueLoans}</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Today's New Loans Disbursed</Text>
+                <Text style={styles.tVal}>{fundMetrics.todayNewLoans}</Text>
               </View>
             </View>
-          </FadeInView>
+          </View>
         )}
 
         {/* 5. PROFIT REPORT */}
         {activeReport === 'PROFIT' && (
-          <FadeInView delay={100}>
-            <View style={styles.card}>
-              <Text style={styles.reportEyebrow}>FINANCIAL P&L</Text>
-              <Text style={styles.reportTitle}>Profit & Loss Statement</Text>
-              <Text style={styles.reportSub}>Lending Fee Revenue − Operating Expenses</Text>
+          <View style={styles.card}>
+            <Text style={styles.reportEyebrow}>FINANCIAL P&L</Text>
+            <Text style={styles.reportTitle}>Profit & Loss Statement</Text>
+            <Text style={styles.reportSub}>Lending Fee Revenue − Operating Expenses</Text>
 
-              <View style={styles.summaryTable}>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Lending Fee Contract Revenue</Text>
-                  <Text style={[styles.tVal, { color: '#059669' }]}>+{formatINR(fundMetrics.thisMonthIncome)}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Operational Field Expenses</Text>
-                  <Text style={[styles.tVal, { color: '#DC2626' }]}>−{formatINR(fundMetrics.thisMonthExpenses)}</Text>
-                </View>
-                <View style={[styles.tableRow, styles.profitHighlight]}>
-                  <Text style={styles.profitHighlightLabel}>Net Operating Profit</Text>
-                  <Text style={styles.profitHighlightVal}>+{formatINR(fundMetrics.netProfit)}</Text>
-                </View>
+            <View style={styles.summaryTable}>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Lending Fee Contract Revenue</Text>
+                <Text style={[styles.tVal, { color: '#059669' }]}>+{formatINR(fundMetrics.thisMonthIncome)}</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Operational Field Expenses</Text>
+                <Text style={[styles.tVal, { color: '#DC2626' }]}>−{formatINR(fundMetrics.thisMonthExpenses)}</Text>
+              </View>
+              <View style={[styles.tableRow, styles.profitHighlight]}>
+                <Text style={styles.profitHighlightLabel}>Net Operating Profit</Text>
+                <Text style={styles.profitHighlightVal}>+{formatINR(fundMetrics.netProfit)}</Text>
               </View>
             </View>
-          </FadeInView>
+          </View>
         )}
 
         {/* 6. CASH FLOW */}
         {activeReport === 'CASH_FLOW' && (
-          <FadeInView delay={100}>
-            <View style={styles.card}>
-              <Text style={styles.reportEyebrow}>CASH VELOCITY</Text>
-              <Text style={styles.reportTitle}>Monthly Cash Flow Statement</Text>
-              <Text style={styles.reportSub}>Opening Cash + Inflows − Outflows = Closing Cash</Text>
+          <View style={styles.card}>
+            <Text style={styles.reportEyebrow}>CASH VELOCITY</Text>
+            <Text style={styles.reportTitle}>Monthly Cash Flow Statement</Text>
+            <Text style={styles.reportSub}>Opening Cash + Inflows − Outflows = Closing Cash</Text>
 
-              <View style={styles.summaryTable}>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>Opening Cash Float</Text>
-                  <Text style={styles.tVal}>₹1,80,000</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>+ Principal Recoveries Recycled</Text>
-                  <Text style={[styles.tVal, { color: '#059669' }]}>+₹5,20,000</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>+ Lending Income</Text>
-                  <Text style={[styles.tVal, { color: '#059669' }]}>+₹85,000</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>− Loan Disbursements</Text>
-                  <Text style={[styles.tVal, { color: '#DC2626' }]}>−₹5,25,000</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.tLabel}>− Operating Expenses</Text>
-                  <Text style={[styles.tVal, { color: '#DC2626' }]}>−₹20,000</Text>
-                </View>
-                <View style={[styles.tableRow, styles.profitHighlight]}>
-                  <Text style={styles.profitHighlightLabel}>Closing Available Cash</Text>
-                  <Text style={styles.profitHighlightVal}>{formatINR(fundMetrics.availableCash)}</Text>
-                </View>
+            <View style={styles.summaryTable}>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>Opening Cash Float</Text>
+                <Text style={styles.tVal}>₹1,80,000</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>+ Principal Recoveries Recycled</Text>
+                <Text style={[styles.tVal, { color: '#059669' }]}>+₹5,20,000</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>+ Lending Income</Text>
+                <Text style={[styles.tVal, { color: '#059669' }]}>+₹85,000</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>− Loan Disbursements</Text>
+                <Text style={[styles.tVal, { color: '#DC2626' }]}>−₹5,25,000</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tLabel}>− Operating Expenses</Text>
+                <Text style={[styles.tVal, { color: '#DC2626' }]}>−₹20,000</Text>
+              </View>
+              <View style={[styles.tableRow, styles.profitHighlight]}>
+                <Text style={styles.profitHighlightLabel}>Closing Available Cash</Text>
+                <Text style={styles.profitHighlightVal}>{formatINR(fundMetrics.availableCash)}</Text>
               </View>
             </View>
-          </FadeInView>
+          </View>
         )}
       </ScrollView>
     </View>

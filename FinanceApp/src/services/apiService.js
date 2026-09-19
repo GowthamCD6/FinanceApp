@@ -4,10 +4,20 @@ class ApiService {
   constructor() {
     this.baseUrl = ENV.API_BASE_URL;
     this.token = null;
+    this.organizationId = null;
+    this.branchId = null;
   }
 
   setToken(token) {
     this.token = token;
+  }
+
+  setOrganizationId(orgId) {
+    this.organizationId = orgId;
+  }
+
+  setBranchId(branchId) {
+    this.branchId = branchId;
   }
 
   setBaseUrl(url) {
@@ -18,6 +28,8 @@ class ApiService {
     const headers = {
       'Content-Type': 'application/json',
       ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      ...(this.organizationId ? { 'x-organization-id': String(this.organizationId) } : {}),
+      ...(this.branchId && this.branchId !== 'ALL' ? { 'x-branch-id': String(this.branchId) } : {}),
       ...options.headers,
     };
 
@@ -76,6 +88,21 @@ class ApiService {
   // 2. CUSTOMERS
   async getCustomers() {
     const res = await this.request('/customers');
+    return res.data?.customers || res.data || [];
+  }
+
+  async getWeeklyCustomers() {
+    const res = await this.request('/customers/weekly-customers');
+    return res.data?.customers || res.data || [];
+  }
+
+  async getShopkeepers() {
+    const res = await this.request('/customers/shopkeepers');
+    return res.data?.customers || res.data || [];
+  }
+
+  async getMonthlyCustomers() {
+    const res = await this.request('/customers/monthly-customers');
     return res.data?.customers || res.data || [];
   }
 
@@ -221,6 +248,34 @@ class ApiService {
     const res = await this.request(`/organizations/${orgId}/lending-config`, {
       method: 'PUT',
       body: JSON.stringify(config),
+    });
+    return res.data || res;
+  }
+
+  async getDefaultCategories() {
+    const res = await this.request('/governance/categories');
+    return res.data || res || [];
+  }
+
+  async createDefaultCategory(data) {
+    const res = await this.request('/governance/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.data || res;
+  }
+
+  async updateDefaultCategory(code, data) {
+    const res = await this.request(`/governance/categories/${code}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return res.data || res;
+  }
+
+  async deleteDefaultCategory(code) {
+    const res = await this.request(`/governance/categories/${code}`, {
+      method: 'DELETE',
     });
     return res.data || res;
   }

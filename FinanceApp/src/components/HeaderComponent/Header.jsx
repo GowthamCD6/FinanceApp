@@ -6,21 +6,21 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
-import LeftArrowIcon from './LeftArrowIcon';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LeftArrowIcon from '../../assets/Icon/left-arrow.svg';
 
 const Header = ({
   title,
-  subtitle,
   onBack,
   showBackButton = true,
-  backIconWidth = 22,
-  backIconHeight = 22,
-  backIconFill = '#111827',
+  backIconWidth = 20,
+  backIconHeight = 20,
+  backIconFill = '#1F2937',
   titleStyle = {},
   headerStyle = {},
   showDivider = true,
   dividerStyle = {},
-  rightComponent = null,
+  rightComponent = null
 }) => {
   return (
     <View style={[styles.container, headerStyle]}>
@@ -31,31 +31,19 @@ const Header = ({
             onPress={onBack}
             style={styles.backButton}
             activeOpacity={0.6}
-            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
           >
             <LeftArrowIcon
-              size={backIconWidth || 22}
-              color={backIconFill || '#111827'}
+              width={backIconWidth}
+              height={backIconHeight}
+              fill={backIconFill}
+              marginTop={-10}
             />
           </TouchableOpacity>
         )}
 
-        <View style={[styles.titleContainer, !showBackButton && { marginLeft: 0 }]}>
-          <Text
-            style={[
-              styles.headerTitle,
-              titleStyle,
-            ]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text style={styles.headerSubtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
+        <Text style={[styles.headerTitle, titleStyle]}>
+          {title}
+        </Text>
 
         {/* Right side component (optional) */}
         {rightComponent && (
@@ -83,41 +71,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 16,
-    paddingBottom: 14,
+    paddingTop: Platform.OS === 'ios' ? 12 : 20,
+    paddingBottom: 12,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-    marginLeft: -4,
-  },
-  titleContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'System',
-    letterSpacing: -0.2,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
-    marginTop: 1,
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#212121',
+    marginLeft: 16,
+    fontFamily: Platform.OS === 'android' ? 'Roboto-Medium' : 'System',
+    marginTop: -10,
+    flex: 1,
   },
   rightComponent: {
     marginLeft: 12,
   },
   separator: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#d7dce4ff', // Darker gray color for better visibility
   },
 });
 

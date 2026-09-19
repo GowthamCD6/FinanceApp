@@ -12,17 +12,17 @@ export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
       activeIcon: 'home',
     },
     {
-      id: 'customers',
-      label: 'Borrowers',
-      icon: 'account-group-outline',
-      activeIcon: 'account-group',
-    },
-    // Center Action Button is rendered separately
-    {
       id: 'reports',
       label: 'Reports',
       icon: 'chart-box-outline',
       activeIcon: 'chart-box',
+    },
+    // Center Action Button is rendered separately
+    {
+      id: 'customers',
+      label: 'Borrowers',
+      icon: 'account-group-outline',
+      activeIcon: 'account-group',
     },
     {
       id: 'profile',

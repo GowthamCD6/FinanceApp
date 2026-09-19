@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR, formatDate } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animation/FadeInView';
 import AddCapitalModal from './modal/AddCapitalModal';
 
 export const SuperAdminFund = ({ onOpenAudit }) => {
@@ -45,155 +44,145 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
       </View>
 
       {/* Main Available Pool Card */}
-      <FadeInView delay={100}>
-        <View style={styles.poolCard}>
-          <Text style={styles.poolLabel}>TOTAL AVAILABLE CASH POOL</Text>
-          <Text style={styles.poolVal}>{formatINR(availableCash)}</Text>
-          <Text style={styles.poolSub}>
-            Ready for instant new loan originations and continuous capital circulation
-          </Text>
+      <View style={styles.poolCard}>
+        <Text style={styles.poolLabel}>TOTAL AVAILABLE CASH POOL</Text>
+        <Text style={styles.poolVal}>{formatINR(availableCash)}</Text>
+        <Text style={styles.poolSub}>
+          Ready for instant new loan originations and continuous capital circulation
+        </Text>
 
-          <View style={styles.accountSplits}>
-            <View style={styles.accPill}>
-              <View style={styles.accIconBox}>
-                <MaterialCommunityIcons name="wallet-outline" size={16} color="#2563EB" />
-              </View>
-              <View>
-                <Text style={styles.accName}>Cash Drawer</Text>
-                <Text style={styles.accAmt}>{formatINR(cashOnHand)}</Text>
-              </View>
+        <View style={styles.accountSplits}>
+          <View style={styles.accPill}>
+            <View style={styles.accIconBox}>
+              <MaterialCommunityIcons name="wallet-outline" size={16} color="#2563EB" />
             </View>
-            <View style={styles.accPill}>
-              <View style={styles.accIconBox}>
-                <MaterialCommunityIcons name="bank-outline" size={16} color="#059669" />
-              </View>
-              <View>
-                <Text style={styles.accName}>Bank Main</Text>
-                <Text style={styles.accAmt}>{formatINR(bankBalance)}</Text>
-              </View>
+            <View>
+              <Text style={styles.accName}>Cash Drawer</Text>
+              <Text style={styles.accAmt}>{formatINR(cashOnHand)}</Text>
             </View>
-            <View style={styles.accPill}>
-              <View style={styles.accIconBox}>
-                <MaterialCommunityIcons name="cellphone" size={16} color="#7C3AED" />
-              </View>
-              <View>
-                <Text style={styles.accName}>UPI QR Pool</Text>
-                <Text style={styles.accAmt}>{formatINR(upiBalance)}</Text>
-              </View>
+          </View>
+          <View style={styles.accPill}>
+            <View style={styles.accIconBox}>
+              <MaterialCommunityIcons name="bank-outline" size={16} color="#059669" />
+            </View>
+            <View>
+              <Text style={styles.accName}>Bank Main</Text>
+              <Text style={styles.accAmt}>{formatINR(bankBalance)}</Text>
+            </View>
+          </View>
+          <View style={styles.accPill}>
+            <View style={styles.accIconBox}>
+              <MaterialCommunityIcons name="cellphone" size={16} color="#7C3AED" />
+            </View>
+            <View>
+              <Text style={styles.accName}>UPI QR Pool</Text>
+              <Text style={styles.accAmt}>{formatINR(upiBalance)}</Text>
             </View>
           </View>
         </View>
-      </FadeInView>
+      </View>
 
       {/* Audit Shortcut Banner */}
-      <FadeInView delay={150}>
-        <TouchableOpacity 
-          style={styles.auditBanner} 
-          onPress={() => onOpenAudit && onOpenAudit()}
-          activeOpacity={0.8}
-        >
-          <View style={styles.auditLeft}>
-            <View style={styles.auditIconBox}>
-              <MaterialCommunityIcons name="history" size={20} color="#2563EB" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.auditTitle}>Inspect Central Audit Ledger</Text>
-              <Text style={styles.auditSub}>View timeline of all {fundTransactions.length} inflows, disbursements & expenses</Text>
-            </View>
+      <TouchableOpacity 
+        style={styles.auditBanner} 
+        onPress={() => onOpenAudit && onOpenAudit()}
+        activeOpacity={0.8}
+      >
+        <View style={styles.auditLeft}>
+          <View style={styles.auditIconBox}>
+            <MaterialCommunityIcons name="history" size={20} color="#2563EB" />
           </View>
-          <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
-        </TouchableOpacity>
-      </FadeInView>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.auditTitle}>Inspect Central Audit Ledger</Text>
+            <Text style={styles.auditSub}>View timeline of all {fundTransactions.length} inflows, disbursements & expenses</Text>
+          </View>
+        </View>
+        <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
+      </TouchableOpacity>
 
       {/* Fund Overview Ledger */}
-      <FadeInView delay={200}>
-        <View style={styles.card}>
-          <Text style={styles.cardEyebrow}>CAPITAL RE-CIRCULATION</Text>
-          <Text style={styles.cardTitle}>Fund Balance Sheet</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardEyebrow}>CAPITAL RE-CIRCULATION</Text>
+        <Text style={styles.cardTitle}>Fund Balance Sheet</Text>
 
-          <View style={styles.statsTable}>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Initial Founder Capital</Text>
-              <Text style={styles.rowVal}>{formatINR(initialCapital)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Additional Capital Injected</Text>
-              <Text style={styles.rowVal}>+{formatINR(additionalCapital)}</Text>
-            </View>
-            <View style={[styles.row, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Total Capital Pool</Text>
-              <Text style={styles.totalVal}>{formatINR(totalCapital)}</Text>
-            </View>
+        <View style={styles.statsTable}>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Initial Founder Capital</Text>
+            <Text style={styles.rowVal}>{formatINR(initialCapital)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Additional Capital Injected</Text>
+            <Text style={styles.rowVal}>+{formatINR(additionalCapital)}</Text>
+          </View>
+          <View style={[styles.row, styles.totalRow]}>
+            <Text style={styles.totalLabel}>Total Capital Pool</Text>
+            <Text style={styles.totalVal}>{formatINR(totalCapital)}</Text>
+          </View>
 
-            <View style={styles.divider} />
+          <View style={styles.divider} />
 
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Capital Currently Lent Out</Text>
-              <Text style={[styles.rowVal, { color: '#2563EB' }]}>{formatINR(currentlyLent)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Principal Recovered</Text>
-              <Text style={[styles.rowVal, { color: '#059669' }]}>+{formatINR(principalRecovered)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Lending Fee Income</Text>
-              <Text style={[styles.rowVal, { color: '#7C3AED' }]}>+{formatINR(lendingIncome)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Operating Expenses Paid</Text>
-              <Text style={[styles.rowVal, { color: '#DC2626' }]}>−{formatINR(expenses)}</Text>
-            </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Capital Currently Lent Out</Text>
+            <Text style={[styles.rowVal, { color: '#2563EB' }]}>{formatINR(currentlyLent)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Principal Recovered</Text>
+            <Text style={[styles.rowVal, { color: '#059669' }]}>+{formatINR(principalRecovered)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Lending Fee Income</Text>
+            <Text style={[styles.rowVal, { color: '#7C3AED' }]}>+{formatINR(lendingIncome)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Operating Expenses Paid</Text>
+            <Text style={[styles.rowVal, { color: '#DC2626' }]}>−{formatINR(expenses)}</Text>
+          </View>
 
-            <View style={[styles.row, styles.profitRow]}>
-              <Text style={styles.profitLabel}>Net Operating Profit</Text>
-              <Text style={styles.profitVal}>+{formatINR(netProfit)}</Text>
-            </View>
+          <View style={[styles.row, styles.profitRow]}>
+            <Text style={styles.profitLabel}>Net Operating Profit</Text>
+            <Text style={styles.profitVal}>+{formatINR(netProfit)}</Text>
           </View>
         </View>
-      </FadeInView>
+      </View>
 
       {/* Circulation Flow Rule */}
-      <FadeInView delay={250}>
-        <View style={styles.circCard}>
-          <View style={styles.circHeader}>
-            <MaterialCommunityIcons name="sync" size={18} color="#2563EB" />
-            <Text style={styles.circTitle}>Continuous Circulation Principle</Text>
-          </View>
-          <Text style={styles.circDesc}>
-            When a borrower settles an installment, the principal portion instantly recycles into Available Cash. 
-            The lending contract fee (10% or 12.5%) accumulates as operating profit. 
-            Capital is never idle—it is immediately mobilized into subsequent borrower loan cycles.
-          </Text>
+      <View style={styles.circCard}>
+        <View style={styles.circHeader}>
+          <MaterialCommunityIcons name="sync" size={18} color="#2563EB" />
+          <Text style={styles.circTitle}>Continuous Circulation Principle</Text>
         </View>
-      </FadeInView>
+        <Text style={styles.circDesc}>
+          When a borrower settles an installment, the principal portion instantly recycles into Available Cash. 
+          The lending contract fee (10% or 12.5%) accumulates as operating profit. 
+          Capital is never idle—it is immediately mobilized into subsequent borrower loan cycles.
+        </Text>
+      </View>
 
       {/* Recent Ledger Stream (Last 5) */}
-      <FadeInView delay={300}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>Recent Treasury Ledger</Text>
-          <TouchableOpacity onPress={() => onOpenAudit && onOpenAudit()}>
-            <Text style={styles.viewAllText}>View All ({fundTransactions.length}) →</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionHeader}>Recent Treasury Ledger</Text>
+        <TouchableOpacity onPress={() => onOpenAudit && onOpenAudit()}>
+          <Text style={styles.viewAllText}>View All ({fundTransactions.length}) →</Text>
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.txList}>
-          {fundTransactions.slice(0, 6).map((tx) => {
-            const isIn = tx.direction === 'IN';
-            return (
-              <View key={tx.id} style={styles.txItem}>
-                <View style={styles.txLeft}>
-                  <Text style={styles.txDate}>{formatDate(tx.date || '2026-09-08')}</Text>
-                  <Text style={styles.txItemTitle}>{tx.title}</Text>
-                  <Text style={styles.txItemDesc}>{tx.description}</Text>
-                </View>
-                <Text style={[styles.txItemAmount, { color: isIn ? '#059669' : '#DC2626' }]}>
-                  {isIn ? '+' : '−'}{formatINR(tx.amount)}
-                </Text>
+      <View style={styles.txList}>
+        {fundTransactions.slice(0, 6).map((tx) => {
+          const isIn = tx.direction === 'IN';
+          return (
+            <View key={tx.id} style={styles.txItem}>
+              <View style={styles.txLeft}>
+                <Text style={styles.txDate}>{formatDate(tx.date || '2026-09-08')}</Text>
+                <Text style={styles.txItemTitle}>{tx.title}</Text>
+                <Text style={styles.txItemDesc}>{tx.description}</Text>
               </View>
-            );
-          })}
-        </View>
-      </FadeInView>
+              <Text style={[styles.txItemAmount, { color: isIn ? '#059669' : '#DC2626' }]}>
+                {isIn ? '+' : '−'}{formatINR(tx.amount)}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
 
       {/* Capital Injection Modal */}
       <AddCapitalModal

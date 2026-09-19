@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animation/FadeInView';
 import AddCustomerModal from './modal/AddCustomerModal';
 
 // Inline Badge component
@@ -125,7 +124,7 @@ export const SuperAdminCustomers = ({ onSelectCustomer }) => {
           const isShopkeeper = c.customer_type === 'SHOPKEEPER';
 
           return (
-            <FadeInView key={c.id || idx} delay={idx * 30}>
+            <View key={c.id || idx}>
               <TouchableOpacity
                 style={styles.card}
                 onPress={() => onSelectCustomer && onSelectCustomer(c.id || c)}
@@ -178,7 +177,7 @@ export const SuperAdminCustomers = ({ onSelectCustomer }) => {
                   </View>
                 </View>
               </TouchableOpacity>
-            </FadeInView>
+            </View>
           );
         })}
       </ScrollView>

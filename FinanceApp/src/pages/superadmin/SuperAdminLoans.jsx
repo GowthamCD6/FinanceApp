@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
-import { FadeInView } from '../../animation/FadeInView';
 import DisburseLoanModal from './modal/DisburseLoanModal';
 
 // Inline Badge component
@@ -142,7 +141,7 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
             : 0;
 
           return (
-            <FadeInView key={l.id || idx} delay={idx * 30}>
+            <View key={l.id || idx}>
               <TouchableOpacity
                 style={[styles.card, isOverdue && styles.cardOverdue]}
                 onPress={() => onSelectLoan && onSelectLoan(l.id || l)}
@@ -162,46 +161,47 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
                     {l.shop_name ? <Text style={styles.shopName}>{l.shop_name}</Text> : null}
                   </View>
                   <Badge
-                    label={l.status || 'ACTIVE'}
+                    label={isCompleted ? 'Completed' : isOverdue ? 'Overdue' : 'Active'}
                     variant={isCompleted ? 'success' : isOverdue ? 'danger' : 'primary'}
                   />
                 </View>
 
-                {/* Amount Row */}
-                <View style={styles.amountRow}>
-                  <View>
-                    <Text style={styles.subLabel}>Principal</Text>
-                    <Text style={styles.amountVal}>{formatINR(principal)}</Text>
+                {/* Financial Summary */}
+                <View style={styles.finRow}>
+                  <View style={styles.finCol}>
+                    <Text style={styles.finLbl}>Principal</Text>
+                    <Text style={styles.finVal}>{formatINR(principal)}</Text>
                   </View>
-                  <View>
-                    <Text style={styles.subLabel}>Lending Fee</Text>
-                    <Text style={[styles.amountVal, { color: '#059669' }]}>
-                      +{formatINR(income)}
-                    </Text>
+                  <View style={styles.finCol}>
+                    <Text style={styles.finLbl}>Income (15%)</Text>
+                    <Text style={[styles.finVal, { color: '#059669' }]}>+{formatINR(income)}</Text>
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.subLabel}>Total Contract</Text>
-                    <Text style={[styles.amountVal, { color: '#2563EB' }]}>
-                      {formatINR(totalRepay)}
+                  <View style={styles.finCol}>
+                    <Text style={styles.finLbl}>Total Repay</Text>
+                    <Text style={styles.finVal}>{formatINR(totalRepay)}</Text>
+                  </View>
+                  <View style={styles.finCol}>
+                    <Text style={styles.finLbl}>Outstanding</Text>
+                    <Text style={[styles.finVal, { color: outstanding > 0 ? '#DC2626' : '#059669' }]}>
+                      {formatINR(outstanding)}
                     </Text>
                   </View>
                 </View>
 
-                {/* Progress */}
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: isCompleted ? '#059669' : '#2563EB' }]} />
-                </View>
-                <View style={styles.progressLabels}>
-                  <Text style={styles.progressText}>
-                    {progress}% Recovered ({formatINR(totalPaid)})
-                  </Text>
-                  <Text style={[styles.progressText, { fontWeight: '700', color: outstanding > 0 ? '#D97706' : '#059669' }]}>
-                    Remaining: {formatINR(outstanding)}
-                  </Text>
+                {/* Progress Bar */}
+                <View style={styles.progressSection}>
+                  <View style={styles.progressHeader}>
+                    <Text style={styles.progressLbl}>Repayment Progress</Text>
+                    <Text style={styles.progressPct}>{progress}%</Text>
+                  </View>
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${progress}%` }, isCompleted && { backgroundColor: '#059669' }]} />
+                  </View>
                 </View>
 
-                <View style={styles.footer}>
-                  <Text style={styles.scheduleMeta}>
+                {/* Bottom Details */}
+                <View style={styles.cardFooter}>
+                  <Text style={styles.cardMeta}>
                     {freq} • {totalInst} Installments of {formatINR(instAmt)}
                   </Text>
                   <View style={styles.viewLinkRow}>
@@ -210,7 +210,7 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
                   </View>
                 </View>
               </TouchableOpacity>
-            </FadeInView>
+            </View>
           );
         })}
       </ScrollView>
