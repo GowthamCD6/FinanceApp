@@ -2,62 +2,62 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../../../theme/colors';
-import { BouncyPressable } from '../../../animation/BouncyPressable';
 
 export const SuperAdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
   const tabs = [
     {
       id: 'dashboard',
       label: 'Executive',
-      icon: 'view-dashboard-outline',
-      activeIcon: 'view-dashboard',
-      matchIds: ['dashboard'],
+      icon: 'shield-crown-outline',
+      activeIcon: 'shield-crown',
     },
     {
       id: 'loans',
       label: 'Loans',
-      icon: 'file-document-outline',
-      activeIcon: 'file-document',
-      matchIds: ['loans', 'loan_detail'],
+      icon: 'format-list-bulleted',
+      activeIcon: 'format-list-bulleted',
     },
     // Center Action Button is rendered separately
     {
-      id: 'customers',
-      label: 'Borrowers',
-      icon: 'account-group-outline',
-      activeIcon: 'account-group',
-      matchIds: ['customers', 'customer_detail'],
+      id: 'reports',
+      label: 'Governance',
+      icon: 'finance',
+      activeIcon: 'finance',
     },
     {
-      id: 'fund',
-      label: 'Vault',
-      icon: 'safe',
-      activeIcon: 'safe-square-outline',
-      matchIds: ['fund', 'reports', 'expenses', 'audit'],
+      id: 'profile',
+      label: 'Profile',
+      icon: 'account-outline',
+      activeIcon: 'account',
     },
   ];
 
   const leftTabs = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2);
 
+  const activeColor = '#7C3AED';
+  const inactiveColor = '#6B7280';
+
   const renderTabItem = (tab) => {
-    const isActive = tab.matchIds ? tab.matchIds.includes(activeTab) : activeTab === tab.id;
+    const isActive = activeTab === tab.id;
     const iconName = isActive ? tab.activeIcon : tab.icon;
-    const color = isActive ? Colors.primaryVivid : Colors.gray250;
+    const color = isActive ? activeColor : inactiveColor;
 
     return (
       <TouchableOpacity
         key={tab.id}
-        style={styles.tabItem}
+        style={styles.tabIconContainer}
         onPress={() => onTabPress && onTabPress(tab.id)}
         activeOpacity={0.7}
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
       >
-        <View style={styles.iconContainer}>
-          {isActive && <View style={styles.activeDot} />}
-          <MaterialCommunityIcons name={iconName} size={22} color={color} />
-        </View>
+        <MaterialCommunityIcons
+          name={iconName}
+          size={24}
+          color={color}
+          style={styles.iconStyle}
+        />
         <Text
           style={[
             styles.tabLabel,
@@ -73,57 +73,54 @@ export const SuperAdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
   };
 
   return (
-    <View style={styles.tabBarWrapper}>
-      <View style={styles.container}>
-        {/* Left 2 Tabs */}
-        <View style={styles.tabGroup}>
-          {leftTabs.map(renderTabItem)}
-        </View>
+    <View style={styles.tabBar}>
+      {/* Left Tabs */}
+      <View style={styles.tabGroup}>
+        {leftTabs.map(renderTabItem)}
+      </View>
 
-        {/* Center Super Admin Crown Action FAB */}
-        <View style={styles.centerFabContainer}>
-          <BouncyPressable
-            style={styles.centerFab}
-            onPress={onOpenMore}
-            scaleTo={0.92}
-            accessibilityLabel="Super Admin Governance Actions"
-            accessibilityRole="button"
-          >
-            <View style={styles.fabInner}>
-              <MaterialCommunityIcons name="crown" size={24} color="#FFD700" />
-            </View>
-          </BouncyPressable>
-          <Text style={styles.fabLabel}>Control</Text>
+      {/* Center Floating Action Tab */}
+      <TouchableOpacity
+        style={styles.customTabButton}
+        onPress={onOpenMore}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Super Admin Actions"
+      >
+        <View style={styles.customTabButtonInner}>
+          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
         </View>
+      </TouchableOpacity>
 
-        {/* Right 2 Tabs */}
-        <View style={styles.tabGroup}>
-          {rightTabs.map(renderTabItem)}
-        </View>
+      {/* Right Tabs */}
+      <View style={styles.tabGroup}>
+        {rightTabs.map(renderTabItem)}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  tabBarWrapper: {
+  tabBar: {
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    shadowColor: '#1E1B4B',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 12,
-  },
-  container: {
+    height: Platform.OS === 'ios' ? 84 : 70,
+    borderTopWidth: 0,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    elevation: 10,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    paddingTop: 8,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    height: Platform.OS === 'ios' ? 84 : 66,
   },
   tabGroup: {
     flex: 2,
@@ -131,64 +128,52 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
   },
-  tabItem: {
-    flex: 1,
+  tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    width: 62,
+    height: 50,
   },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-  },
-  activeDot: {
-    position: 'absolute',
-    top: -4,
-    width: 16,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: Colors.primaryVivid,
+  iconStyle: {
+    marginBottom: 0,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    textAlign: 'center',
+    includeFontPadding: false,
+    lineHeight: 14,
     marginTop: 2,
   },
   tabLabelActive: {
-    fontWeight: '800',
-    color: Colors.primaryVivid,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
-  centerFabContainer: {
+  customTabButton: {
+    top: -18,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -22,
+    height: '100%',
   },
-  centerFab: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#1E1B4B',
-    alignItems: 'center',
+  customTabButtonInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#7C3AED',
     justifyContent: 'center',
-    shadowColor: '#4338CA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-    borderWidth: 2.5,
-    borderColor: '#FDE047',
-  },
-  fabInner: {
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#7C3AED',
-    marginTop: 3,
+    elevation: 8,
+    shadowColor: '#7C3AED',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
 });
 

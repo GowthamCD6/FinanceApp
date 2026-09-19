@@ -21,29 +21,43 @@ class ApiService {
       ...options.headers,
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), ENV.API_TIMEOUT_MS || 8000);
+    const candidateHosts = ENV.FALLBACK_HOSTS || [this.baseUrl];
+    let lastError = null;
 
-    try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        ...options,
-        headers,
-        signal: controller.signal,
-      });
+    for (const host of candidateHosts) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), ENV.API_TIMEOUT_MS || 8000);
 
-      clearTimeout(timeoutId);
-      const json = await response.json();
-      if (!response.ok) {
-        throw new Error(json.message || `HTTP ${response.status}`);
+      try {
+        const response = await fetch(`${host}${endpoint}`, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const json = await response.json();
+        if (!response.ok) {
+          throw new Error(json.message || `HTTP ${response.status}`);
+        }
+        // Remember working host
+        this.baseUrl = host;
+        return json;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        lastError = error;
+        // If it's an HTTP error response from server (e.g. 400, 401, 403, 404), server was reached so don't try other hosts
+        if (error.message && (error.message.startsWith('HTTP ') || error.message.includes('password') || error.message.includes('registered') || error.message.includes('required') || error.message.includes('deactivated'))) {
+          throw error;
+        }
+        // Otherwise (network timeout / connection refused), try next host in list
       }
-      return json;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
-        throw new Error('Network request timed out. Please check backend server.');
-      }
-      throw error;
     }
+
+    if (lastError && lastError.name === 'AbortError') {
+      throw new Error('Network request timed out. Please check backend server.');
+    }
+    throw lastError || new Error('Network request failed. Please check backend server.');
   }
 
   // 1. AUTH & PROFILES

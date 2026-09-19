@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/apiService';
 import { ENV } from '../config/env';
 
@@ -32,15 +33,12 @@ export const AppProvider = ({ children }) => {
   const [isServerConnected, setIsServerConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Default active for direct admin experience
-  const [loggedInUser, setLoggedInUser] = useState({
-    id: 1,
-    name: 'Gowtham Admin',
-    email: 'admin@apexfinance.com',
-    role_type: 'ADMIN',
-  });
+  // Authentication State with AsyncStorage Persistence
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState(null);
 
-  // Live Database Sync on Mount
+  // Live Database Sync
   const fetchAllLiveData = async () => {
     try {
       setLoading(true);
@@ -76,106 +74,135 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Safely resolve AsyncStorage whether imported as default or module
+  const storage = AsyncStorage?.default || AsyncStorage;
+
+  // Check stored login session on app launch
   useEffect(() => {
-    fetchAllLiveData();
+    const checkStoredAuth = async () => {
+      try {
+        if (!storage || typeof storage.getItem !== 'function') {
+          setIsAuthenticated(false);
+          setLoggedInUser(null);
+          return;
+        }
+
+        const [storedToken, storedUserData, storedRole] = await Promise.all([
+          storage.getItem('@userToken').catch(() => null),
+          storage.getItem('@userData').catch(() => null),
+          storage.getItem('@userRole').catch(() => null),
+        ]);
+
+        if (storedToken && storedUserData) {
+          const user = JSON.parse(storedUserData);
+          apiService.setToken(storedToken);
+          setLoggedInUser(user);
+          setIsAuthenticated(true);
+
+          const roles = user?.roles || [user?.role_type || user?.role];
+          if (roles?.includes('SUPER_ADMIN')) {
+            setCurrentRole('SUPER_ADMIN');
+          } else if (roles?.includes('ORG_ADMIN') || roles?.includes('ADMIN')) {
+            setCurrentRole('ADMIN');
+          } else if (storedRole) {
+            setCurrentRole(storedRole);
+          } else {
+            setCurrentRole('USER');
+          }
+
+          // Fetch live database data in background
+          fetchAllLiveData().catch(() => {});
+        } else {
+          setIsAuthenticated(false);
+          setLoggedInUser(null);
+          apiService.setToken(null);
+        }
+      } catch (e) {
+        console.warn('Notice checking stored auth:', e?.message || e);
+        setIsAuthenticated(false);
+        setLoggedInUser(null);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+
+    checkStoredAuth();
   }, []);
 
-  // Authenticate using backend REST API with robust offline fallback
+  // Authenticate using real-time backend REST API (Database driven) & persist session
   const loginWithCredentials = async (identifier, password) => {
     try {
-      const serverRes = await apiService.login(identifier, password).catch(() => null);
+      const serverRes = await apiService.login(identifier, password);
       if (serverRes && (serverRes.token || serverRes.data?.token)) {
         const token = serverRes.token || serverRes.data?.token;
         const user = serverRes.user || serverRes.data?.user;
+        const roles = user?.roles || [user?.role_type || user?.role];
+        const roleToSet = roles?.includes('SUPER_ADMIN')
+          ? 'SUPER_ADMIN'
+          : roles?.includes('ORG_ADMIN') || roles?.includes('ADMIN')
+          ? 'ADMIN'
+          : 'USER';
+
+        // Persist session to AsyncStorage
+        if (storage && typeof storage.setItem === 'function') {
+          await Promise.all([
+            storage.setItem('@userToken', String(token)).catch(() => {}),
+            storage.setItem('@userData', JSON.stringify(user)).catch(() => {}),
+            storage.setItem('@userRole', roleToSet).catch(() => {}),
+            storage.setItem('userPhone', String(user.phone || '')).catch(() => {}),
+            storage.setItem('userName', String(user.name || user.username || '')).catch(() => {}),
+            storage.setItem('userId', String(user.id || '')).catch(() => {}),
+          ]);
+        }
+
+        apiService.setToken(token);
         setIsAuthenticated(true);
         setLoggedInUser(user);
-        const roles = user?.roles || [user?.role_type || user?.role];
-        if (roles?.includes('SUPER_ADMIN')) setCurrentRole('SUPER_ADMIN');
-        else if (roles?.includes('ADMIN')) setCurrentRole('ADMIN');
-        else setCurrentRole('USER');
+        setCurrentRole(roleToSet);
         await fetchAllLiveData().catch(() => {});
         return { success: true, user };
       }
-
-      // Offline & Local Auth Fallback
-      const cleanId = String(identifier || '').trim();
-      if (cleanId === '9999999999' || cleanId.toLowerCase().includes('super')) {
-        const superAdminUser = {
-          id: 1,
-          name: 'Executive Super Admin',
-          email: 'superadmin@apexfinance.in',
-          phone: cleanId,
-          role_type: 'SUPER_ADMIN',
-          roles: ['SUPER_ADMIN'],
-        };
-        setIsAuthenticated(true);
-        setLoggedInUser(superAdminUser);
-        setCurrentRole('SUPER_ADMIN');
-        return { success: true, user: superAdminUser };
-      } else if (cleanId === '8888888888' || cleanId.toLowerCase().includes('admin')) {
-        const adminUser = {
-          id: 1,
-          name: 'Gowtham Admin',
-          email: 'admin@apexmicro.in',
-          phone: cleanId,
-          role_type: 'ADMIN',
-          roles: ['ADMIN'],
-        };
-        setIsAuthenticated(true);
-        setLoggedInUser(adminUser);
-        setCurrentRole('ADMIN');
-        return { success: true, user: adminUser };
-      } else if (cleanId === '9876543210' || cleanId.toLowerCase().includes('kumar') || cleanId.toLowerCase().includes('user')) {
-        const borrowerUser = {
-          id: 2,
-          name: 'Kumar Swaminathan',
-          email: 'kumar.s@gmail.com',
-          phone: cleanId,
-          role_type: 'USER',
-          roles: ['USER'],
-        };
-        setIsAuthenticated(true);
-        setLoggedInUser(borrowerUser);
-        setCurrentRole('USER');
-        return { success: true, user: borrowerUser };
-      } else if (cleanId.length >= 3) {
-        const fallbackUser = {
-          id: Date.now(),
-          name: cleanId.includes('@') ? cleanId.split('@')[0] : `Admin (${cleanId})`,
-          email: cleanId.includes('@') ? cleanId : `${cleanId}@apexmicro.in`,
-          phone: cleanId,
-          role_type: 'ADMIN',
-          roles: ['ADMIN'],
-        };
-        setIsAuthenticated(true);
-        setLoggedInUser(fallbackUser);
-        setCurrentRole('ADMIN');
-        return { success: true, user: fallbackUser };
-      }
-
-      return { success: false, message: 'Invalid credentials. Please enter your phone number or email.' };
+      return { success: false, message: serverRes?.message || 'Invalid mobile number or password.' };
     } catch (err) {
-      if (identifier && String(identifier).trim()) {
-        const fallbackUser = {
-          id: 1,
-          name: 'Branch Admin Officer',
-          email: 'admin@apexmicro.in',
-          phone: identifier,
-          role_type: 'ADMIN',
-        };
-        setIsAuthenticated(true);
-        setLoggedInUser(fallbackUser);
-        setCurrentRole('ADMIN');
-        return { success: true, user: fallbackUser };
-      }
-      return { success: false, message: err?.message || 'Login failed' };
+      console.error('Authentication API error:', err);
+      return { success: false, message: err?.message || 'Unable to log in. Please check your credentials and server connection.' };
     }
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    setLoggedInUser(null);
-    apiService.setToken(null);
+  // Log out and wipe stored session from AsyncStorage
+  const logout = async () => {
+    try {
+      const keys = [
+        '@userToken',
+        '@userData',
+        '@userRole',
+        'userPhone',
+        'userName',
+        'userRole',
+        'userId',
+      ];
+      if (storage) {
+        if (typeof storage.removeMany === 'function') {
+          await storage.removeMany(keys).catch(() => {});
+        } else if (typeof storage.multiRemove === 'function') {
+          await storage.multiRemove(keys).catch(() => {});
+        } else if (typeof storage.removeItem === 'function') {
+          for (let i = 0; i < keys.length; i++) {
+            try {
+              await storage.removeItem(keys[i]);
+            } catch (err) {}
+          }
+        } else if (typeof storage.clear === 'function') {
+          await storage.clear().catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('Storage clear notice on logout:', e?.message || e);
+    } finally {
+      setIsAuthenticated(false);
+      setLoggedInUser(null);
+      apiService.setToken(null);
+    }
   };
 
   const currentUser = useMemo(() => {
@@ -345,10 +372,12 @@ export const AppProvider = ({ children }) => {
         loanProducts,
         isServerConnected,
         loading,
+        isAuthChecking,
         isAuthenticated,
         loggedInUser,
         currentUser,
         loginWithCredentials,
+        login: loginWithCredentials,
         logout,
         fundMetrics,
         fundAccounts,

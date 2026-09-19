@@ -6,14 +6,16 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import LeftArrowIcon from './LeftArrowIcon';
 
 const Header = ({
   title,
+  subtitle,
   onBack,
   showBackButton = true,
-  backIconWidth = 20,
-  backIconHeight = 20,
-  backIconFill = '#1F2937',
+  backIconWidth = 22,
+  backIconHeight = 22,
+  backIconFill = '#111827',
   titleStyle = {},
   headerStyle = {},
   showDivider = true,
@@ -29,31 +31,31 @@ const Header = ({
             onPress={onBack}
             style={styles.backButton}
             activeOpacity={0.6}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
           >
-            <Text
-              style={{
-                fontSize: backIconWidth || 20,
-                color: backIconFill || '#1F2937',
-                fontWeight: '600',
-                lineHeight: (backIconWidth || 20) + 2,
-              }}
-            >
-              ←
-            </Text>
+            <LeftArrowIcon
+              size={backIconWidth || 22}
+              color={backIconFill || '#111827'}
+            />
           </TouchableOpacity>
         )}
 
-        <Text
-          style={[
-            styles.headerTitle,
-            !showBackButton && { marginLeft: 0 },
-            titleStyle,
-          ]}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
+        <View style={[styles.titleContainer, !showBackButton && { marginLeft: 0 }]}>
+          <Text
+            style={[
+              styles.headerTitle,
+              titleStyle,
+            ]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
 
         {/* Right side component (optional) */}
         {rightComponent && (
@@ -81,29 +83,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 20,
-    paddingBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 12 : 16,
+    paddingBottom: 14,
   },
   backButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 8,
+    marginLeft: -4,
+  },
+  titleContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#212121',
-    marginLeft: 16,
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Medium' : 'System',
-    marginTop: -2,
-    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'System',
+    letterSpacing: -0.2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 1,
   },
   rightComponent: {
     marginLeft: 12,
   },
   separator: {
     height: 1,
-    backgroundColor: '#d7dce4ff',
+    backgroundColor: '#F3F4F6',
   },
 });
 

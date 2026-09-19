@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import Colors from '../../theme/colors';
@@ -9,6 +9,7 @@ import TabRouter from '../Tab/TabRouter';
 import Header from '../HeaderComponent/Header';
 
 // Fronter
+import Welcome from '../../pages/Fronter/Welcome/Welcome';
 import Login from '../../pages/Fronter/Login/Login';
 
 // Super Admin Pages & Modals
@@ -45,11 +46,15 @@ import UserProfile from '../../pages/User/pages/Profile/Profile';
 export const Routes = () => {
   const {
     currentRole,
+    isAuthChecking,
     isAuthenticated,
     currentOrganization,
     organizations,
     switchOrganization,
   } = useApp();
+
+  // Fronter authentication screen state ('welcome' | 'login')
+  const [authScreen, setAuthScreen] = useState('welcome');
 
   // Active tab state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -68,15 +73,197 @@ export const Routes = () => {
     setSelectedCustomerId(null);
   };
 
-  // If not signed in, show Fronter Login
-  if (!isAuthenticated) {
+  // While checking AsyncStorage session on app start, show sleek splash loader
+  if (isAuthChecking) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
-        <Login />
+      <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <ActivityIndicator size="large" color="#2842C4" />
       </SafeAreaView>
     );
   }
+
+  // If not signed in, show Fronter Welcome or Login
+  if (!isAuthenticated) {
+    if (authScreen === 'welcome') {
+      return (
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+          <Welcome onGetStarted={() => setAuthScreen('login')} />
+        </SafeAreaView>
+      );
+    }
+
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <Login onBack={() => setAuthScreen('welcome')} />
+      </SafeAreaView>
+    );
+  }
+
+  // Compute header title, subtitle, and back button action based on current screen & role
+  const getHeaderConfig = () => {
+    if (currentRole === 'SUPER_ADMIN') {
+      switch (activeTab) {
+        case 'dashboard':
+          return {
+            title: 'Dashboard',
+            subtitle: 'Executive Operations Overview',
+            showBackButton: false,
+          };
+        case 'loans':
+          return {
+            title: 'Loans',
+            subtitle: 'Active & Disbursed Portfolio',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'loan_detail':
+          return {
+            title: 'Loan Details',
+            subtitle: 'Installments & Schedule',
+            showBackButton: true,
+            onBack: () => {
+              setSelectedLoanId(null);
+              setActiveTab('loans');
+            },
+          };
+        case 'customers':
+          return {
+            title: 'Borrowers',
+            subtitle: 'Borrower Accounts & Verification',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'customer_detail':
+          return {
+            title: 'Borrower Profile',
+            subtitle: 'Credit History & Loans',
+            showBackButton: true,
+            onBack: () => {
+              setSelectedCustomerId(null);
+              setActiveTab('customers');
+            },
+          };
+        case 'fund':
+          return {
+            title: 'Fund Circulation',
+            subtitle: 'Disbursals, Collections & Treasury',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'reports':
+          return {
+            title: 'Financial Reports',
+            subtitle: 'Profitability & Recovery Analytics',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'audit':
+          return {
+            title: 'Audit Logs',
+            subtitle: 'Activity Trails & Security Events',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'expenses':
+          return {
+            title: 'Operating Expenses',
+            subtitle: 'Cash Outflows & Daily Bills',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'profile':
+          return {
+            title: 'Profile',
+            subtitle: 'Master Administrator Settings',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        default:
+          return {
+            title: 'Executive Portal',
+            showBackButton: false,
+          };
+      }
+    }
+
+    if (currentRole === 'ADMIN') {
+      switch (activeTab) {
+        case 'dashboard':
+          return {
+            title: 'Dashboard',
+            subtitle: currentOrganization?.name || 'Branch Operations',
+            showBackButton: false,
+          };
+        case 'customers':
+          return {
+            title: 'Manage Borrowers',
+            subtitle: 'Customer Accounts & Verification',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'reports':
+          return {
+            title: 'Financial Reports',
+            subtitle: 'Daily Collections & Portfolio Breakdown',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        case 'profile':
+          return {
+            title: 'Profile',
+            subtitle: 'Administrator Preferences',
+            showBackButton: true,
+            onBack: () => setActiveTab('dashboard'),
+          };
+        default:
+          return {
+            title: 'Admin Console',
+            showBackButton: false,
+          };
+      }
+    }
+
+    // USER / BORROWER
+    switch (activeTab) {
+      case 'dashboard':
+        return {
+          title: 'Home',
+          subtitle: 'Welcome to your financial portal',
+          showBackButton: false,
+        };
+      case 'loans':
+        return {
+          title: 'Portfolio',
+          subtitle: 'Active Borrowings & History',
+          showBackButton: true,
+          onBack: () => setActiveTab('dashboard'),
+        };
+      case 'payments':
+        return {
+          title: 'Payments',
+          subtitle: 'Repayment Schedule & Dues',
+          showBackButton: true,
+          onBack: () => setActiveTab('dashboard'),
+        };
+      case 'profile':
+        return {
+          title: 'Profile',
+          subtitle: 'Personal Details & Support',
+          showBackButton: true,
+          onBack: () => setActiveTab('dashboard'),
+        };
+      default:
+        return {
+          title: 'Borrower Portal',
+          showBackButton: false,
+        };
+    }
+  };
+
+  const headerConfig = getHeaderConfig();
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -84,14 +271,10 @@ export const Routes = () => {
 
       {/* Top Header */}
       <Header
-        title={
-          currentRole === 'SUPER_ADMIN'
-            ? 'Executive Portal'
-            : currentRole === 'ADMIN'
-            ? currentOrganization?.name || 'Admin Console'
-            : currentOrganization?.name || 'Borrower Portal'
-        }
-        showBackButton={false}
+        title={headerConfig.title}
+        subtitle={headerConfig.subtitle}
+        showBackButton={headerConfig.showBackButton}
+        onBack={headerConfig.onBack}
         rightComponent={
           organizations && organizations.length > 1 ? (
             <TouchableOpacity

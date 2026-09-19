@@ -2,15 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../../../theme/colors';
-import { BouncyPressable } from '../../../animation/BouncyPressable';
 
 export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
   const tabs = [
     {
       id: 'dashboard',
-      label: 'Overview',
-      icon: 'view-dashboard-outline',
-      activeIcon: 'view-dashboard',
+      label: 'Home',
+      icon: 'home-outline',
+      activeIcon: 'home',
     },
     {
       id: 'customers',
@@ -28,32 +27,37 @@ export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
     {
       id: 'profile',
       label: 'Profile',
-      icon: 'account-circle-outline',
-      activeIcon: 'account-circle',
+      icon: 'account-outline',
+      activeIcon: 'account',
     },
   ];
 
   const leftTabs = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2);
 
+  const activeColor = '#2842C4';
+  const inactiveColor = '#6B7280';
+
   const renderTabItem = (tab) => {
     const isActive = activeTab === tab.id;
     const iconName = isActive ? tab.activeIcon : tab.icon;
-    const color = isActive ? Colors.primaryVivid : Colors.gray250;
+    const color = isActive ? activeColor : inactiveColor;
 
     return (
       <TouchableOpacity
         key={tab.id}
-        style={styles.tabItem}
+        style={styles.tabIconContainer}
         onPress={() => onTabPress && onTabPress(tab.id)}
         activeOpacity={0.7}
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
       >
-        <View style={styles.iconContainer}>
-          {isActive && <View style={styles.activeDot} />}
-          <MaterialCommunityIcons name={iconName} size={22} color={color} />
-        </View>
+        <MaterialCommunityIcons
+          name={iconName}
+          size={24}
+          color={color}
+          style={styles.iconStyle}
+        />
         <Text
           style={[
             styles.tabLabel,
@@ -69,57 +73,54 @@ export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
   };
 
   return (
-    <View style={styles.tabBarWrapper}>
-      <View style={styles.container}>
-        {/* Left 2 Tabs */}
-        <View style={styles.tabGroup}>
-          {leftTabs.map(renderTabItem)}
-        </View>
+    <View style={styles.tabBar}>
+      {/* Left Tabs */}
+      <View style={styles.tabGroup}>
+        {leftTabs.map(renderTabItem)}
+      </View>
 
-        {/* Center Quick Action FAB (+) */}
-        <View style={styles.centerFabContainer}>
-          <BouncyPressable
-            style={styles.centerFab}
-            onPress={onOpenMore}
-            scaleTo={0.92}
-            accessibilityLabel="Admin Quick Actions"
-            accessibilityRole="button"
-          >
-            <View style={styles.fabInner}>
-              <MaterialCommunityIcons name="plus" size={26} color={Colors.white} />
-            </View>
-          </BouncyPressable>
-          <Text style={styles.fabLabel}>Action</Text>
+      {/* Center Floating Action Tab */}
+      <TouchableOpacity
+        style={styles.customTabButton}
+        onPress={onOpenMore}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Admin Actions"
+      >
+        <View style={styles.customTabButtonInner}>
+          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
         </View>
+      </TouchableOpacity>
 
-        {/* Right 2 Tabs */}
-        <View style={styles.tabGroup}>
-          {rightTabs.map(renderTabItem)}
-        </View>
+      {/* Right Tabs */}
+      <View style={styles.tabGroup}>
+        {rightTabs.map(renderTabItem)}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  tabBarWrapper: {
-    backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: Colors.purpleBorderLight,
-    shadowColor: Colors.primaryDeep,
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+  tabBar: {
+    backgroundColor: '#FFFFFF',
+    height: Platform.OS === 'ios' ? 84 : 70,
+    borderTopWidth: 0,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     elevation: 10,
-  },
-  container: {
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    paddingTop: 8,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    height: Platform.OS === 'ios' ? 84 : 66,
   },
   tabGroup: {
     flex: 2,
@@ -127,64 +128,52 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
   },
-  tabItem: {
-    flex: 1,
+  tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    width: 62,
+    height: 50,
   },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-  },
-  activeDot: {
-    position: 'absolute',
-    top: -4,
-    width: 14,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: Colors.primaryVivid,
+  iconStyle: {
+    marginBottom: 0,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    textAlign: 'center',
+    includeFontPadding: false,
+    lineHeight: 14,
     marginTop: 2,
   },
   tabLabelActive: {
-    fontWeight: '800',
-    color: Colors.primaryVivid,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
-  centerFabContainer: {
+  customTabButton: {
+    top: -18,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -22,
+    height: '100%',
   },
-  centerFab: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primaryVivid,
-    alignItems: 'center',
+  customTabButtonInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#2842C4',
     justifyContent: 'center',
-    shadowColor: Colors.primaryHero,
-    shadowOffset: { width: 0, height: 4 },
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#2842C4',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     shadowOpacity: 0.35,
     shadowRadius: 6,
-    elevation: 8,
     borderWidth: 3,
-    borderColor: Colors.white,
-  },
-  fabInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginTop: 3,
+    borderColor: '#FFFFFF',
   },
 });
 
