@@ -24,15 +24,14 @@ async function approveLoan(req, res) {
 
 async function disburseLoan(req, res) {
   try {
-    const { fundAccountId } = req.body;
-    if (!fundAccountId) {
-      return res.status(400).json({ success: false, message: 'fundAccountId is required for disbursement.' });
-    }
+    const fundAccountId = req.body?.fundAccountId || 1;
+    const fundingSource = req.body?.funding_source || req.body?.fundingSource || 'VAULT';
 
     const result = await loanService.disburseLoan({
       loanId: req.params.id,
       fundAccountId: Number(fundAccountId),
       userId: req.user.id,
+      fundingSource,
     });
 
     return res.json({ success: true, message: 'Loan disbursed and installments generated.', data: result });

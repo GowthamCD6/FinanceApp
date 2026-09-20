@@ -58,6 +58,7 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
     interest_rate: '25',
     tenure: '10',
     frequency: 'WEEKLY',
+    funding_source: 'VAULT', // 'VAULT' | 'HANDS_ON'
   });
 
   const [errors, setErrors] = useState({});
@@ -74,6 +75,7 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
       interest_rate: '25',
       tenure: '10',
       frequency: 'WEEKLY',
+      funding_source: 'VAULT',
     });
     setErrors({});
     if (onClose) onClose();
@@ -265,6 +267,7 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
               total_installments: installmentCount,
               frequency: freq,
               interest_rate: flatRate,
+              funding_source: formData.funding_source || 'VAULT',
             }
           : null,
       };
@@ -472,6 +475,73 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
 
             {formData.issue_initial_loan && (
               <>
+                {/* Funding Source Selector */}
+                <View style={styles.inputContainer}>
+                  <View style={styles.labelContainer}>
+                    <View style={styles.labelLeft}>
+                      <MaterialCommunityIcons name="wallet-membership" size={16} color="#6B7280" />
+                      <Text style={styles.inputLabel}>Disbursement Source</Text>
+                      <Text style={styles.requiredStar}>*</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.divisionChip,
+                        formData.funding_source === 'VAULT' && styles.divisionChipSelected,
+                        { flex: 1, paddingVertical: 12 },
+                      ]}
+                      onPress={() => setFormData((s) => ({ ...s, funding_source: 'VAULT' }))}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name="safe"
+                        size={20}
+                        color={formData.funding_source === 'VAULT' ? '#6B46C1' : '#64748B'}
+                      />
+                      <Text
+                        style={[
+                          styles.divisionChipTitle,
+                          formData.funding_source === 'VAULT' && styles.divisionChipTitleSelected,
+                        ]}
+                      >
+                        From Vault
+                      </Text>
+                      <Text style={styles.divisionChipRate}>Deduct Vault Cash</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.divisionChip,
+                        formData.funding_source === 'HANDS_ON' && styles.divisionChipSelected,
+                        { flex: 1, paddingVertical: 12 },
+                      ]}
+                      onPress={() => setFormData((s) => ({ ...s, funding_source: 'HANDS_ON' }))}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name="hand-coin-outline"
+                        size={20}
+                        color={formData.funding_source === 'HANDS_ON' ? '#6B46C1' : '#64748B'}
+                      />
+                      <Text
+                        style={[
+                          styles.divisionChipTitle,
+                          formData.funding_source === 'HANDS_ON' && styles.divisionChipTitleSelected,
+                        ]}
+                      >
+                        Hands-on Money
+                      </Text>
+                      <Text style={styles.divisionChipRate}>Admin Pocket / Bank</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 6, fontStyle: 'italic' }}>
+                    {formData.funding_source === 'VAULT'
+                      ? '● Deducts loan principal directly from available branch vault balance.'
+                      : '● Injects capital from admin external funds into Net Capital & Vault and disburses immediately.'}
+                  </Text>
+                </View>
+
                 <View style={styles.inputContainer}>
                   <View style={styles.labelContainer}>
                     <View style={styles.labelLeft}>

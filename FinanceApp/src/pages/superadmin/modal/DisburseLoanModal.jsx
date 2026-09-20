@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,44 +9,96 @@ import {
   ScrollView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../../context/AppContext';
+import { apiService } from '../../../services/apiService';
 import { formatINR } from '../../../utils/helpers';
 
 const SCHEMES = [
   {
     id: 'WEEKLY',
-    title: 'Weekly Micro-Loan',
+    title: 'Weekly Loan',
     sub: '10 Weekly Installments',
     tenure: 10,
-    interestRate: 10.0,
+    tenureUnit: 'Wks',
+    interestRate: 25.0,
     frequency: 'WEEKLY',
-    defaultPrincipal: 10000,
+    defaultPrincipal: 5000,
   },
   {
     id: 'DAILY',
-    title: 'Daily Merchant Loan',
-    sub: '25 Daily Installments',
-    tenure: 25,
-    interestRate: 12.5,
+    title: 'Merchant Daily',
+    sub: '100 Daily Collections',
+    tenure: 100,
+    tenureUnit: 'Days',
+    interestRate: 25.0,
     frequency: 'DAILY',
+    defaultPrincipal: 10000,
+  },
+  {
+    id: 'MONTHLY',
+    title: 'Monthly (EMI)',
+    sub: '12 Monthly Installments',
+    tenure: 12,
+    tenureUnit: 'Mos',
+    interestRate: 25.0,
+    frequency: 'MONTHLY',
     defaultPrincipal: 25000,
   },
 ];
 
-const PRESET_AMOUNTS = [10000, 20000, 30000, 50000, 100000];
+const PRESET_AMOUNTS = [2000, 5000, 10000, 25000, 50000, 100000];
 
-const DisburseLoanModal = ({ visible, onClose, onSuccess }) => {
-  const { customers, disburseLoan } = useApp();
+const DisburseLoanModal = ({ visible, initialCustomer, onClose, onSuccess }) => {
+  const { customers: contextCustomers, disburseLoan, refreshData } = useApp();
 
+  const [dbCustomers, setDbCustomers] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedScheme, setSelectedScheme] = useState(SCHEMES[0]);
-  const [principalAmount, setPrincipalAmount] = useState('10000');
+  const [principalAmount, setPrincipalAmount] = useState('5000');
+  const [fundingSource, setFundingSource] = useState('VAULT'); // 'VAULT' | 'HANDS_ON'
   const [submitting, setSubmitting] = useState(false);
 
-  const customerList = customers || [];
-  const selectedCustomer = customerList.find((c) => c.id === selectedCustomerId) || customerList[0];
+  // Fetch live customers if context list is empty
+  useEffect(() => {
+    if (!visible) return;
+    const loadCusts = async () => {
+      try {
+        const res = await apiService.getCustomers({ limit: '100' });
+        const list = Array.isArray(res) ? res : (res?.customers || []);
+        if (list.length > 0) setDbCustomers(list);
+      } catch (e) {
+        console.warn('DisburseLoanModal fetch error:', e);
+      }
+    };
+    loadCusts();
+  }, [visible]);
+
+  const customerList = dbCustomers.length > 0 ? dbCustomers : (contextCustomers || []);
+
+  // Sync initial customer or selected ID on open
+  useEffect(() => {
+    if (!visible) return;
+    if (initialCustomer?.id) {
+      setSelectedCustomerId(String(initialCustomer.id));
+      if (initialCustomer.isShop || initialCustomer.customer_type === 'SHOPKEEPER') {
+        setSelectedScheme(SCHEMES[1]);
+        setPrincipalAmount('10000');
+      } else if (initialCustomer.isMonthly || initialCustomer.customer_type === 'MONTHLY_BORROWER') {
+        setSelectedScheme(SCHEMES[2]);
+        setPrincipalAmount('25000');
+      } else {
+        setSelectedScheme(SCHEMES[0]);
+        setPrincipalAmount('5000');
+      }
+    } else if (customerList.length > 0 && !selectedCustomerId) {
+      setSelectedCustomerId(String(customerList[0].id));
+    }
+  }, [visible, initialCustomer, customerList]);
+
+  const selectedCustomer = customerList.find((c) => String(c.id) === String(selectedCustomerId)) || initialCustomer || customerList[0];
 
   const principal = parseFloat(principalAmount) || 0;
   const interestAmount = Math.round((principal * selectedScheme.interestRate) / 100);
@@ -61,7 +113,7 @@ const DisburseLoanModal = ({ visible, onClose, onSuccess }) => {
       return;
     }
 
-    const cust = selectedCustomer || customerList[0];
+    const cust = selectedCustomer || initialCustomer || customerList[0];
     if (!cust) {
       Alert.alert('No Borrower Selected', 'Please register or select a borrower.');
       return;
@@ -73,7 +125,7 @@ const DisburseLoanModal = ({ visible, onClose, onSuccess }) => {
         await disburseLoan({
           customerId: cust.id,
           customerName: cust.name || cust.full_name,
-          customer_type: cust.customer_type,
+          customer_type: cust.customer_type || (selectedScheme.id === 'DAILY' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER'),
           principal: principal,
           principal_amount: principal,
           totalRepayment: totalRepayment,
@@ -87,9 +139,11 @@ const DisburseLoanModal = ({ visible, onClose, onSuccess }) => {
           installment_amount: installmentAmount,
           lendingIncome: interestAmount,
           contracted_income_amount: interestAmount,
+          funding_source: fundingSource,
         });
       }
-      Alert.alert('Loan Disbursed', `Successfully disbursed ${formatINR(principal)} to ${cust.name || cust.full_name}.`);
+      Alert.alert('Loan Disbursed', `Successfully issued ${formatINR(principal)} to ${cust.name || cust.full_name}.`);
+      if (refreshData) refreshData();
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
@@ -180,6 +234,62 @@ const DisburseLoanModal = ({ visible, onClose, onSuccess }) => {
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+
+            {/* Disbursement Funding Source */}
+            <Text style={styles.sectionLabel}>DISBURSEMENT FUNDING SOURCE</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+              <TouchableOpacity
+                style={[
+                  styles.schemeCard,
+                  fundingSource === 'VAULT' && { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+                ]}
+                onPress={() => setFundingSource('VAULT')}
+                activeOpacity={0.8}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MaterialCommunityIcons
+                    name="wallet-outline"
+                    size={16}
+                    color={fundingSource === 'VAULT' ? '#2563EB' : '#64748B'}
+                  />
+                  <Text
+                    style={[
+                      styles.schemeTitle,
+                      fundingSource === 'VAULT' && { color: '#2563EB' },
+                    ]}
+                  >
+                    From Vault
+                  </Text>
+                </View>
+                <Text style={styles.schemeSub}>Deducts from branch cash float</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.schemeCard,
+                  fundingSource === 'HANDS_ON' && { borderColor: '#059669', backgroundColor: '#ECFDF5' },
+                ]}
+                onPress={() => setFundingSource('HANDS_ON')}
+                activeOpacity={0.8}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MaterialCommunityIcons
+                    name="bank-transfer"
+                    size={16}
+                    color={fundingSource === 'HANDS_ON' ? '#059669' : '#64748B'}
+                  />
+                  <Text
+                    style={[
+                      styles.schemeTitle,
+                      fundingSource === 'HANDS_ON' && { color: '#059669' },
+                    ]}
+                  >
+                    Hands-on Money
+                  </Text>
+                </View>
+                <Text style={styles.schemeSub}>Admin pocket / bank direct</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Loan Contract Preview */}

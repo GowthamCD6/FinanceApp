@@ -30,6 +30,7 @@ import MoreModal from '../../pages/Admin/Modals/more';
 import AddU from '../../pages/Admin/Modals/page/AddUser/AddU';
 import ManageU from '../../pages/Admin/Modals/page/ManageUser/ManageU';
 import InterestRatesModal from '../../pages/Admin/Modals/page/InterestRates/InterestRatesModal';
+import DisburseLoanModal from '../../pages/superadmin/modal/DisburseLoanModal';
 
 import AdminDashboard from '../../pages/Admin/pages/Dashboard/Dashboard';
 import CustomersScreen from '../../pages/Admin/pages/Customers/CustomersScreen';
@@ -53,18 +54,13 @@ export const Routes = () => {
     switchOrganization,
   } = useApp();
 
-  // Fronter authentication screen state ('welcome' | 'login')
+  // Navigation & Modal States
   const [authScreen, setAuthScreen] = useState('welcome');
-
-  // Active tab state
   const [activeTab, setActiveTab] = useState('dashboard');
-
-  // Modal state
   const [activeModal, setActiveModal] = useState(null);
-
-  // Selected item state for detail views
   const [selectedLoanId, setSelectedLoanId] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedCustomerForDisburse, setSelectedCustomerForDisburse] = useState(null);
 
   // Handle Tab navigation
   const handleTabPress = (tabId) => {
@@ -371,6 +367,13 @@ export const Routes = () => {
                   else if (page === 'users' || page === 'customers') setActiveTab('customers');
                 }}
                 onOpenAddUser={() => setActiveModal('ADD_USER')}
+                onOpenDisburse={() => {
+                  setSelectedCustomerForDisburse(null);
+                  setActiveModal('DISBURSE_LOAN');
+                }}
+                onOpenCollect={() => setActiveTab('reports')}
+                onOpenSettlement={() => setActiveTab('reports')}
+                onOpenLedger={() => setActiveTab('reports')}
                 onOpenManageUsers={() => setActiveModal('MANAGE_USERS')}
                 onOpenInterestRates={() => setActiveModal('INTEREST_RATES')}
               />
@@ -379,7 +382,12 @@ export const Routes = () => {
             {activeTab === 'customers' && (
               <CustomersScreen
                 onOpenAddBorrower={() => setActiveModal('ADD_USER')}
+                onOpenAddUser={() => setActiveModal('ADD_USER')}
                 onOpenManageUsers={() => setActiveModal('MANAGE_USERS')}
+                onDisburse={(customer) => {
+                  setSelectedCustomerForDisburse(customer);
+                  setActiveModal('DISBURSE_LOAN');
+                }}
               />
             )}
 
@@ -480,6 +488,19 @@ export const Routes = () => {
       <InterestRatesModal
         visible={activeModal === 'INTEREST_RATES'}
         onClose={() => setActiveModal(null)}
+      />
+
+      <DisburseLoanModal
+        visible={activeModal === 'DISBURSE_LOAN'}
+        initialCustomer={selectedCustomerForDisburse}
+        onClose={() => {
+          setActiveModal(null);
+          setSelectedCustomerForDisburse(null);
+        }}
+        onSuccess={() => {
+          setActiveModal(null);
+          setSelectedCustomerForDisburse(null);
+        }}
       />
     </SafeAreaView>
   );

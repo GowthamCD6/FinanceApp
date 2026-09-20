@@ -18,6 +18,8 @@ import {
   Calendar,
   Users,
   ExternalLink,
+  Wallet,
+  Landmark,
 } from 'lucide-react';
 import { useOrg } from '../../../context/OrgContext';
 import './AddUser.css';
@@ -59,6 +61,7 @@ export const AddUser = () => {
     interest_rate: '25',
     tenure: '10',
     frequency: 'WEEKLY',
+    funding_source: 'VAULT', // 'VAULT' | 'HANDS_ON'
   });
 
   const [errors, setErrors] = useState({});
@@ -311,6 +314,7 @@ export const AddUser = () => {
               total_installments: installmentCount,
               frequency: freq,
               interest_rate: flatRate,
+              funding_source: formData.funding_source || 'VAULT',
             }
           : null,
       });
@@ -658,6 +662,70 @@ export const AddUser = () => {
                     {errors.tenure && (
                       <span className="onboard-input-error-text">{errors.tenure}</span>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Disbursement Funding Source Selection */}
+              {formData.issue_initial_loan && (
+                <div className="onboard-field" style={{ marginTop: '0.85rem' }}>
+                  <label className="onboard-label">
+                    Disbursement Funding Source <span className="req">*</span>
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, funding_source: 'VAULT' })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.65rem',
+                        padding: '0.75rem 1rem',
+                        borderRadius: '0.5rem',
+                        border: formData.funding_source === 'VAULT' ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        background: formData.funding_source === 'VAULT' ? '#eff6ff' : '#ffffff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <Wallet size={20} color={formData.funding_source === 'VAULT' ? '#2563eb' : '#64748b'} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: formData.funding_source === 'VAULT' ? '#1e40af' : '#1e293b' }}>
+                          From Branch Vault
+                        </div>
+                        <div style={{ fontSize: '0.725rem', color: '#64748b' }}>
+                          Deducts from active branch cash float
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, funding_source: 'HANDS_ON' })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.65rem',
+                        padding: '0.75rem 1rem',
+                        borderRadius: '0.5rem',
+                        border: formData.funding_source === 'HANDS_ON' ? '2px solid #059669' : '1px solid #e2e8f0',
+                        background: formData.funding_source === 'HANDS_ON' ? '#f0fdf4' : '#ffffff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <Landmark size={20} color={formData.funding_source === 'HANDS_ON' ? '#059669' : '#64748b'} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: formData.funding_source === 'HANDS_ON' ? '#065f46' : '#1e293b' }}>
+                          Hands-on Money (Admin)
+                        </div>
+                        <div style={{ fontSize: '0.725rem', color: '#64748b' }}>
+                          Auto-injects to Net Capital & disburses
+                        </div>
+                      </div>
+                    </button>
                   </div>
                 </div>
               )}

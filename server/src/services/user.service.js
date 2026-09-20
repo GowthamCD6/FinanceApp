@@ -242,6 +242,39 @@ async function createUser(data, creatorId = null) {
             instValues
           );
         }
+
+        // Fund Ledger integration: Resolve Fund Account & Record Transaction
+        const [accRows] = await conn.query(
+          `SELECT id FROM fund_accounts WHERE organization_id = ? AND status = 'ACTIVE' ORDER BY id ASC LIMIT 1`,
+          [effectiveOrgId || 1]
+        );
+        let fundAccountId = accRows?.[0]?.id;
+        if (!fundAccountId) {
+          const [anyAcc] = await conn.query(`SELECT id FROM fund_accounts WHERE status = 'ACTIVE' LIMIT 1`);
+          fundAccountId = anyAcc?.[0]?.id || 1;
+        }
+
+        const fundingSource = String(initLoan.funding_source || initLoan.fundingSource || 'VAULT').toUpperCase();
+        
+        // If funding from Hands-on Money (External Admin Cash / Bank), inject into Net Capital first
+        if (fundingSource === 'HANDS_ON' || fundingSource === 'EXTERNAL' || fundingSource === 'HANDS_ON_MONEY') {
+          const capTxNum = `TX-CAP-EXT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          await conn.query(
+            `INSERT INTO fund_transactions 
+             (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
+             VALUES (?, ?, NOW(), 'CAPITAL_IN', 'IN', ?, 'CAPITAL_INJECTION', ?, ?, ?)`,
+            [capTxNum, fundAccountId, principal, newLoanId, `External capital injection (Hands-on money) for Loan ${loanNum}`, creatorId || 1]
+          );
+        }
+
+        // Record Loan Disbursement OUT transaction
+        const disbTxNum = `TX-DSB-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        await conn.query(
+          `INSERT INTO fund_transactions 
+           (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
+           VALUES (?, ?, NOW(), 'LOAN_DISBURSEMENT', 'OUT', ?, 'LOAN', ?, ?, ?)`,
+          [disbTxNum, fundAccountId, principal, newLoanId, `Loan disbursement to ${displayName} (${loanNum})`, creatorId || 1]
+        );
       }
     }
 

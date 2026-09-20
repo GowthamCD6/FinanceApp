@@ -257,7 +257,7 @@ export const api = {
     getAll: async (params = {}) => {
       const queryStr = new URLSearchParams(params).toString();
       const res = await request(`/loans${queryStr ? `?${queryStr}` : ''}`);
-      return res?.loans || res || [];
+      return res?.data?.loans || res?.loans || res?.data || res || [];
     },
     getById: async (id) => {
       return await request(`/loans/${id}`);
@@ -954,19 +954,50 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(profileData),
       }).catch(() => null);
-
-      const updatedUser = { ...cachedUser, ...profileData };
-      localStorage.setItem('finance_user', JSON.stringify(updatedUser));
-      return {
-        ...updatedUser,
-        name: profileData.name,
-        phone: profileData.phone,
-        email: profileData.email,
-        assigned_route: profileData.assigned_route,
-      };
-    } catch (err) {
-      return profileData;
+      return { success: true };
+    } catch (e) {
+      console.warn('Profile update error:', e);
+      return { success: false };
     }
+  },
+
+  // 14. CENTRAL FUND & REALIZED PROFIT MANAGEMENT
+  funds: {
+    getSummary: async () => {
+      const res = await request('/funds/summary');
+      return res || null;
+    },
+    getAccounts: async () => {
+      const res = await request('/funds/accounts');
+      return res || [];
+    },
+    injectCapital: async (amount, description = 'Additional Capital Injected', fundAccountId = 1) => {
+      return await request('/funds/capital', {
+        method: 'POST',
+        body: JSON.stringify({ fundAccountId, amount: Number(amount), description }),
+      });
+    },
+    withdrawProfit: async (amount, description = 'Admin Profit Withdrawal', paymentMethod = 'BANK_TRANSFER', fundAccountId = 1) => {
+      return await request('/funds/withdraw-profit', {
+        method: 'POST',
+        body: JSON.stringify({ fundAccountId, amount: Number(amount), description, paymentMethod }),
+      });
+    },
+    transferProfitToNetCapital: async (amount, description = 'Profit reinvested to net capital', fundAccountId = 1) => {
+      return await request('/funds/transfer-profit', {
+        method: 'POST',
+        body: JSON.stringify({ fundAccountId, amount: Number(amount), description }),
+      });
+    },
+    recordExpense: async (expenseData) => {
+      return await request('/funds/expenses', {
+        method: 'POST',
+        body: JSON.stringify(expenseData),
+      });
+    },
+    getCirculationTrail: async (limit = 50) => {
+      return await request(`/funds/circulation?limit=${limit}`);
+    },
   },
 };
 

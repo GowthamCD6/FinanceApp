@@ -157,6 +157,7 @@ export const BorrowerLogModal = ({
   onClose,
   borrower,
   onPaymentSuccess,
+  onOpenIssueLoan,
 }) => {
   const [loanData, setLoanData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -449,6 +450,31 @@ export const BorrowerLogModal = ({
                   </Text>
                 </View>
               </View>
+
+              {/* Allot / Issue New Loan to this existing borrower */}
+              {onOpenIssueLoan && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    backgroundColor: '#F5F3FF',
+                    borderWidth: 1.5,
+                    borderColor: '#DDD6FE',
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    marginTop: 12,
+                  }}
+                  onPress={() => onOpenIssueLoan(borrower)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="cash-plus" size={16} color="#6B46C1" />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B46C1' }}>
+                    + Allot New Loan to this Borrower
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Filter Tabs: All, Overdue, Due, Paid */}

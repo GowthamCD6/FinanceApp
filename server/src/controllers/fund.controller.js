@@ -77,10 +77,63 @@ async function getCirculationTrail(req, res) {
   }
 }
 
+async function withdrawProfit(req, res) {
+  try {
+    const { fundAccountId, amount, description, paymentMethod } = req.body;
+    if (!amount) {
+      return res.status(400).json({ success: false, message: 'Amount is required.' });
+    }
+
+    const result = await fundService.withdrawProfit({
+      fundAccountId: fundAccountId ? Number(fundAccountId) : null,
+      amount: parseFloat(amount),
+      description,
+      paymentMethod,
+      userId: req.user.id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `Profit of ₹${amount} withdrawn successfully.`,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Withdraw profit error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function transferProfitToNetCapital(req, res) {
+  try {
+    const { fundAccountId, amount, description } = req.body;
+    if (!amount) {
+      return res.status(400).json({ success: false, message: 'Amount is required.' });
+    }
+
+    const result = await fundService.transferProfitToNetCapital({
+      fundAccountId: fundAccountId ? Number(fundAccountId) : null,
+      amount: parseFloat(amount),
+      description,
+      userId: req.user.id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `Profit of ₹${amount} transferred to net capital successfully.`,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Transfer profit error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   getSummary,
   addCapital,
   recordExpense,
+  withdrawProfit,
+  transferProfitToNetCapital,
   getAccounts,
   getCirculationTrail,
 };

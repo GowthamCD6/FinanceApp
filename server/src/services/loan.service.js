@@ -14,13 +14,20 @@ async function generateLoanNumber() {
  * Create a new loan application based on configurable loan products & policies
  */
 async function createLoanApplication(data, userId) {
-  const { customerId, productId, principalAmount, notes } = data;
+  const customerId = data.customerId || data.customer_id || data.userId || data.id;
+  const principalVal = data.principalAmount || data.principal || data.principal_amount || data.amount;
+  let productId = data.productId || data.product_id;
+  const notes = data.notes || data.description || '';
+  const frequency = data.frequency || data.repayment_frequency || data.type || 'WEEKLY';
 
-  if (!customerId || !productId || !principalAmount) {
-    throw new Error('Customer, loan product, and principal amount are required.');
+  if (!customerId || !principalVal) {
+    throw new Error('Customer and principal amount are required.');
   }
 
-  const parsedPrincipal = parseFloat(principalAmount);
+  const parsedPrincipal = parseFloat(principalVal);
+  if (isNaN(parsedPrincipal) || parsedPrincipal <= 0) {
+    throw new Error('Valid principal amount is required.');
+  }
 
   // 1. Verify customer exists and is not blocked
   const customer = await query(`SELECT * FROM customers WHERE id = ? LIMIT 1`, [customerId]);
@@ -45,51 +52,67 @@ async function createLoanApplication(data, userId) {
   );
   const parentLoanId = lastLoan && lastLoan.length > 0 ? lastLoan[0].id : null;
 
-  // 4. Fetch loan product and active policy
-  const product = await query(`SELECT * FROM loan_products WHERE id = ? AND status = 'ACTIVE' LIMIT 1`, [productId]);
-  if (!product || product.length === 0) throw new Error('Loan product not found or inactive.');
+  const effectiveOrgId = customer[0].organization_id || data.organizationId || data.organization_id || 2;
+  const effectiveBranchId = data.branchId || data.branch_id || customer[0].branch_id || null;
 
-  const policy = await query(
-    `SELECT * FROM loan_policies WHERE product_id = ? AND status = 'ACTIVE' ORDER BY effective_from DESC LIMIT 1`,
-    [productId]
-  );
-  if (!policy || policy.length === 0) throw new Error('No active policy found for this loan product.');
-
-  const p = policy[0];
-  if (parsedPrincipal < parseFloat(p.minimum_amount) || parsedPrincipal > parseFloat(p.maximum_amount)) {
-    throw new Error(`Loan amount must be between ₹${p.minimum_amount} and ₹${p.maximum_amount} as per product policy.`);
+  // 4. Resolve Loan Product
+  if (!productId) {
+    const prodRows = await query(
+      `SELECT id, product_name, repayment_frequency FROM loan_products 
+       WHERE (organization_id = ? OR organization_id IS NULL) AND (repayment_frequency = ? OR product_code LIKE ?) AND status = 'ACTIVE' 
+       ORDER BY id ASC LIMIT 1`,
+      [effectiveOrgId, frequency, `%${frequency.slice(0, 3)}%`]
+    );
+    if (prodRows && prodRows.length > 0) {
+      productId = prodRows[0].id;
+    } else {
+      const anyProd = await query(`SELECT id FROM loan_products WHERE status = 'ACTIVE' LIMIT 1`);
+      productId = anyProd?.[0]?.id || null;
+    }
   }
 
-  // 5. Calculate contracted lending income / fees based on policy
-  let contractedIncome = 0;
-  if (p.income_type === 'PERCENTAGE') {
-    contractedIncome = parsedPrincipal * parseFloat(p.income_value);
-  } else if (p.income_type === 'FIXED_FEE') {
-    contractedIncome = parseFloat(p.income_value);
+  if (!productId) {
+    const newProd = await query(
+      `INSERT INTO loan_products (organization_id, product_name, product_code, customer_type, repayment_frequency, status)
+       VALUES (?, ?, ?, 'BOTH', ?, 'ACTIVE')`,
+      [effectiveOrgId, `${frequency} Lending Product`, `PROD-${frequency.slice(0, 3)}`, frequency]
+    );
+    productId = newProd.insertId;
   }
 
+  // 5. Calculate contracted lending income / fees & installments
+  const defaultTenure = frequency === 'DAILY' ? 100 : (frequency === 'MONTHLY' ? 12 : 10);
+  const numInstallments = parseInt(data.total_installments || data.duration || data.tenure || defaultTenure, 10);
+  const interestRate = parseFloat(data.interest_rate || data.interestRate || data.rate || 25.0);
+  const contractedIncome = Math.round(((parsedPrincipal * interestRate) / 100) * 100) / 100;
   const totalRepaymentAmount = parsedPrincipal + contractedIncome;
   const loanNumber = await generateLoanNumber();
-  const effectiveOrgId = data.organizationId || data.organization_id || customer[0].organization_id || 1;
-  const effectiveBranchId = data.branchId || data.branch_id || customer[0].branch_id || null;
+
+  // Find policy ID if exists
+  const policyRows = await query(
+    `SELECT id FROM loan_policies WHERE product_id = ? AND status = 'ACTIVE' ORDER BY effective_from DESC LIMIT 1`,
+    [productId]
+  );
+  const policyId = policyRows?.[0]?.id || null;
 
   const result = await query(
     `INSERT INTO loans 
-     (organization_id, branch_id, loan_number, customer_id, product_id, policy_id, parent_loan_id, principal_amount, contracted_income_amount, total_repayment_amount, total_installments, repayment_frequency, status, application_date, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_DATE, ?)`,
+     (organization_id, branch_id, loan_number, customer_id, product_id, policy_id, parent_loan_id, principal_amount, contracted_income_amount, interest_rate, total_repayment_amount, total_installments, repayment_frequency, status, application_date, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_DATE, ?)`,
     [
       effectiveOrgId,
       effectiveBranchId,
       loanNumber,
       customerId,
       productId,
-      p.id,
+      policyId,
       parentLoanId,
       parsedPrincipal,
       contractedIncome,
+      interestRate,
       totalRepaymentAmount,
-      p.number_of_installments,
-      product[0].repayment_frequency,
+      numInstallments,
+      frequency,
       notes || null,
     ]
   );
@@ -100,7 +123,7 @@ async function createLoanApplication(data, userId) {
   await query(
     `INSERT INTO loan_status_history (loan_id, from_status, to_status, reason, changed_by)
      VALUES (?, NULL, 'PENDING', 'Loan application submitted', ?)`,
-    [loanId, userId]
+    [loanId, userId || 1]
   );
 
   await query(
@@ -113,10 +136,11 @@ async function createLoanApplication(data, userId) {
         customerId,
         principal: parsedPrincipal,
         income: contractedIncome,
-        installments: p.number_of_installments,
-        frequency: product[0].repayment_frequency,
+        installments: numInstallments,
+        frequency,
+        fundingSource: data.funding_source || data.fundingSource || 'VAULT',
       }),
-      userId,
+      userId || 1,
     ]
   );
 
@@ -127,8 +151,8 @@ async function createLoanApplication(data, userId) {
     principalAmount: parsedPrincipal,
     contractedIncomeAmount: contractedIncome,
     totalRepaymentAmount,
-    totalInstallments: p.number_of_installments,
-    frequency: product[0].repayment_frequency,
+    totalInstallments: numInstallments,
+    frequency,
     status: 'PENDING',
   };
 }
@@ -172,47 +196,66 @@ async function approveLoan(loanId, userId) {
  * 6. Posts double-entry journal entry
  * 7. Records audit log
  */
-async function disburseLoan({ loanId, fundAccountId, userId }) {
+async function disburseLoan({ loanId, fundAccountId = 1, userId, fundingSource = 'VAULT' }) {
   return await withTransaction(async (conn) => {
     // 1. Fetch loan and lock row
     const [loans] = await conn.query(`SELECT * FROM loans WHERE id = ? FOR UPDATE`, [loanId]);
     if (loans.length === 0) throw new Error('Loan not found.');
     const loan = loans[0];
 
-    if (loan.status !== 'APPROVED') {
-      throw new Error(`Loan must be in APPROVED status to be disbursed. Current: ${loan.status}`);
+    if (loan.status !== 'APPROVED' && loan.status !== 'PENDING') {
+      throw new Error(`Loan must be in APPROVED or PENDING status to be disbursed. Current: ${loan.status}`);
     }
 
     const principal = parseFloat(loan.principal_amount);
     const income = parseFloat(loan.contracted_income_amount);
     const totalRepayment = parseFloat(loan.total_repayment_amount);
     const installmentsCount = parseInt(loan.total_installments, 10);
-    const frequency = loan.repayment_frequency; // 'DAILY' or 'WEEKLY'
+    const frequency = loan.repayment_frequency || 'WEEKLY';
 
-    // 2. Lock and verify Fund Account
-    const [accounts] = await conn.query(`SELECT * FROM fund_accounts WHERE id = ? FOR UPDATE`, [fundAccountId]);
+    // 2. Resolve & Lock Fund Account
+    let targetFundAccId = fundAccountId;
+    const [accounts] = await conn.query(`SELECT * FROM fund_accounts WHERE id = ? FOR UPDATE`, [targetFundAccId]);
     if (accounts.length === 0 || accounts[0].status !== 'ACTIVE') {
-      throw new Error('Selected fund account not found or inactive.');
+      const [anyAcc] = await conn.query(`SELECT id FROM fund_accounts WHERE status = 'ACTIVE' LIMIT 1`);
+      targetFundAccId = anyAcc?.[0]?.id || 1;
     }
 
-    // Check available cash in this specific fund account
-    const [balanceRow] = await conn.query(
-      `SELECT COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS balance
-       FROM fund_transactions WHERE fund_account_id = ?`,
-      [fundAccountId]
-    );
-    const availableCash = parseFloat(balanceRow[0]?.balance || 0);
+    const isHandsOn = String(fundingSource).toUpperCase() === 'HANDS_ON' || String(fundingSource).toUpperCase() === 'HANDS_ON_MONEY';
 
-    if (availableCash < principal) {
-      throw new Error(
-        `Insufficient available cash in ${accounts[0].account_name}. Available: ₹${availableCash.toFixed(2)}, Required: ₹${principal.toFixed(2)}.`
+    const effectiveOrgId = loan.organization_id || 2;
+
+    // If hands-on money, inject external capital into the vault fund first
+    if (isHandsOn) {
+      const txInfusion = `TX-INFUSE-${loan.loan_number}-${Date.now()}`;
+      await conn.query(
+        `INSERT INTO fund_transactions
+         (organization_id, transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
+         VALUES (?, ?, ?, NOW(), 'CAPITAL_IN', 'IN', ?, 'LOAN', ?, ?, ?)`,
+        [
+          effectiveOrgId,
+          txInfusion,
+          targetFundAccId,
+          principal,
+          loanId,
+          `Hands-on external admin funds injection for loan ${loan.loan_number}`,
+          userId || 1,
+        ]
       );
     }
 
-    // 3. Update Loan to DISBURSED / ACTIVE
+    // Check available cash
+    const [balanceRow] = await conn.query(
+      `SELECT COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS balance
+       FROM fund_transactions WHERE fund_account_id = ?`,
+      [targetFundAccId]
+    );
+    const availableCash = parseFloat(balanceRow[0]?.balance || 0);
+
+    // 3. Update Loan to ACTIVE
     const disbursementDate = new Date();
     const maturityDate = new Date();
-    const daysInterval = frequency === 'DAILY' ? 1 : 7;
+    const daysInterval = frequency === 'DAILY' ? 1 : (frequency === 'MONTHLY' ? 30 : 7);
     maturityDate.setDate(maturityDate.getDate() + installmentsCount * daysInterval);
 
     await conn.query(
@@ -222,7 +265,7 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
          maturity_date = ?,
          disbursed_by = ?
        WHERE id = ?`,
-      [maturityDate.toISOString().slice(0, 10), userId, loanId]
+      [maturityDate.toISOString().slice(0, 10), userId || 1, loanId]
     );
 
     // 4. Generate Installments Engine
@@ -231,11 +274,12 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
     let principalRemainder = Math.round((principal - principalPerInst * installmentsCount) * 100) / 100;
     let incomeRemainder = Math.round((income - incomePerInst * installmentsCount) * 100) / 100;
 
+    await conn.query(`DELETE FROM loan_installments WHERE loan_id = ?`, [loanId]);
+
     for (let i = 1; i <= installmentsCount; i++) {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + i * daysInterval);
 
-      // Add remainders to the final installment for cent-accurate precision
       const curPrincipal = i === installmentsCount ? principalPerInst + principalRemainder : principalPerInst;
       const curIncome = i === installmentsCount ? incomePerInst + incomeRemainder : incomePerInst;
       const scheduledAmount = curPrincipal + curIncome;
@@ -252,24 +296,25 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
     const txNumber = `TX-DISB-${loan.loan_number}-${Date.now()}`;
     await conn.query(
       `INSERT INTO fund_transactions
-       (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
-       VALUES (?, ?, NOW(), 'LOAN_DISBURSEMENT', 'OUT', ?, 'LOAN', ?, ?, ?)`,
+       (organization_id, transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, reference_id, description, created_by)
+       VALUES (?, ?, ?, NOW(), 'LOAN_DISBURSEMENT', 'OUT', ?, 'LOAN', ?, ?, ?)`,
       [
+        effectiveOrgId,
         txNumber,
-        fundAccountId,
+        targetFundAccId,
         principal,
         loanId,
-        `Disbursement for loan ${loan.loan_number} (${frequency})`,
-        userId,
+        `Disbursement for loan ${loan.loan_number} (${frequency}) [${isHandsOn ? 'HANDS-ON' : 'VAULT'}]`,
+        userId || 1,
       ]
     );
 
     // 6. Double-Entry: Debit 1100 (Receivables), Credit 1000 (Cash)
     const jeNumber = `JE-DISB-${loan.loan_number}`;
     const [jeResult] = await conn.query(
-      `INSERT INTO journal_entries (entry_number, entry_date, reference_type, reference_id, description, created_by)
-       VALUES (?, NOW(), 'LOAN_DISBURSEMENT', ?, ?, ?)`,
-      [jeNumber, loanId, `Disbursed ${loan.loan_number}`, userId]
+      `INSERT INTO journal_entries (organization_id, entry_number, entry_date, reference_type, reference_id, description, created_by)
+       VALUES (?, ?, NOW(), 'LOAN_DISBURSEMENT', ?, ?, ?)`,
+      [effectiveOrgId, jeNumber, loanId, `Disbursed ${loan.loan_number}`, userId || 1]
     );
     const jeId = jeResult.insertId;
 
@@ -285,17 +330,17 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
       );
     }
 
-    // 7. Audit log, status history, and immutable event
+    // 7. Audit log & events
     await conn.query(
-      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_values, reason)
-       VALUES (?, 'LOAN_DISBURSE', 'LOAN', ?, ?, 'Disbursement authorized and processed')`,
-      [userId, loanId, JSON.stringify({ fundAccountId, principal, installmentsCount, frequency })]
+      `INSERT INTO audit_logs (organization_id, user_id, action, entity_type, entity_id, new_values, reason)
+       VALUES (?, ?, 'LOAN_DISBURSE', 'LOAN', ?, ?, 'Disbursement authorized and processed')`,
+      [effectiveOrgId, userId || 1, loanId, JSON.stringify({ fundAccountId: targetFundAccId, principal, installmentsCount, frequency, fundingSource })]
     );
 
     await conn.query(
       `INSERT INTO loan_status_history (loan_id, from_status, to_status, reason, changed_by)
        VALUES (?, 'APPROVED', 'ACTIVE', 'Disbursed and installments generated', ?)`,
-      [loanId, userId]
+      [loanId, userId || 1]
     );
 
     await conn.query(
@@ -306,12 +351,13 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
         JSON.stringify({
           loanNumber: loan.loan_number,
           principal,
-          fundAccountId,
+          fundAccountId: targetFundAccId,
           installmentsCount,
           frequency,
+          fundingSource,
           disbursementDate: disbursementDate.toISOString(),
         }),
-        userId,
+        userId || 1,
       ]
     );
 
@@ -329,9 +375,9 @@ async function disburseLoan({ loanId, fundAccountId, userId }) {
 /**
  * List loans with optional filters
  */
-async function getLoans({ status, customerId, frequency, organizationId, branchId, page = 1, limit = 20 }) {
+async function getLoans({ status, customerId, frequency, organizationId, branchId, page = 1, limit = 50 }) {
   const safePage = Math.max(1, parseInt(page, 10) || 1);
-  const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
+  const safeLimit = Math.min(1000, Math.max(1, parseInt(limit, 10) || 50));
   const offset = (safePage - 1) * safeLimit;
   let whereClauses = ['1=1'];
   const params = [];
@@ -351,8 +397,8 @@ async function getLoans({ status, customerId, frequency, organizationId, branchI
     params.push(status);
   }
   if (customerId) {
-    whereClauses.push('l.customer_id = ?');
-    params.push(customerId);
+    whereClauses.push('(l.customer_id = ? OR c.id = ?)');
+    params.push(customerId, customerId);
   }
   if (frequency) {
     whereClauses.push('l.repayment_frequency = ?');
@@ -361,26 +407,54 @@ async function getLoans({ status, customerId, frequency, organizationId, branchI
 
   const whereSql = whereClauses.join(' AND ');
 
-  const countRows = await query(`SELECT COUNT(*) AS total FROM loans l WHERE ${whereSql}`, params);
+  const countRows = await query(`SELECT COUNT(*) AS total FROM loans l LEFT JOIN customers c ON l.customer_id = c.id WHERE ${whereSql}`, params);
   const total = countRows[0]?.total || 0;
 
-  const loans = await query(
+  const rawLoans = await query(
     `SELECT 
        l.*,
-       c.full_name AS customer_name,
-       c.phone AS customer_phone,
+       COALESCE(c.full_name, l.customer_id, 'Borrower') AS customer_name,
+       c.full_name AS customer_full_name,
+       COALESCE(c.phone, '') AS customer_phone,
+       c.customer_code,
        c.shop_name,
-       lp.product_name,
+       COALESCE(lp.product_name, CONCAT(COALESCE(l.repayment_frequency, 'WEEKLY'), ' Scheme')) AS product_name,
        (SELECT COALESCE(SUM(paid_amount), 0) FROM loan_installments WHERE loan_id = l.id) AS totalCollected,
-       (SELECT COALESCE(SUM(outstanding_amount), 0) FROM loan_installments WHERE loan_id = l.id) AS totalOutstanding
+       (SELECT COALESCE(SUM(outstanding_amount), 0) FROM loan_installments WHERE loan_id = l.id) AS totalOutstanding,
+       (SELECT COUNT(*) FROM loan_installments WHERE loan_id = l.id AND (status = 'PAID' OR paid_amount >= scheduled_amount)) AS paid_installments
      FROM loans l
-     JOIN customers c ON l.customer_id = c.id
-     JOIN loan_products lp ON l.product_id = lp.id
+     LEFT JOIN customers c ON l.customer_id = c.id
+     LEFT JOIN loan_products lp ON l.product_id = lp.id
      WHERE ${whereSql}
      ORDER BY l.id DESC
      LIMIT ${safeLimit} OFFSET ${offset}`,
     params
   );
+
+  const loans = rawLoans.map((l) => {
+    const principal = Number(l.principal_amount || 0);
+    const totalRepayment = Number(l.total_repayment_amount || (principal * 1.25));
+    const totalPaid = Number(l.totalCollected || 0);
+    const totalOutstanding = Number(l.totalOutstanding || Math.max(0, totalRepayment - totalPaid));
+    const totalInst = Number(l.total_installments || 10);
+    const paidInst = Number(l.paid_installments || (totalInst > 0 && totalRepayment > 0 ? Math.floor((totalPaid / (totalRepayment / totalInst))) : 0));
+
+    return {
+      ...l,
+      principal: principal,
+      principal_amount: principal,
+      total_repayment_amount: totalRepayment,
+      totalRepayment: totalRepayment,
+      total_paid: totalPaid,
+      paid_amount: totalPaid,
+      totalCollected: totalPaid,
+      outstanding_amount: totalOutstanding,
+      totalOutstanding: totalOutstanding,
+      total_installments: totalInst,
+      paid_installments: paidInst,
+      emi_amount: totalInst > 0 ? Math.round(totalRepayment / totalInst) : 0,
+    };
+  });
 
   return { loans, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
 }

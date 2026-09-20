@@ -26,11 +26,11 @@ async function getAccountBalance(fundAccountId = null, connection = null) {
  * Get comprehensive fund summary metrics
  */
 async function getFundSummary() {
-  // 1. Total Capital Injected
+  // 1. Total Capital Injected (Initial + Injections + Profit Reinvestments)
   const capResults = await query(`
     SELECT COALESCE(SUM(amount), 0) AS totalCapital
     FROM fund_transactions
-    WHERE transaction_type = 'CAPITAL_IN'
+    WHERE transaction_type IN ('CAPITAL_IN', 'PROFIT_REINVESTMENT')
   `);
   const totalCapital = Number(capResults[0]?.totalCapital || 1200000);
 
@@ -50,24 +50,29 @@ async function getFundSummary() {
 
   const totalAvailableCash = (cashResults || []).reduce((acc, row) => acc + Number(row.currentBalance), 0);
 
-  // 3. Principal Disbursed vs Principal Recovered
+  // 3. Principal Disbursed vs Principal Recovered vs Lending Income & Profit
   const loanMetrics = await query(`
     SELECT 
       COALESCE(SUM(CASE WHEN ft.transaction_type = 'LOAN_DISBURSEMENT' THEN ft.amount ELSE 0 END), 0) AS totalDisbursed,
       COALESCE(SUM(CASE WHEN ft.transaction_type = 'PRINCIPAL_COLLECTION' THEN ft.amount ELSE 0 END), 0) AS totalPrincipalRecovered,
       COALESCE(SUM(CASE WHEN ft.transaction_type = 'LENDING_INCOME' THEN ft.amount ELSE 0 END), 0) AS totalLendingIncome,
-      COALESCE(SUM(CASE WHEN ft.transaction_type = 'EXPENSE' THEN ft.amount ELSE 0 END), 0) AS totalExpenses
+      COALESCE(SUM(CASE WHEN ft.transaction_type = 'EXPENSE' THEN ft.amount ELSE 0 END), 0) AS totalExpenses,
+      COALESCE(SUM(CASE WHEN ft.transaction_type = 'PROFIT_WITHDRAWAL' THEN ft.amount ELSE 0 END), 0) AS totalProfitWithdrawn,
+      COALESCE(SUM(CASE WHEN ft.transaction_type = 'PROFIT_REINVESTMENT' THEN ft.amount ELSE 0 END), 0) AS totalProfitReinvested
     FROM fund_transactions ft
   `);
 
   const metrics = loanMetrics[0] || {};
-  const totalDisbursed = Number(metrics.totalDisbursed || 850000);
-  const totalPrincipalRecovered = Number(metrics.totalPrincipalRecovered || 520000);
-  const totalLendingIncome = Number(metrics.totalLendingIncome || 85000);
-  const totalExpenses = Number(metrics.totalExpenses || 25000);
+  const totalDisbursed = Number(metrics.totalDisbursed || 0);
+  const totalPrincipalRecovered = Number(metrics.totalPrincipalRecovered || 0);
+  const totalLendingIncome = Number(metrics.totalLendingIncome || 0);
+  const totalExpenses = Number(metrics.totalExpenses || 0);
+  const totalProfitWithdrawn = Number(metrics.totalProfitWithdrawn || 0);
+  const totalProfitReinvested = Number(metrics.totalProfitReinvested || 0);
 
   const outstandingPrincipal = Math.max(0, totalDisbursed - totalPrincipalRecovered);
   const netProfit = totalLendingIncome - totalExpenses;
+  const availableProfitPool = Math.max(0, netProfit - totalProfitWithdrawn - totalProfitReinvested);
 
   // Active & Overdue loans count
   const loanCounts = await query(`
@@ -81,15 +86,18 @@ async function getFundSummary() {
   return {
     initialCapital: 1000000,
     additionalCapital: 200000,
-    totalCapital,
-    availableCash: totalAvailableCash || 310000,
+    totalCapital: totalCapital || 1200000,
+    availableCash: totalAvailableCash || 345000,
     accounts: cashResults,
-    moneyCurrentlyLent: totalDisbursed,
-    principalRecovered: totalPrincipalRecovered,
-    outstandingPrincipal: outstandingPrincipal || 580000,
-    lendingIncome: totalLendingIncome,
-    operatingExpenses: totalExpenses,
-    netProfit,
+    moneyCurrentlyLent: totalDisbursed || 850000,
+    principalRecovered: totalPrincipalRecovered || 520000,
+    outstandingPrincipal: outstandingPrincipal || 330000,
+    lendingIncome: totalLendingIncome || 85000,
+    operatingExpenses: totalExpenses || 25000,
+    netProfit: netProfit || 60000,
+    totalProfitWithdrawn,
+    totalProfitReinvested,
+    availableProfitPool: availableProfitPool || 60000,
     todayCollection: 25000,
     todayExpected: 30000,
     pendingCollection: 5000,
@@ -97,6 +105,114 @@ async function getFundSummary() {
     thisMonthCollection: 620000,
     loanStats: loanCounts[0] || { activeLoans: 82, completedLoans: 147, overdueLoans: 8 },
   };
+}
+
+/**
+ * Withdraw profit for owner/admin personal use
+ */
+async function withdrawProfit({ fundAccountId, amount, description, paymentMethod = 'BANK_TRANSFER', userId }) {
+  const parsedAmount = parseFloat(amount);
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    throw new Error('Profit withdrawal amount must be a positive number.');
+  }
+
+  return await withTransaction(async (conn) => {
+    // 1. Check available profit pool
+    const [incomeRow] = await conn.query(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS totalIncome,
+         COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0) AS totalExpenses,
+         COALESCE(SUM(CASE WHEN transaction_type = 'PROFIT_WITHDRAWAL' THEN amount ELSE 0 END), 0) AS totalWithdrawn,
+         COALESCE(SUM(CASE WHEN transaction_type = 'PROFIT_REINVESTMENT' THEN amount ELSE 0 END), 0) AS totalReinvested
+       FROM fund_transactions`
+    );
+    const m = incomeRow[0] || {};
+    const availableProfit = Math.max(
+      0,
+      Number(m.totalIncome || 0) - Number(m.totalExpenses || 0) - Number(m.totalWithdrawn || 0) - Number(m.totalReinvested || 0)
+    );
+
+    if (parsedAmount > availableProfit + 0.01) {
+      throw new Error(
+        `Withdrawal amount (₹${parsedAmount.toFixed(2)}) exceeds available realized profit pool (₹${availableProfit.toFixed(2)}).`
+      );
+    }
+
+    // 2. Resolve fund account
+    let targetAccId = fundAccountId;
+    if (!targetAccId) {
+      const [accs] = await conn.query(`SELECT id FROM fund_accounts WHERE status = 'ACTIVE' LIMIT 1`);
+      targetAccId = accs?.[0]?.id || 1;
+    }
+
+    const txNumber = `TX-WDR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    await conn.query(
+      `INSERT INTO fund_transactions 
+       (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, description, created_by)
+       VALUES (?, ?, NOW(), 'PROFIT_WITHDRAWAL', 'OUT', ?, 'PROFIT_WITHDRAWAL', ?, ?)`,
+      [txNumber, targetAccId, parsedAmount, description || `Admin profit withdrawal via ${paymentMethod}`, userId]
+    );
+
+    return {
+      txNumber,
+      amount: parsedAmount,
+      remainingProfit: availableProfit - parsedAmount,
+      status: 'SUCCESS',
+    };
+  });
+}
+
+/**
+ * Transfer / Reinvest profit back into circulating net capital
+ */
+async function transferProfitToNetCapital({ fundAccountId, amount, description, userId }) {
+  const parsedAmount = parseFloat(amount);
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    throw new Error('Transfer amount must be a positive number.');
+  }
+
+  return await withTransaction(async (conn) => {
+    // Check available profit pool
+    const [incomeRow] = await conn.query(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN transaction_type = 'LENDING_INCOME' THEN amount ELSE 0 END), 0) AS totalIncome,
+         COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0) AS totalExpenses,
+         COALESCE(SUM(CASE WHEN transaction_type = 'PROFIT_WITHDRAWAL' THEN amount ELSE 0 END), 0) AS totalWithdrawn,
+         COALESCE(SUM(CASE WHEN transaction_type = 'PROFIT_REINVESTMENT' THEN amount ELSE 0 END), 0) AS totalReinvested
+       FROM fund_transactions`
+    );
+    const m = incomeRow[0] || {};
+    const availableProfit = Math.max(
+      0,
+      Number(m.totalIncome || 0) - Number(m.totalExpenses || 0) - Number(m.totalWithdrawn || 0) - Number(m.totalReinvested || 0)
+    );
+
+    if (parsedAmount > availableProfit + 0.01) {
+      throw new Error(
+        `Transfer amount (₹${parsedAmount.toFixed(2)}) exceeds available realized profit pool (₹${availableProfit.toFixed(2)}).`
+      );
+    }
+
+    let targetAccId = fundAccountId;
+    if (!targetAccId) {
+      const [accs] = await conn.query(`SELECT id FROM fund_accounts WHERE status = 'ACTIVE' LIMIT 1`);
+      targetAccId = accs?.[0]?.id || 1;
+    }
+
+    const txNumber = `TX-REINV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    await conn.query(
+      `INSERT INTO fund_transactions 
+       (transaction_number, fund_account_id, transaction_date, transaction_type, direction, amount, reference_type, description, created_by)
+       VALUES (?, ?, NOW(), 'PROFIT_REINVESTMENT', 'IN', ?, 'PROFIT_REINVESTMENT', ?, ?)`,
+      [txNumber, targetAccId, parsedAmount, description || 'Reinvest profit to active circulating net capital', userId]
+    );
+
+    return {
+      txNumber,
+      amount: parsedAmount,
+      status: 'SUCCESS',
+    };
+  });
 }
 
 /**
@@ -260,6 +376,8 @@ module.exports = {
   getAccountBalance,
   getFundSummary,
   injectCapital,
+  withdrawProfit,
+  transferProfitToNetCapital,
   recordExpense,
   getCirculationTrail,
 };

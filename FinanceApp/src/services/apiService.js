@@ -242,8 +242,15 @@ class ApiService {
   }
 
   // 3. LOANS & REPEAT LOANS
-  async getLoans() {
-    const res = await this.request('/loans');
+  async getLoans(params = {}) {
+    let queryStr = '';
+    if (params && Object.keys(params).length > 0) {
+      queryStr = '?' + Object.entries(params)
+        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('&');
+    }
+    const res = await this.request(`/loans${queryStr}`);
     return res.data?.loans || res.data || [];
   }
 
@@ -272,10 +279,10 @@ class ApiService {
     return res.data;
   }
 
-  async disburseLoan(loanId, fundAccountId = 1) {
+  async disburseLoan(loanId, fundAccountId = 1, fundingSource = 'VAULT') {
     const res = await this.request(`/loans/${loanId}/disburse`, {
       method: 'POST',
-      body: JSON.stringify({ fundAccountId }),
+      body: JSON.stringify({ fundAccountId, funding_source: fundingSource }),
     });
     return res.data;
   }
@@ -308,12 +315,28 @@ class ApiService {
     return res.data;
   }
 
-  async injectCapital(amount, description = 'Additional Capital Injected') {
+  async injectCapital(amount, description = 'Additional Capital Injected', fundAccountId = 1) {
     const res = await this.request('/funds/capital', {
       method: 'POST',
-      body: JSON.stringify({ fundAccountId: 1, amount, description }),
+      body: JSON.stringify({ fundAccountId, amount, description }),
     });
-    return res.data;
+    return res.data || res;
+  }
+
+  async withdrawProfit(amount, description = 'Admin Profit Withdrawal', paymentMethod = 'BANK_TRANSFER', fundAccountId = 1) {
+    const res = await this.request('/funds/withdraw-profit', {
+      method: 'POST',
+      body: JSON.stringify({ fundAccountId, amount, description, paymentMethod }),
+    });
+    return res.data || res;
+  }
+
+  async transferProfitToNetCapital(amount, description = 'Profit transferred to net capital', fundAccountId = 1) {
+    const res = await this.request('/funds/transfer-profit', {
+      method: 'POST',
+      body: JSON.stringify({ fundAccountId, amount, description }),
+    });
+    return res.data || res;
   }
 
   // 6. EXPENSES (Available Cash ↓, Expenses ↑, Profit ↓)

@@ -9,6 +9,8 @@ router.get('/summary', requirePermission('FUND_READ'), fundController.getSummary
 router.get('/accounts', requirePermission('FUND_READ'), fundController.getAccounts);
 router.get('/circulation', requirePermission('FUND_READ'), fundController.getCirculationTrail);
 router.post('/capital', requirePermission('FUND_MANAGE'), fundController.addCapital);
+router.post('/withdraw-profit', requirePermission('FUND_MANAGE'), fundController.withdrawProfit);
+router.post('/transfer-profit', requirePermission('FUND_MANAGE'), fundController.transferProfitToNetCapital);
 
 // Operational Expense Logging (Available Cash ↓, Expenses ↑, Profit ↓)
 router.post('/expenses', requirePermission('EXPENSE_CREATE'), fundController.recordExpense);

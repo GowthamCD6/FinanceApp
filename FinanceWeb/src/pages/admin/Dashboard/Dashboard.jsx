@@ -17,6 +17,14 @@ import {
   Percent,
   PieChart,
   Activity,
+  Wallet,
+  Landmark,
+  PlusCircle,
+  ArrowDownRight,
+  ArrowUpRight,
+  FileText,
+  X,
+  RefreshCw,
 } from 'lucide-react';
 
 import { useOrg } from '../../../context/OrgContext';
@@ -354,6 +362,41 @@ export const AdminDashboard = () => {
   const [weeklyDues, setWeeklyDues] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Live Central Vault Fund State
+  const [fundSummary, setFundSummary] = useState({
+    availableCash: 345000,
+    totalCapital: 1200000,
+    outstandingPrincipal: 330000,
+    lendingIncome: 85000,
+    operatingExpenses: 25000,
+    netProfit: 60000,
+    availableProfitPool: 60000,
+    totalProfitWithdrawn: 0,
+    totalProfitReinvested: 0,
+  });
+
+  // Modal States
+  const [capitalModalOpen, setCapitalModalOpen] = useState(false);
+  const [capitalAmount, setCapitalAmount] = useState('100000');
+  const [capitalSource, setCapitalSource] = useState('BANK'); // 'BANK' | 'CASH'
+  const [capitalDescription, setCapitalDescription] = useState('Initial branch vault float');
+  const [submittingCapital, setSubmittingCapital] = useState(false);
+
+  const [profitModalOpen, setProfitModalOpen] = useState(false);
+  const [profitActionMode, setProfitActionMode] = useState('REINVEST'); // 'REINVEST' | 'WITHDRAW'
+  const [profitAmount, setProfitAmount] = useState('');
+  const [profitWithdrawMethod, setProfitWithdrawMethod] = useState('BANK_TRANSFER');
+  const [profitDescription, setProfitDescription] = useState('');
+  const [submittingProfit, setSubmittingProfit] = useState(false);
+
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('Office');
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [submittingExpense, setSubmittingExpense] = useState(false);
+
+  const [actionAlert, setActionAlert] = useState(null);
+
   const getOrgPath = (subpath) => {
     if (activeOrg?.id) {
       return `/org/${activeOrg.id}/${subpath}`;
@@ -364,16 +407,30 @@ export const AdminDashboard = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [dashData, duesData] = await Promise.all([
+      const [dashData, duesData, fundData] = await Promise.all([
         api.getAdminDashboardMetrics({
           organizationId: activeOrg?.id || undefined,
           branchId: activeBranchId || undefined,
         }).catch(() => null),
         api.getWeeklyDues().catch(() => []),
+        api.funds.getSummary().catch(() => null),
       ]);
 
       setMetrics(dashData || null);
       setWeeklyDues(Array.isArray(duesData) ? duesData : (duesData?.records || []));
+      if (fundData) {
+        setFundSummary({
+          availableCash: Number(fundData.availableCash || 0),
+          totalCapital: Number(fundData.totalCapital || 0),
+          outstandingPrincipal: Number(fundData.outstandingPrincipal || 0),
+          lendingIncome: Number(fundData.lendingIncome || 0),
+          operatingExpenses: Number(fundData.operatingExpenses || 0),
+          netProfit: Number(fundData.netProfit || 0),
+          availableProfitPool: Number(fundData.availableProfitPool ?? (fundData.netProfit || 0)),
+          totalProfitWithdrawn: Number(fundData.totalProfitWithdrawn || 0),
+          totalProfitReinvested: Number(fundData.totalProfitReinvested || 0),
+        });
+      }
     } catch (err) {
       console.error('Failed to load dashboard metrics from live API:', err);
     } finally {
@@ -384,6 +441,97 @@ export const AdminDashboard = () => {
   useEffect(() => {
     loadDashboardData();
   }, [activeOrg?.id, activeBranchId]);
+
+  // Handle Capital Injection
+  const handleInjectCapital = async (e) => {
+    if (e) e.preventDefault();
+    const amt = parseFloat(capitalAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Please enter a valid capital injection amount.');
+      return;
+    }
+
+    setSubmittingCapital(true);
+    try {
+      const desc = `${capitalDescription.trim() || 'Admin capital injection'} (${capitalSource === 'BANK' ? 'Bank Account' : 'Physical Cash Float'})`;
+      await api.funds.injectCapital(amt, desc);
+      setActionAlert({ type: 'success', message: `Successfully added ₹${amt.toLocaleString('en-IN')} to the Branch Vault!` });
+      setCapitalModalOpen(false);
+      await loadDashboardData();
+    } catch (err) {
+      console.error('Capital injection failed:', err);
+      alert(err.message || 'Failed to inject capital.');
+    } finally {
+      setSubmittingCapital(false);
+    }
+  };
+
+  // Handle Profit Action
+  const handleProfitAction = async (e) => {
+    if (e) e.preventDefault();
+    const amt = parseFloat(profitAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Please enter a valid positive amount.');
+      return;
+    }
+
+    if (amt > fundSummary.availableProfitPool) {
+      alert(`Amount cannot exceed available realized profit pool of ₹${fundSummary.availableProfitPool.toLocaleString('en-IN')}.`);
+      return;
+    }
+
+    setSubmittingProfit(true);
+    try {
+      if (profitActionMode === 'REINVEST') {
+        const desc = profitDescription.trim() || 'Reinvest profit back into circulating net capital';
+        await api.funds.transferProfitToNetCapital(amt, desc);
+        setActionAlert({
+          type: 'success',
+          message: `Successfully transferred ₹${amt.toLocaleString('en-IN')} of profit into circulating Net Capital / Vault!`,
+        });
+      } else {
+        const desc = `${profitDescription.trim() || 'Admin realized profit withdrawal'} (${profitWithdrawMethod === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Cash Payout'})`;
+        await api.funds.withdrawProfit(amt, desc);
+        setActionAlert({
+          type: 'success',
+          message: `Successfully recorded withdrawal of ₹${amt.toLocaleString('en-IN')} to Admin!`,
+        });
+      }
+      setProfitModalOpen(false);
+      setProfitAmount('');
+      await loadDashboardData();
+    } catch (err) {
+      console.error('Profit action failed:', err);
+      alert(err.message || 'Failed to process profit action.');
+    } finally {
+      setSubmittingProfit(false);
+    }
+  };
+
+  // Handle Record Expense
+  const handleRecordExpense = async (e) => {
+    if (e) e.preventDefault();
+    const amt = parseFloat(expenseAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Please enter a valid expense amount.');
+      return;
+    }
+
+    setSubmittingExpense(true);
+    try {
+      await api.funds.recordExpense(amt, expenseCategory, expenseDescription.trim() || 'Operating expense');
+      setActionAlert({ type: 'success', message: `Logged expense of ₹${amt.toLocaleString('en-IN')}!` });
+      setExpenseModalOpen(false);
+      setExpenseAmount('');
+      setExpenseDescription('');
+      await loadDashboardData();
+    } catch (err) {
+      console.error('Record expense failed:', err);
+      alert(err.message || 'Failed to record expense.');
+    } finally {
+      setSubmittingExpense(false);
+    }
+  };
 
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
 
@@ -450,6 +598,177 @@ export const AdminDashboard = () => {
             <UserPlus size={16} />
             <span>Onboard Borrower</span>
           </button>
+        </div>
+      </div>
+
+      {/* Action Notification Toast / Alert */}
+      {actionAlert && (
+        <div style={{
+          background: actionAlert.type === 'success' ? '#f0fdf4' : '#fef2f2',
+          border: `1px solid ${actionAlert.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+          color: actionAlert.type === 'success' ? '#166534' : '#991b1b',
+          padding: '0.75rem 1rem',
+          borderRadius: '0.5rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+        }}>
+          <span>{actionAlert.message}</span>
+          <button
+            type="button"
+            onClick={() => setActionAlert(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* 0. BRANCH VAULT & REALIZED PROFIT POOL (CAPITAL FLOAT & ACTIONS)     */}
+      {/* ==================================================================== */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        color: '#ffffff',
+        borderRadius: '0.85rem',
+        padding: '1.25rem 1.5rem',
+        marginBottom: '1.5rem',
+        boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '0.65rem',
+              background: 'rgba(59, 130, 246, 0.2)',
+              color: '#60a5fa',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Wallet size={22} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
+                Branch Central Vault & Profit Pool
+              </h2>
+              <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0, fontWeight: 500 }}>
+                Live cash float, active circulating capital, and realized lending profits
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setCapitalModalOpen(true)}
+              style={{
+                background: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '0.5rem',
+                padding: '0.5rem 0.9rem',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+              }}
+            >
+              <PlusCircle size={15} />
+              <span>+ Inject Capital Float</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setProfitActionMode('REINVEST');
+                setProfitAmount('');
+                setProfitModalOpen(true);
+              }}
+              style={{
+                background: '#059669',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '0.5rem',
+                padding: '0.5rem 0.9rem',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+              }}
+            >
+              <TrendingUp size={15} />
+              <span>Manage Profit (Reinvest / Withdraw)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setExpenseModalOpen(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#e2e8f0',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '0.5rem',
+                padding: '0.5rem 0.9rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+              }}
+            >
+              <FileText size={15} />
+              <span>Log Expense</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 3 Metric Summary Boxes */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.06)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+              Available Vault Cash
+            </div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#60a5fa' }}>
+              {formatCurrency(fundSummary.availableCash)}
+            </div>
+            <div style={{ fontSize: '0.725rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+              Ready for immediate loan disbursements
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(255, 255, 255, 0.06)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+              Total Net Capital Base
+            </div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#a78bfa' }}>
+              {formatCurrency(fundSummary.totalCapital)}
+            </div>
+            <div style={{ fontSize: '0.725rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+              Injected admin equity + reinvested profits
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(255, 255, 255, 0.06)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#86efac', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+              Realized Profit Pool (Available)
+            </div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#4ade80' }}>
+              {formatCurrency(fundSummary.availableProfitPool)}
+            </div>
+            <div style={{ fontSize: '0.725rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+              Collected interest profit after expenses
+            </div>
+          </div>
         </div>
       </div>
 
@@ -894,6 +1213,519 @@ export const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* ==================================================================== */}
+      {/* MODAL 1: CAPITAL INJECTION (INJECT INTO VAULT)                       */}
+      {/* ==================================================================== */}
+      {capitalModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem',
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '0.85rem',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Wallet size={20} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Inject Capital / Vault Float
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCapitalModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleInjectCapital} style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  Injection Amount (₹) *
+                </label>
+                <input
+                  type="number"
+                  value={capitalAmount}
+                  onChange={(e) => setCapitalAmount(e.target.value)}
+                  placeholder="e.g. 100000"
+                  step={5000}
+                  min={1000}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '1.1rem',
+                    fontWeight: 700,
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  Funding Channel *
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCapitalSource('BANK')}
+                    style={{
+                      padding: '0.65rem',
+                      borderRadius: '0.5rem',
+                      border: capitalSource === 'BANK' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      background: capitalSource === 'BANK' ? '#eff6ff' : '#ffffff',
+                      color: capitalSource === 'BANK' ? '#1e40af' : '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.825rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🏦 Bank Deposit / RTGS
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCapitalSource('CASH')}
+                    style={{
+                      padding: '0.65rem',
+                      borderRadius: '0.5rem',
+                      border: capitalSource === 'CASH' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      background: capitalSource === 'CASH' ? '#eff6ff' : '#ffffff',
+                      color: capitalSource === 'CASH' ? '#1e40af' : '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.825rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    💵 Physical Cash Float
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  Description / Audit Memo
+                </label>
+                <input
+                  type="text"
+                  value={capitalDescription}
+                  onChange={(e) => setCapitalDescription(e.target.value)}
+                  placeholder="e.g. Initial branch capital injection from admin bank"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setCapitalModalOpen(false)}
+                  style={{
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submittingCapital}
+                  style={{
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {submittingCapital ? 'Injecting Funds...' : 'Confirm Injection'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 2: PROFIT CONTROL (REINVEST OR WITHDRAW)                       */}
+      {/* ==================================================================== */}
+      {profitModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem',
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '0.85rem',
+            width: '100%',
+            maxWidth: '500px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <TrendingUp size={20} color="#059669" />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Realized Profit Management
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProfitModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleProfitAction} style={{ padding: '1.5rem' }}>
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.5rem',
+                marginBottom: '1.25rem',
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 700 }}>AVAILABLE PROFIT POOL:</div>
+                <div style={{ fontSize: '1.25rem', color: '#15803d', fontWeight: 800 }}>
+                  {formatCurrency(fundSummary.availableProfitPool)}
+                </div>
+              </div>
+
+              {/* Action Mode Toggle */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setProfitActionMode('REINVEST')}
+                  style={{
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    border: profitActionMode === 'REINVEST' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: profitActionMode === 'REINVEST' ? '#eff6ff' : '#ffffff',
+                    color: profitActionMode === 'REINVEST' ? '#1e40af' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.825rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🔄 Reinvest into Net Capital
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProfitActionMode('WITHDRAW')}
+                  style={{
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    border: profitActionMode === 'WITHDRAW' ? '2px solid #059669' : '1px solid #cbd5e1',
+                    background: profitActionMode === 'WITHDRAW' ? '#f0fdf4' : '#ffffff',
+                    color: profitActionMode === 'WITHDRAW' ? '#065f46' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.825rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  💳 Withdraw to Admin
+                </button>
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  {profitActionMode === 'REINVEST' ? 'Reinvestment Amount (₹) *' : 'Withdrawal Amount (₹) *'}
+                </label>
+                <input
+                  type="number"
+                  value={profitAmount}
+                  onChange={(e) => setProfitAmount(e.target.value)}
+                  placeholder={`Max ₹${fundSummary.availableProfitPool}`}
+                  max={fundSummary.availableProfitPool}
+                  min={1}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '1.1rem',
+                    fontWeight: 700,
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  Audit Note / Remarks
+                </label>
+                <input
+                  type="text"
+                  value={profitDescription}
+                  onChange={(e) => setProfitDescription(e.target.value)}
+                  placeholder={profitActionMode === 'REINVEST' ? 'e.g. Reinvesting Q1 profit for new loan expansion' : 'e.g. Monthly dividend payout to Admin bank'}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setProfitModalOpen(false)}
+                  style={{
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submittingProfit}
+                  style={{
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    background: profitActionMode === 'REINVEST' ? '#2563eb' : '#059669',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {submittingProfit
+                    ? 'Processing...'
+                    : profitActionMode === 'REINVEST'
+                    ? 'Confirm Reinvestment'
+                    : 'Confirm Payout'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 3: RECORD EXPENSE                                             */}
+      {/* ==================================================================== */}
+      {expenseModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem',
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '0.85rem',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <FileText size={20} color="#dc2626" />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Record Operational Expense
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpenseModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordExpense} style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  Expense Amount (₹) *
+                </label>
+                <input
+                  type="number"
+                  value={expenseAmount}
+                  onChange={(e) => setExpenseAmount(e.target.value)}
+                  placeholder="e.g. 2500"
+                  min={1}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '1.1rem',
+                    fontWeight: 700,
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  Category *
+                </label>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <option value="Office">Office & Supplies</option>
+                  <option value="Travel">Field Collection Travel / Petrol</option>
+                  <option value="Salary">Staff Salary / Incentive</option>
+                  <option value="Rent">Branch Rent & Utilities</option>
+                  <option value="Other">Other Operational Cost</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={expenseDescription}
+                  onChange={(e) => setExpenseDescription(e.target.value)}
+                  placeholder="e.g. Monthly office internet and printer papers"
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setExpenseModalOpen(false)}
+                  style={{
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submittingExpense}
+                  style={{
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {submittingExpense ? 'Logging...' : 'Record Expense'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
