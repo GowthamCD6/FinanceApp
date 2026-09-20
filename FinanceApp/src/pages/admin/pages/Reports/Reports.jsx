@@ -870,7 +870,8 @@ export const AdminReports = () => {
           >
             {[
               { key: 'ALL', label: 'All', count: report.summary.total_records, color: '#6B46C1' },
-              { key: 'UNPAID', label: 'To Collect', count: totalPending, color: '#DC2626' },
+              { key: 'OVERDUE', label: 'Overdue', count: report.summary.overdue_count, color: '#DC2626' },
+              { key: 'UNPAID', label: 'To Collect', count: totalPending, color: '#D97706' },
               { key: 'PAID', label: 'Paid', count: report.summary.paid_count, color: '#059669' },
             ].map((s) => {
               const active = statusFilter === s.key;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,10 @@ import {
   TextInput,
   Modal,
   Alert,
-  ActivityIndicator,
   Linking,
   Platform,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -26,6 +26,92 @@ const formatDateStr = (d) => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+// Shimmering Skeleton Box Element
+const SkeletonBox = ({ width, height, borderRadius = 6, style }) => {
+  const animatedValue = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 0.85,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0.3,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [animatedValue]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: '#E2E8F0',
+          opacity: animatedValue,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+// Skeleton for Profile Card
+const ProfileCardSkeleton = () => (
+  <View style={styles.profileCard}>
+    <View style={styles.profileTop}>
+      <SkeletonBox width={44} height={44} borderRadius={22} />
+      <View style={{ flex: 1, marginLeft: 12, gap: 6 }}>
+        <SkeletonBox width={140} height={16} borderRadius={4} />
+        <SkeletonBox width={100} height={12} borderRadius={3} />
+      </View>
+      <SkeletonBox width={38} height={38} borderRadius={12} />
+    </View>
+    <View style={[styles.metricsContainer, { backgroundColor: '#F8FAFC' }]}>
+      <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+        <SkeletonBox width={35} height={10} borderRadius={3} />
+        <SkeletonBox width={60} height={14} borderRadius={3} />
+      </View>
+      <View style={styles.metricSep} />
+      <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+        <SkeletonBox width={30} height={10} borderRadius={3} />
+        <SkeletonBox width={60} height={14} borderRadius={3} />
+      </View>
+      <View style={styles.metricSep} />
+      <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+        <SkeletonBox width={45} height={10} borderRadius={3} />
+        <SkeletonBox width={60} height={14} borderRadius={3} />
+      </View>
+    </View>
+  </View>
+);
+
+// Skeleton for Installment Card
+const InstallmentCardSkeleton = () => (
+  <View style={styles.simpleInstCard}>
+    <View style={styles.instLeftCol}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <SkeletonBox width={60} height={14} borderRadius={4} />
+        <SkeletonBox width={45} height={14} borderRadius={6} />
+      </View>
+      <SkeletonBox width={100} height={11} borderRadius={3} style={{ marginTop: 6 }} />
+      <SkeletonBox width={110} height={12} borderRadius={3} style={{ marginTop: 6 }} />
+    </View>
+    <View style={styles.instRightCol}>
+      <SkeletonBox width={85} height={32} borderRadius={10} />
+    </View>
+  </View>
+);
 
 // Friendly Status Helper
 const getStatusStyle = (status) => {
@@ -189,26 +275,66 @@ export const BorrowerLogModal = ({
     }
   };
 
+  const todayStr = formatDateStr(new Date());
+
   // Filtered installments list
   const rawInstallments = Array.isArray(loanData?.installments) ? loanData.installments : [];
-  
+
+  const overdueInstCount = useMemo(() => {
+    return rawInstallments.filter((i) => {
+      const bal = i.outstanding_amount !== undefined
+        ? parseFloat(i.outstanding_amount)
+        : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
+      const dueDate = i.due_date ? String(i.due_date).slice(0, 10) : '';
+      return (i.status !== 'PAID' && bal > 0) && (i.status === 'OVERDUE' || (dueDate && dueDate < todayStr));
+    }).length;
+  }, [rawInstallments, todayStr]);
+
+  const paidInstCount = useMemo(() => {
+    return rawInstallments.filter((i) => {
+      const bal = i.outstanding_amount !== undefined
+        ? parseFloat(i.outstanding_amount)
+        : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
+      return i.status === 'PAID' || bal <= 0;
+    }).length;
+  }, [rawInstallments]);
+
+  const allInstCount = rawInstallments.length;
+  const pendingInstCount = Math.max(0, allInstCount - paidInstCount);
+
   const installments = useMemo(() => {
     if (activeFilter === 'ALL') return rawInstallments;
 
+    if (activeFilter === 'OVERDUE') {
+      return rawInstallments.filter((i) => {
+        const bal = i.outstanding_amount !== undefined
+          ? parseFloat(i.outstanding_amount)
+          : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
+        const dueDate = i.due_date ? String(i.due_date).slice(0, 10) : '';
+        return (i.status !== 'PAID' && bal > 0) && (i.status === 'OVERDUE' || (dueDate && dueDate < todayStr));
+      });
+    }
+
     if (activeFilter === 'PAID') {
       return rawInstallments.filter((i) => {
-        const bal = i.outstanding_amount !== undefined ? parseFloat(i.outstanding_amount) : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
+        const bal = i.outstanding_amount !== undefined
+          ? parseFloat(i.outstanding_amount)
+          : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
         return i.status === 'PAID' || bal <= 0;
       });
     }
+
     if (activeFilter === 'UNPAID') {
       return rawInstallments.filter((i) => {
-        const bal = i.outstanding_amount !== undefined ? parseFloat(i.outstanding_amount) : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
+        const bal = i.outstanding_amount !== undefined
+          ? parseFloat(i.outstanding_amount)
+          : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
         return i.status !== 'PAID' && bal > 0;
       });
     }
+
     return rawInstallments;
-  }, [rawInstallments, activeFilter]);
+  }, [rawInstallments, activeFilter, todayStr]);
 
   // Derived financial metrics
   const totalRepayable = parseFloat(loanData?.total_repayment_amount || borrower?.expectedAmount || 0);
@@ -219,13 +345,6 @@ export const BorrowerLogModal = ({
       : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
     return sum + bal;
   }, 0);
-
-  const allInstCount = rawInstallments.length;
-  const paidInstCount = rawInstallments.filter((i) => {
-    const bal = i.outstanding_amount !== undefined ? parseFloat(i.outstanding_amount) : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
-    return i.status === 'PAID' || bal <= 0;
-  }).length;
-  const dueInstCount = Math.max(0, allInstCount - paidInstCount);
 
   const initial = borrower?.customerName ? borrower.customerName.charAt(0).toUpperCase() : 'B';
   const frequencyLabel = borrower?.frequency || loanData?.repayment_frequency || 'DAILY';
@@ -252,10 +371,19 @@ export const BorrowerLogModal = ({
         />
 
         {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#6B46C1" />
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <ProfileCardSkeleton />
+            <View style={{ marginTop: 4 }}>
+              <InstallmentCardSkeleton />
+              <InstallmentCardSkeleton />
+              <InstallmentCardSkeleton />
+              <InstallmentCardSkeleton />
+            </View>
+          </ScrollView>
         ) : (
           <ScrollView
             style={styles.scroll}
@@ -323,18 +451,22 @@ export const BorrowerLogModal = ({
               </View>
             </View>
 
-            {/* Filter Tabs: All, Due, Paid */}
+            {/* Filter Tabs: All, Overdue, Due, Paid */}
             <View style={styles.filterTabs}>
               {[
-                { key: 'ALL', label: `All (${allInstCount})` },
-                { key: 'UNPAID', label: `Due (${dueInstCount})` },
-                { key: 'PAID', label: `Paid (${paidInstCount})` },
+                { key: 'ALL', label: `All (${allInstCount})`, color: '#6B46C1' },
+                { key: 'OVERDUE', label: `Overdue (${overdueInstCount})`, color: '#DC2626' },
+                { key: 'UNPAID', label: `Due (${pendingInstCount})`, color: '#D97706' },
+                { key: 'PAID', label: `Paid (${paidInstCount})`, color: '#059669' },
               ].map((tab) => {
                 const active = activeFilter === tab.key;
                 return (
                   <TouchableOpacity
                     key={tab.key}
-                    style={[styles.tabButton, active && styles.tabButtonActive]}
+                    style={[
+                      styles.tabButton,
+                      active && { backgroundColor: tab.color, shadowColor: tab.color },
+                    ]}
                     onPress={() => setActiveFilter(tab.key)}
                     activeOpacity={0.7}
                   >
@@ -372,13 +504,15 @@ export const BorrowerLogModal = ({
                 const paymentMethod = inst.payment_method || (loanData?.payments?.find(p => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_method) || 'CASH';
                 const rawPaidDate = inst.effective_paid_date || inst.paid_at || (loanData?.payments?.find(p => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_date) || inst.due_date;
                 const paidDateStr = rawPaidDate ? formatDate(rawPaidDate) : 'Completed';
+                const dueDateStr = inst.due_date ? String(inst.due_date).slice(0, 10) : '';
+                const isOverdue = !isPaid && (inst.status === 'OVERDUE' || (dueDateStr && dueDateStr < todayStr));
 
                 return (
-                  <View key={inst.id || idx} style={styles.simpleInstCard}>
-                    {/* Left Info: Day/Week & Method, Due/Paid Date, Amount */}
+                  <View key={inst.id || idx} style={[styles.simpleInstCard, isOverdue && styles.simpleInstCardOverdue]}>
+                    {/* Left Info: Day/Week & Method/Overdue, Due/Paid Date, Amount */}
                     <View style={styles.instLeftCol}>
                       <View style={styles.instHeaderRow}>
-                        <Text style={styles.instCycleTitle}>{cycleName}</Text>
+                        <Text style={[styles.instCycleTitle, isOverdue && { color: '#DC2626' }]}>{cycleName}</Text>
                         {isPaid && (
                           <View style={styles.methodTag}>
                             <MaterialCommunityIcons
@@ -389,10 +523,18 @@ export const BorrowerLogModal = ({
                             <Text style={styles.methodTagText}>{paymentMethod}</Text>
                           </View>
                         )}
+                        {isOverdue && (
+                          <View style={styles.overdueTag}>
+                            <MaterialCommunityIcons name="alert-circle" size={11} color="#DC2626" />
+                            <Text style={styles.overdueTagText}>OVERDUE</Text>
+                          </View>
+                        )}
                       </View>
-                      <Text style={styles.instDueDateText} numberOfLines={1}>
+                      <Text style={[styles.instDueDateText, isOverdue && { color: '#DC2626', fontWeight: '700' }]} numberOfLines={1}>
                         {isPaid
                           ? `Paid: ${paidDateStr}`
+                          : isOverdue
+                          ? `Due: ${inst.due_date ? formatDate(inst.due_date) : 'N/A'} (Late)`
                           : `Due: ${inst.due_date ? formatDate(inst.due_date) : 'N/A'}`}
                       </Text>
                       <Text style={styles.instAmountText}>
@@ -409,11 +551,11 @@ export const BorrowerLogModal = ({
                         </View>
                       ) : (
                         <TouchableOpacity
-                          style={styles.collectActionBtn}
+                          style={[styles.collectActionBtn, isOverdue && styles.collectActionBtnOverdue]}
                           onPress={() => openPayModal(inst)}
                           activeOpacity={0.85}
                         >
-                          <MaterialCommunityIcons name="cash" size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
+                          <MaterialCommunityIcons name={isOverdue ? "alert-circle-outline" : "cash"} size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
                           <Text style={styles.collectActionBtnText}>
                             Collect {formatINR(bal > 0 ? bal : schedAmt)}
                           </Text>
@@ -800,6 +942,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#059669',
   },
+  simpleInstCardOverdue: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FFFBFB',
+  },
+  overdueTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 3,
+  },
+  overdueTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#DC2626',
+    letterSpacing: 0.3,
+  },
   collectActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -812,6 +975,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 2,
+  },
+  collectActionBtnOverdue: {
+    backgroundColor: '#DC2626',
+    shadowColor: '#DC2626',
   },
   collectActionBtnText: {
     fontSize: 13,
