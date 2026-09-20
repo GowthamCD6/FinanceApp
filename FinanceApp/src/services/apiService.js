@@ -218,6 +218,21 @@ class ApiService {
     return res.data;
   }
 
+  async getCustomers(params = {}) {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.customerType && params.customerType !== 'ALL') query.append('customerType', params.customerType);
+    if (params.status && params.status !== 'ALL') query.append('status', params.status);
+    if (params.organizationId) query.append('organizationId', params.organizationId);
+    if (params.branchId) query.append('branchId', params.branchId);
+    query.append('limit', params.limit || '200');
+
+    const qs = query.toString();
+    const endpoint = `/customers${qs ? `?${qs}` : ''}`;
+    const res = await this.request(endpoint);
+    return res.data?.customers || res.data || res || [];
+  }
+
   async createCustomer(customerData) {
     const res = await this.request('/customers', {
       method: 'POST',
@@ -453,6 +468,35 @@ class ApiService {
       data: res.data || res,
       message: res.message || 'Password updated successfully',
     };
+  }
+
+  // 12. REPORTS & ANALYTICS
+  async getPaymentReport(params = {}) {
+    const query = new URLSearchParams();
+    if (params.startDate) query.append('start_date', params.startDate);
+    if (params.endDate) query.append('end_date', params.endDate);
+    if (params.frequency && params.frequency !== 'ALL') query.append('frequency', params.frequency);
+    if (params.status && params.status !== 'ALL') query.append('status', params.status);
+    if (params.organizationId) query.append('organizationId', params.organizationId);
+    if (params.branchId) query.append('branchId', params.branchId);
+
+    const qs = query.toString();
+    const endpoint = `/reports/payments${qs ? `?${qs}` : ''}`;
+    const res = await this.request(endpoint);
+    return res.data || res;
+  }
+
+  async getReportsDashboard() {
+    const res = await this.request('/reports/dashboard');
+    return res.data || res;
+  }
+
+  async recordPayment(paymentData) {
+    const res = await this.request('/payments', {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    });
+    return res.data || res;
   }
 }
 

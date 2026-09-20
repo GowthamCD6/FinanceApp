@@ -1,597 +1,1010 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  FlatList,
   ScrollView,
   TouchableOpacity,
   TextInput,
   Modal,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
+  Share,
+  Linking,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { useApp } from '../../../../context/AppContext';
-import { formatINR } from '../../../../utils/helpers';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LottieView from 'lottie-react-native';
+import { apiService } from '../../../../services/apiService';
+import { formatINR, formatDate } from '../../../../utils/helpers';
+import { useApp } from '../../../../context/AppContext';
 
-// Inline MetricCard
-const MetricCard = ({ title, value, change, isPositive, color = '#2563EB', iconName }) => {
-  const iconMap = {
-    receipt: 'receipt',
-    check: 'check-circle-outline',
-  };
-  return (
-    <View style={metricStyles.card}>
-      <View style={metricStyles.topRow}>
-        <Text style={metricStyles.title} numberOfLines={1}>{title}</Text>
-        {iconName ? (
-          <View style={[metricStyles.iconBox, { backgroundColor: `${color}15` }]}>
-            <MaterialCommunityIcons name={iconMap[iconName] || 'chart-line'} size={14} color={color} />
-          </View>
-        ) : null}
-      </View>
-      <Text style={metricStyles.value} numberOfLines={1}>{value}</Text>
-      {change ? (
-        <Text
-          style={[
-            metricStyles.change,
-            isPositive !== undefined && { color: isPositive ? '#059669' : '#DC2626' },
-          ]}
-          numberOfLines={1}
-        >
-          {change}
-        </Text>
-      ) : null}
-    </View>
-  );
+let revenueAnimation;
+try {
+  revenueAnimation = require('../../../../animation/Revenue.json');
+} catch (e) {
+  revenueAnimation = null;
+}
+
+// Date helpers
+const formatDateStr = (d) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-const metricStyles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    elevation: 2,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    flex: 1,
-  },
-  iconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
-  },
-  value: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 2,
-  },
-  change: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-});
-
-const INITIAL_WEEKLY_DUES = [
-  { id: 'WD-101', customer_id: 101, customer_name: 'Kumar Swaminathan', phone: '98765 43210', loan_code: 'LN-WK-2024-001', week_number: 6, total_weeks: 10, due_amount: 600, due_date: '2026-09-12', status: 'PENDING', route: 'Triplicane High Rd' },
-  { id: 'WD-102', customer_id: 102, customer_name: 'Priya Sundaram', phone: '98401 23456', loan_code: 'LN-WK-2024-004', week_number: 4, total_weeks: 10, due_amount: 1200, due_date: '2026-09-10', status: 'OVERDUE', route: 'Mylapore Tank' },
-  { id: 'WD-103', customer_id: 103, customer_name: 'Mohamed Ibrahim', phone: '97908 11223', loan_code: 'LN-WK-2024-007', week_number: 8, total_weeks: 10, due_amount: 600, due_date: '2026-09-11', status: 'PENDING', route: 'Royapettah Bazaar' },
-  { id: 'WD-104', customer_id: 104, customer_name: 'Rani Manikandan', phone: '94440 98765', loan_code: 'LN-WK-2024-012', week_number: 2, total_weeks: 10, due_amount: 900, due_date: '2026-09-10', status: 'PAID', route: 'T. Nagar Market' },
-  { id: 'WD-105', customer_id: 105, customer_name: 'Karthik Raja', phone: '98841 55667', loan_code: 'LN-WK-2024-015', week_number: 9, total_weeks: 10, due_amount: 600, due_date: '2026-09-13', status: 'PENDING', route: 'Adyar Bus Stand' },
-  { id: 'WD-106', customer_id: 106, customer_name: 'Anand Natarajan', phone: '98410 77889', loan_code: 'LN-WK-2024-018', week_number: 5, total_weeks: 10, due_amount: 1500, due_date: '2026-09-09', status: 'OVERDUE', route: 'Triplicane Big Mosque' },
-];
-
-const INITIAL_DAILY_COLLECTIONS = [
-  { id: 'DC-201', customer_id: 201, customer_name: 'Murugan Provisions', shopkeeper_name: 'Murugan P.', phone: '98400 11223', loan_code: 'LN-DL-2024-022', day_number: 14, total_days: 25, due_amount: 400, collected_amount: 400, payment_mode: 'CASH', status: 'COLLECTED', receipt_no: 'RCP-DL-8821' },
-  { id: 'DC-202', customer_id: 202, customer_name: 'Selvi Fancy Store', shopkeeper_name: 'Selvi K.', phone: '98402 33445', loan_code: 'LN-DL-2024-025', day_number: 7, total_days: 25, due_amount: 800, collected_amount: 0, payment_mode: null, status: 'PENDING', receipt_no: null },
-  { id: 'DC-203', customer_id: 203, customer_name: 'Vasanth Tea Stall', shopkeeper_name: 'Vasanthan R.', phone: '98403 55667', loan_code: 'LN-DL-2024-028', day_number: 21, total_days: 25, due_amount: 300, collected_amount: 300, payment_mode: 'UPI', status: 'COLLECTED', receipt_no: 'RCP-DL-8824' },
-  { id: 'DC-204', customer_id: 204, customer_name: 'Ayyappan Flower Stall', shopkeeper_name: 'Ayyappan M.', phone: '98404 77889', loan_code: 'LN-DL-2024-031', day_number: 18, total_days: 25, due_amount: 500, collected_amount: 0, payment_mode: null, status: 'MISSED', receipt_no: null },
-  { id: 'DC-205', customer_id: 205, customer_name: 'Taj Mobile Accessories', shopkeeper_name: 'Tajudeen A.', phone: '98405 99001', loan_code: 'LN-DL-2024-034', day_number: 3, total_days: 25, due_amount: 600, collected_amount: 600, payment_mode: 'CASH', status: 'COLLECTED', receipt_no: 'RCP-DL-8829' },
-  { id: 'DC-206', customer_id: 206, customer_name: 'Balaji Fruit Mart', shopkeeper_name: 'Balaji S.', phone: '98406 22334', loan_code: 'LN-DL-2024-037', day_number: 11, total_days: 25, due_amount: 400, collected_amount: 0, payment_mode: null, status: 'PENDING', receipt_no: null },
-];
-
-const AdminReports = () => {
-  const { collectPayment, fundMetrics, expenses } = useApp();
-  const [activeTab, setActiveTab] = useState('WEEKLY'); // 'WEEKLY' | 'DAILY' | 'PNL'
-  const [weeklyList, setWeeklyList] = useState(INITIAL_WEEKLY_DUES);
-  const [dailyList, setDailyList] = useState(INITIAL_DAILY_COLLECTIONS);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-
-  // Collect Modal State
-  const [collectModalVisible, setCollectModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [paymentMode, setPaymentMode] = useState('CASH');
-
-  // Calculations
-  const weeklyTotal = weeklyList.reduce((s, i) => s + i.due_amount, 0);
-  const weeklyCollected = weeklyList.filter((i) => i.status === 'PAID').reduce((s, i) => s + i.due_amount, 0);
-  const weeklyPending = weeklyTotal - weeklyCollected;
-  const weeklyOverdue = weeklyList.filter((i) => i.status === 'OVERDUE').length;
-
-  const dailyTotal = dailyList.reduce((s, i) => s + i.due_amount, 0);
-  const dailyCollected = dailyList.filter((i) => i.status === 'COLLECTED').reduce((s, i) => s + i.collected_amount, 0);
-  const dailyPending = dailyTotal - dailyCollected;
-  const dailyMissed = dailyList.filter((i) => i.status === 'MISSED').length;
-
-  const totalExpenseAmount = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 1250);
-  const totalInterestEarned = fundMetrics?.totalContractedInterest || 87500;
-  const netBranchProfit = totalInterestEarned - totalExpenseAmount;
-
-  const handleOpenCollect = (item) => {
-    setSelectedItem(item);
-    setPaymentMode('CASH');
-    setCollectModalVisible(true);
+const getWeekRange = (refDate = new Date()) => {
+  const d = new Date(refDate);
+  const day = d.getDay();
+  const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diffToMonday));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return {
+    start: formatDateStr(monday),
+    end: formatDateStr(sunday),
   };
+};
 
-  const handleConfirmCollect = () => {
-    if (!selectedItem) return;
-
-    if (activeTab === 'WEEKLY') {
-      setWeeklyList((prev) =>
-        prev.map((i) => (i.id === selectedItem.id ? { ...i, status: 'PAID' } : i))
-      );
-      if (collectPayment) {
-        collectPayment({
-          loanId: 1,
-          amount: selectedItem.due_amount,
-          paymentMethod: paymentMode,
-        });
-      }
-      Alert.alert('Payment Recorded', `₹${selectedItem.due_amount} collected from ${selectedItem.customer_name} via ${paymentMode}.`);
-    } else {
-      const generatedReceipt = `RCP-DL-${Math.floor(1000 + Math.random() * 9000)}`;
-      setDailyList((prev) =>
-        prev.map((i) =>
-          i.id === selectedItem.id
-            ? { ...i, status: 'COLLECTED', collected_amount: i.due_amount, payment_mode: paymentMode, receipt_no: generatedReceipt }
-            : i
-        )
-      );
-      if (collectPayment) {
-        collectPayment({
-          loanId: 2,
-          amount: selectedItem.due_amount,
-          paymentMethod: paymentMode,
-        });
-      }
-      Alert.alert('Collection Success', `₹${selectedItem.due_amount} logged for ${selectedItem.customer_name}. Receipt: ${generatedReceipt}`);
-    }
-
-    setCollectModalVisible(false);
-    setSelectedItem(null);
+const getMonthRange = (refDate = new Date()) => {
+  const first = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+  const last = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
+  return {
+    start: formatDateStr(first),
+    end: formatDateStr(last),
   };
+};
 
-  const filteredWeekly = weeklyList.filter((item) => {
-    if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        item.customer_name.toLowerCase().includes(q) ||
-        item.phone.includes(q) ||
-        item.loan_code.toLowerCase().includes(q) ||
-        item.route.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+// Status Badge Helper
+const getStatusStyle = (status) => {
+  switch (status) {
+    case 'PAID':
+      return {
+        badgeBg: '#ECFDF5',
+        textColor: '#059669',
+        borderColor: '#A7F3D0',
+        label: 'PAID',
+        icon: 'check-circle-outline',
+      };
+    case 'OVERDUE':
+      return {
+        badgeBg: '#FEF2F2',
+        textColor: '#DC2626',
+        borderColor: '#FECACA',
+        label: 'OVERDUE',
+        icon: 'alert-circle-outline',
+      };
+    case 'PARTIAL':
+      return {
+        badgeBg: '#EFF6FF',
+        textColor: '#2563EB',
+        borderColor: '#BFDBFE',
+        label: 'PARTIAL',
+        icon: 'clock-outline',
+      };
+    case 'UNPAID':
+    default:
+      return {
+        badgeBg: '#FFFBEB',
+        textColor: '#D97706',
+        borderColor: '#FDE68A',
+        label: 'UNPAID',
+        icon: 'timer-sand',
+      };
+  }
+};
 
-  const filteredDaily = dailyList.filter((item) => {
-    if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        item.customer_name.toLowerCase().includes(q) ||
-        item.shopkeeper_name.toLowerCase().includes(q) ||
-        item.phone.includes(q) ||
-        item.loan_code.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+// Memoized Single Payment Record Card for 60fps Smooth Scrolling
+const RecordCard = React.memo(({ item, onOpenCollect, onOpenDetail }) => {
+  const statusStyle = getStatusStyle(item.status);
+  const initial = item.customerName ? item.customerName.charAt(0).toUpperCase() : 'C';
 
   return (
-    <View style={styles.container}>
-      {/* SEGMENTED TAB SWITCHER */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'WEEKLY' && styles.tabButtonActive]}
-          onPress={() => {
-            setActiveTab('WEEKLY');
-            setStatusFilter('ALL');
-          }}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="calendar-blank" size={15} color={activeTab === 'WEEKLY' ? '#2842C4' : '#64748B'} />
-          <Text style={[styles.tabButtonText, activeTab === 'WEEKLY' && styles.tabButtonTextActive]}>
-            Weekly ({weeklyList.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'DAILY' && styles.tabButtonActive]}
-          onPress={() => {
-            setActiveTab('DAILY');
-            setStatusFilter('ALL');
-          }}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="wallet-outline" size={15} color={activeTab === 'DAILY' ? '#2842C4' : '#64748B'} />
-          <Text style={[styles.tabButtonText, activeTab === 'DAILY' && styles.tabButtonTextActive]}>
-            Daily ({dailyList.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'PNL' && styles.tabButtonActive]}
-          onPress={() => {
-            setActiveTab('PNL');
-          }}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="chart-pie" size={15} color={activeTab === 'PNL' ? '#2842C4' : '#64748B'} />
-          <Text style={[styles.tabButtonText, activeTab === 'PNL' && styles.tabButtonTextActive]}>
-            P&L Margin
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* SUMMARY METRIC CARDS */}
-      <View style={styles.metricRow}>
-        <View style={styles.metricHalf}>
-          <MetricCard
-            title={activeTab === 'WEEKLY' ? "This Week's Target" : "Today's Target"}
-            value={formatINR(activeTab === 'WEEKLY' ? weeklyTotal : dailyTotal)}
-            change={activeTab === 'WEEKLY' ? `${weeklyOverdue} Overdue` : `${dailyMissed} Missed`}
-            isPositive={false}
-            color={activeTab === 'WEEKLY' ? '#2563EB' : '#059669'}
-            iconName="receipt"
-          />
+    <View style={styles.recordCard}>
+      {/* Top Row: Customer Avatar, Info & Status */}
+      <View style={styles.cardHeader}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarInitial}>{initial}</Text>
         </View>
-        <View style={styles.metricHalf}>
-          <MetricCard
-            title="Collected So Far"
-            value={formatINR(activeTab === 'WEEKLY' ? weeklyCollected : dailyCollected)}
-            change={`Pending: ${formatINR(activeTab === 'WEEKLY' ? weeklyPending : dailyPending)}`}
-            isPositive={true}
-            color="#059669"
-            iconName="check"
+
+        <View style={styles.cardTitleBox}>
+          <Text style={styles.customerName} numberOfLines={1}>
+            {item.customerName}
+          </Text>
+          <View style={styles.phoneRow}>
+            <MaterialCommunityIcons name="phone-outline" size={12} color="#6B7280" />
+            <Text style={styles.phoneText}> {item.customerPhone || 'N/A'}</Text>
+            {item.shopName ? (
+              <>
+                <Text style={styles.dotSeparator}> • </Text>
+                <MaterialCommunityIcons name="store-outline" size={12} color="#6B7280" />
+                <Text style={styles.shopText} numberOfLines={1}> {item.shopName}</Text>
+              </>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Status Badge */}
+        <View
+          style={[
+            styles.statusBadge,
+            {
+              backgroundColor: statusStyle.badgeBg,
+              borderColor: statusStyle.borderColor,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={statusStyle.icon}
+            size={11}
+            color={statusStyle.textColor}
+            style={{ marginRight: 3 }}
           />
+          <Text style={[styles.statusBadgeText, { color: statusStyle.textColor }]}>
+            {statusStyle.label}
+          </Text>
         </View>
       </View>
 
-      {/* SEARCH AND FILTERS */}
-      <View style={styles.filterSection}>
-        <View style={styles.searchBox}>
-          <MaterialCommunityIcons name="magnify" size={16} color="#94A3B8" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={activeTab === 'WEEKLY' ? "Search borrower, phone, loan code..." : "Search shop, merchant, phone..."}
-            placeholderTextColor="#94A3B8"
-            value={search}
-            onChangeText={setSearch}
-          />
+      {/* Loan Meta Tags Strip */}
+      <View style={styles.metaStrip}>
+        <View style={styles.metaChip}>
+          <MaterialCommunityIcons name="file-document-outline" size={12} color="#6B46C1" />
+          <Text style={styles.metaChipText}>{item.loanNumber}</Text>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusChips}>
-          {['ALL', activeTab === 'WEEKLY' ? 'PENDING' : 'PENDING', activeTab === 'WEEKLY' ? 'OVERDUE' : 'MISSED', activeTab === 'WEEKLY' ? 'PAID' : 'COLLECTED'].map((st) => (
-            <TouchableOpacity
-              key={st}
-              style={[styles.chip, statusFilter === st && styles.chipActive]}
-              onPress={() => setStatusFilter(st)}
-            >
-              <Text style={[styles.chipText, statusFilter === st && styles.chipTextActive]}>{st}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.metaChip}>
+          <MaterialCommunityIcons name="repeat" size={12} color="#6B7280" />
+          <Text style={styles.metaChipText}>{item.frequency}</Text>
+        </View>
+
+        <View style={styles.metaChip}>
+          <Text style={styles.metaChipText}>Inst. #{item.installmentNumber}</Text>
+        </View>
+
+        <View style={[styles.metaChip, { marginLeft: 'auto' }]}>
+          <MaterialCommunityIcons
+            name="calendar-clock"
+            size={12}
+            color={item.status === 'OVERDUE' ? '#DC2626' : '#6B7280'}
+          />
+          <Text
+            style={[
+              styles.metaChipText,
+              item.status === 'OVERDUE' && { color: '#DC2626', fontWeight: '700' },
+            ]}
+          >
+            Due: {item.dueDate ? formatDate(item.dueDate) : 'N/A'}
+          </Text>
+        </View>
       </View>
 
-      {/* TAB CONTENT */}
-      <ScrollView style={styles.listScroll} contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        {/* TAB 1: WEEKLY DUES */}
-        {activeTab === 'WEEKLY' && (
-          <>
-            <Text style={styles.listHeaderTitle}>
-              WHO NEED TO PAY THIS WEEK ({filteredWeekly.length})
-            </Text>
-            {filteredWeekly.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No weekly dues matching criteria.</Text>
-              </View>
-            ) : (
-              filteredWeekly.map((item) => {
-                const isOverdue = item.status === 'OVERDUE';
-                const isPaid = item.status === 'PAID';
-                return (
-                  <View key={item.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{item.customer_name.charAt(0)}</Text>
-                      </View>
-                      <View style={styles.cardTitleBox}>
-                        <Text style={styles.cardName}>{item.customer_name}</Text>
-                        <Text style={styles.cardPhone}>{item.phone} • {item.route}</Text>
-                      </View>
-                      <View style={[
-                        styles.badge,
-                        isPaid && styles.badgePaid,
-                        isOverdue && styles.badgeOverdue,
-                        !isPaid && !isOverdue && styles.badgePending,
-                      ]}>
-                        <Text style={[
-                          styles.badgeText,
-                          isPaid && styles.badgeTextPaid,
-                          isOverdue && styles.badgeTextOverdue,
-                          !isPaid && !isOverdue && styles.badgeTextPending,
-                        ]}>
-                          {item.status}
-                        </Text>
-                      </View>
-                    </View>
+      {/* Amount Breakdown Row */}
+      <View style={styles.amountContainer}>
+        <View style={styles.amountCol}>
+          <Text style={styles.amountLabel}>Scheduled Due</Text>
+          <Text style={styles.amountVal}>{formatINR(item.expectedAmount)}</Text>
+        </View>
 
-                    <View style={styles.cardBody}>
-                      <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>LOAN CODE</Text>
-                        <Text style={styles.infoValue}>{item.loan_code}</Text>
-                      </View>
-                      <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>CYCLE</Text>
-                        <Text style={styles.infoValue}>Wk {item.week_number} of {item.total_weeks}</Text>
-                      </View>
-                      <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>DUE DATE</Text>
-                        <Text style={[styles.infoValue, isOverdue && { color: '#DC2626', fontWeight: '700' }]}>
-                          {item.due_date}
-                        </Text>
-                      </View>
-                      <View style={[styles.infoCol, { alignItems: 'flex-end' }]}>
-                        <Text style={styles.infoLabel}>DUE AMOUNT</Text>
-                        <Text style={styles.amountValue}>{formatINR(item.due_amount)}</Text>
-                      </View>
-                    </View>
+        <View style={styles.amountDivider} />
 
-                    <View style={styles.cardActions}>
-                      <View style={styles.cycleProgress}>
-                        <View style={[styles.progressBar, { width: `${(item.week_number / item.total_weeks) * 100}%` }]} />
-                      </View>
-                      {!isPaid && (
-                        <TouchableOpacity
-                          style={styles.collectBtn}
-                          onPress={() => handleOpenCollect(item)}
-                          activeOpacity={0.8}
-                        >
-                          <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
-                          <Text style={styles.collectBtnText}>Collect ₹{item.due_amount}</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                );
-              })
-            )}
-          </>
-        )}
+        <View style={styles.amountCol}>
+          <Text style={styles.amountLabel}>Paid</Text>
+          <Text style={[styles.amountVal, { color: '#10B981' }]}>
+            {formatINR(item.paidAmount)}
+          </Text>
+        </View>
 
-        {/* TAB 2: DAILY COLLECTIONS */}
-        {activeTab === 'DAILY' && (
-          <>
-            <Text style={styles.listHeaderTitle}>
-              DAILY COLLECTION SHEET ({filteredDaily.length})
-            </Text>
-            {filteredDaily.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No daily merchant records found.</Text>
-              </View>
-            ) : (
-              filteredDaily.map((item) => {
-                const isCollected = item.status === 'COLLECTED';
-                const isMissed = item.status === 'MISSED';
-                return (
-                  <View key={item.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <View style={[styles.avatar, { backgroundColor: '#ECFDF5' }]}>
-                        <Text style={[styles.avatarText, { color: '#059669' }]}>
-                          {item.shopkeeper_name.charAt(0)}
-                        </Text>
-                      </View>
-                      <View style={styles.cardTitleBox}>
-                        <Text style={styles.cardName}>{item.customer_name}</Text>
-                        <Text style={styles.cardPhone}>Prop: {item.shopkeeper_name} • {item.phone}</Text>
-                      </View>
-                      <View style={[
-                        styles.badge,
-                        isCollected && styles.badgePaid,
-                        isMissed && styles.badgeOverdue,
-                        !isCollected && !isMissed && styles.badgePending,
-                      ]}>
-                        <Text style={[
-                          styles.badgeText,
-                          isCollected && styles.badgeTextPaid,
-                          isMissed && styles.badgeTextOverdue,
-                          !isCollected && !isMissed && styles.badgeTextPending,
-                        ]}>
-                          {item.status}
-                        </Text>
-                      </View>
-                    </View>
+        <View style={styles.amountDivider} />
 
-                    <View style={styles.cardBody}>
-                      <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>LOAN NUMBER</Text>
-                        <Text style={styles.infoValue}>{item.loan_code}</Text>
-                      </View>
-                      <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>DAY CYCLE</Text>
-                        <Text style={styles.infoValue}>Day {item.day_number} of {item.total_days}</Text>
-                      </View>
-                      <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>MODE / RECEIPT</Text>
-                        <Text style={styles.infoValue}>
-                          {item.receipt_no ? `${item.payment_mode} • ${item.receipt_no}` : 'Uncollected'}
-                        </Text>
-                      </View>
-                      <View style={[styles.infoCol, { alignItems: 'flex-end' }]}>
-                        <Text style={styles.infoLabel}>DAILY DUE</Text>
-                        <Text style={[styles.amountValue, { color: '#059669' }]}>{formatINR(item.due_amount)}</Text>
-                      </View>
-                    </View>
+        <View style={styles.amountCol}>
+          <Text style={styles.amountLabel}>Balance Left</Text>
+          <Text
+            style={[
+              styles.amountVal,
+              { color: item.balance > 0 ? '#EF4444' : '#10B981' },
+            ]}
+          >
+            {formatINR(item.balance)}
+          </Text>
+        </View>
+      </View>
 
-                    <View style={styles.cardActions}>
-                      <View style={styles.cycleProgress}>
-                        <View style={[styles.progressBar, { width: `${(item.day_number / item.total_days) * 100}%`, backgroundColor: '#059669' }]} />
-                      </View>
-                      {!isCollected && (
-                        <TouchableOpacity
-                          style={[styles.collectBtn, { backgroundColor: '#059669' }]}
-                          onPress={() => handleOpenCollect(item)}
-                          activeOpacity={0.8}
-                        >
-                          <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
-                          <Text style={styles.collectBtnText}>Collect ₹{item.due_amount}</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                );
-              })
-            )}
-          </>
-        )}
+      {/* Action Buttons Row */}
+      <View style={styles.cardFooter}>
+        {item.customerPhone ? (
+          <TouchableOpacity
+            style={styles.actionIconBtn}
+            onPress={() => Linking.openURL(`tel:${item.customerPhone}`)}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="phone" size={16} color="#6B46C1" />
+            <Text style={styles.actionIconBtnText}>Call</Text>
+          </TouchableOpacity>
+        ) : null}
 
-        {/* TAB 3: P&L AND FINANCIAL MARGINS */}
-        {activeTab === 'PNL' && (
-          <View style={styles.pnlContainer}>
-            <Text style={styles.listHeaderTitle}>BRANCH PROFITABILITY & CASH FLOW STATEMENT</Text>
+        <TouchableOpacity
+          style={styles.actionIconBtn}
+          onPress={() => onOpenDetail(item)}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="information-outline" size={16} color="#6B7280" />
+          <Text style={[styles.actionIconBtnText, { color: '#6B7280' }]}>Details</Text>
+        </TouchableOpacity>
 
-            {/* Net Branch Profit Card */}
-            <View style={styles.profitHeroCard}>
-              <Text style={styles.profitHeroLabel}>NET OPERATIONAL PROFIT (MTD)</Text>
-              <Text style={styles.profitHeroValue}>{formatINR(netBranchProfit)}</Text>
-              <Text style={styles.profitHeroSub}>Interest Yield − Operating Costs</Text>
-            </View>
-
-            {/* Income & Expense Breakdown */}
-            <View style={styles.breakdownCard}>
-              <Text style={styles.breakdownHeader}>REVENUE & COST BREAKDOWN</Text>
-
-              <View style={styles.breakdownRow}>
-                <View style={styles.breakdownItemLeft}>
-                  <View style={[styles.dot, { backgroundColor: '#059669' }]} />
-                  <Text style={styles.breakdownLabel}>Contracted Interest Yield</Text>
-                </View>
-                <Text style={[styles.breakdownVal, { color: '#059669' }]}>+{formatINR(totalInterestEarned)}</Text>
-              </View>
-
-              <View style={styles.breakdownRow}>
-                <View style={styles.breakdownItemLeft}>
-                  <View style={[styles.dot, { backgroundColor: '#2563EB' }]} />
-                  <Text style={styles.breakdownLabel}>Principal Capital Realized</Text>
-                </View>
-                <Text style={[styles.breakdownVal, { color: '#2563EB' }]}>{formatINR(fundMetrics?.totalPrincipalRecovered || 145000)}</Text>
-              </View>
-
-              <View style={styles.breakdownRow}>
-                <View style={styles.breakdownItemLeft}>
-                  <View style={[styles.dot, { backgroundColor: '#DC2626' }]} />
-                  <Text style={styles.breakdownLabel}>Field Travel & Staff Commission</Text>
-                </View>
-                <Text style={[styles.breakdownVal, { color: '#DC2626' }]}>−{formatINR(totalExpenseAmount)}</Text>
-              </View>
-
-              <View style={styles.breakdownDivider} />
-
-              <View style={styles.breakdownRow}>
-                <Text style={[styles.breakdownLabel, { fontWeight: '800', color: '#0F172A' }]}>Net Operational Return</Text>
-                <Text style={[styles.breakdownVal, { fontWeight: '900', color: '#059669', fontSize: 14 }]}>
-                  {formatINR(netBranchProfit)}
-                </Text>
-              </View>
-            </View>
-
-            {/* Payment Channel Mix */}
-            <View style={styles.breakdownCard}>
-              <Text style={styles.breakdownHeader}>PAYMENT CHANNEL RECOVERY MIX</Text>
-              <View style={styles.channelRow}>
-                <View style={styles.channelBox}>
-                  <Text style={styles.channelTitle}>CASH VAULT (74%)</Text>
-                  <Text style={styles.channelAmount}>{formatINR(Math.round((fundMetrics?.totalRecoveredCash || 185000) * 0.74))}</Text>
-                  <Text style={styles.channelSub}>Field door-to-door</Text>
-                </View>
-                <View style={styles.channelBox}>
-                  <Text style={styles.channelTitle}>UPI DIGITAL (26%)</Text>
-                  <Text style={[styles.channelAmount, { color: '#2563EB' }]}>{formatINR(Math.round((fundMetrics?.totalRecoveredCash || 185000) * 0.26))}</Text>
-                  <Text style={styles.channelSub}>Direct QR scan</Text>
-                </View>
-              </View>
-            </View>
+        {item.balance > 0 ? (
+          <TouchableOpacity
+            style={styles.collectBtn}
+            onPress={() => onOpenCollect(item)}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="cash-fast" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.collectBtnText}>Collect {formatINR(item.balance)}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.settledBadge}>
+            <MaterialCommunityIcons name="check-all" size={14} color="#059669" />
+            <Text style={styles.settledBadgeText}>Fully Settled</Text>
           </View>
         )}
-      </ScrollView>
+      </View>
+    </View>
+  );
+});
 
-      {/* QUICK REPAYMENT COLLECT MODAL */}
-      <Modal visible={collectModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+export const AdminReports = () => {
+  const { currentUser } = useApp();
+
+  // Filter States
+  const [datePreset, setDatePreset] = useState('ALL'); // 'ALL' | 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH'
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [frequencyFilter, setFrequencyFilter] = useState('ALL'); // 'ALL' | 'WEEKLY' | 'DAILY' | 'MONTHLY'
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'OVERDUE' | 'UNPAID' | 'PARTIAL' | 'PAID'
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Data States
+  const [report, setReport] = useState({
+    period: { start: '', end: '' },
+    summary: {
+      expected: 0,
+      collected: 0,
+      outstanding: 0,
+      paid_count: 0,
+      unpaid_count: 0,
+      partial_count: 0,
+      overdue_count: 0,
+      total_records: 0,
+      recovery_rate: 0,
+    },
+    records: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Collect Payment Modal State
+  const [collectModalVisible, setCollectModalVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [collectAmount, setCollectAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [collectNotes, setCollectNotes] = useState('');
+  const [collecting, setCollecting] = useState(false);
+
+  // Detail Modal State
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailRecord, setDetailRecord] = useState(null);
+
+  // Fetch Report Data from Backend API
+  const fetchReport = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const data = await apiService.getPaymentReport({
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        frequency: frequencyFilter,
+        status: statusFilter,
+      });
+
+      if (data) {
+        setReport({
+          period: data.period || { start: '', end: '' },
+          summary: data.summary || {
+            expected: 0,
+            collected: 0,
+            outstanding: 0,
+            paid_count: 0,
+            unpaid_count: 0,
+            partial_count: 0,
+            overdue_count: 0,
+            total_records: 0,
+            recovery_rate: 0,
+          },
+          records: Array.isArray(data.records) ? data.records : [],
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch live payment report:', err);
+      Alert.alert(
+        'Network Error',
+        'Could not fetch latest reports from the server. Please pull to refresh or check your connection.'
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [startDate, endDate, frequencyFilter, statusFilter]);
+
+  // Initial & Filter-Triggered Fetch
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
+
+  // Preset Date Selection Handler
+  const handlePresetSelect = useCallback((preset) => {
+    setDatePreset(preset);
+    const today = new Date();
+
+    if (preset === 'ALL') {
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'TODAY') {
+      const t = formatDateStr(today);
+      setStartDate(t);
+      setEndDate(t);
+    } else if (preset === 'THIS_WEEK') {
+      const w = getWeekRange(today);
+      setStartDate(w.start);
+      setEndDate(w.end);
+    } else if (preset === 'THIS_MONTH') {
+      const m = getMonthRange(today);
+      setStartDate(m.start);
+      setEndDate(m.end);
+    }
+  }, []);
+
+  // Client-Side Search Filtering
+  const filteredRecords = useMemo(() => {
+    if (!report.records) return [];
+    if (!searchQuery.trim()) return report.records;
+
+    const query = searchQuery.toLowerCase().trim();
+    return report.records.filter((rec) => {
+      const name = (rec.customerName || '').toLowerCase();
+      const phone = (rec.customerPhone || '').toLowerCase();
+      const loanNo = (rec.loanNumber || '').toLowerCase();
+      const shop = (rec.shopName || '').toLowerCase();
+      return (
+        name.includes(query) ||
+        phone.includes(query) ||
+        loanNo.includes(query) ||
+        shop.includes(query)
+      );
+    });
+  }, [report.records, searchQuery]);
+
+  // Open Collect Modal
+  const openCollectModal = useCallback((record) => {
+    setSelectedRecord(record);
+    setCollectAmount(String(record.balance || record.expectedAmount || ''));
+    setPaymentMethod('CASH');
+    setCollectNotes(`Collection for ${record.customerName}`);
+    setCollectModalVisible(true);
+  }, []);
+
+  // Open Detail Modal
+  const openDetailModal = useCallback((record) => {
+    setDetailRecord(record);
+    setDetailModalVisible(true);
+  }, []);
+
+  // Submit Payment Collection to Backend
+  const handleConfirmCollect = async () => {
+    if (!selectedRecord) return;
+
+    const parsedAmt = parseFloat(collectAmount);
+    if (isNaN(parsedAmt) || parsedAmt <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid positive payment amount.');
+      return;
+    }
+
+    const maxDue = selectedRecord.balance || selectedRecord.expectedAmount;
+    if (parsedAmt > maxDue + 0.01) {
+      Alert.alert(
+        'Amount Exceeded',
+        `Payment cannot exceed outstanding balance of ${formatINR(maxDue)}.`
+      );
+      return;
+    }
+
+    setCollecting(true);
+    try {
+      await apiService.recordPayment({
+        scheduleId: selectedRecord.scheduleId,
+        loanId: selectedRecord.loanId,
+        userId: selectedRecord.userId || selectedRecord.customerId,
+        customerId: selectedRecord.customerId,
+        amount: parsedAmt,
+        paymentDate: formatDateStr(new Date()),
+        paymentMethod: paymentMethod,
+        referenceNumber: `REC-${Math.floor(10000 + Math.random() * 90000)}`,
+        notes: collectNotes,
+      });
+
+      setCollectModalVisible(false);
+      Alert.alert(
+        'Payment Recorded',
+        `Successfully collected ${formatINR(parsedAmt)} for ${selectedRecord.customerName}.`
+      );
+      fetchReport(true);
+    } catch (err) {
+      console.error('Error recording payment:', err);
+      Alert.alert('Collection Failed', err.message || 'Failed to record payment on server.');
+    } finally {
+      setCollecting(false);
+    }
+  };
+
+  // Share Summary Report
+  const handleShareSummary = useCallback(async () => {
+    try {
+      const summary = report.summary;
+      const text = `📊 *Apex Finance — Collection Report*\n` +
+        `📅 Period: ${datePreset}\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `💰 Expected: ${formatINR(summary.expected)}\n` +
+        `✅ Collected: ${formatINR(summary.collected)}\n` +
+        `⚠️ Outstanding: ${formatINR(summary.outstanding)}\n` +
+        `📈 Recovery Rate: ${summary.recovery_rate}%\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `Overdue: ${summary.overdue_count} | Unpaid: ${summary.unpaid_count} | Paid: ${summary.paid_count}\n` +
+        `Total Records: ${summary.total_records}`;
+
+      await Share.share({
+        title: 'Collection Report',
+        message: text,
+      });
+    } catch (err) {
+      console.log('Error sharing summary:', err);
+    }
+  }, [report.summary, datePreset]);
+
+  // Render FlatList Header with all filters, search, and metrics
+  const renderListHeader = () => {
+    return (
+      <View>
+        {/* Top Control Bar: Date Presets & Quick Actions */}
+        <View style={styles.topControlRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.presetContainer}
+          >
+            {[
+              { key: 'ALL', label: 'All Time', icon: 'calendar-range' },
+              { key: 'TODAY', label: 'Today', icon: 'calendar-today' },
+              { key: 'THIS_WEEK', label: 'This Week', icon: 'calendar-week' },
+              { key: 'THIS_MONTH', label: 'This Month', icon: 'calendar-month' },
+            ].map((p) => {
+              const active = datePreset === p.key;
+              return (
+                <TouchableOpacity
+                  key={p.key}
+                  style={[styles.presetChip, active && styles.presetChipActive]}
+                  onPress={() => handlePresetSelect(p.key)}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name={p.icon}
+                    size={13}
+                    color={active ? '#FFFFFF' : '#6B7280'}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[styles.presetChipText, active && styles.presetChipTextActive]}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Quick Refresh & Share */}
+          <View style={styles.headerIconsRow}>
+            <TouchableOpacity
+              style={styles.miniIconBtn}
+              onPress={() => fetchReport(true)}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="refresh" size={18} color="#6B46C1" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.miniIconBtn, { marginLeft: 6 }]}
+              onPress={handleShareSummary}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="share-variant-outline" size={18} color="#6B46C1" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Frequency Filter Tabs */}
+        <View style={styles.frequencyContainer}>
+          {['ALL', 'WEEKLY', 'DAILY', 'MONTHLY'].map((freq) => {
+            const active = frequencyFilter === freq;
+            return (
+              <TouchableOpacity
+                key={freq}
+                style={[styles.freqTab, active && styles.freqTabActive]}
+                onPress={() => setFrequencyFilter(freq)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.freqTabText, active && styles.freqTabTextActive]}>
+                  {freq === 'ALL' ? 'All Freq' : freq.charAt(0) + freq.slice(1).toLowerCase()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Summary Metric Dashboard (4 Cards in 2x2 Grid) */}
+        <View style={styles.metricsGrid}>
+          {/* Card 1: Expected */}
+          <View style={styles.metricCard}>
+            <View style={styles.metricTop}>
+              <Text style={styles.metricLabel}>TOTAL EXPECTED</Text>
+              <View style={[styles.metricIconBox, { backgroundColor: '#F3E8FF' }]}>
+                <MaterialCommunityIcons name="calendar-clock" size={15} color="#6B46C1" />
+              </View>
+            </View>
+            <Text style={styles.metricValue}>{formatINR(report.summary.expected)}</Text>
+            <Text style={styles.metricSubtext}>
+              {report.summary.total_records} Total Installments
+            </Text>
+          </View>
+
+          {/* Card 2: Collected */}
+          <View style={styles.metricCard}>
+            <View style={styles.metricTop}>
+              <Text style={styles.metricLabel}>COLLECTED</Text>
+              <View style={[styles.metricIconBox, { backgroundColor: '#ECFDF5' }]}>
+                <MaterialCommunityIcons name="check-decagram" size={15} color="#10B981" />
+              </View>
+            </View>
+            <Text style={[styles.metricValue, { color: '#10B981' }]}>
+              {formatINR(report.summary.collected)}
+            </Text>
+            <Text style={styles.metricSubtext}>
+              {report.summary.paid_count} Settled Loans
+            </Text>
+          </View>
+
+          {/* Card 3: Outstanding */}
+          <View style={styles.metricCard}>
+            <View style={styles.metricTop}>
+              <Text style={styles.metricLabel}>OUTSTANDING</Text>
+              <View style={[styles.metricIconBox, { backgroundColor: '#FEF2F2' }]}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={15} color="#EF4444" />
+              </View>
+            </View>
+            <Text style={[styles.metricValue, { color: '#EF4444' }]}>
+              {formatINR(report.summary.outstanding)}
+            </Text>
+            <Text style={styles.metricSubtext}>
+              {report.summary.overdue_count + report.summary.unpaid_count} Pending Payments
+            </Text>
+          </View>
+
+          {/* Card 4: Recovery Rate */}
+          <View style={styles.metricCard}>
+            <View style={styles.metricTop}>
+              <Text style={styles.metricLabel}>RECOVERY RATE</Text>
+              <View style={[styles.metricIconBox, { backgroundColor: '#EFF6FF' }]}>
+                <MaterialCommunityIcons name="percent" size={15} color="#3B82F6" />
+              </View>
+            </View>
+            <Text style={[styles.metricValue, { color: '#6B46C1' }]}>
+              {report.summary.recovery_rate}%
+            </Text>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${Math.min(100, report.summary.recovery_rate || 0)}%` },
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Status Filter Pills Row */}
+        <View style={styles.statusSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.statusContainer}
+          >
+            {[
+              { key: 'ALL', label: 'All', count: report.summary.total_records, color: '#6B46C1' },
+              { key: 'OVERDUE', label: 'Overdue', count: report.summary.overdue_count, color: '#EF4444' },
+              { key: 'UNPAID', label: 'Unpaid', count: report.summary.unpaid_count, color: '#F59E0B' },
+              { key: 'PARTIAL', label: 'Partial', count: report.summary.partial_count, color: '#3B82F6' },
+              { key: 'PAID', label: 'Paid', count: report.summary.paid_count, color: '#10B981' },
+            ].map((s) => {
+              const active = statusFilter === s.key;
+              return (
+                <TouchableOpacity
+                  key={s.key}
+                  style={[
+                    styles.statusPill,
+                    active && { backgroundColor: s.color, borderColor: s.color },
+                  ]}
+                  onPress={() => setStatusFilter(s.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      active && { color: '#FFFFFF' },
+                    ]}
+                  >
+                    {s.label}
+                  </Text>
+                  <View
+                    style={[
+                      styles.statusBadgeCount,
+                      active && { backgroundColor: 'rgba(255,255,255,0.25)' },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusBadgeCountText,
+                        active && { color: '#FFFFFF' },
+                      ]}
+                    >
+                      {s.count || 0}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchBar}>
+            <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search customer, phone, loan code..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <MaterialCommunityIcons name="close-circle" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Records Count Bar */}
+        <View style={styles.recordsHeader}>
+          <Text style={styles.recordsHeaderText}>
+            PAYMENT OBLIGATIONS ({filteredRecords.length})
+          </Text>
+          <Text style={styles.recordsHeaderSub}>
+            Sorted by urgency & due date
+          </Text>
+        </View>
+
+        {/* Loading Indicator */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#6B46C1" />
+            <Text style={styles.loadingText}>Fetching live reports...</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Render Empty State
+  const renderEmpty = () => {
+    if (loading) return null;
+
+    return (
+      <View style={styles.emptyContainer}>
+        {revenueAnimation ? (
+          <LottieView
+            source={revenueAnimation}
+            autoPlay
+            loop
+            style={styles.emptyLottie}
+          />
+        ) : (
+          <View style={styles.emptyIconCircle}>
+            <MaterialCommunityIcons name="file-document-outline" size={40} color="#6B46C1" />
+          </View>
+        )}
+        <Text style={styles.emptyTitle}>No Payment Records Found</Text>
+        <Text style={styles.emptySubtitle}>
+          {searchQuery
+            ? `No records matching "${searchQuery}".`
+            : 'No payment dues found for the selected period or filters.'}
+        </Text>
+        {(datePreset !== 'ALL' || frequencyFilter !== 'ALL' || statusFilter !== 'ALL' || searchQuery) && (
+          <TouchableOpacity
+            style={styles.resetFilterBtn}
+            onPress={() => {
+              setDatePreset('ALL');
+              setStartDate('');
+              setEndDate('');
+              setFrequencyFilter('ALL');
+              setStatusFilter('ALL');
+              setSearchQuery('');
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="filter-remove-outline" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.resetFilterText}>Reset All Filters</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  // Render Single Record Item
+  const renderItem = ({ item }) => (
+    <RecordCard
+      item={item}
+      onOpenCollect={openCollectModal}
+      onOpenDetail={openDetailModal}
+    />
+  );
+
+  // Key extractor
+  const keyExtractor = (item, index) => {
+    return String(item.scheduleId || `${item.loanId}-${item.installmentNumber}-${index}`);
+  };
+
+  return (
+    <View style={styles.fullscreenContainer}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+
+      {/* High-Performance Virtualized FlatList */}
+      <FlatList
+        data={filteredRecords}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={styles.listContent}
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchReport(true)}
+            colors={['#6B46C1']}
+            tintColor="#6B46C1"
+          />
+        }
+      />
+
+      {/* Collect Payment Modal */}
+      <Modal
+        visible={collectModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCollectModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
+            {/* Modal Header */}
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Log Field Collection</Text>
-                <Text style={styles.modalSub}>{selectedItem?.customer_name}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setCollectModalVisible(false)} style={styles.modalCloseBtn}>
-                <MaterialCommunityIcons name="close" size={16} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <View style={styles.amountDisplay}>
-                <Text style={styles.amountDisplayLabel}>DUE AMOUNT TO COLLECT</Text>
-                <Text style={styles.amountDisplayValue}>{formatINR(selectedItem?.due_amount || 0)}</Text>
-                <Text style={styles.amountDisplaySub}>
-                  {activeTab === 'WEEKLY' ? `Week ${selectedItem?.week_number} Installment` : `Day ${selectedItem?.day_number} Daily Collection`}
+                <Text style={styles.modalTitle}>Record Collection</Text>
+                <Text style={styles.modalSubtitle}>
+                  {selectedRecord?.customerName} • {selectedRecord?.loanNumber}
                 </Text>
               </View>
-
-              <Text style={styles.inputLabel}>SELECT PAYMENT METHOD</Text>
-              <View style={styles.modeRow}>
-                {['CASH', 'UPI', 'BANK_TRANSFER'].map((mode) => (
-                  <TouchableOpacity
-                    key={mode}
-                    style={[styles.modeBtn, paymentMode === mode && styles.modeBtnActive]}
-                    onPress={() => setPaymentMode(mode)}
-                  >
-                    <Text style={[styles.modeBtnText, paymentMode === mode && styles.modeBtnTextActive]}>
-                      {mode.replace('_', ' ')}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity style={styles.confirmCollectBtn} onPress={handleConfirmCollect}>
-                <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
-                <Text style={styles.confirmCollectBtnText}>Confirm & Print Receipt</Text>
+              <TouchableOpacity
+                onPress={() => setCollectModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
               </TouchableOpacity>
             </View>
+
+            {/* Outstanding Summary Banner */}
+            <View style={styles.dueBanner}>
+              <View>
+                <Text style={styles.dueBannerLabel}>Outstanding Dues</Text>
+                <Text style={styles.dueBannerAmount}>
+                  {formatINR(selectedRecord?.balance || selectedRecord?.expectedAmount || 0)}
+                </Text>
+              </View>
+              <View style={styles.dueBannerBadge}>
+                <Text style={styles.dueBannerBadgeText}>
+                  Inst. #{selectedRecord?.installmentNumber}
+                </Text>
+              </View>
+            </View>
+
+            {/* Amount Input */}
+            <Text style={styles.inputLabel}>Collection Amount (₹)</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.rupeeSymbol}>₹</Text>
+              <TextInput
+                style={styles.textInput}
+                keyboardType="numeric"
+                value={collectAmount}
+                onChangeText={setCollectAmount}
+                placeholder="Enter amount"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Payment Method Selector */}
+            <Text style={styles.inputLabel}>Payment Method</Text>
+            <View style={styles.methodRow}>
+              {[
+                { key: 'CASH', label: 'Cash', icon: 'cash' },
+                { key: 'UPI', label: 'UPI / GPay', icon: 'qrcode-scan' },
+                { key: 'BANK_TRANSFER', label: 'Bank', icon: 'bank' },
+              ].map((m) => {
+                const active = paymentMethod === m.key;
+                return (
+                  <TouchableOpacity
+                    key={m.key}
+                    style={[styles.methodBtn, active && styles.methodBtnActive]}
+                    onPress={() => setPaymentMethod(m.key)}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons
+                      name={m.icon}
+                      size={16}
+                      color={active ? '#6B46C1' : '#6B7280'}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.methodBtnText, active && styles.methodBtnTextActive]}>
+                      {m.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Notes Input */}
+            <Text style={styles.inputLabel}>Remarks / Reference No.</Text>
+            <TextInput
+              style={styles.notesInput}
+              value={collectNotes}
+              onChangeText={setCollectNotes}
+              placeholder="e.g., Paid via PhonePe, or collected at shop"
+              placeholderTextColor="#9CA3AF"
+            />
+
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setCollectModalVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, collecting && { opacity: 0.7 }]}
+                onPress={handleConfirmCollect}
+                disabled={collecting}
+                activeOpacity={0.85}
+              >
+                {collecting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.modalSubmitText}>Confirm Collection</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Record Details Modal */}
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDetailModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.detailCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Installment Details</Text>
+              <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {detailRecord && (
+              <View style={styles.detailList}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Borrower</Text>
+                  <Text style={styles.detailValue}>{detailRecord.customerName}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Contact Phone</Text>
+                  <Text style={styles.detailValue}>{detailRecord.customerPhone}</Text>
+                </View>
+                {detailRecord.customerAddress ? (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Address</Text>
+                    <Text style={styles.detailValue}>{detailRecord.customerAddress}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Loan Account</Text>
+                  <Text style={styles.detailValue}>{detailRecord.loanNumber}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Repayment Scheme</Text>
+                  <Text style={styles.detailValue}>{detailRecord.frequency}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Installment Due Date</Text>
+                  <Text style={styles.detailValue}>{formatDate(detailRecord.dueDate)}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Scheduled Amount</Text>
+                  <Text style={styles.detailValue}>{formatINR(detailRecord.expectedAmount)}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Collected Amount</Text>
+                  <Text style={[styles.detailValue, { color: '#10B981' }]}>
+                    {formatINR(detailRecord.paidAmount)}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Current Balance</Text>
+                  <Text style={[styles.detailValue, { color: '#EF4444' }]}>
+                    {formatINR(detailRecord.balance)}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Payment Status</Text>
+                  <Text style={[styles.detailValue, { fontWeight: '700' }]}>
+                    {detailRecord.status}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.detailCloseBtn}
+              onPress={() => setDetailModalVisible(false)}
+            >
+              <Text style={styles.detailCloseBtnText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -600,271 +1013,505 @@ const AdminReports = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  fullscreenContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7F7F7',
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+  listContent: {
+    paddingBottom: 90,
   },
-  tag: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#2563EB',
-    letterSpacing: 0.6,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginTop: 2,
-  },
-  sub: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  tabButton: {
-    flex: 1,
+
+  // Top Control Bar
+  topControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-  },
-  tabButtonActive: {
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-  },
-  tabButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  tabButtonTextActive: {
-    color: '#2842C4',
-  },
-  metricRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 12,
-  },
-  metricHalf: {
-    flex: 1,
-  },
-  filterSection: {
-    paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 6,
+    paddingBottom: 4,
+    paddingRight: 16,
   },
-  searchBox: {
+  presetContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  presetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  presetChipActive: {
+    backgroundColor: '#6B46C1',
+    borderColor: '#6B46C1',
+    shadowColor: '#6B46C1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  presetChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  presetChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  headerIconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
+  miniIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#F3E8FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Frequency Tabs
+  frequencyContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
+    padding: 3,
+  },
+  freqTab: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  freqTabActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  freqTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  freqTabTextActive: {
+    color: '#6B46C1',
+    fontWeight: '700',
+  },
+
+  // Metric Dashboard Grid
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    marginTop: 12,
+  },
+  metricCard: {
+    width: '46%',
+    margin: '2%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  metricTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B7280',
+    letterSpacing: 0.3,
+  },
+  metricIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  metricSubtext: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 3,
+  },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 4,
+    backgroundColor: '#6B46C1',
+    borderRadius: 2,
+  },
+
+  // Status Filter Pills
+  statusSection: {
+    marginTop: 8,
+  },
+  statusContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginRight: 6,
+  },
+  statusBadgeCount: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  statusBadgeCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+
+  // Search
+  searchSection: {
+    paddingHorizontal: 16,
+    marginTop: 10,
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 8,
+    borderColor: '#E5E7EB',
+    height: 42,
   },
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: '#0F172A',
-    padding: 0,
+    color: '#111827',
+    marginLeft: 8,
+    paddingVertical: 0,
   },
-  statusChips: {
+
+  // Records Header
+  recordsHeader: {
     flexDirection: 'row',
-    marginTop: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
-    backgroundColor: '#E2E8F0',
-    marginRight: 6,
-  },
-  chipActive: {
-    backgroundColor: '#2842C4',
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
-  listScroll: {
-    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 10,
-  },
-  listHeaderTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#475569',
-    letterSpacing: 0.5,
+    marginTop: 14,
     marginBottom: 8,
   },
-  emptyState: {
+  recordsHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    letterSpacing: 0.5,
+  },
+  recordsHeaderSub: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+
+  // Loading
+  loadingContainer: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#6B7280',
+  },
+
+  // Empty State
+  emptyContainer: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
     padding: 24,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F0F0F0',
   },
-  emptyStateText: {
-    fontSize: 13,
-    color: '#64748B',
+  emptyLottie: {
+    width: 130,
+    height: 130,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F3E8FF',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 6,
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  resetFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6B46C1',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  resetFilterText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Record Card
+  recordCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#6B46C1',
     justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 10,
   },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#2842C4',
+  avatarInitial: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   cardTitleBox: {
     flex: 1,
   },
-  cardName: {
-    fontSize: 14,
+  customerName: {
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111827',
   },
-  cardPhone: {
-    fontSize: 11,
-    color: '#64748B',
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 2,
   },
-  badge: {
+  phoneText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  dotSeparator: {
+    fontSize: 12,
+    color: '#D1D5DB',
+  },
+  shopText: {
+    fontSize: 12,
+    color: '#6B7280',
+    flex: 1,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  // Meta strip
+  metaStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  badgePaid: {
-    backgroundColor: '#ECFDF5',
-  },
-  badgeOverdue: {
-    backgroundColor: '#FEE2E2',
-  },
-  badgePending: {
-    backgroundColor: '#FEF3C7',
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  badgeTextPaid: {
-    color: '#059669',
-  },
-  badgeTextOverdue: {
-    color: '#DC2626',
-  },
-  badgeTextPending: {
-    color: '#D97706',
-  },
-  cardBody: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
-  },
-  infoCol: {},
-  infoLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 2,
-  },
-  infoValue: {
+  metaChipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#1E293B',
+    color: '#4B5563',
+    marginLeft: 4,
   },
-  amountValue: {
-    fontSize: 13,
+
+  // Amounts row
+  amountContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginTop: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  amountCol: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  amountLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  amountVal: {
+    fontSize: 14,
     fontWeight: '800',
-    color: '#2842C4',
+    color: '#111827',
+    marginTop: 2,
   },
-  cardActions: {
+  amountDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: '#E5E7EB',
+  },
+
+  // Card Footer Actions
+  cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    marginTop: 10,
+    gap: 8,
   },
-  cycleProgress: {
-    flex: 1,
-    height: 6,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
-    overflow: 'hidden',
+  actionIconBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#F3E8FF',
   },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#2842C4',
-    borderRadius: 3,
+  actionIconBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B46C1',
+    marginLeft: 4,
   },
   collectBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#2842C4',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    justifyContent: 'center',
+    backgroundColor: '#6B46C1',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 8,
+    shadowColor: '#6B46C1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   collectBtnText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  modalOverlay: {
+  settledBadge: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  settledBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#059669',
+    marginLeft: 4,
+  },
+
+  // Modal Styles
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalCard: {
@@ -872,196 +1519,213 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    paddingBottom: 36,
+    paddingBottom: Platform.OS === 'android' ? 24 : 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
   },
-  modalSub: {
+  modalSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     marginTop: 2,
   },
-  modalCloseBtn: {
-    padding: 4,
-  },
-  modalBody: {},
-  amountDisplay: {
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  amountDisplayLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  amountDisplayValue: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#059669',
-  },
-  amountDisplaySub: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 4,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 8,
-  },
-  modeRow: {
+  dueBanner: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  modeBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
   },
-  modeBtnActive: {
-    backgroundColor: '#2842C4',
-    borderColor: '#2842C4',
+  dueBannerLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B46C1',
   },
-  modeBtnText: {
+  dueBannerAmount: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#6B46C1',
+    marginTop: 2,
+  },
+  dueBannerBadge: {
+    backgroundColor: '#6B46C1',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dueBannerBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
-  },
-  modeBtnTextActive: {
     color: '#FFFFFF',
   },
-  confirmCollectBtn: {
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 6,
+    marginTop: 6,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 48,
+    backgroundColor: '#F9FAFB',
+    marginBottom: 10,
+  },
+  rupeeSymbol: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#6B46C1',
+    marginRight: 6,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    paddingVertical: 0,
+  },
+  methodRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  methodBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#059669',
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
   },
-  confirmCollectBtnText: {
+  methodBtnActive: {
+    borderColor: '#6B46C1',
+    backgroundColor: '#F3E8FF',
+  },
+  methodBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  methodBtnTextActive: {
+    color: '#6B46C1',
+    fontWeight: '700',
+  },
+  notesInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#111827',
+    backgroundColor: '#F9FAFB',
+    marginBottom: 18,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  modalSubmitBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#6B46C1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6B46C1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalSubmitText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  pnlContainer: {
-    gap: 12,
-  },
-  profitHeroCard: {
-    backgroundColor: '#0F172A',
-    borderRadius: 14,
-    padding: 18,
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  profitHeroLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  profitHeroValue: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#10B981',
-  },
-  profitHeroSub: {
-    fontSize: 11,
-    color: '#CBD5E1',
-    marginTop: 4,
-  },
-  breakdownCard: {
+
+  // Detail Modal
+  detailCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
-    gap: 10,
+    margin: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  breakdownHeader: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 0.6,
-    marginBottom: 4,
+  detailList: {
+    marginTop: 8,
+    marginBottom: 16,
   },
-  breakdownRow: {
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  breakdownItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  breakdownLabel: {
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '600',
-  },
-  breakdownVal: {
+  detailLabel: {
     fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 13,
+    color: '#111827',
+    fontWeight: '600',
+    maxWidth: '55%',
+    textAlign: 'right',
+  },
+  detailCloseBtn: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  detailCloseBtnText: {
+    fontSize: 14,
     fontWeight: '700',
-  },
-  breakdownDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 4,
-  },
-  channelRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  channelBox: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  channelTitle: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  channelAmount: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#059669',
-  },
-  channelSub: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 2,
+    color: '#4B5563',
   },
 });
 

@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  FlatList,
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -12,6 +13,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../../../context/AppContext';
@@ -20,10 +22,10 @@ import apiService from '../../../../services/apiService';
 
 // Primary Category Tabs
 const CATEGORY_TABS = [
-  { id: 'WEEKLY', label: 'Weekly', icon: 'calendar-week', sub: '10 Wks Scheme' },
-  { id: 'MONTHLY', label: 'Monthly', icon: 'calendar-month', sub: 'Monthly EMI' },
-  { id: 'SHOP', label: 'Shopkeeper', icon: 'storefront-outline', sub: 'Daily Merchant' },
-  { id: 'ALL', label: 'All', icon: 'account-group-outline', sub: 'All Borrowers' },
+  { id: 'WEEKLY', label: 'Weekly', icon: 'calendar-week', sub: '10 Wks' },
+  { id: 'MONTHLY', label: 'Monthly', icon: 'calendar-month', sub: 'EMI' },
+  { id: 'SHOP', label: 'Shopkeeper', icon: 'storefront-outline', sub: 'Daily' },
+  { id: 'ALL', label: 'All', icon: 'account-group-outline', sub: 'All' },
 ];
 
 const STATUS_FILTERS = [
@@ -34,13 +36,193 @@ const STATUS_FILTERS = [
   { id: 'NO_LOAN', label: 'No Active Loan' },
 ];
 
+// Memoized Borrower Card for 60fps Smooth Virtualized Scrolling
+const BorrowerCard = React.memo(({ customer, onSelect, onCall, onWhatsApp, onCollect, onDisburse }) => {
+  const hasActiveLoan = Boolean(customer.activeLoan && customer.activeLoan.status !== 'COMPLETED');
+  const isOverdue = customer.activeLoan?.status === 'OVERDUE';
+  const progressRatio = customer.totalInstallments > 0 ? Math.min(1, customer.paidInstallments / customer.totalInstallments) : 0;
+  const progressPct = Math.round(progressRatio * 100);
+  const initial = (customer.name || customer.full_name || 'B').charAt(0).toUpperCase();
+
+  return (
+    <TouchableOpacity
+      style={styles.borrowerCard}
+      onPress={() => onSelect(customer)}
+      activeOpacity={0.85}
+    >
+      {/* Card Header: Avatar, Name & Status Badge */}
+      <View style={styles.cardHeader}>
+        <View style={[styles.avatarBox, customer.isShop && styles.avatarBoxShop]}>
+          {customer.isShop ? (
+            <MaterialCommunityIcons name="storefront" size={20} color="#FFFFFF" />
+          ) : (
+            <Text style={styles.avatarLetter}>{initial}</Text>
+          )}
+        </View>
+
+        <View style={styles.nameBlock}>
+          <View style={styles.titleRow}>
+            <Text style={styles.borrowerName} numberOfLines={1}>
+              {customer.name || customer.full_name || 'Borrower'}
+            </Text>
+            {customer.isShop && (customer.shop_name || customer.occupation) ? (
+              <View style={styles.shopPill}>
+                <MaterialCommunityIcons name="tag-outline" size={10} color="#6B46C1" />
+                <Text style={styles.shopPillText} numberOfLines={1}>
+                  {customer.shop_name || customer.occupation}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.borrowerMeta} numberOfLines={1}>
+            {customer.phone || 'No phone'} {customer.address || customer.city ? `• ${customer.address || customer.city}` : ''}
+          </Text>
+        </View>
+
+        {/* Status Badge */}
+        <View
+          style={[
+            styles.statusBadge,
+            isOverdue
+              ? styles.statusBadgeOverdue
+              : hasActiveLoan
+              ? styles.statusBadgeActive
+              : styles.statusBadgeNoLoan,
+          ]}
+        >
+          <Text
+            style={[
+              styles.statusBadgeText,
+              isOverdue
+                ? { color: '#DC2626' }
+                : hasActiveLoan
+                ? { color: '#059669' }
+                : { color: '#6B7280' },
+            ]}
+          >
+            {isOverdue ? 'OVERDUE' : hasActiveLoan ? 'ACTIVE' : 'NO LOAN'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Contract & Progress Strip */}
+      {hasActiveLoan ? (
+        <View style={styles.contractStrip}>
+          <View style={styles.contractHeaderRow}>
+            <View style={styles.schemeTagBox}>
+              <MaterialCommunityIcons
+                name={customer.isShop ? 'store' : customer.isMonthly ? 'calendar-month' : 'calendar-week'}
+                size={12}
+                color="#6B46C1"
+              />
+              <Text style={styles.schemeTagText}>
+                {customer.activeLoan?.repayment_frequency || customer.inferredCategory} ({customer.activeLoan?.interest_rate || 25}% FLAT)
+              </Text>
+              <Text style={styles.loanCodeText}>
+                ({customer.activeLoan?.loan_number || customer.activeLoan?.loan_code || 'LOAN'})
+              </Text>
+            </View>
+
+            <Text style={styles.progressCounterText}>
+              {customer.paidInstallments}/{customer.totalInstallments} ({progressPct}%)
+            </Text>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressBarTrack}>
+            <View
+              style={[
+                styles.progressBarFill,
+                { width: `${progressPct}%` },
+                isOverdue && { backgroundColor: '#DC2626' },
+              ]}
+            />
+          </View>
+
+          {/* Financial Numbers Row */}
+          <View style={styles.financialNumbersRow}>
+            <View>
+              <Text style={styles.finLabel}>EMI Installment</Text>
+              <Text style={styles.finEmiValue}>
+                {formatINR(customer.emiAmount)}
+                <Text style={styles.finFreqUnit}>/{customer.isShop ? 'day' : customer.isMonthly ? 'mo' : 'wk'}</Text>
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.finLabel}>Remaining Due</Text>
+              <Text style={[styles.finDueValue, isOverdue && { color: '#DC2626' }]}>
+                {formatINR(customer.remainingBalance)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.eligibleLoanStrip}>
+          <MaterialCommunityIcons name="information-outline" size={14} color="#6B46C1" />
+          <Text style={styles.eligibleLoanText}>
+            No active loan contract. Eligible for new disbursement.
+          </Text>
+        </View>
+      )}
+
+      {/* Quick Action Buttons (Call, WhatsApp, Collect, Disburse) */}
+      <View style={styles.cardActionsRow}>
+        {customer.phone ? (
+          <TouchableOpacity
+            style={styles.actionBtnCall}
+            onPress={() => onCall(customer.phone)}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="phone" size={14} color="#6B46C1" />
+            <Text style={styles.actionBtnCallText}>Call</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {customer.phone ? (
+          <TouchableOpacity
+            style={styles.actionBtnWhatsApp}
+            onPress={() => onWhatsApp(customer)}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="whatsapp" size={14} color="#00A884" />
+            <Text style={styles.actionBtnWhatsAppText}>WhatsApp</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {hasActiveLoan ? (
+          <TouchableOpacity
+            style={styles.actionBtnCollect}
+            onPress={() => onCollect(customer)}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="wallet-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.actionBtnCollectText}>
+              Collect {formatINR(customer.emiAmount)}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.actionBtnDisburse}
+            onPress={() => onDisburse(customer)}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="cash-plus" size={14} color="#FFFFFF" />
+            <Text style={styles.actionBtnDisburseText}>Issue Loan</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 export const CustomersScreen = ({
+  onOpenAddBorrower,
   onOpenAddUser,
   onOpenManageUsers,
 }) => {
   const {
-    customers,
-    loans,
+    customers: contextCustomers,
+    loans: contextLoans,
     refreshData,
     addCustomer,
     collectPayment,
@@ -48,10 +230,13 @@ export const CustomersScreen = ({
     defaultCategories,
     lendingConfig,
     updateDefaultCategory,
-    updateLendingConfig,
     currentOrganization,
-    isServerConnected,
   } = useApp();
+
+  // Local Live Database State
+  const [dbCustomers, setDbCustomers] = useState([]);
+  const [dbLoans, setDbLoans] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [search, setSearch] = useState('');
   const [selectedTab, setSelectedTab] = useState('WEEKLY');
@@ -94,6 +279,51 @@ export const CustomersScreen = ({
   const [editMaxLoan, setEditMaxLoan] = useState('100000');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
 
+  // Fetch Live Customers & Loans from Server
+  const fetchLiveBorrowers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [custRes, loansRes] = await Promise.all([
+        apiService.getCustomers({ limit: '200' }).catch(() => []),
+        apiService.getLoans().catch(() => []),
+      ]);
+
+      const custList = Array.isArray(custRes) ? custRes : (custRes?.customers || []);
+      const loanList = Array.isArray(loansRes) ? loansRes : (loansRes?.loans || []);
+
+      if (custList.length > 0) setDbCustomers(custList);
+      if (loanList.length > 0) setDbLoans(loanList);
+    } catch (e) {
+      console.warn('Error fetching live borrowers:', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveBorrowers();
+  }, [fetchLiveBorrowers]);
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (refreshData) {
+        await refreshData();
+      }
+      await fetchLiveBorrowers();
+    } catch (e) {
+      console.warn('Refresh error:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshData, fetchLiveBorrowers]);
+
+  // Active combined customers & loans (prefers live db list)
+  const activeCustomersList = dbCustomers.length > 0 ? dbCustomers : (contextCustomers || []);
+  const activeLoansList = dbLoans.length > 0 ? dbLoans : (contextLoans || []);
+
   // Live Category Interest Rates Map
   const categoryRateMap = useMemo(() => {
     const weeklyCat = (defaultCategories || []).find((c) => c.repayment_frequency === 'WEEKLY' || c.category_code === 'CAT-BORROWER-WK');
@@ -125,47 +355,13 @@ export const CustomersScreen = ({
     };
   }, [defaultCategories, lendingConfig]);
 
-  // Synchronize category with active tab when opening add modal or disburse
-  useEffect(() => {
-    if (selectedTab === 'SHOP') {
-      setNewCustType('SHOPKEEPER');
-      setDisburseFreq('DAILY');
-      setDisburseTenure(String(categoryRateMap.DAILY.tenure || 100));
-      setDisburseInterestRate(String(categoryRateMap.DAILY.rate || 25));
-    } else if (selectedTab === 'MONTHLY') {
-      setNewCustType('MONTHLY');
-      setDisburseFreq('MONTHLY');
-      setDisburseTenure(String(categoryRateMap.MONTHLY.tenure || 12));
-      setDisburseInterestRate(String(categoryRateMap.MONTHLY.rate || 25));
-    } else {
-      setNewCustType('WEEKLY');
-      setDisburseFreq('WEEKLY');
-      setDisburseTenure(String(categoryRateMap.WEEKLY.tenure || 10));
-      setDisburseInterestRate(String(categoryRateMap.WEEKLY.rate || 25));
-    }
-  }, [selectedTab, categoryRateMap]);
-
-  // Pull to refresh handler
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      if (refreshData) {
-        await refreshData();
-      }
-    } catch (e) {
-      console.warn('Refresh error:', e);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshData]);
-
   // Enriched customers mapped with active loan records & metrics from database
   const enrichedCustomers = useMemo(() => {
-    return (customers || []).map((c) => {
-      const custLoans = (loans || []).filter(
+    return activeCustomersList.map((c) => {
+      const custLoans = activeLoansList.filter(
         (l) => String(l.customer_id) === String(c.id) || (c.phone && l.customer_phone === c.phone)
       );
-      
+
       const activeLoan =
         custLoans.find(
           (l) =>
@@ -175,7 +371,6 @@ export const CustomersScreen = ({
             l.status === 'OVERDUE'
         ) || custLoans[0] || null;
 
-      // Determine frequency / category
       const isShop =
         c.customer_type === 'SHOPKEEPER' ||
         Boolean(c.shop_name && c.shop_name.trim() !== '') ||
@@ -187,8 +382,6 @@ export const CustomersScreen = ({
         c.category === 'MONTHLY' ||
         c.customer_type === 'MONTHLY_BORROWER' ||
         activeLoan?.repayment_frequency === 'MONTHLY';
-
-      const isWeekly = !isShop && !isMonthly;
 
       const inferredCategory = isShop ? 'SHOP' : isMonthly ? 'MONTHLY' : 'WEEKLY';
 
@@ -207,10 +400,11 @@ export const CustomersScreen = ({
 
       return {
         ...c,
+        name: c.name || c.full_name || 'Borrower',
         inferredCategory,
         isShop,
         isMonthly,
-        isWeekly,
+        isWeekly: !isShop && !isMonthly,
         activeLoan,
         totalInstallments,
         paidInstallments,
@@ -219,7 +413,7 @@ export const CustomersScreen = ({
         remainingBalance,
       };
     });
-  }, [customers, loans, categoryRateMap]);
+  }, [activeCustomersList, activeLoansList, categoryRateMap]);
 
   // Tab Counts for Badges
   const tabCounts = useMemo(() => {
@@ -268,13 +462,11 @@ export const CustomersScreen = ({
     const list = filteredCustomers;
     const activeCount = list.filter((c) => c.activeLoan && c.activeLoan.status !== 'COMPLETED').length;
     const totalOutstanding = list.reduce((sum, c) => sum + (c.remainingBalance || 0), 0);
-    const totalTarget = list.reduce((sum, c) => sum + (c.activeLoan ? c.emiAmount : 0), 0);
 
     return {
       count: list.length,
       activeCount,
       totalOutstanding,
-      totalTarget,
     };
   }, [filteredCustomers]);
 
@@ -298,90 +490,55 @@ export const CustomersScreen = ({
     const loanCode = customer.activeLoan?.loan_number || customer.activeLoan?.loan_code || 'Loan';
     const dueAmount = customer.remainingBalance > 0 ? formatINR(customer.activeLoan?.emi_amount || customer.remainingBalance) : '₹0';
     const message = encodeURIComponent(
-      `Hello ${customer.name || 'Sir/Madam'}, this is a friendly reminder regarding your ${customer.inferredCategory} account (${loanCode}). Your scheduled installment of ${dueAmount} is due. Thank you!`
+      `Hello ${customer.name || customer.full_name}, this is Apex Finance regarding your active loan (${loanCode}). Outstanding installment balance is ${dueAmount}. Thank you!`
     );
-    Linking.openURL(`https://wa.me/${cleanPhone}?text=${message}`).catch(() => {
-      Alert.alert('WhatsApp Unavailable', 'WhatsApp application is not installed on this device.');
+    Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=${message}`).catch(() => {
+      Alert.alert('WhatsApp Not Installed', 'Could not open WhatsApp on this device.');
     });
   };
 
-  // Submit Add New Customer
-  const handleCreateCustomer = async () => {
-    if (!newCustName.trim()) {
-      Alert.alert('Validation Error', 'Please enter the borrower or merchant name.');
-      return;
-    }
-    if (!newCustPhone.trim()) {
-      Alert.alert('Validation Error', 'Please enter a valid phone number.');
-      return;
-    }
-
-    try {
-      setIsSubmittingCust(true);
-      const payload = {
-        name: newCustName.trim(),
-        full_name: newCustName.trim(),
-        phone: newCustPhone.trim(),
-        customer_type: newCustType === 'SHOPKEEPER' ? 'SHOPKEEPER' : newCustType === 'MONTHLY' ? 'COMMON_CUSTOMER' : 'COMMON_CUSTOMER',
-        category_code: newCustType === 'SHOPKEEPER' ? 'CAT-MERCHANT-DLY' : newCustType === 'MONTHLY' ? 'CAT-BORROWER-MO' : 'CAT-BORROWER-WK',
-        shop_name: newCustType === 'SHOPKEEPER' ? (newCustShopName.trim() || `${newCustName.trim()}'s Store`) : null,
-        address: newCustAddress.trim() || 'Chennai Main Road',
-        status: 'ACTIVE',
-      };
-
-      if (addCustomer) {
-        await addCustomer(payload);
-      } else {
-        await apiService.createCustomer(payload);
-        if (refreshData) await refreshData();
-      }
-
-      Alert.alert('Success', `${newCustName} has been registered successfully!`);
-      setShowAddModal(false);
-      setNewCustName('');
-      setNewCustPhone('');
-      setNewCustShopName('');
-      setNewCustAddress('');
-    } catch (err) {
-      Alert.alert('Registration Failed', err.message || 'Could not create borrower.');
-    } finally {
-      setIsSubmittingCust(false);
-    }
-  };
-
-  // Open Quick Collect Dialog
+  // Open Collect Dialog
   const handleOpenCollect = (customer) => {
     setActiveCustomerForAction(customer);
-    const emi = customer.activeLoan?.emi_amount || customer.emiAmount || 1000;
-    setCollectAmount(String(emi));
+    const initialAmt = customer.emiAmount > 0 && customer.remainingBalance >= customer.emiAmount
+      ? String(customer.emiAmount)
+      : String(customer.remainingBalance || '');
+    setCollectAmount(initialAmt);
+    setCollectMethod('CASH');
     setShowCollectModal(true);
   };
 
-  // Submit Quick Collect
+  // Submit Collect Payment
   const handleSubmitCollect = async () => {
-    if (!activeCustomerForAction?.activeLoan?.id) {
-      Alert.alert('Error', 'No active loan contract found for this borrower.');
-      return;
-    }
-    const amt = Number(collectAmount);
+    if (!activeCustomerForAction?.id) return;
+    const amt = parseFloat(collectAmount);
     if (isNaN(amt) || amt <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid collection amount.');
+      Alert.alert('Invalid Amount', 'Please enter a valid positive collection amount.');
       return;
     }
 
     try {
       setIsSubmittingCollect(true);
-      const loanId = activeCustomerForAction.activeLoan.id;
+      const paymentData = {
+        customerId: activeCustomerForAction.id,
+        loanId: activeCustomerForAction.activeLoan?.id,
+        amount: amt,
+        paymentMethod: collectMethod,
+        paymentDate: new Date().toISOString().slice(0, 10),
+        referenceNumber: `REC-${Math.floor(10000 + Math.random() * 90000)}`,
+        notes: `Collected via Mobile Admin Panel (${collectMethod})`,
+      };
+
       if (collectPayment) {
-        await collectPayment(loanId, amt, collectMethod);
+        await collectPayment(paymentData);
       } else {
-        await apiService.collectPayment(loanId, amt, collectMethod);
-        if (refreshData) await refreshData();
+        await apiService.recordPayment(paymentData);
       }
 
       Alert.alert('Payment Recorded', `Successfully collected ${formatINR(amt)} via ${collectMethod}!`);
       setShowCollectModal(false);
       setActiveCustomerForAction(null);
+      await fetchLiveBorrowers();
     } catch (err) {
       Alert.alert('Collection Failed', err.message || 'Error processing payment.');
     } finally {
@@ -462,16 +619,57 @@ export const CustomersScreen = ({
           await apiService.approveLoan(created.id);
           await apiService.disburseLoan(created.id);
         }
-        if (refreshData) await refreshData();
       }
 
       Alert.alert('Loan Disbursed', `Successfully issued ${formatINR(principal)} (${disburseFreq} @ ${rate}% flat) to ${activeCustomerForAction.name}!`);
       setShowDisburseModal(false);
       setActiveCustomerForAction(null);
+      await fetchLiveBorrowers();
     } catch (err) {
       Alert.alert('Disbursement Error', err.message || 'Failed to create loan.');
     } finally {
       setIsSubmittingDisburse(false);
+    }
+  };
+
+  // Create New Customer
+  const handleCreateCustomer = async () => {
+    if (!newCustName.trim() || !newCustPhone.trim()) {
+      Alert.alert('Required Fields', 'Please enter both full name and phone number.');
+      return;
+    }
+
+    try {
+      setIsSubmittingCust(true);
+      const custData = {
+        fullName: newCustName.trim(),
+        full_name: newCustName.trim(),
+        phone: newCustPhone.trim(),
+        customerType: newCustType === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER',
+        customer_type: newCustType === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'COMMON_CUSTOMER',
+        shopName: newCustType === 'SHOPKEEPER' ? newCustShopName.trim() : null,
+        shop_name: newCustType === 'SHOPKEEPER' ? newCustShopName.trim() : null,
+        address: newCustAddress.trim(),
+        organizationId: currentOrganization?.id || 1,
+      };
+
+      if (addCustomer) {
+        await addCustomer(custData);
+      } else {
+        await apiService.createCustomer(custData);
+      }
+
+      Alert.alert('Success', `Registered ${newCustName.trim()} successfully!`);
+      setShowAddModal(false);
+      setNewCustName('');
+      setNewCustPhone('');
+      setNewCustShopName('');
+      setNewCustAddress('');
+      await fetchLiveBorrowers();
+    } catch (err) {
+      Alert.alert('Registration Failed', err.message || 'Could not register customer.');
+    } finally {
+      setIsSubmittingCust(false);
     }
   };
 
@@ -507,7 +705,6 @@ export const CustomersScreen = ({
         await updateDefaultCategory(code, payload);
       } else {
         await apiService.updateDefaultCategory(code, payload);
-        if (refreshData) await refreshData();
       }
 
       Alert.alert('Configuration Updated', `${selectedCategoryConfig.catType} scheme interest rate updated to ${editInterestRate}% flat across the organization!`);
@@ -519,340 +716,211 @@ export const CustomersScreen = ({
     }
   };
 
-  return (
-    <View style={styles.container}>
-      {/* 1. TOP ACTION BAR: SEARCH, INTEREST RATE SETTINGS & ADD */}
-      <View style={styles.topActionBar}>
-        <View style={styles.searchContainer}>
-          <MaterialCommunityIcons name="magnify" size={18} color="#94A3B8" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search borrower, shop, phone, area..."
-            placeholderTextColor="#94A3B8"
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <MaterialCommunityIcons name="close-circle" size={16} color="#94A3B8" />
-            </TouchableOpacity>
-          )}
+  // Render FlatList Header (Controls, Scorecard, Tabs, Status Chips)
+  const renderListHeader = () => {
+    return (
+      <View>
+        {/* 1. TOP ACTION BAR: SEARCH, RATE SETTINGS & ADD */}
+        <View style={styles.topActionBar}>
+          <View style={styles.searchContainer}>
+            <MaterialCommunityIcons name="magnify" size={18} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search borrower, shop, phone..."
+              placeholderTextColor="#9CA3AF"
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <MaterialCommunityIcons name="close-circle" size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Rate Governance Button */}
+          <TouchableOpacity
+            style={styles.btnInterestRates}
+            onPress={() => handleOpenEditCategory(selectedTab === 'SHOP' ? 'DAILY' : selectedTab === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="percent" size={14} color="#6B46C1" />
+            <Text style={styles.btnInterestRatesText}>
+              {selectedTab === 'SHOP' ? categoryRateMap.DAILY.rate : selectedTab === 'MONTHLY' ? categoryRateMap.MONTHLY.rate : categoryRateMap.WEEKLY.rate}%
+            </Text>
+          </TouchableOpacity>
+
+          {/* Add Borrower Button */}
+          <TouchableOpacity
+            style={styles.btnAddBorrower}
+            onPress={() => (onOpenAddBorrower ? onOpenAddBorrower() : onOpenAddUser ? onOpenAddUser() : setShowAddModal(true))}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="account-plus" size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
+            <Text style={styles.btnAddBorrowerText}>Add</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Interest Rates & Lending Governance Button */}
-        <TouchableOpacity
-          style={styles.btnInterestRates}
-          onPress={() => handleOpenEditCategory(selectedTab === 'SHOP' ? 'DAILY' : selectedTab === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY')}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="percent" size={15} color="#2842C4" />
-          <Text style={styles.btnInterestRatesText}>
-            {selectedTab === 'SHOP' ? categoryRateMap.DAILY.rate : selectedTab === 'MONTHLY' ? categoryRateMap.MONTHLY.rate : categoryRateMap.WEEKLY.rate}%
-          </Text>
-        </TouchableOpacity>
+        {/* 2. PRIMARY CATEGORY TABS (WEEKLY, MONTHLY, SHOP, ALL) */}
+        <View style={styles.categoryTabsContainer}>
+          {CATEGORY_TABS.map((tab) => {
+            const isActive = selectedTab === tab.id;
+            const count = tabCounts[tab.id] || 0;
+            const rate = tab.id === 'SHOP' ? categoryRateMap.DAILY.rate : tab.id === 'MONTHLY' ? categoryRateMap.MONTHLY.rate : categoryRateMap.WEEKLY.rate;
 
-        {/* Add Borrower Button */}
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.categoryTab, isActive && styles.categoryTabActive]}
+                onPress={() => setSelectedTab(tab.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.tabHeaderRow}>
+                  <MaterialCommunityIcons
+                    name={tab.icon}
+                    size={14}
+                    color={isActive ? '#FFFFFF' : '#6B7280'}
+                  />
+                  <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                      {count}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.categoryTabLabel, isActive && styles.categoryTabLabelActive]} numberOfLines={1}>
+                  {tab.label}
+                </Text>
+                <Text style={[styles.categoryTabSub, isActive && styles.categoryTabSubActive]} numberOfLines={1}>
+                  {tab.id === 'ALL' ? 'All' : `${rate}%`}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* 3. PROFILE-THEMED SCORECARD KPI SUMMARY STRIP */}
+        <View style={styles.scorecardContainer}>
+          <View style={styles.scorecardItem}>
+            <Text style={styles.scorecardVal}>{categoryMetrics.count}</Text>
+            <Text style={styles.scorecardLbl}>Borrowers</Text>
+          </View>
+          <View style={styles.scorecardDivider} />
+          <View style={styles.scorecardItem}>
+            <Text style={[styles.scorecardVal, { color: '#059669' }]}>{categoryMetrics.activeCount}</Text>
+            <Text style={styles.scorecardLbl}>Active Loans</Text>
+          </View>
+          <View style={styles.scorecardDivider} />
+          <View style={styles.scorecardItem}>
+            <Text style={[styles.scorecardVal, { color: '#6B46C1' }]}>
+              {formatINR(categoryMetrics.totalOutstanding)}
+            </Text>
+            <Text style={styles.scorecardLbl}>Outstanding</Text>
+          </View>
+        </View>
+
+        {/* 4. SECONDARY STATUS FILTER CHIPS */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.statusChipsRow}
+          contentContainerStyle={styles.statusChipsContent}
+        >
+          {STATUS_FILTERS.map((s) => {
+            const isActive = selectedStatus === s.id;
+            return (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.statusChip, isActive && styles.statusChipActive]}
+                onPress={() => setSelectedStatus(s.id)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.statusChipText, isActive && styles.statusChipTextActive]}>
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {loading && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color="#6B46C1" />
+            <Text style={styles.loadingText}>Loading live borrower accounts...</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Render Empty State
+  const renderEmpty = () => {
+    if (loading) return null;
+
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyIconBox}>
+          <MaterialCommunityIcons name="account-search-outline" size={32} color="#6B46C1" />
+        </View>
+        <Text style={styles.emptyTitle}>No {selectedTab.toLowerCase()} accounts found</Text>
+        <Text style={styles.emptySub}>
+          {search.trim()
+            ? `No results match "${search}". Try adjusting your search query.`
+            : `No borrowers found under ${selectedTab} category. Tap "Add" to register a new client.`}
+        </Text>
         <TouchableOpacity
-          style={styles.btnAddBorrower}
-          onPress={() => (onOpenAddUser ? onOpenAddUser() : setShowAddModal(true))}
+          style={styles.emptyAddBtn}
+          onPress={() => setShowAddModal(true)}
           activeOpacity={0.85}
         >
-          <MaterialCommunityIcons name="account-plus" size={15} color="#FFFFFF" />
-          <Text style={styles.btnAddBorrowerText}>Add</Text>
+          <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={styles.emptyAddBtnText}>Add New {selectedTab === 'SHOP' ? 'Shopkeeper' : 'Borrower'}</Text>
         </TouchableOpacity>
       </View>
+    );
+  };
 
-      {/* 2. PRIMARY CATEGORY TABS (WEEKLY, MONTHLY, SHOP, ALL) */}
-      <View style={styles.categoryTabsContainer}>
-        {CATEGORY_TABS.map((tab) => {
-          const isActive = selectedTab === tab.id;
-          const count = tabCounts[tab.id] || 0;
-          const rate = tab.id === 'SHOP' ? categoryRateMap.DAILY.rate : tab.id === 'MONTHLY' ? categoryRateMap.MONTHLY.rate : categoryRateMap.WEEKLY.rate;
+  const renderItem = ({ item }) => (
+    <BorrowerCard
+      customer={item}
+      onSelect={setSelectedBorrower}
+      onCall={handleCall}
+      onWhatsApp={handleWhatsApp}
+      onCollect={handleOpenCollect}
+      onDisburse={handleOpenDisburse}
+    />
+  );
 
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.categoryTab, isActive && styles.categoryTabActive]}
-              onPress={() => setSelectedTab(tab.id)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.tabHeaderRow}>
-                <MaterialCommunityIcons
-                  name={tab.icon}
-                  size={15}
-                  color={isActive ? '#2842C4' : '#64748B'}
-                />
-                <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-                  <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
-                    {count}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.categoryTabLabel, isActive && styles.categoryTabLabelActive]} numberOfLines={1}>
-                {tab.label}
-              </Text>
-              <Text style={[styles.categoryTabSub, isActive && styles.categoryTabSubActive]} numberOfLines={1}>
-                {tab.id === 'ALL' ? 'All Records' : `${rate}% Flat`}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+  const keyExtractor = (item, index) => {
+    return String(item.id || item.customer_code || index);
+  };
 
-      {/* 3. CATEGORY KPI SUMMARY STRIP */}
-      <View style={styles.kpiSummaryStrip}>
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiLabel}>Total Accounts</Text>
-          <Text style={styles.kpiValue}>{categoryMetrics.count}</Text>
-        </View>
-        <View style={styles.kpiDivider} />
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiLabel}>Active Contracts</Text>
-          <Text style={[styles.kpiValue, { color: '#059669' }]}>{categoryMetrics.activeCount}</Text>
-        </View>
-        <View style={styles.kpiDivider} />
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiLabel}>Total Outstanding</Text>
-          <Text style={[styles.kpiValue, { color: '#2842C4' }]}>
-            {formatINR(categoryMetrics.totalOutstanding)}
-          </Text>
-        </View>
-      </View>
+  return (
+    <View style={styles.container}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
-      {/* 4. SECONDARY STATUS FILTER CHIPS */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusChipsRow} contentContainerStyle={styles.statusChipsContent}>
-        {STATUS_FILTERS.map((s) => {
-          const isActive = selectedStatus === s.id;
-          return (
-            <TouchableOpacity
-              key={s.id}
-              style={[styles.statusChip, isActive && styles.statusChipActive]}
-              onPress={() => setSelectedStatus(s.id)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.statusChipText, isActive && styles.statusChipTextActive]}>
-                {s.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* 5. LIVE BORROWER LIST */}
-      <ScrollView
-        style={styles.listContainer}
+      {/* 5. VIRTUALIZED 60FPS FLATLIST */}
+      <FlatList
+        data={filteredCustomers}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={renderEmpty}
         contentContainerStyle={styles.listContent}
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#2842C4']}
-            tintColor="#2842C4"
+            colors={['#6B46C1']}
+            tintColor="#6B46C1"
           />
         }
-      >
-        {filteredCustomers.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconBox}>
-              <MaterialCommunityIcons name="account-search-outline" size={32} color="#94A3B8" />
-            </View>
-            <Text style={styles.emptyTitle}>No {selectedTab.toLowerCase()} accounts found</Text>
-            <Text style={styles.emptySub}>
-              {search.trim()
-                ? `No results match "${search}". Try adjusting your search query.`
-                : `No borrowers found under ${selectedTab} category. Tap "Add" to register a new client.`}
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyAddBtn}
-              onPress={() => setShowAddModal(true)}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" />
-              <Text style={styles.emptyAddBtnText}>Add New {selectedTab === 'SHOP' ? 'Shopkeeper' : 'Borrower'}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          filteredCustomers.map((c) => {
-            const hasActiveLoan = Boolean(c.activeLoan && c.activeLoan.status !== 'COMPLETED');
-            const isOverdue = c.activeLoan?.status === 'OVERDUE';
-            const progressRatio = c.totalInstallments > 0 ? Math.min(1, c.paidInstallments / c.totalInstallments) : 0;
-            const progressPct = Math.round(progressRatio * 100);
-
-            return (
-              <TouchableOpacity
-                key={c.id || c.customer_code}
-                style={styles.borrowerCard}
-                onPress={() => setSelectedBorrower(c)}
-                activeOpacity={0.92}
-              >
-                {/* Header Row: Avatar, Name & Category Badge */}
-                <View style={styles.cardHeader}>
-                  <View style={[styles.avatarBox, c.isShop && styles.avatarBoxShop]}>
-                    {c.isShop ? (
-                      <MaterialCommunityIcons name="storefront" size={20} color="#D97706" />
-                    ) : (
-                      <Text style={styles.avatarLetter}>
-                        {(c.name || c.full_name || 'B').charAt(0).toUpperCase()}
-                      </Text>
-                    )}
-                  </View>
-
-                  <View style={styles.nameBlock}>
-                    <View style={styles.titleRow}>
-                      <Text style={styles.borrowerName} numberOfLines={1}>
-                        {c.name || c.full_name || 'Borrower'}
-                      </Text>
-                      {c.isShop && (c.shop_name || c.occupation) && (
-                        <View style={styles.shopPill}>
-                          <MaterialCommunityIcons name="tag-outline" size={10} color="#D97706" />
-                          <Text style={styles.shopPillText} numberOfLines={1}>
-                            {c.shop_name || c.occupation}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.borrowerMeta} numberOfLines={1}>
-                      {c.phone || 'No phone'} • {c.address || c.city || 'Chennai Main'}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      isOverdue
-                        ? styles.statusBadgeOverdue
-                        : hasActiveLoan
-                        ? styles.statusBadgeActive
-                        : styles.statusBadgeNoLoan,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusBadgeText,
-                        isOverdue
-                          ? { color: '#DC2626' }
-                          : hasActiveLoan
-                          ? { color: '#059669' }
-                          : { color: '#64748B' },
-                      ]}
-                    >
-                      {isOverdue ? 'OVERDUE' : hasActiveLoan ? 'ACTIVE' : 'NO LOAN'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Contract & Progress Strip */}
-                {hasActiveLoan ? (
-                  <View style={styles.contractStrip}>
-                    <View style={styles.contractHeaderRow}>
-                      <View style={styles.schemeTagBox}>
-                        <MaterialCommunityIcons
-                          name={c.isShop ? 'store' : c.isMonthly ? 'calendar-month' : 'calendar-week'}
-                          size={12}
-                          color="#2842C4"
-                        />
-                        <Text style={styles.schemeTagText}>
-                          {c.activeLoan?.repayment_frequency || c.inferredCategory} ({c.activeLoan?.interest_rate || 25}% FLAT)
-                        </Text>
-                        <Text style={styles.loanCodeText}>
-                          ({c.activeLoan?.loan_number || c.activeLoan?.loan_code || 'LOAN'})
-                        </Text>
-                      </View>
-
-                      <Text style={styles.progressCounterText}>
-                        {c.paidInstallments}/{c.totalInstallments} {c.isShop ? 'Days' : c.isMonthly ? 'Mos' : 'Wks'} ({progressPct}%)
-                      </Text>
-                    </View>
-
-                    {/* Progress Bar */}
-                    <View style={styles.progressBarTrack}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          { width: `${progressPct}%` },
-                          isOverdue && { backgroundColor: '#DC2626' },
-                        ]}
-                      />
-                    </View>
-
-                    {/* Financial Numbers Row */}
-                    <View style={styles.financialNumbersRow}>
-                      <View>
-                        <Text style={styles.finLabel}>EMI Installment</Text>
-                        <Text style={styles.finEmiValue}>
-                          {formatINR(c.emiAmount)}
-                          <Text style={styles.finFreqUnit}>/{c.isShop ? 'day' : c.isMonthly ? 'mo' : 'wk'}</Text>
-                        </Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.finLabel}>Remaining Due</Text>
-                        <Text style={[styles.finDueValue, isOverdue && { color: '#DC2626' }]}>
-                          {formatINR(c.remainingBalance)}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.eligibleLoanStrip}>
-                    <MaterialCommunityIcons name="information-outline" size={14} color="#2563EB" />
-                    <Text style={styles.eligibleLoanText}>
-                      No active loan contract. Eligible for instant disbursement.
-                    </Text>
-                  </View>
-                )}
-
-                {/* Quick Action Buttons (Call, WhatsApp, Collect, Disburse) */}
-                <View style={styles.cardActionsRow}>
-                  {c.phone ? (
-                    <TouchableOpacity
-                      style={styles.actionBtnCall}
-                      onPress={() => handleCall(c.phone)}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialCommunityIcons name="phone" size={13} color="#2842C4" />
-                      <Text style={styles.actionBtnCallText}>Call</Text>
-                    </TouchableOpacity>
-                  ) : null}
-
-                  {c.phone ? (
-                    <TouchableOpacity
-                      style={styles.actionBtnWhatsApp}
-                      onPress={() => handleWhatsApp(c)}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialCommunityIcons name="whatsapp" size={13} color="#00A884" />
-                      <Text style={styles.actionBtnWhatsAppText}>WhatsApp</Text>
-                    </TouchableOpacity>
-                  ) : null}
-
-                  {hasActiveLoan ? (
-                    <TouchableOpacity
-                      style={styles.actionBtnCollect}
-                      onPress={() => handleOpenCollect(c)}
-                      activeOpacity={0.85}
-                    >
-                      <MaterialCommunityIcons name="wallet-outline" size={13} color="#FFFFFF" />
-                      <Text style={styles.actionBtnCollectText}>
-                        Collect {formatINR(c.emiAmount)}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.actionBtnDisburse}
-                      onPress={() => handleOpenDisburse(c)}
-                      activeOpacity={0.85}
-                    >
-                      <MaterialCommunityIcons name="cash-plus" size={13} color="#FFFFFF" />
-                      <Text style={styles.actionBtnDisburseText}>Issue Loan</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+      />
 
       {/* ========================================================================= */}
       {/* 6. MODAL: EDIT CATEGORY INTEREST RATE & GOVERNANCE                        */}
@@ -875,12 +943,11 @@ export const CustomersScreen = ({
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowInterestRatesModal(false)} style={styles.modalCloseBtn}>
-                <MaterialCommunityIcons name="close" size={18} color="#64748B" />
+                <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {/* Category selector in modal */}
               <Text style={styles.inputLabel}>SELECT SCHEME TO CONFIGURE</Text>
               <View style={styles.formCategoryRow}>
                 {['WEEKLY', 'DAILY', 'MONTHLY'].map((type) => {
@@ -899,18 +966,16 @@ export const CustomersScreen = ({
                 })}
               </View>
 
-              {/* Interest Rate Input */}
               <Text style={styles.inputLabel}>FLAT INTEREST RATE (%) *</Text>
               <TextInput
-                style={[styles.formInput, { fontSize: 16, fontWeight: '800', color: '#2842C4' }]}
+                style={[styles.formInput, { fontSize: 16, fontWeight: '800', color: '#6B46C1' }]}
                 keyboardType="numeric"
                 value={editInterestRate}
                 onChangeText={setEditInterestRate}
                 placeholder="25.0"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9CA3AF"
               />
 
-              {/* Tenure Installments */}
               <Text style={styles.inputLabel}>
                 DEFAULT TENURE ({selectedCategoryConfig?.catType === 'DAILY' ? 'DAYS' : selectedCategoryConfig?.catType === 'MONTHLY' ? 'MONTHS' : 'WEEKS'})
               </Text>
@@ -920,7 +985,7 @@ export const CustomersScreen = ({
                 value={editTenure}
                 onChangeText={setEditTenure}
                 placeholder="10"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9CA3AF"
               />
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -982,7 +1047,6 @@ export const CustomersScreen = ({
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalSheet}>
-              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.modalTitle} numberOfLines={1}>
@@ -997,16 +1061,15 @@ export const CustomersScreen = ({
                   style={styles.modalCloseBtn}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <MaterialCommunityIcons name="close" size={18} color="#64748B" />
+                  <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
                 </TouchableOpacity>
               </View>
 
               <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                {/* Meta details grid */}
                 <View style={styles.profileMetaGrid}>
                   <View style={styles.metaCol}>
                     <Text style={styles.metaLabel}>Category</Text>
-                    <Text style={[styles.metaVal, { color: '#2842C4' }]}>
+                    <Text style={[styles.metaVal, { color: '#6B46C1' }]}>
                       {selectedBorrower.inferredCategory === 'SHOP'
                         ? 'Shopkeeper (Daily)'
                         : selectedBorrower.inferredCategory === 'MONTHLY'
@@ -1030,7 +1093,6 @@ export const CustomersScreen = ({
                   </View>
                 </View>
 
-                {/* Active Loan Contract Summary */}
                 {selectedBorrower.activeLoan ? (
                   <View style={styles.ledgerBox}>
                     <View style={styles.ledgerHeaderRow}>
@@ -1041,13 +1103,13 @@ export const CustomersScreen = ({
                     </View>
 
                     <View style={styles.ledgerRow}>
-                      <Text style={styles.ledgerLabel}>Principal Disbursed (Lent):</Text>
+                      <Text style={styles.ledgerLabel}>Principal Lent:</Text>
                       <Text style={styles.ledgerVal}>
                         {formatINR(selectedBorrower.activeLoan.principal_amount || 10000)}
                       </Text>
                     </View>
                     <View style={styles.ledgerRow}>
-                      <Text style={styles.ledgerLabel}>Contracted Interest Rate:</Text>
+                      <Text style={styles.ledgerLabel}>Contracted Interest:</Text>
                       <Text style={[styles.ledgerVal, { color: '#059669', fontWeight: '800' }]}>
                         {selectedBorrower.activeLoan.interest_rate || 25}% Flat
                       </Text>
@@ -1059,23 +1121,23 @@ export const CustomersScreen = ({
                       </Text>
                     </View>
                     <View style={styles.ledgerRow}>
-                      <Text style={styles.ledgerLabel}>Total Paid Till Date:</Text>
+                      <Text style={styles.ledgerLabel}>Total Paid:</Text>
                       <Text style={[styles.ledgerVal, { color: '#059669', fontWeight: '800' }]}>
                         {formatINR(selectedBorrower.activeLoan.total_paid || (selectedBorrower.paidInstallments * selectedBorrower.emiAmount))}
                       </Text>
                     </View>
                     <View style={[styles.ledgerRow, styles.ledgerDividerRow]}>
-                      <Text style={[styles.ledgerLabel, { fontWeight: '700', color: '#1E293B' }]}>
+                      <Text style={[styles.ledgerLabel, { fontWeight: '700', color: '#111827' }]}>
                         Remaining Outstanding:
                       </Text>
-                      <Text style={[styles.ledgerVal, { color: '#2842C4', fontWeight: '900', fontSize: 14 }]}>
+                      <Text style={[styles.ledgerVal, { color: '#6B46C1', fontWeight: '900', fontSize: 14 }]}>
                         {formatINR(selectedBorrower.remainingBalance)}
                       </Text>
                     </View>
                   </View>
                 ) : (
                   <View style={styles.noLoanCard}>
-                    <MaterialCommunityIcons name="cash-check" size={28} color="#2842C4" />
+                    <MaterialCommunityIcons name="cash-check" size={28} color="#6B46C1" />
                     <Text style={styles.noLoanCardTitle}>No Active Loan Running</Text>
                     <Text style={styles.noLoanCardSub}>
                       This borrower account is verified for a new disbursement.
@@ -1084,40 +1146,37 @@ export const CustomersScreen = ({
                 )}
               </ScrollView>
 
-              {/* Modal Footer Actions */}
               <View style={styles.modalFooter}>
-                {selectedBorrower.phone && (
+                {selectedBorrower.phone ? (
                   <TouchableOpacity
                     style={styles.modalWhatsAppBtn}
                     onPress={() => handleWhatsApp(selectedBorrower)}
                   >
-                    <MaterialCommunityIcons name="whatsapp" size={16} color="#00A884" />
+                    <MaterialCommunityIcons name="whatsapp" size={16} color="#00A884" style={{ marginRight: 4 }} />
                     <Text style={styles.modalWhatsAppBtnText}>WhatsApp</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
 
                 {selectedBorrower.activeLoan ? (
                   <TouchableOpacity
                     style={styles.modalPrimaryActionBtn}
                     onPress={() => {
-                      const b = selectedBorrower;
                       setSelectedBorrower(null);
-                      handleOpenCollect(b);
+                      handleOpenCollect(selectedBorrower);
                     }}
                   >
-                    <MaterialCommunityIcons name="wallet" size={16} color="#FFFFFF" />
-                    <Text style={styles.modalPrimaryActionBtnText}>Record Payment</Text>
+                    <MaterialCommunityIcons name="wallet-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.modalPrimaryActionBtnText}>Collect Payment</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
                     style={styles.modalPrimaryActionBtn}
                     onPress={() => {
-                      const b = selectedBorrower;
                       setSelectedBorrower(null);
-                      handleOpenDisburse(b);
+                      handleOpenDisburse(selectedBorrower);
                     }}
                   >
-                    <MaterialCommunityIcons name="cash-plus" size={16} color="#FFFFFF" />
+                    <MaterialCommunityIcons name="cash-plus" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                     <Text style={styles.modalPrimaryActionBtnText}>Disburse Loan</Text>
                   </TouchableOpacity>
                 )}
@@ -1128,7 +1187,7 @@ export const CustomersScreen = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 8. MODAL: ADD NEW BORROWER / SHOPKEEPER                                   */}
+      {/* 8. MODAL: REGISTER NEW BORROWER                                           */}
       {/* ========================================================================= */}
       <Modal
         visible={showAddModal}
@@ -1139,14 +1198,16 @@ export const CustomersScreen = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Register New Borrower</Text>
+              <View>
+                <Text style={styles.modalTitle}>Register New Borrower</Text>
+                <Text style={styles.modalSub}>Add client to organization portfolio</Text>
+              </View>
               <TouchableOpacity onPress={() => setShowAddModal(false)} style={styles.modalCloseBtn}>
-                <MaterialCommunityIcons name="close" size={18} color="#64748B" />
+                <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {/* Category Segment Selector */}
               <Text style={styles.inputLabel}>BORROWER CATEGORY</Text>
               <View style={styles.formCategoryRow}>
                 {[
@@ -1169,47 +1230,43 @@ export const CustomersScreen = ({
                 })}
               </View>
 
-              {/* Full Name */}
               <Text style={styles.inputLabel}>FULL NAME *</Text>
               <TextInput
                 style={styles.formInput}
                 placeholder="e.g. Ramesh Kumar"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9CA3AF"
                 value={newCustName}
                 onChangeText={setNewCustName}
               />
 
-              {/* Phone */}
               <Text style={styles.inputLabel}>PHONE NUMBER *</Text>
               <TextInput
                 style={styles.formInput}
                 placeholder="e.g. 9876543210"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="phone-pad"
                 value={newCustPhone}
                 onChangeText={setNewCustPhone}
               />
 
-              {/* Shop Name (if shopkeeper) */}
               {newCustType === 'SHOPKEEPER' && (
                 <>
                   <Text style={styles.inputLabel}>SHOP / BUSINESS NAME *</Text>
                   <TextInput
                     style={styles.formInput}
                     placeholder="e.g. Sri Balaji Grocery Store"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#9CA3AF"
                     value={newCustShopName}
                     onChangeText={setNewCustShopName}
                   />
                 </>
               )}
 
-              {/* Address / Location */}
               <Text style={styles.inputLabel}>ADDRESS / ROUTE LOCATION</Text>
               <TextInput
                 style={styles.formInput}
-                placeholder="e.g. Market Road, Anna Nagar, Chennai"
-                placeholderTextColor="#94A3B8"
+                placeholder="e.g. Market Road, Chennai"
+                placeholderTextColor="#9CA3AF"
                 value={newCustAddress}
                 onChangeText={setNewCustAddress}
               />
@@ -1259,7 +1316,7 @@ export const CustomersScreen = ({
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowCollectModal(false)} style={styles.modalCloseBtn}>
-                <MaterialCommunityIcons name="close" size={18} color="#64748B" />
+                <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
@@ -1273,12 +1330,12 @@ export const CustomersScreen = ({
 
               <Text style={styles.inputLabel}>COLLECTION AMOUNT (₹)</Text>
               <TextInput
-                style={[styles.formInput, { fontSize: 18, fontWeight: '800', color: '#0F172A' }]}
+                style={[styles.formInput, { fontSize: 18, fontWeight: '800', color: '#111827' }]}
                 keyboardType="numeric"
                 value={collectAmount}
                 onChangeText={setCollectAmount}
                 placeholder="Enter amount"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9CA3AF"
               />
 
               <Text style={styles.inputLabel}>PAYMENT METHOD</Text>
@@ -1310,14 +1367,14 @@ export const CustomersScreen = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, { backgroundColor: '#059669' }]}
+                style={styles.modalSubmitBtn}
                 onPress={handleSubmitCollect}
                 disabled={isSubmittingCollect}
               >
                 {isSubmittingCollect ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.modalSubmitBtnText}>Confirm Collection</Text>
+                  <Text style={styles.modalSubmitBtnText}>Confirm Payment</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1326,7 +1383,7 @@ export const CustomersScreen = ({
       </Modal>
 
       {/* ========================================================================= */}
-      {/* 10. MODAL: DISBURSE / ISSUE LOAN CONTRACT                                */}
+      {/* 10. MODAL: QUICK ISSUE NEW LOAN                                          */}
       {/* ========================================================================= */}
       <Modal
         visible={showDisburseModal}
@@ -1338,13 +1395,13 @@ export const CustomersScreen = ({
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Issue Loan Contract</Text>
+                <Text style={styles.modalTitle}>Issue New Loan</Text>
                 <Text style={styles.modalSub}>
-                  To: {activeCustomerForAction?.name || 'Borrower'} ({activeCustomerForAction?.inferredCategory})
+                  {activeCustomerForAction?.name || 'Borrower'} • Fast Disbursal
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowDisburseModal(false)} style={styles.modalCloseBtn}>
-                <MaterialCommunityIcons name="close" size={18} color="#64748B" />
+                <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
@@ -1382,7 +1439,7 @@ export const CustomersScreen = ({
                 value={disburseAmount}
                 onChangeText={setDisburseAmount}
                 placeholder="10000"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9CA3AF"
               />
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -1438,260 +1495,256 @@ export const CustomersScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7F7F7',
+  },
+  listContent: {
+    paddingBottom: 90,
   },
 
   // 1. Top Action Bar
   topActionBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    gap: 8,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
-    paddingHorizontal: 8,
-    height: 38,
-    gap: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    height: 42,
   },
   searchInput: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#0F172A',
+    fontSize: 13,
+    color: '#111827',
+    marginLeft: 6,
     paddingVertical: 0,
   },
   btnInterestRates: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    paddingHorizontal: 8,
-    height: 38,
-    borderRadius: 9,
-    gap: 2,
+    backgroundColor: '#F3E8FF',
+    height: 42,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
   btnInterestRatesText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#2842C4',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B46C1',
+    marginLeft: 4,
   },
   btnAddBorrower: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2842C4',
-    paddingHorizontal: 12,
-    height: 38,
-    borderRadius: 9,
-    gap: 4,
-    shadowColor: '#2842C4',
+    backgroundColor: '#6B46C1',
+    height: 42,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 2,
   },
   btnAddBorrowerText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 
   // 2. Primary Category Tabs
   categoryTabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 8,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    marginTop: 6,
     gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   categoryTab: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
     paddingVertical: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   categoryTabActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#2842C4',
+    backgroundColor: '#6B46C1',
+    borderColor: '#6B46C1',
+    shadowColor: '#6B46C1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
   },
   tabHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 4,
     gap: 4,
-    marginBottom: 3,
   },
   tabBadge: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
     paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: 8,
   },
   tabBadgeActive: {
-    backgroundColor: '#2842C4',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   tabBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B7280',
   },
   tabBadgeTextActive: {
     color: '#FFFFFF',
   },
   categoryTabLabel: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#475569',
+    fontWeight: '700',
+    color: '#374151',
   },
   categoryTabLabelActive: {
-    color: '#2842C4',
+    color: '#FFFFFF',
   },
   categoryTabSub: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#94A3B8',
+    fontSize: 9,
+    color: '#9CA3AF',
     marginTop: 1,
   },
   categoryTabSubActive: {
-    color: '#4338CA',
+    color: '#E9D5FF',
   },
 
-  // 3. Category KPI Strip
-  kpiSummaryStrip: {
+  // 3. Scorecard KPI Summary Strip (Profile Theme)
+  scorecardContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 14,
-    marginTop: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F0F0F0',
+    marginTop: 10,
+    marginHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    justifyContent: 'space-around',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
     elevation: 1,
   },
-  kpiItem: {
-    flex: 1,
+  scorecardItem: {
     alignItems: 'center',
+    flex: 1,
   },
-  kpiDivider: {
+  scorecardVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  scorecardLbl: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  scorecardDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#E2E8F0',
-  },
-  kpiLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
-  },
-  kpiValue: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#0F172A',
-    marginTop: 2,
+    backgroundColor: '#F0F0F0',
   },
 
-  // 4. Secondary Status Chips
+  // 4. Secondary Status Filter Chips
   statusChipsRow: {
-    maxHeight: 40,
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 10,
   },
   statusChipsContent: {
-    paddingHorizontal: 14,
-    gap: 6,
+    paddingHorizontal: 16,
+    gap: 8,
   },
   statusChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderColor: '#E5E7EB',
   },
   statusChipActive: {
-    backgroundColor: '#2842C4',
-    borderColor: '#2842C4',
+    backgroundColor: '#6B46C1',
+    borderColor: '#6B46C1',
   },
   statusChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   statusChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
 
-  // 5. Borrower Cards List
-  listContainer: {
-    flex: 1,
+  // Loading
+  loadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 8,
   },
-  listContent: {
-    paddingHorizontal: 14,
-    paddingTop: 6,
-    paddingBottom: 24,
-    gap: 10,
+  loadingText: {
+    fontSize: 12,
+    color: '#6B7280',
   },
+
+  // 5. Borrower Card
   borrowerCard: {
     backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    padding: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 2,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
   },
   avatarBox: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#6B46C1',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
+    marginRight: 10,
   },
   avatarBoxShop: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
+    backgroundColor: '#8B5CF6',
   },
   avatarLetter: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#2842C4',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   nameBlock: {
     flex: 1,
@@ -1702,34 +1755,33 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   borrowerName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
   },
   shopPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 5,
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 4,
+    borderRadius: 6,
     gap: 2,
-    maxWidth: 120,
   },
   shopPillText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#92400E',
+    fontSize: 10,
+    color: '#6B46C1',
+    fontWeight: '600',
   },
   borrowerMeta: {
-    fontSize: 10,
-    color: '#64748B',
+    fontSize: 12,
+    color: '#6B7280',
     marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1,
   },
   statusBadgeActive: {
@@ -1741,29 +1793,27 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
   },
   statusBadgeNoLoan: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#E2E8F0',
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
   },
   statusBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.3,
+    fontSize: 10,
+    fontWeight: '700',
   },
 
   // Contract Strip
   contractStrip: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
+    backgroundColor: '#F9FAFB',
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     padding: 10,
-    marginBottom: 10,
+    marginTop: 10,
   },
   contractHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
   },
   schemeTagBox: {
     flexDirection: 'row',
@@ -1771,32 +1821,31 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   schemeTagText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#2842C4',
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B46C1',
   },
   loanCodeText: {
-    fontSize: 9,
-    color: '#64748B',
-    fontWeight: '600',
+    fontSize: 10,
+    color: '#9CA3AF',
   },
   progressCounterText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#475569',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   progressBarTrack: {
-    height: 6,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
-    overflow: 'hidden',
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    marginTop: 8,
     marginBottom: 8,
+    overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2842C4',
-    borderRadius: 3,
+    backgroundColor: '#6B46C1',
+    borderRadius: 2,
   },
   financialNumbersRow: {
     flexDirection: 'row',
@@ -1804,431 +1853,425 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   finLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   finEmiValue: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#0F172A',
-    marginTop: 1,
+    color: '#111827',
   },
   finFreqUnit: {
     fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
+    fontWeight: '500',
+    color: '#9CA3AF',
   },
   finDueValue: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#2842C4',
-    marginTop: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#6B46C1',
   },
 
+  // Eligible Strip
   eligibleLoanStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F3E8FF',
     borderRadius: 8,
-    padding: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 10,
     gap: 6,
-    marginBottom: 10,
   },
   eligibleLoanText: {
-    fontSize: 10,
+    fontSize: 11,
+    color: '#6B46C1',
     fontWeight: '600',
-    color: '#1E40AF',
-    flex: 1,
   },
 
-  // Card Action Buttons
+  // Card Actions
   cardActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 6,
+    marginTop: 10,
+    gap: 8,
   },
   actionBtnCall: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 7,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F3E8FF',
     gap: 4,
   },
   actionBtnCallText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#2842C4',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B46C1',
   },
   actionBtnWhatsApp: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 7,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#E6F9F5',
     gap: 4,
   },
   actionBtnWhatsAppText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#00A884',
   },
   actionBtnCollect: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2842C4',
+    justifyContent: 'center',
+    backgroundColor: '#6B46C1',
+    paddingVertical: 7,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 7,
+    borderRadius: 8,
     gap: 4,
-    shadowColor: '#2842C4',
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: '#6B46C1',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   actionBtnCollectText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   actionBtnDisburse: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#059669',
+    justifyContent: 'center',
+    backgroundColor: '#6B46C1',
+    paddingVertical: 7,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 7,
+    borderRadius: 8,
     gap: 4,
+    shadowColor: '#6B46C1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   actionBtnDisburseText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 
   // Empty State
   emptyState: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   emptyIconBox: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F3E8FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   emptyTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
-    textTransform: 'capitalize',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
   emptySub: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 6,
+    marginBottom: 16,
     lineHeight: 18,
   },
   emptyAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2842C4',
-    paddingHorizontal: 16,
+    backgroundColor: '#6B46C1',
     paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 14,
-    gap: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
   emptyAddBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 
   // Modal Shared Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    maxHeight: '85%',
-    paddingBottom: Platform.OS === 'ios' ? 26 : 14,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '88%',
+    paddingBottom: Platform.OS === 'android' ? 20 : 36,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#F0F0F0',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
   },
   modalSub: {
-    fontSize: 11,
-    color: '#64748B',
+    fontSize: 12,
+    color: '#6B7280',
     marginTop: 2,
   },
   modalCloseBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalBody: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
   inputLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#475569',
-    letterSpacing: 0.4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#374151',
     marginBottom: 6,
-    marginTop: 10,
+    marginTop: 8,
+    letterSpacing: 0.3,
   },
   formInput: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0F172A',
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+    marginBottom: 8,
   },
   formCategoryRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 4,
+    gap: 8,
+    marginBottom: 10,
   },
   formCatBtn: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
     paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
     alignItems: 'center',
   },
   formCatBtnActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#2842C4',
+    borderColor: '#6B46C1',
+    backgroundColor: '#F3E8FF',
   },
   formCatBtnText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   formCatBtnTextActive: {
-    color: '#2842C4',
-    fontWeight: '800',
-  },
-  profileMetaGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-  },
-  metaCol: {
-    flex: 1,
-  },
-  metaLabel: {
-    fontSize: 9,
+    color: '#6B46C1',
     fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
-  },
-  metaVal: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginTop: 2,
-  },
-  ledgerBox: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  ledgerHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  ledgerTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 0.5,
-  },
-  ledgerCode: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#2842C4',
-  },
-  ledgerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
-  },
-  ledgerDividerRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    marginTop: 6,
-    paddingTop: 6,
-  },
-  ledgerLabel: {
-    fontSize: 11,
-    color: '#475569',
-  },
-  ledgerVal: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  noLoanCard: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    padding: 18,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  noLoanCardTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginTop: 6,
-  },
-  noLoanCardSub: {
-    fontSize: 11,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  collectDueSummaryBox: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 10,
-    padding: 12,
-    alignItems: 'center',
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-  },
-  collectDueLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#4338CA',
-    textTransform: 'uppercase',
-  },
-  collectDueVal: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#2842C4',
-    marginTop: 2,
   },
   modalFooter: {
     flexDirection: 'row',
-    paddingHorizontal: 18,
-    paddingTop: 12,
     gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: '#F0F0F0',
   },
   modalCancelBtn: {
     flex: 1,
-    height: 42,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   modalCancelBtnText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#6B7280',
   },
   modalSubmitBtn: {
-    flex: 1.5,
-    height: 42,
-    borderRadius: 8,
-    backgroundColor: '#2842C4',
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#6B46C1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalSubmitBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   modalWhatsAppBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 42,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
-    gap: 4,
+    backgroundColor: '#E6F9F5',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
   },
   modalWhatsAppBtnText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#00A884',
   },
   modalPrimaryActionBtn: {
-    flex: 1.6,
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 42,
-    borderRadius: 8,
-    backgroundColor: '#2842C4',
-    gap: 6,
+    backgroundColor: '#6B46C1',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
   },
   modalPrimaryActionBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  // Details Modal Specific
+  profileMetaGrid: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 12,
+    gap: 8,
+    marginBottom: 12,
+  },
+  metaCol: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  metaLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  metaVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  ledgerBox: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 12,
+    marginBottom: 12,
+  },
+  ledgerHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  ledgerTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  ledgerCode: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B46C1',
+  },
+  ledgerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  ledgerDividerRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    marginTop: 6,
+    paddingTop: 6,
+  },
+  ledgerLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  ledgerVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  noLoanCard: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  noLoanCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 8,
+  },
+  noLoanCardSub: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  collectDueSummaryBox: {
+    backgroundColor: '#F3E8FF',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  collectDueLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B46C1',
+  },
+  collectDueVal: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#6B46C1',
+    marginTop: 2,
   },
 });
 

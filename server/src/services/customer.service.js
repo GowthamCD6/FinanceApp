@@ -166,8 +166,8 @@ async function getCustomers({ search, customerType, status, organizationId, bran
        COALESCE(SUM(CASE WHEN l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID') THEN (
          SELECT COALESCE(SUM(li.outstanding_amount), 0) FROM loan_installments li WHERE li.loan_id = l.id
        ) ELSE 0 END), 0) AS totalOutstanding,
-       le.status AS eligibilityStatus,
-       le.eligible_amount AS nextEligibleAmount
+       MAX(le.status) AS eligibilityStatus,
+       MAX(le.eligible_amount) AS nextEligibleAmount
      FROM customers c
      LEFT JOIN loans l ON c.id = l.customer_id
      LEFT JOIN loan_eligibility le ON c.id = le.customer_id
