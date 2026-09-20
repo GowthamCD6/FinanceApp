@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Header from '../../../../components/HeaderComponent/Header';
 import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
 
@@ -238,29 +239,17 @@ export const BorrowerLogModal = ({
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
         <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
-        {/* Top Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={onClose}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <View style={styles.backIconCircle}>
-              <MaterialCommunityIcons name="arrow-left" size={20} color="#1F2937" />
+        {/* Standard App Header Component */}
+        <Header
+          title={borrower?.customerName || 'Customer History'}
+          onBack={onClose}
+          showBackButton={true}
+          rightComponent={
+            <View style={styles.frequencyBadge}>
+              <Text style={styles.frequencyBadgeText}>{frequencyLabel}</Text>
             </View>
-          </TouchableOpacity>
-
-          <View style={styles.headerTitleBox}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {borrower?.customerName || 'Customer History'}
-            </Text>
-          </View>
-
-          <View style={styles.frequencyBadge}>
-            <Text style={styles.frequencyBadgeText}>{frequencyLabel}</Text>
-          </View>
-        </View>
+          }
+        />
 
         {loading ? (
           <View style={styles.loadingBox}>
@@ -380,13 +369,31 @@ export const BorrowerLogModal = ({
                   ? `Month ${inst.installment_number || idx + 1}`
                   : `Week ${inst.installment_number || idx + 1}`;
 
+                const paymentMethod = inst.payment_method || (loanData?.payments?.find(p => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_method) || 'CASH';
+                const rawPaidDate = inst.effective_paid_date || inst.paid_at || (loanData?.payments?.find(p => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_date) || inst.due_date;
+                const paidDateStr = rawPaidDate ? formatDate(rawPaidDate) : 'Completed';
+
                 return (
                   <View key={inst.id || idx} style={styles.simpleInstCard}>
-                    {/* Left Info: Day/Week & Date */}
+                    {/* Left Info: Day/Week & Method, Due/Paid Date, Amount */}
                     <View style={styles.instLeftCol}>
-                      <Text style={styles.instCycleTitle}>{cycleName}</Text>
-                      <Text style={styles.instDueDateText}>
-                        {inst.due_date ? formatDate(inst.due_date) : 'N/A'}
+                      <View style={styles.instHeaderRow}>
+                        <Text style={styles.instCycleTitle}>{cycleName}</Text>
+                        {isPaid && (
+                          <View style={styles.methodTag}>
+                            <MaterialCommunityIcons
+                              name={paymentMethod === 'UPI' ? 'cellphone' : paymentMethod === 'BANK_TRANSFER' ? 'bank' : 'cash'}
+                              size={11}
+                              color="#059669"
+                            />
+                            <Text style={styles.methodTagText}>{paymentMethod}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.instDueDateText} numberOfLines={1}>
+                        {isPaid
+                          ? `Paid: ${paidDateStr}`
+                          : `Due: ${inst.due_date ? formatDate(inst.due_date) : 'N/A'}`}
                       </Text>
                       <Text style={styles.instAmountText}>
                         Amount: <Text style={{ fontWeight: '800', color: '#111827' }}>{formatINR(schedAmt)}</Text>
@@ -397,7 +404,7 @@ export const BorrowerLogModal = ({
                     <View style={styles.instRightCol}>
                       {isPaid ? (
                         <View style={styles.paidPill}>
-                          <MaterialCommunityIcons name="check-circle" size={15} color="#059669" style={{ marginRight: 4 }} />
+                          <MaterialCommunityIcons name="check-circle" size={14} color="#059669" style={{ marginRight: 3 }} />
                           <Text style={styles.paidPillText}>Paid</Text>
                         </View>
                       ) : (
@@ -406,7 +413,7 @@ export const BorrowerLogModal = ({
                           onPress={() => openPayModal(inst)}
                           activeOpacity={0.85}
                         >
-                          <MaterialCommunityIcons name="cash" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                          <MaterialCommunityIcons name="cash" size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
                           <Text style={styles.collectActionBtnText}>
                             Collect {formatINR(bal > 0 ? bal : schedAmt)}
                           </Text>
@@ -739,10 +746,31 @@ const styles = StyleSheet.create({
   instLeftCol: {
     flex: 1,
   },
+  instHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   instCycleTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: '#111827',
+  },
+  methodTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    gap: 3,
+  },
+  methodTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
   },
   instDueDateText: {
     fontSize: 12,

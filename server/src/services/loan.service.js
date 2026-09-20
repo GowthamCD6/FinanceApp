@@ -408,9 +408,15 @@ async function getLoanById(loanId) {
   if (!loans || loans.length === 0) return null;
   const loan = loans[0];
 
-  // Fetch installments
+  // Fetch installments with latest payment details if paid
   const installments = await query(
-    `SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`,
+    `SELECT 
+       li.*,
+       (SELECT p.payment_method FROM payment_allocations pa JOIN payments p ON pa.payment_id = p.id WHERE pa.installment_id = li.id ORDER BY p.id DESC LIMIT 1) AS payment_method,
+       (SELECT COALESCE(p.payment_date, li.paid_at) FROM payment_allocations pa JOIN payments p ON pa.payment_id = p.id WHERE pa.installment_id = li.id ORDER BY p.id DESC LIMIT 1) AS effective_paid_date
+     FROM loan_installments li 
+     WHERE li.loan_id = ? 
+     ORDER BY li.installment_number ASC`,
     [loanId]
   );
 
