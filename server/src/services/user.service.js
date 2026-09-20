@@ -31,10 +31,29 @@ async function createUser(data, creatorId = null) {
     password,
     dateJoined,
     organizationId,
+    dob,
+    dateOfBirth,
+    date_of_birth,
+    birthYear,
+    birth_year,
   } = data;
 
   const displayName = (name || fullName || '').trim();
   const rawPhone = (phone || '').trim();
+
+  // Resolve DOB and Birth Year
+  let resolvedDob = date_of_birth || dateOfBirth || dob || null;
+  let resolvedBirthYear = birth_year || birthYear || null;
+
+  if (resolvedDob && !resolvedBirthYear) {
+    const parsedYear = new Date(resolvedDob).getFullYear();
+    if (!isNaN(parsedYear)) resolvedBirthYear = parsedYear;
+  } else if (resolvedBirthYear && !resolvedDob) {
+    resolvedBirthYear = parseInt(resolvedBirthYear, 10);
+    if (!isNaN(resolvedBirthYear)) {
+      resolvedDob = `${resolvedBirthYear}-01-01`;
+    }
+  }
 
   if (!displayName) {
     throw new Error('Full name is required.');
@@ -132,14 +151,16 @@ async function createUser(data, creatorId = null) {
 
       const [custRes] = await conn.query(
         `INSERT INTO customers 
-         (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, assigned_agent_id, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (organization_id, branch_id, customer_code, full_name, phone, date_of_birth, birth_year, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, assigned_agent_id, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           effectiveOrgId,
           effectiveBranchId,
           customerCode,
           displayName,
           rawPhone,
+          resolvedDob || null,
+          resolvedBirthYear || null,
           alternatePhone || null,
           address || null,
           city || null,
@@ -291,9 +312,7 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
      WHERE ${whereSql}`,
     params
   );
-  const total = countRows[0]?.total || 0;
-
-  const users = await query(
+  const total = countRows[0]?.total || 0;  const users = await query(
     `SELECT 
        u.id,
        u.name,
@@ -312,6 +331,8 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
        c.city,
        c.occupation,
        c.shop_name,
+       c.date_of_birth,
+       c.birth_year,
        (SELECT note FROM customer_notes WHERE customer_id = c.id ORDER BY id DESC LIMIT 1) AS notes,
        (
          SELECT r.name 
@@ -373,6 +394,8 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
       notes: u.notes || '',
       occupation: u.occupation || '',
       shopName: u.shop_name || '',
+      dateOfBirth: u.date_of_birth ? new Date(u.date_of_birth).toISOString().slice(0, 10) : '',
+      birthYear: u.birth_year || (u.date_of_birth ? new Date(u.date_of_birth).getFullYear() : null),
       dateJoined: u.date_joined ? new Date(u.date_joined).toISOString().slice(0, 10) : '',
       activeLoansCount: parseInt(u.active_loans_count || 0, 10),
       completedLoansCount: parseInt(u.completed_loans_count || 0, 10),
@@ -390,7 +413,7 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
  */
 async function getUserById(userId) {
   const users = await query(
-    `SELECT u.*, c.id AS customer_id, c.customer_code, c.customer_type, c.address, c.city, c.occupation, c.shop_name
+    `SELECT u.*, c.id AS customer_id, c.customer_code, c.customer_type, c.address, c.city, c.occupation, c.shop_name, c.date_of_birth, c.birth_year
      FROM users u
      LEFT JOIN customers c ON c.user_id = u.id
      WHERE u.id = ? OR c.id = ?
@@ -414,7 +437,7 @@ async function getUserById(userId) {
          lp.product_name,
          lp.repayment_frequency,
          (SELECT COALESCE(SUM(paid_amount), 0) FROM loan_installments WHERE loan_id = l.id) AS total_paid,
-         (SELECT COALESCE(SUM(outstanding_amount), 0) FROM loan_installments WHERE loan_id = l.id) AS outstanding_balance
+         (SELECT COALESCE(SUM(outstanding_balance), 0) FROM loan_installments WHERE loan_id = l.id) AS outstanding_balance
        FROM loans l
        LEFT JOIN loan_products lp ON l.product_id = lp.id
        WHERE l.customer_id = ?
@@ -501,6 +524,8 @@ async function getUserById(userId) {
     city: user.city || '',
     occupation: user.occupation || '',
     shopName: user.shop_name || '',
+    dateOfBirth: user.date_of_birth ? new Date(user.date_of_birth).toISOString().slice(0, 10) : '',
+    birthYear: user.birth_year || (user.date_of_birth ? new Date(user.date_of_birth).getFullYear() : null),
     role: user.customer_type || 'COMMON_CUSTOMER',
     status: user.status,
     dateJoined: user.created_at ? new Date(user.created_at).toISOString().slice(0, 10) : '',
@@ -538,7 +563,23 @@ async function getUserById(userId) {
  * Update an existing user via PUT /users/:id
  */
 async function updateUser(userId, data, updaterId = null) {
-  const { name, phone, address, city, role, status, notes, occupation, shopName } = data;
+  const {
+    name,
+    phone,
+    address,
+    city,
+    role,
+    status,
+    notes,
+    occupation,
+    shopName,
+    shop_name,
+    dateOfBirth,
+    date_of_birth,
+    dob,
+    birthYear,
+    birth_year,
+  } = data;
 
   const existingUsers = await query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [userId]);
   if (!existingUsers || existingUsers.length === 0) {
@@ -553,6 +594,21 @@ async function updateUser(userId, data, updaterId = null) {
       throw new Error(`Phone number ${phone} is already used by another user.`);
     }
   }
+
+  // Resolve DOB and Birth Year if provided
+  let resolvedDob = date_of_birth || dateOfBirth || dob || null;
+  let resolvedBirthYear = birth_year || birthYear || null;
+  if (resolvedDob && !resolvedBirthYear) {
+    const parsedYear = new Date(resolvedDob).getFullYear();
+    if (!isNaN(parsedYear)) resolvedBirthYear = parsedYear;
+  } else if (resolvedBirthYear && !resolvedDob) {
+    resolvedBirthYear = parseInt(resolvedBirthYear, 10);
+    if (!isNaN(resolvedBirthYear)) {
+      resolvedDob = `${resolvedBirthYear}-01-01`;
+    }
+  }
+
+  const resolvedShopName = shopName !== undefined ? shopName : (shop_name !== undefined ? shop_name : null);
 
   return await withTransaction(async (conn) => {
     // 1. Update user
@@ -581,6 +637,8 @@ async function updateUser(userId, data, updaterId = null) {
            customer_type = COALESCE(?, customer_type),
            occupation = COALESCE(?, occupation),
            shop_name = COALESCE(?, shop_name),
+           date_of_birth = COALESCE(?, date_of_birth),
+           birth_year = COALESCE(?, birth_year),
            status = COALESCE(?, status),
            updated_at = NOW()
          WHERE id = ?`,
@@ -590,8 +648,10 @@ async function updateUser(userId, data, updaterId = null) {
           address || null,
           city || null,
           custType,
-          occupation || null,
-          shopName || null,
+          occupation !== undefined ? occupation : null,
+          resolvedShopName,
+          resolvedDob,
+          resolvedBirthYear,
           status || null,
           customerId,
         ]

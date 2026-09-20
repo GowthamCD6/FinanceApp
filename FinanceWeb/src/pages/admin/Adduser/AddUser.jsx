@@ -51,9 +51,7 @@ export const AddUser = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    occupation: '',
-    shop_name: '',
-    work_profession: '',
+    birth_year: '',
     branch_id: '',
     credit_limit: 5000,
     issue_initial_loan: true,
@@ -180,6 +178,15 @@ export const AddUser = () => {
   const isMonthly = activeCategory.repayment_frequency === 'MONTHLY';
   const isWeekly = !isShop && !isMonthly;
 
+  const calculatedAge = useMemo(() => {
+    const y = parseInt(formData.birth_year, 10);
+    const currentYear = new Date().getFullYear();
+    if (!isNaN(y) && y >= 1920 && y <= currentYear) {
+      return currentYear - y;
+    }
+    return null;
+  }, [formData.birth_year]);
+
   const handleSelectCategory = (cat) => {
     setSelectedCategoryCode(cat.category_code);
     setFormData((prev) => ({
@@ -196,9 +203,7 @@ export const AddUser = () => {
     setFormData({
       name: '',
       phone: '',
-      occupation: '',
-      shop_name: '',
-      work_profession: '',
+      birth_year: '',
       branch_id: branches[0]?.id || '',
       credit_limit: activeCategory.default_max_loan,
       issue_initial_loan: true,
@@ -248,16 +253,12 @@ export const AddUser = () => {
       errs.phone = 'Please enter a valid 10-digit mobile number';
     }
 
-    if (isShop && (!formData.shop_name || !formData.shop_name.trim())) {
-      errs.shop_name = 'Shop / Stall name is required for daily merchants';
-    }
-
-    if (isWeekly && (!formData.occupation || !formData.occupation.trim())) {
-      errs.occupation = 'User Occupation / Trade is required for weekly borrowers';
-    }
-
-    if (isMonthly && (!formData.work_profession || !formData.work_profession.trim())) {
-      errs.work_profession = 'Work / Profession is required for monthly salaried borrowers';
+    if (formData.birth_year) {
+      const yearNum = parseInt(formData.birth_year, 10);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(yearNum) || yearNum < 1920 || yearNum > currentYear) {
+        errs.birth_year = 'Please enter a valid 4-digit birth year';
+      }
     }
 
     if (formData.issue_initial_loan) {
@@ -291,25 +292,18 @@ export const AddUser = () => {
     try {
       const principal = parseFloat(formData.initial_loan_amount) || activeCategory.default_min_loan;
       const freq = activeCategory.repayment_frequency || (isShop ? 'DAILY' : isMonthly ? 'MONTHLY' : 'WEEKLY');
-
-      const resolvedOccupation = isShop
-        ? (formData.shop_name?.trim() || 'Market Shopkeeper')
-        : isMonthly
-        ? (formData.work_profession?.trim() || 'Salaried Employee')
-        : (formData.occupation?.trim() || 'Self-Employed Worker');
+      const birthYearNum = formData.birth_year ? parseInt(formData.birth_year, 10) : null;
 
       const res = await api.createUser({
         organizationId: activeOrg?.id || 1,
         branchId: formData.branch_id || (branches[0]?.id || null),
         name: formData.name.trim(),
         phone: formData.phone.trim().replace(/\D/g, ''),
+        birth_year: birthYearNum,
+        date_of_birth: birthYearNum ? `${birthYearNum}-01-01` : null,
         role: isShop ? 'SHOPKEEPER' : 'COMMON_CUSTOMER',
         category_code: activeCategory.category_code,
         status: 'ACTIVE',
-        address: null,
-        city: null,
-        occupation: resolvedOccupation,
-        shop_name: isShop ? formData.shop_name.trim() : null,
         credit_limit: parseFloat(formData.credit_limit) || activeCategory.default_max_loan,
         initial_loan: formData.issue_initial_loan
           ? {
@@ -347,13 +341,11 @@ export const AddUser = () => {
         ...prev,
         name: '',
         phone: '',
-        occupation: '',
-        shop_name: '',
-        work_profession: '',
+        birth_year: '',
       }));
     } catch (err) {
-      console.error('Failed to onboard borrower:', err);
-      setErrorMsg(err.message || 'Failed to onboard borrower. Please check mobile number or connection.');
+      console.error('Error onboarding user:', err);
+      setErrorMsg(err.message || 'Failed to onboard borrower. Please verify details.');
     } finally {
       setSubmitting(false);
     }
@@ -495,52 +487,33 @@ export const AddUser = () => {
               </div>
 
               <div className="onboard-fields-row">
-                {/* Occupation / Trade / Shop Name */}
+                {/* Year of Birth / Date of Birth */}
                 <div className="onboard-field">
-                  <label className="onboard-label">
-                    {isShop ? 'Shop / Stall Name' : isMonthly ? 'Work / Profession' : 'User Occupation / Trade'}{' '}
-                    <span className="req">*</span>
-                  </label>
-                  {isShop ? (
-                    <input
-                      type="text"
-                      className={`onboard-input ${errors.shop_name ? 'error' : ''}`}
-                      placeholder="e.g. Sri Balaji General Store"
-                      value={formData.shop_name}
-                      onChange={(e) => {
-                        setFormData({ ...formData, shop_name: e.target.value });
-                        if (errors.shop_name) setErrors({ ...errors, shop_name: null });
-                      }}
-                      required
-                    />
-                  ) : isMonthly ? (
-                    <input
-                      type="text"
-                      className={`onboard-input ${errors.work_profession ? 'error' : ''}`}
-                      placeholder="e.g. Software Engineer / Retail Manager"
-                      value={formData.work_profession}
-                      onChange={(e) => {
-                        setFormData({ ...formData, work_profession: e.target.value });
-                        if (errors.work_profession) setErrors({ ...errors, work_profession: null });
-                      }}
-                      required
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      className={`onboard-input ${errors.occupation ? 'error' : ''}`}
-                      placeholder="e.g. Tailor, Fabrication Worker, Driver, Electrician"
-                      value={formData.occupation}
-                      onChange={(e) => {
-                        setFormData({ ...formData, occupation: e.target.value });
-                        if (errors.occupation) setErrors({ ...errors, occupation: null });
-                      }}
-                      required
-                    />
-                  )}
-                  {(errors.occupation || errors.shop_name || errors.work_profession) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <label className="onboard-label" style={{ marginBottom: 0 }}>
+                      Date / Year of Birth
+                    </label>
+                    {calculatedAge !== null && (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary, #3b82f6)', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>
+                        Age: {calculatedAge} Yrs
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    className={`onboard-input ${errors.birth_year ? 'error' : ''}`}
+                    placeholder="e.g. 1990 (YYYY)"
+                    maxLength={4}
+                    value={formData.birth_year}
+                    onChange={(e) => {
+                      const val = e.target.value.slice(0, 4);
+                      setFormData({ ...formData, birth_year: val });
+                      if (errors.birth_year) setErrors({ ...errors, birth_year: null });
+                    }}
+                  />
+                  {errors.birth_year && (
                     <span className="onboard-input-error-text">
-                      {errors.occupation || errors.shop_name || errors.work_profession}
+                      {errors.birth_year}
                     </span>
                   )}
                 </div>

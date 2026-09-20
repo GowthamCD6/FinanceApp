@@ -482,6 +482,18 @@ export const BorrowerHistoryView = ({
                   <Phone size={14} />
                   <span>{user.phone || '9840998877'}</span>
                 </span>
+                {(user.birthYear || user.birth_year || user.dateOfBirth) && (
+                  <span className="bh-meta-item">
+                    <Calendar size={14} />
+                    <span>Born: {user.birthYear || user.birth_year || String(user.dateOfBirth).slice(0, 4)}</span>
+                  </span>
+                )}
+                {user.occupation && (
+                  <span className="bh-meta-item">
+                    <Briefcase size={14} />
+                    <span>{user.occupation}</span>
+                  </span>
+                )}
                 <span className="bh-meta-item">
                   <MapPin size={14} />
                   <span>{user.address || '55 Temple Street, Chennai'}</span>

@@ -85,6 +85,8 @@ export const ManageUsers = () => {
     notes: '',
     occupation: '',
     shopName: '',
+    birth_year: '',
+    date_of_birth: '',
     credit_limit: 50000,
   });
   const [savingEdit, setSavingEdit] = useState(false);
@@ -216,6 +218,7 @@ export const ManageUsers = () => {
   // Open Edit User Modal
   const openEditModal = (u) => {
     setEditError('');
+    const resolvedBirthYear = u.birthYear || u.birth_year || (u.dateOfBirth || u.date_of_birth ? String(u.dateOfBirth || u.date_of_birth).substring(0, 4) : '');
     setEditFormData({
       id: u.id,
       name: u.name || '',
@@ -228,6 +231,8 @@ export const ManageUsers = () => {
       notes: u.notes || '',
       occupation: u.occupation || '',
       shopName: u.shopName || u.shop_name || '',
+      birth_year: resolvedBirthYear,
+      date_of_birth: u.dateOfBirth || u.date_of_birth || (resolvedBirthYear ? `${resolvedBirthYear}-01-01` : ''),
       credit_limit: u.credit_limit || 50000,
     });
     setIsEditModalOpen(true);
@@ -1003,12 +1008,13 @@ export const ManageUsers = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Occupation / Trade</label>
                 <input
                   type="text"
                   className="form-input"
+                  placeholder="e.g. Tailor / Fabricator / Driver"
                   value={editFormData.occupation}
                   onChange={(e) => setEditFormData({ ...editFormData, occupation: e.target.value })}
                 />
@@ -1018,10 +1024,29 @@ export const ManageUsers = () => {
                 <input
                   type="text"
                   className="form-input"
+                  placeholder="e.g. Balaji Stores / Stall #4"
                   value={editFormData.shopName}
                   onChange={(e) => setEditFormData({ ...editFormData, shopName: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label className="form-label">Date / Year of Birth</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="YYYY or YYYY-MM-DD (e.g. 1990)"
+                value={editFormData.birth_year || editFormData.date_of_birth}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEditFormData({
+                    ...editFormData,
+                    birth_year: val,
+                    date_of_birth: val && val.length === 4 ? `${val}-01-01` : val,
+                  });
+                }}
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>

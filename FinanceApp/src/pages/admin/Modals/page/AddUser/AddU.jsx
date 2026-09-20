@@ -10,13 +10,19 @@ import {
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
+  StatusBar,
+  BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LottieView from 'lottie-react-native';
 import Header from '../../../../../components/HeaderComponent/Header';
 import { useApp } from '../../../../../context/AppContext';
 import { apiService } from '../../../../../services/apiService';
 import Colors from '../../../../../theme/colors';
 import styles from './AddUsty';
+
+const addUserAnimation = require('../../../../../animation/Add-user.json');
 
 export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
   const { currentOrganization, refreshData } = useApp();
@@ -45,9 +51,7 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    occupation: '',
-    shop_name: '',
-    work_profession: '',
+    birth_year: '',
     credit_limit: '5000',
     issue_initial_loan: true,
     initial_loan_amount: '2000',
@@ -58,7 +62,33 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
+
+  const handleDismiss = () => {
+    setFormData({
+      name: '',
+      phone: '',
+      birth_year: '',
+      credit_limit: '5000',
+      issue_initial_loan: true,
+      initial_loan_amount: '2000',
+      interest_rate: '25',
+      tenure: '10',
+      frequency: 'WEEKLY',
+    });
+    setErrors({});
+    if (onClose) onClose();
+    if (onBack) onBack();
+  };
+
+  // Hardware Back button handling
+  useEffect(() => {
+    const backAction = () => {
+      handleDismiss();
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, []);
 
   // Fetch Lending Config from API
   useEffect(() => {
@@ -107,8 +137,8 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
       default_interest_rate: Number(lendingConfig.weekly_interest_rate) || 25.0,
       tenure_installments: Number(lendingConfig.weekly_tenure_weeks) || 10,
       icon: 'account-group',
-      color: '#2563EB',
-      bg: '#EFF6FF',
+      color: '#6B46C1',
+      bg: '#F5F3FF',
     },
     {
       category_code: 'CAT-MERCHANT-DLY',
@@ -133,8 +163,8 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
       default_interest_rate: Number(lendingConfig.monthly_interest_rate) || 25.0,
       tenure_installments: Number(lendingConfig.monthly_tenure_months) || 12,
       icon: 'calendar-month',
-      color: '#7C3AED',
-      bg: '#F3E8FF',
+      color: '#2563EB',
+      bg: '#EFF6FF',
     },
   ], [lendingConfig]);
 
@@ -149,6 +179,12 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
   const tenureUnit = isShop ? 'Days' : isMonthly ? 'Months' : 'Weeks';
   const tenureUnitSingular = isShop ? 'Day' : isMonthly ? 'Month' : 'Week';
 
+  const birthYearNum = parseInt(formData.birth_year, 10);
+  const currentYear = new Date().getFullYear();
+  const calculatedAge = (!isNaN(birthYearNum) && birthYearNum >= 1920 && birthYearNum <= currentYear)
+    ? (currentYear - birthYearNum)
+    : null;
+
   const handleSelectCategory = (cat) => {
     setSelectedCategoryCode(cat.category_code);
     setFormData((prev) => ({
@@ -159,25 +195,6 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
       tenure: String(cat.tenure_installments),
       frequency: cat.repayment_frequency,
     }));
-  };
-
-  const handleDismiss = () => {
-    setFormData({
-      name: '',
-      phone: '',
-      occupation: '',
-      shop_name: '',
-      work_profession: '',
-      credit_limit: '5000',
-      issue_initial_loan: true,
-      initial_loan_amount: '2000',
-      interest_rate: '25',
-      tenure: '10',
-      frequency: 'WEEKLY',
-    });
-    setErrors({});
-    if (onClose) onClose();
-    if (onBack) onBack();
   };
 
   // Real-time Calculations
@@ -199,14 +216,12 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
       errs.phone = 'Enter valid 10-digit mobile number';
     }
 
-    if (isShop && !formData.shop_name.trim()) {
-      errs.shop_name = 'Shop / Stall name is required';
-    }
-    if (isWeekly && !formData.occupation.trim()) {
-      errs.occupation = 'Occupation / Trade is required';
-    }
-    if (isMonthly && !formData.work_profession.trim()) {
-      errs.work_profession = 'Work / Profession is required';
+    if (formData.birth_year) {
+      const yearNum = parseInt(formData.birth_year, 10);
+      const curYear = new Date().getFullYear();
+      if (isNaN(yearNum) || yearNum < 1920 || yearNum > curYear) {
+        errs.birth_year = 'Enter a valid 4-digit birth year';
+      }
     }
 
     if (formData.issue_initial_loan) {
@@ -232,22 +247,17 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
       setSubmitting(true);
       const principal = parseFloat(formData.initial_loan_amount) || activeCategory.default_min_loan;
       const freq = activeCategory.repayment_frequency;
-
-      const resolvedOccupation = isShop
-        ? formData.shop_name.trim()
-        : isMonthly
-        ? formData.work_profession.trim()
-        : formData.occupation.trim();
+      const birthYearVal = formData.birth_year ? parseInt(formData.birth_year, 10) : null;
 
       const payload = {
         organizationId: orgId,
         name: formData.name.trim(),
         phone: formData.phone.trim().replace(/\D/g, ''),
+        birth_year: birthYearVal,
+        date_of_birth: birthYearVal ? `${birthYearVal}-01-01` : null,
         role: isShop ? 'SHOPKEEPER' : 'COMMON_CUSTOMER',
         category_code: activeCategory.category_code,
         status: 'ACTIVE',
-        occupation: resolvedOccupation,
-        shop_name: isShop ? formData.shop_name.trim() : null,
         credit_limit: parseFloat(formData.credit_limit) || activeCategory.default_max_loan,
         initial_loan: formData.issue_initial_loan
           ? {
@@ -279,12 +289,12 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
   };
 
   const content = (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header
-        title="Onboard New Borrower"
+        title="Add User"
         onBack={handleDismiss}
         showBackButton={true}
-        showDivider={true}
       />
 
       <KeyboardAvoidingView
@@ -293,12 +303,26 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
       >
         <ScrollView
           style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Lottie Animation */}
+          <View style={styles.animationContainer}>
+            <LottieView
+              source={addUserAnimation}
+              autoPlay
+              loop
+              style={styles.animation}
+            />
+          </View>
+
           {/* Division Selector */}
           <View style={styles.divisionContainer}>
-            <Text style={styles.sectionHeading}>Select Borrower Lending Division *</Text>
+            <View style={styles.sectionHeadingRow}>
+              <MaterialCommunityIcons name="layers-outline" size={18} color="#6B46C1" />
+              <Text style={styles.sectionHeading}>Lending Scheme *</Text>
+            </View>
             <View style={styles.divisionRow}>
               {categories.map((cat) => {
                 const isSelected = selectedCategoryCode === cat.category_code;
@@ -307,13 +331,13 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
                     key={cat.category_code}
                     style={[
                       styles.divisionChip,
-                      isSelected && { borderColor: cat.color, backgroundColor: cat.bg },
+                      isSelected && styles.divisionChipSelected,
                     ]}
                     onPress={() => handleSelectCategory(cat)}
                     activeOpacity={0.7}
                   >
-                    <MaterialCommunityIcons name={cat.icon} size={20} color={isSelected ? cat.color : '#64748B'} />
-                    <Text style={[styles.divisionChipTitle, isSelected && { color: cat.color }]}>
+                    <MaterialCommunityIcons name={cat.icon} size={22} color={isSelected ? '#6B46C1' : '#64748B'} />
+                    <Text style={[styles.divisionChipTitle, isSelected && styles.divisionChipTitleSelected]}>
                       {cat.name}
                     </Text>
                     <Text style={styles.divisionChipRate}>{cat.default_interest_rate}% Flat</Text>
@@ -324,15 +348,25 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
           </View>
 
           {/* Borrower Personal Details */}
-          <View style={styles.formCard}>
-            <Text style={styles.formCardTitle}>Borrower Information</Text>
+          <View style={styles.formSection}>
+            <View style={styles.sectionTitleRow}>
+              <MaterialCommunityIcons name="account-outline" size={20} color="#6B46C1" />
+              <Text style={styles.sectionTitle}>Borrower Information</Text>
+            </View>
 
+            {/* Name Field */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Borrower Full Name *</Text>
+              <View style={styles.labelContainer}>
+                <View style={styles.labelLeft}>
+                  <MaterialCommunityIcons name="account" size={16} color="#6B7280" />
+                  <Text style={styles.inputLabel}>Full Name</Text>
+                  <Text style={styles.requiredStar}>*</Text>
+                </View>
+              </View>
               <TextInput
                 style={[styles.textInput, errors.name && styles.inputError]}
-                placeholder="e.g. Ramesh Krishnan"
-                placeholderTextColor={Colors.gray100}
+                placeholder="Enter borrower full name"
+                placeholderTextColor="#A0A0A0"
                 value={formData.name}
                 onChangeText={(text) => {
                   setFormData((s) => ({ ...s, name: text }));
@@ -342,12 +376,19 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
               {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
             </View>
 
+            {/* Phone Field */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Mobile Phone Number (10 Digits) *</Text>
+              <View style={styles.labelContainer}>
+                <View style={styles.labelLeft}>
+                  <MaterialCommunityIcons name="phone" size={16} color="#6B7280" />
+                  <Text style={styles.inputLabel}>Phone Number</Text>
+                  <Text style={styles.requiredStar}>*</Text>
+                </View>
+              </View>
               <TextInput
                 style={[styles.textInput, errors.phone && styles.inputError]}
-                placeholder="e.g. 9876543210"
-                placeholderTextColor={Colors.gray100}
+                placeholder="Enter 10-digit mobile number"
+                placeholderTextColor="#A0A0A0"
                 value={formData.phone}
                 keyboardType="phone-pad"
                 maxLength={10}
@@ -360,60 +401,48 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
               {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
             </View>
 
-            {/* Dynamic Profession / Shop Input */}
-            {isShop ? (
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Shop / Stall Name *</Text>
-                <TextInput
-                  style={[styles.textInput, errors.shop_name && styles.inputError]}
-                  placeholder="e.g. Sri Balaji General Store"
-                  placeholderTextColor={Colors.gray100}
-                  value={formData.shop_name}
-                  onChangeText={(text) => {
-                    setFormData((s) => ({ ...s, shop_name: text }));
-                    if (errors.shop_name) setErrors((e) => ({ ...e, shop_name: null }));
-                  }}
-                />
-                {errors.shop_name && <Text style={styles.errorText}>{errors.shop_name}</Text>}
-              </View>
-            ) : isMonthly ? (
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Work / Profession *</Text>
-                <TextInput
-                  style={[styles.textInput, errors.work_profession && styles.inputError]}
-                  placeholder="e.g. Software Engineer / Retail Manager"
-                  placeholderTextColor={Colors.gray100}
-                  value={formData.work_profession}
-                  onChangeText={(text) => {
-                    setFormData((s) => ({ ...s, work_profession: text }));
-                    if (errors.work_profession) setErrors((e) => ({ ...e, work_profession: null }));
-                  }}
-                />
-                {errors.work_profession && <Text style={styles.errorText}>{errors.work_profession}</Text>}
-              </View>
-            ) : (
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Occupation / Trade *</Text>
-                <TextInput
-                  style={[styles.textInput, errors.occupation && styles.inputError]}
-                  placeholder="e.g. Tailor, Fabrication Worker, Driver"
-                  placeholderTextColor={Colors.gray100}
-                  value={formData.occupation}
-                  onChangeText={(text) => {
-                    setFormData((s) => ({ ...s, occupation: text }));
-                    if (errors.occupation) setErrors((e) => ({ ...e, occupation: null }));
-                  }}
-                />
-                {errors.occupation && <Text style={styles.errorText}>{errors.occupation}</Text>}
-              </View>
-            )}
-
+            {/* Birth Year / Age Field */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Approved Credit Limit (₹) *</Text>
+              <View style={styles.labelContainer}>
+                <View style={styles.labelLeft}>
+                  <MaterialCommunityIcons name="calendar-account" size={16} color="#6B7280" />
+                  <Text style={styles.inputLabel}>Year of Birth</Text>
+                </View>
+                {calculatedAge !== null && (
+                  <View style={styles.ageBadge}>
+                    <Text style={styles.ageBadgeText}>Age: {calculatedAge} Yrs</Text>
+                  </View>
+                )}
+              </View>
+              <TextInput
+                style={[styles.textInput, errors.birth_year && styles.inputError]}
+                placeholder="Enter birth year (e.g. 1992)"
+                placeholderTextColor="#A0A0A0"
+                value={formData.birth_year}
+                keyboardType="numeric"
+                maxLength={4}
+                onChangeText={(text) => {
+                  const clean = text.replace(/\D/g, '').slice(0, 4);
+                  setFormData((s) => ({ ...s, birth_year: clean }));
+                  if (errors.birth_year) setErrors((e) => ({ ...e, birth_year: null }));
+                }}
+              />
+              {errors.birth_year && <Text style={styles.errorText}>{errors.birth_year}</Text>}
+            </View>
+
+            {/* Approved Credit Limit */}
+            <View style={styles.inputContainer}>
+              <View style={styles.labelContainer}>
+                <View style={styles.labelLeft}>
+                  <MaterialCommunityIcons name="credit-card-check-outline" size={16} color="#6B7280" />
+                  <Text style={styles.inputLabel}>Approved Credit Limit (₹)</Text>
+                  <Text style={styles.requiredStar}>*</Text>
+                </View>
+              </View>
               <TextInput
                 style={styles.textInput}
                 placeholder="e.g. 50000"
-                placeholderTextColor={Colors.gray100}
+                placeholderTextColor="#A0A0A0"
                 value={formData.credit_limit}
                 keyboardType="numeric"
                 onChangeText={(text) => setFormData((s) => ({ ...s, credit_limit: text }))}
@@ -422,31 +451,39 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
           </View>
 
           {/* Credit Policy & 1st Loan Origination */}
-          <View style={styles.formCard}>
-            <View style={styles.formCardHeaderRow}>
-              <Text style={styles.formCardTitle}>Credit Policy & Loan Origination</Text>
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setFormData((s) => ({ ...s, issue_initial_loan: !s.issue_initial_loan }))}
-                activeOpacity={0.7}
-              >
+          <View style={styles.formSection}>
+            <TouchableOpacity
+              style={styles.loanToggleCard}
+              onPress={() => setFormData((s) => ({ ...s, issue_initial_loan: !s.issue_initial_loan }))}
+              activeOpacity={0.7}
+            >
+              <View style={styles.loanToggleLeft}>
                 <MaterialCommunityIcons
-                  name={formData.issue_initial_loan ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                  size={20}
-                  color={Colors.primary}
+                  name={formData.issue_initial_loan ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                  size={24}
+                  color={formData.issue_initial_loan ? '#6B46C1' : '#94A3B8'}
                 />
-                <Text style={styles.checkboxLabel}>Issue 1st Loan Now</Text>
-              </TouchableOpacity>
-            </View>
+                <View>
+                  <Text style={styles.loanToggleTitle}>Issue Initial Loan Now</Text>
+                  <Text style={styles.loanToggleSubtitle}>Originate first loan on onboarding</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
 
             {formData.issue_initial_loan && (
               <>
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Initial Loan Principal (₹) *</Text>
+                  <View style={styles.labelContainer}>
+                    <View style={styles.labelLeft}>
+                      <MaterialCommunityIcons name="cash" size={16} color="#6B7280" />
+                      <Text style={styles.inputLabel}>Initial Loan Principal (₹)</Text>
+                      <Text style={styles.requiredStar}>*</Text>
+                    </View>
+                  </View>
                   <TextInput
                     style={[styles.textInput, errors.initial_loan_amount && styles.inputError]}
                     placeholder="e.g. 2000"
-                    placeholderTextColor={Colors.gray100}
+                    placeholderTextColor="#A0A0A0"
                     value={formData.initial_loan_amount}
                     keyboardType="numeric"
                     onChangeText={(text) => {
@@ -459,11 +496,17 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
 
                 <View style={styles.rowTwoInputs}>
                   <View style={[styles.inputContainer, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Interest Rate (%) *</Text>
+                    <View style={styles.labelContainer}>
+                      <View style={styles.labelLeft}>
+                        <MaterialCommunityIcons name="percent" size={16} color="#6B7280" />
+                        <Text style={styles.inputLabel}>Interest (%)</Text>
+                        <Text style={styles.requiredStar}>*</Text>
+                      </View>
+                    </View>
                     <TextInput
                       style={[styles.textInput, errors.interest_rate && styles.inputError]}
                       placeholder="e.g. 25"
-                      placeholderTextColor={Colors.gray100}
+                      placeholderTextColor="#A0A0A0"
                       value={formData.interest_rate}
                       keyboardType="numeric"
                       onChangeText={(text) => {
@@ -475,11 +518,17 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
                   </View>
 
                   <View style={[styles.inputContainer, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Tenure ({tenureUnit}) *</Text>
+                    <View style={styles.labelContainer}>
+                      <View style={styles.labelLeft}>
+                        <MaterialCommunityIcons name="clock-outline" size={16} color="#6B7280" />
+                        <Text style={styles.inputLabel}>Tenure ({tenureUnit})</Text>
+                        <Text style={styles.requiredStar}>*</Text>
+                      </View>
+                    </View>
                     <TextInput
                       style={[styles.textInput, errors.tenure && styles.inputError]}
                       placeholder={`e.g. ${activeCategory.tenure_installments}`}
-                      placeholderTextColor={Colors.gray100}
+                      placeholderTextColor="#A0A0A0"
                       value={formData.tenure}
                       keyboardType="numeric"
                       onChangeText={(text) => {
@@ -495,8 +544,8 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
                 {principalAmount > 0 && (
                   <View style={styles.previewBox}>
                     <View style={styles.previewHeader}>
-                      <MaterialCommunityIcons name="receipt" size={15} color="#4F46E5" />
-                      <Text style={styles.previewTitle}>Live Loan Breakdown ({activeCategory.repayment_frequency})</Text>
+                      <MaterialCommunityIcons name="calculator-variant-outline" size={16} color="#6B46C1" />
+                      <Text style={styles.previewTitle}>Repayment Calculation ({activeCategory.repayment_frequency})</Text>
                     </View>
 
                     <View style={styles.previewGrid}>
@@ -505,13 +554,13 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
                         <Text style={styles.previewValue}>₹{principalAmount.toLocaleString('en-IN')}</Text>
                       </View>
                       <View style={styles.previewItem}>
-                        <Text style={styles.previewLabel}>Repayable ({flatRate}%)</Text>
+                        <Text style={styles.previewLabel}>Total ({flatRate}%)</Text>
                         <Text style={styles.previewValue}>₹{totalRepayable.toLocaleString('en-IN')}</Text>
                       </View>
                       <View style={[styles.previewItem, styles.previewHighlight]}>
-                        <Text style={styles.previewLabel}>Installment Due</Text>
+                        <Text style={styles.previewLabel}>Installment</Text>
                         <Text style={styles.previewValueHighlight}>
-                          ₹{installmentAmount.toLocaleString('en-IN')} / {tenureUnitSingular}
+                          ₹{installmentAmount.toLocaleString('en-IN')}/{tenureUnitSingular.toLowerCase()}
                         </Text>
                       </View>
                     </View>
@@ -530,20 +579,20 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
               activeOpacity={0.8}
             >
               {submitting ? (
-                <ActivityIndicator size="small" color={Colors.white} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <MaterialCommunityIcons name="account-plus" size={20} color={Colors.white} />
-                  <Text style={styles.createButtonText}>
-                    Save & Onboard Borrower ({activeCategory.repayment_frequency})
-                  </Text>
+                  <MaterialCommunityIcons name="content-save-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.createButtonText}>Save User</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
+
+          <View style={styles.bottomSpacing} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 
   if (visible !== undefined) {
@@ -558,3 +607,4 @@ export const AddU = ({ visible, onClose, onBack, onUserAdded }) => {
 };
 
 export default AddU;
+

@@ -194,6 +194,8 @@ CREATE TABLE IF NOT EXISTS customers (
     customer_code VARCHAR(50) NOT NULL,
     full_name VARCHAR(150) NOT NULL,
     phone VARCHAR(20) NOT NULL,
+    date_of_birth DATE NULL,
+    birth_year INT NULL,
     alternate_phone VARCHAR(20),
     address TEXT,
     city VARCHAR(100),

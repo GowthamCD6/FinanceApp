@@ -95,6 +95,10 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
   const [editedName, setEditedName] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
   const [editedType, setEditedType] = useState('user');
+  const [editedOccupation, setEditedOccupation] = useState('');
+  const [editedShopName, setEditedShopName] = useState('');
+  const [editedAddress, setEditedAddress] = useState('');
+  const [editedCity, setEditedCity] = useState('');
   const [editedNickname, setEditedNickname] = useState('');
   const [editedDateOfYear, setEditedDateOfYear] = useState('');
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
@@ -178,8 +182,12 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
     setEditedPhone(selectedUser.phone || '');
     const roleStr = (selectedUser.role || selectedUser.type || '').toString().toLowerCase();
     setEditedType(roleStr.includes('admin') ? 'admin' : 'user');
-    setEditedNickname(selectedUser.nickname || selectedUser.shop_name || selectedUser.occupation || '');
-    const dob = selectedUser.dateOfBirth || selectedUser.yearOfBirth || '';
+    setEditedOccupation(selectedUser.occupation || '');
+    setEditedShopName(selectedUser.shop_name || selectedUser.shopName || '');
+    setEditedAddress(selectedUser.address || '');
+    setEditedCity(selectedUser.city || '');
+    setEditedNickname(selectedUser.nickname || '');
+    const dob = selectedUser.birthYear || selectedUser.yearOfBirth || selectedUser.dateOfBirth || selectedUser.date_of_birth || '';
     setEditedDateOfYear(dob && String(dob).length >= 4 ? String(dob).substring(0, 4) : '');
     setShowMenu(false);
     setShowEditModal(true);
@@ -203,14 +211,21 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
     }
 
     try {
+      const birthYearVal = editedDateOfYear.trim() ? parseInt(editedDateOfYear.trim(), 10) : null;
       await apiService.updateUser(selectedUser.id, {
         name: editedName.trim(),
         phone: editedPhone.trim(),
-        role: editedType === 'admin' ? 'ADMIN' : 'COMMON_CUSTOMER',
+        role: editedType === 'admin' ? 'ADMIN' : (selectedUser.role || 'COMMON_CUSTOMER'),
         type: editedType === 'admin' ? 'Admin' : 'User',
-        nickname: editedNickname.trim(),
-        shop_name: editedNickname.trim(),
-        yearOfBirth: editedDateOfYear.trim(),
+        occupation: editedOccupation.trim(),
+        shopName: editedShopName.trim(),
+        shop_name: editedShopName.trim(),
+        address: editedAddress.trim(),
+        city: editedCity.trim(),
+        birthYear: birthYearVal,
+        birth_year: birthYearVal,
+        dateOfBirth: birthYearVal ? `${birthYearVal}-01-01` : null,
+        date_of_birth: birthYearVal ? `${birthYearVal}-01-01` : null,
       });
 
       setUsers(
@@ -221,16 +236,20 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 name: editedName.trim(),
                 phone: editedPhone.trim(),
                 type: editedType === 'admin' ? 'Admin' : 'User',
-                role: editedType === 'admin' ? 'ADMIN' : 'COMMON_CUSTOMER',
-                nickname: editedNickname.trim(),
-                shop_name: editedNickname.trim(),
-                dateOfBirth: editedDateOfYear.trim() ? `${editedDateOfYear.trim()}-01-01` : user.dateOfBirth,
+                role: editedType === 'admin' ? 'ADMIN' : (user.role || 'COMMON_CUSTOMER'),
+                occupation: editedOccupation.trim(),
+                shopName: editedShopName.trim(),
+                shop_name: editedShopName.trim(),
+                address: editedAddress.trim(),
+                city: editedCity.trim(),
+                birthYear: birthYearVal,
+                dateOfBirth: birthYearVal ? `${birthYearVal}-01-01` : user.dateOfBirth,
               }
             : user,
         ),
       );
       if (refreshData) refreshData();
-      Alert.alert('Success', 'User updated successfully');
+      Alert.alert('Success', 'User profile updated successfully');
       setShowEditModal(false);
     } catch (error) {
       console.error('Error updating user:', error);
@@ -485,22 +504,40 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 />
               </View>
 
-              {/* Nickname */}
+              {/* Occupation / Profession */}
               <View style={customStyles.inputGroup}>
                 <View style={customStyles.labelContainer}>
                   <MaterialCommunityIcons
-                    name="card-account-details-outline"
+                    name="briefcase-outline"
                     size={20}
                     color="#000000"
                   />
-                  <Text style={styles.inputLabel}>Nickname / Trade</Text>
-                  <Text style={styles.requiredStar}>*</Text>
+                  <Text style={styles.inputLabel}>Occupation / Profession</Text>
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedNickname}
-                  onChangeText={setEditedNickname}
-                  placeholder="Enter nickname or trade"
+                  value={editedOccupation}
+                  onChangeText={setEditedOccupation}
+                  placeholder="e.g. Tailor, Fabrication Worker, Driver"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              {/* Shop / Enterprise Name */}
+              <View style={customStyles.inputGroup}>
+                <View style={customStyles.labelContainer}>
+                  <MaterialCommunityIcons
+                    name="store-outline"
+                    size={20}
+                    color="#000000"
+                  />
+                  <Text style={styles.inputLabel}>Shop / Stall Name</Text>
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={editedShopName}
+                  onChangeText={setEditedShopName}
+                  placeholder="e.g. Sri Balaji General Stores"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
@@ -514,7 +551,6 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                     color="#000000"
                   />
                   <Text style={styles.inputLabel}>Birth Year</Text>
-                  <Text style={styles.requiredStar}>*</Text>
                 </View>
                 <TextInput
                   style={styles.textInput}
@@ -522,7 +558,45 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                   onChangeText={setEditedDateOfYear}
                   keyboardType="numeric"
                   maxLength={4}
-                  placeholder="YYYY"
+                  placeholder="YYYY (e.g. 1990)"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              {/* Address */}
+              <View style={customStyles.inputGroup}>
+                <View style={customStyles.labelContainer}>
+                  <MaterialCommunityIcons
+                    name="map-marker-outline"
+                    size={20}
+                    color="#000000"
+                  />
+                  <Text style={styles.inputLabel}>Address</Text>
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={editedAddress}
+                  onChangeText={setEditedAddress}
+                  placeholder="e.g. 42 Bazaar Road, Saidapet"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              {/* City */}
+              <View style={customStyles.inputGroup}>
+                <View style={customStyles.labelContainer}>
+                  <MaterialCommunityIcons
+                    name="city"
+                    size={20}
+                    color="#000000"
+                  />
+                  <Text style={styles.inputLabel}>City</Text>
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={editedCity}
+                  onChangeText={setEditedCity}
+                  placeholder="e.g. Chennai"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
@@ -586,12 +660,12 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 style={customStyles.saveButtonFull}
                 onPress={confirmEdit}>
                 <MaterialCommunityIcons
-                  name="plus-circle"
+                  name="check-circle-outline"
                   size={20}
                   color="#FFFFFF"
                 />
                 <Text style={[customStyles.buttonText, { color: '#FFFFFF' }]}>
-                  Update User
+                  Update User Profile
                 </Text>
               </TouchableOpacity>
             </View>
@@ -729,19 +803,36 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
               </View>
 
-              {/* Nickname */}
+              {/* Occupation / Profession */}
               <View style={customStyles.inputGroup}>
                 <View style={customStyles.labelContainer}>
                   <MaterialCommunityIcons
-                    name="card-account-details-outline"
+                    name="briefcase-outline"
                     size={20}
                     color="#000000"
                   />
-                  <Text style={styles.inputLabel}>Nickname / Trade</Text>
+                  <Text style={styles.inputLabel}>Occupation / Profession</Text>
                 </View>
                 <View style={customStyles.viewDataContainer}>
                   <Text style={customStyles.viewDataText}>
-                    {selectedUser?.nickname || selectedUser?.shop_name || selectedUser?.occupation || 'N/A'}
+                    {selectedUser?.occupation || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Shop Name */}
+              <View style={customStyles.inputGroup}>
+                <View style={customStyles.labelContainer}>
+                  <MaterialCommunityIcons
+                    name="store-outline"
+                    size={20}
+                    color="#000000"
+                  />
+                  <Text style={styles.inputLabel}>Shop / Stall Name</Text>
+                </View>
+                <View style={customStyles.viewDataContainer}>
+                  <Text style={customStyles.viewDataText}>
+                    {selectedUser?.shop_name || selectedUser?.shopName || 'N/A'}
                   </Text>
                 </View>
               </View>
@@ -758,12 +849,29 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <View style={customStyles.viewDataContainer}>
                   <Text style={customStyles.viewDataText}>
-                    {selectedUser?.dateOfBirth && selectedUser.dateOfBirth !== 'N/A'
-                      ? String(selectedUser.dateOfBirth).split('T')[0]
-                      : selectedUser?.yearOfBirth || 'N/A'}
+                    {selectedUser?.birthYear || (selectedUser?.dateOfBirth ? String(selectedUser.dateOfBirth).split('T')[0] : selectedUser?.yearOfBirth || 'N/A')}
                   </Text>
                 </View>
               </View>
+
+              {/* Address & City */}
+              {(selectedUser?.address || selectedUser?.city) && (
+                <View style={customStyles.inputGroup}>
+                  <View style={customStyles.labelContainer}>
+                    <MaterialCommunityIcons
+                      name="map-marker-outline"
+                      size={20}
+                      color="#000000"
+                    />
+                    <Text style={styles.inputLabel}>Address / Location</Text>
+                  </View>
+                  <View style={customStyles.viewDataContainer}>
+                    <Text style={customStyles.viewDataText}>
+                      {[selectedUser?.address, selectedUser?.city].filter(Boolean).join(', ')}
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               {/* Member Since */}
               <View style={customStyles.inputGroup}>
@@ -777,11 +885,11 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <View style={customStyles.viewDataContainer}>
                   <Text style={customStyles.viewDataText}>
-                    {selectedUser?.joinedDate && selectedUser.joinedDate !== 'N/A'
+                    {selectedUser?.dateJoined || (selectedUser?.joinedDate && selectedUser.joinedDate !== 'N/A'
                       ? String(selectedUser.joinedDate).split('T')[0]
                       : selectedUser?.createdAt
                       ? String(selectedUser.createdAt).split('T')[0]
-                      : 'N/A'}
+                      : 'N/A')}
                   </Text>
                 </View>
               </View>
@@ -794,11 +902,11 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                     size={20}
                     color="#000000"
                   />
-                  <Text style={styles.inputLabel}>Contributed Groups / Category</Text>
+                  <Text style={styles.inputLabel}>Borrower Code & Status</Text>
                 </View>
                 <View style={[customStyles.viewDataContainer, { minHeight: 52, paddingVertical: 12 }]}>
                   <Text style={[customStyles.viewDataText, { lineHeight: 22 }]}>
-                    {selectedUser?.contributedGroups || (selectedUser?.status ? `${selectedUser.status} • ${selectedUser?.customer_code || 'Registered Borrower'}` : 'None')}
+                    {selectedUser?.customerCode || selectedUser?.customer_code || 'Borrower'} • {selectedUser?.status || 'ACTIVE'}
                   </Text>
                 </View>
               </View>

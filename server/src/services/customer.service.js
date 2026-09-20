@@ -37,11 +37,30 @@ async function createCustomer(data, userId) {
     registration_date,
     organizationId,
     organization_id,
+    dob,
+    dateOfBirth,
+    date_of_birth,
+    birthYear,
+    birth_year,
   } = data;
 
   const resolvedName = fullName || full_name;
   const resolvedType = customerType || customer_type;
   const resolvedPhone = phone;
+
+  // Resolve DOB and Birth Year
+  let resolvedDob = date_of_birth || dateOfBirth || dob || null;
+  let resolvedBirthYear = birth_year || birthYear || null;
+
+  if (resolvedDob && !resolvedBirthYear) {
+    const parsedYear = new Date(resolvedDob).getFullYear();
+    if (!isNaN(parsedYear)) resolvedBirthYear = parsedYear;
+  } else if (resolvedBirthYear && !resolvedDob) {
+    resolvedBirthYear = parseInt(resolvedBirthYear, 10);
+    if (!isNaN(resolvedBirthYear)) {
+      resolvedDob = `${resolvedBirthYear}-01-01`;
+    }
+  }
 
   if (!resolvedName || !resolvedPhone || !resolvedType) {
     throw new Error('Full name, phone, and customer type are required.');
@@ -80,14 +99,16 @@ async function createCustomer(data, userId) {
 
   const result = await query(
     `INSERT INTO customers 
-     (organization_id, branch_id, customer_code, full_name, phone, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
+     (organization_id, branch_id, customer_code, full_name, phone, date_of_birth, birth_year, alternate_phone, address, city, customer_type, occupation, shop_name, stall_no, market_location, credit_limit, status, registration_date, user_id, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
     [
       effectiveOrgId,
       effectiveBranchId,
       customerCode,
       resolvedName,
       resolvedPhone,
+      resolvedDob || null,
+      resolvedBirthYear || null,
       alternatePhone || alternate_phone || null,
       address || null,
       city || null,
@@ -158,6 +179,10 @@ async function getCustomers({ search, customerType, status, organizationId, bran
        c.phone,
        c.customer_type,
        c.shop_name,
+       c.occupation,
+       c.address,
+       c.date_of_birth,
+       c.birth_year,
        c.city,
        c.status,
        c.registration_date,
