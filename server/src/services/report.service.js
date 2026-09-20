@@ -489,8 +489,19 @@ async function getPaymentReport({ startDate, endDate, frequency, status, organiz
   const params = [];
 
   if (startDate && endDate && startDate !== 'ALL') {
-    whereClauses.push(`DATE(li.due_date) BETWEEN ? AND ?`);
-    params.push(startDate, endDate);
+    if (status === 'OVERDUE') {
+      whereClauses.push(`DATE(li.due_date) <= ? AND DATE(li.due_date) < ? AND (li.status != 'PAID' AND (li.outstanding_amount > 0 OR li.paid_amount < li.scheduled_amount))`);
+      params.push(endDate, today);
+    } else if (status === 'PAID') {
+      whereClauses.push(`DATE(li.due_date) BETWEEN ? AND ?`);
+      params.push(startDate, endDate);
+    } else {
+      whereClauses.push(`(
+        DATE(li.due_date) BETWEEN ? AND ?
+        OR (DATE(li.due_date) <= ? AND DATE(li.due_date) < ? AND (li.status != 'PAID' AND (li.outstanding_amount > 0 OR li.paid_amount < li.scheduled_amount)))
+      )`);
+      params.push(startDate, endDate, endDate, today);
+    }
   }
 
   if (organizationId && organizationId !== 'ALL') {
