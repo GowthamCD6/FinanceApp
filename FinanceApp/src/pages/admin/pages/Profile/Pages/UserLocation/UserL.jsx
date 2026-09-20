@@ -1,0 +1,623 @@
+import React, {useState, useMemo, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  StatusBar,
+  FlatList,
+  Alert,
+  Linking,
+  TextInput,
+  Modal,
+  ScrollView,
+  KeyboardAvoidingView,
+  ActivityIndicator,
+  BackHandler,
+} from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LottieView from 'lottie-react-native';
+import { useNavigation } from '@react-navigation/native';
+import Header from '../../../../../../components/HeaderComponent/Header';
+import apiService from '../../../../../../services/apiService';
+import { useLanguage } from '../../../../../../utils/LanguageContext';
+
+const navigateAnimation = require('../../../../../../animation/Navigate_House_Address.json');
+
+let Clipboard;
+try {
+  Clipboard = require('@react-native-clipboard/clipboard').default || require('@react-native-clipboard/clipboard');
+} catch (e) {
+  Clipboard = {
+    setString: (str) => console.log('Copied to clipboard:', str),
+  };
+}
+
+const UserL = ({ onBack }) => {
+  const { t } = useLanguage();
+  let navigation;
+  try {
+    navigation = useNavigation();
+  } catch (e) {
+    navigation = { goBack: () => onBack && onBack() };
+  }
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else if (navigation && navigation.goBack) {
+      navigation.goBack();
+    }
+  };
+
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (showLocationModal) {
+        setShowLocationModal(false);
+        return true;
+      }
+      handleBack();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [onBack, showLocationModal]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fallbackBorrowers = [
+      { id: '1', name: 'Kumar Swaminathan', phone: '+91 98765 43210', address: '42 Triplicane High Rd, Triplicane, Chennai', latitude: 13.0595, longitude: 80.2757, coordinates: '13.0595, 80.2757', status: 'ACTIVE' },
+      { id: '2', name: 'Meena Ramesh', phone: '+91 98402 11223', address: '15 Anna Nagar 2nd Ave, Chennai', latitude: 13.0850, longitude: 80.2101, coordinates: '13.0850, 80.2101', status: 'ACTIVE' },
+      { id: '3', name: 'Senthil Nathan', phone: '+91 94441 55667', address: '88 Usman Road, T. Nagar, Chennai', latitude: 13.0418, longitude: 80.2341, coordinates: '13.0418, 80.2341', status: 'ACTIVE' },
+      { id: '4', name: 'Karthik Raja', phone: '+91 97910 88990', address: '12 GST Road, Tambaram, Chennai', latitude: 12.9249, longitude: 80.1000, coordinates: '12.9249, 80.1000', status: 'ACTIVE' },
+    ];
+
+    const fetchUserLocations = async (isInitial = false) => {
+      try {
+        if (isInitial) setLoading(true);
+        const response = await apiService.makeRequest('/admin/users/locations', {
+          method: 'GET',
+        });
+        const result = await response.json();
+        if (isMounted) {
+          if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+            setUsers(result.data);
+          } else {
+            setUsers(fallbackBorrowers);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user locations:', error);
+        if (isMounted) {
+          setUsers(fallbackBorrowers);
+        }
+      } finally {
+        if (isMounted && isInitial) setLoading(false);
+      }
+    };
+
+    fetchUserLocations(true);
+
+    const intervalId = setInterval(() => {
+      fetchUserLocations(false);
+    }, 25000); // Poll every 25 seconds to optimize server load
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  // Memoized list for efficient search filtering with defensive null checks
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery) return users;
+    const q = searchQuery.toLowerCase();
+    return users.filter(
+      u => (u.name || '').toLowerCase().includes(q) || (u.address || '').toLowerCase().includes(q),
+    );
+  }, [users, searchQuery]);
+
+  const handleUserSelect = user => {
+    setSelectedUser(user);
+    setShowLocationModal(true);
+  };
+
+  const handleBackPress = () => {
+    handleBack();
+  };
+
+  // 🌍 Smart navigation - uses coordinates if available, otherwise searches in Google Maps
+  const startNavigation = async (user) => {
+    try {
+      setShowLocationModal(false); // Close modal
+      
+      console.log('Starting navigation to:', user?.name);
+      console.log('Address:', user?.address);
+      
+      let navigationUrl = '';
+      
+      // Check if user has exact coordinates
+      if (user?.latitude && user?.longitude) {
+        // Use exact coordinates for precise navigation
+        const destination = `${user.latitude},${user.longitude}`;
+        console.log('Using exact coordinates:', destination);
+        
+        if (Platform.OS === 'android') {
+          navigationUrl = `google.navigation:q=${destination}&mode=d`;
+          const canOpen = await Linking.canOpenURL(navigationUrl);
+          if (canOpen) {
+            await Linking.openURL(navigationUrl);
+            return;
+          }
+          navigationUrl = `geo:${destination}?q=${destination}`;
+          await Linking.openURL(navigationUrl);
+        } else {
+          navigationUrl = `comgooglemaps://?daddr=${destination}&directionsmode=driving`;
+          const canOpen = await Linking.canOpenURL(navigationUrl);
+          if (canOpen) {
+            await Linking.openURL(navigationUrl);
+            return;
+          }
+          navigationUrl = `maps://?daddr=${destination}&dirflg=d`;
+          await Linking.openURL(navigationUrl);
+        }
+      } else {
+        // No coordinates - Open Google Maps search with full address
+        // This allows user to see search results and select the correct location
+        const encodedAddress = encodeURIComponent(user?.address || '');
+        
+        if (Platform.OS === 'android') {
+          // Open Google Maps search (not direct navigation)
+          // User can then tap the location and start navigation manually
+          navigationUrl = `geo:0,0?q=${encodedAddress}`;
+          
+          const canOpen = await Linking.canOpenURL(navigationUrl);
+          if (canOpen) {
+            await Linking.openURL(navigationUrl);
+            
+            // Show helpful message
+            setTimeout(() => {
+              Alert.alert(
+                'Location Search',
+                'Google Maps is showing search results. Please:\n\n1. Find the correct location from results\n2. Tap on it to see details\n3. Tap "Directions" to start navigation\n\nIf the exact address is not found, you can tap on the map to drop a pin at the correct location.',
+                [{text: 'Got it'}]
+              );
+            }, 1000);
+            return;
+          }
+          
+          // Fallback to web Google Maps
+          navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+          await Linking.openURL(navigationUrl);
+        } else {
+          // iOS - Open in search mode
+          navigationUrl = `comgooglemaps://?q=${encodedAddress}`;
+          const canOpen = await Linking.canOpenURL(navigationUrl);
+          
+          if (canOpen) {
+            await Linking.openURL(navigationUrl);
+            
+            setTimeout(() => {
+              Alert.alert(
+                'Location Search',
+                'Google Maps is showing search results. Please find the correct location and tap "Directions" to navigate.',
+                [{text: 'Got it'}]
+              );
+            }, 1000);
+            return;
+          }
+          
+          navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+          await Linking.openURL(navigationUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert(
+        'Navigation Error',
+        'Could not open maps app. Please make sure Google Maps is installed.',
+        [{text: 'OK'}]
+      );
+    }
+  };
+
+  const renderSearchBar = () => (
+    <View style={styles.searchContainer}>
+      <View style={styles.searchBar}>
+        <MaterialCommunityIcons name="magnify" size={22} color="#6B7280" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t('Search user or location...')}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor="#9CA3AF"
+        />
+        {searchQuery ? (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <MaterialCommunityIcons name="close-circle" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const UserCard = ({user}) => (
+    <TouchableOpacity style={styles.userCard} onPress={() => handleUserSelect(user)}>
+      <View style={styles.userInfo}>
+        <View style={styles.userIconContainer}>
+          <MaterialCommunityIcons name="map-marker-radius" size={24} color="#3B82F6" />
+        </View>
+        <View style={styles.userTextContainer}>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userAddress} numberOfLines={1}>{user.address}</Text>
+        </View>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={22} color="#6B7280" />
+    </TouchableOpacity>
+  );
+
+  const renderUserList = () => (
+    <View style={styles.container}>
+      <Header 
+        title={t('User Location Map')}
+        onBack={handleBackPress}
+        showBackButton={true}
+      />
+      <View style={styles.separator} />
+      {renderSearchBar()}
+
+      <View style={styles.content}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0066FF" />
+            <Text style={styles.loadingText}>{t('Loading data...')}</Text>
+          </View>
+        ) : (
+          <>
+            {/* Map Route Header Indicator with Lottie Animation */}
+            {filteredUsers.length > 0 && (
+              <View style={styles.animationContainer}>
+                <LottieView
+                  source={navigateAnimation}
+                  autoPlay
+                  loop
+                  style={styles.navigationLottie}
+                />
+                <View style={{ width: '100%', padding: 14, backgroundColor: '#EFF6FF', borderRadius: 12, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 12 }}>
+                  <MaterialCommunityIcons name="routes" size={26} color="#2563EB" style={{ marginRight: 10 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E40AF' }}>Live Borrower Route Map</Text>
+                    <Text style={{ fontSize: 12, color: '#3B82F6' }}>Select a borrower below to start real-time GPS navigation</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <FlatList
+              data={filteredUsers}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              renderItem={({item}) => <UserCard user={item} />}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <MaterialCommunityIcons name="map-marker-off" size={64} color="#D1D5DB" />
+                  <Text style={styles.emptyStateText}>{t('No locations available')}</Text>
+                </View>
+              }
+            />
+          </>
+        )}
+      </View>
+    </View>
+  );
+
+  const renderLocationModal = () => (
+    <Modal 
+      visible={showLocationModal} 
+      transparent 
+      animationType="fade" 
+      onRequestClose={() => setShowLocationModal(false)}
+    >
+      <View style={styles.centeredModalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalIconContainer}>
+              <MaterialCommunityIcons name="map-marker-radius" size={32} color="#0066FF" />
+            </View>
+          </View>
+
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('Start Navigation')}</Text>
+            <Text style={styles.modalUserName}>{selectedUser?.name}</Text>
+            <View style={styles.addressContainer}>
+              <MaterialCommunityIcons name="map-marker" size={16} color="#6B7280" />
+              <Text style={styles.modalAddress} numberOfLines={3}>
+                {selectedUser?.address}
+              </Text>
+            </View>
+            
+            {selectedUser?.latitude && selectedUser?.longitude ? (
+              <View style={styles.coordinatesBadge}>
+                <MaterialCommunityIcons name="crosshairs-gps" size={14} color="#10B981" />
+                <Text style={styles.coordinatesText}>{t('Live Tracking')}</Text>
+              </View>
+            ) : (
+              <View style={styles.warningBadge}>
+                <MaterialCommunityIcons name="information" size={14} color="#F59E0B" />
+                <Text style={styles.warningText}>{t('Address')}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.startNavigationButton}
+              onPress={() => selectedUser && startNavigation(selectedUser)}
+            >
+              <MaterialCommunityIcons name="navigation" size={24} color="#FFF" />
+              <Text style={styles.startNavigationText}>
+                {selectedUser?.latitude && selectedUser?.longitude ? t('Start Navigation') : t('Search user or location...')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowLocationModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>{t('Cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  return (
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+      {renderUserList()}
+      {renderLocationModal()}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  mainContainer: {flex: 1, backgroundColor: '#FFF'},
+  container: {flex: 1, backgroundColor: '#FFF'},
+  separator: {height: 1, backgroundColor: '#E5E7EB'},
+  animationContainer: {
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 8,
+    paddingVertical: 8,
+    backgroundColor: 'transparent',
+  },
+  navigationLottie: {
+    width: 300,
+    height: 200,
+    marginTop: -40,
+    marginBottom: -40,
+  },
+  searchContainer: {padding: 16, backgroundColor: '#FFF'},
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 58,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
+  },
+  content: {flex: 1, paddingHorizontal: 16, paddingTop: 8},
+  listContent: {paddingBottom: 100},
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  userInfo: {flexDirection: 'row', alignItems: 'center', flex: 1},
+  userIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: '#DBEAFE',
+  },
+  userTextContainer: {flex: 1},
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  userAddress: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
+  },
+  emptyState: {alignItems: 'center', justifyContent: 'center', paddingTop: 80},
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 12,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    width: '85%',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    paddingTop: 28,
+    paddingBottom: 16,
+  },
+  modalIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#E6F2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  modalUserName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0066FF',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  addressContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  modalAddress: {
+    flex: 1,
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 8,
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
+  },
+  coordinatesBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 12,
+  },
+  coordinatesText: {
+    fontSize: 12,
+    color: '#10B981',
+    marginLeft: 6,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-SemiBold' : 'Poppins-SemiBold',
+  },
+  warningBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 12,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    marginLeft: 6,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-SemiBold' : 'Poppins-SemiBold',
+  },
+  modalActions: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  startNavigationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0066FF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#0066FF',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  startNavigationText: {
+    color: '#FFF',
+    fontSize: 17,
+    fontWeight: '700',
+    marginLeft: 10,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  cancelButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-SemiBold' : 'Poppins-SemiBold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+});
+
+export default UserL;

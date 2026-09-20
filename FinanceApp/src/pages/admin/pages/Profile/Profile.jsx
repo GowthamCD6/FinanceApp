@@ -11,6 +11,7 @@ import {
   Image,
   Share,
   Linking,
+  Modal,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -28,22 +29,22 @@ import { useLanguage } from '../../../../utils/LanguageContext';
 import Colors from '../../../../theme/colors';
 import { formatINR } from '../../../../utils/helpers';
 
-// Settings Sub-Page Modals
-import {
-  EditProfileModal,
-  PasswordManagementModal,
-  SecurityPermModal,
-  NotificationSettingsModal,
-  LanguageSettingsModal,
-  OTPRequestsModal,
-  AuctionSettingsModal,
-  DataExportModal,
-  BlockUserModal,
-  UserLocationMapModal,
-  LocationSharingModal,
-  HelpSupportModal,
-  PrivacyPolicyModal,
-} from './subpages/SettingsPages';
+// Dedicated Profile Pages
+import EditProfile from './Pages/AccountDetails/EditProfile';
+import PasswordManagement from './Pages/PasswordManagement/PasswordManagement';
+import SecurPermis from './Pages/SecurityLock/SecurityPermision';
+import LanguageSettings from './Pages/LanguageSettings/LanguageSettings';
+import BlockUserScreen from './Pages/BlockUser/BlockUser';
+import UserL from './Pages/UserLocation/UserL';
+import MyLocation from './Pages/MyLocation/MyLocation';
+
+// Additional Dedicated Pages
+import NotificationSettings from './Pages/NotificationSettings/NotificationSettings';
+import OTPRequests from './Pages/OTPRequests/OTPRequests';
+import AuctionSettings from './Pages/AuctionSettings/AuctionSettings';
+import DataExport from './Pages/DataExport/DataExport';
+import HelpSupport from './Pages/HelpSupport/HelpSupport';
+import PrivacyPolicy from './Pages/PrivacyPolicy/PrivacyPolicy';
 
 export const AdminProfile = () => {
   const { currentUser, logout, fundMetrics, customers, loans } = useApp();
@@ -280,6 +281,144 @@ export const AdminProfile = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
+      {/* Dedicated Separate Pages (Full-Screen Slide) */}
+      <Modal
+        visible={activeModal === 'EDIT_PROFILE'}
+        animationType="slide"
+        onRequestClose={() => {
+          loadUserData();
+          setActiveModal(null);
+        }}
+      >
+        <EditProfile
+          onBack={() => {
+            loadUserData();
+            setActiveModal(null);
+          }}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'PASSWORD_MGMT'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <PasswordManagement
+          onBack={() => setActiveModal(null)}
+          onClose={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'SECURITY_PERM'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <SecurPermis
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'LANGUAGE'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <LanguageSettings
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'BLOCK_USER'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <BlockUserScreen
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'USER_LOCATION'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <UserL
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'MY_LOCATION'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <MyLocation
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'NOTIFICATIONS'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <NotificationSettings
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'OTP_REQUESTS'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <OTPRequests
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'AUCTION_SETTINGS'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <AuctionSettings
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'DATA_EXPORT'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <DataExport
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'HELP_SUPPORT'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <HelpSupport
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'PRIVACY_POLICY'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <PrivacyPolicy
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -402,78 +541,16 @@ export const AdminProfile = () => {
         </View>
       </ScrollView>
 
-      {/* Subpage Modals */}
-      <EditProfileModal
-        visible={activeModal === 'EDIT_PROFILE'}
-        onClose={() => setActiveModal(null)}
-        userData={userData}
-        onSave={(updated) => setUserData(prev => ({ ...prev, ...updated }))}
-      />
 
-      <PasswordManagementModal
-        visible={activeModal === 'PASSWORD_MGMT'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <SecurityPermModal
-        visible={activeModal === 'SECURITY_PERM'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <NotificationSettingsModal
-        visible={activeModal === 'NOTIFICATIONS'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <LanguageSettingsModal
-        visible={activeModal === 'LANGUAGE'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <OTPRequestsModal
-        visible={activeModal === 'OTP_REQUESTS'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <AuctionSettingsModal
-        visible={activeModal === 'AUCTION_SETTINGS'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <DataExportModal
-        visible={activeModal === 'DATA_EXPORT'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <BlockUserModal
-        visible={activeModal === 'BLOCK_USER'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <UserLocationMapModal
-        visible={activeModal === 'USER_LOCATION'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <LocationSharingModal
-        visible={activeModal === 'MY_LOCATION'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <HelpSupportModal
-        visible={activeModal === 'HELP_SUPPORT'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <PrivacyPolicyModal
-        visible={activeModal === 'PRIVACY_POLICY'}
-        onClose={() => setActiveModal(null)}
-      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  fullscreenContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F7F7F7',

@@ -72,6 +72,24 @@ class ApiService {
     throw lastError || new Error('Network request failed. Please check backend server.');
   }
 
+  // Generic makeRequest helper for compatibility with custom subpage calls
+  async makeRequest(endpoint, options = {}) {
+    const formattedEndpoint = endpoint.startsWith('/api')
+      ? endpoint.replace(/^\/api/, '')
+      : endpoint;
+    const res = await this.request(formattedEndpoint, options);
+    // Return mock response object with json() method if expected by caller
+    return {
+      ok: true,
+      status: 200,
+      json: async () => res,
+      data: res.data || res,
+      success: res.success !== undefined ? res.success : true,
+      message: res.message || 'Success',
+      ...res,
+    };
+  }
+
   // 1. AUTH & PROFILES
   async login(identifier, password) {
     const res = await this.request('/auth/login', {
@@ -83,6 +101,90 @@ class ApiService {
       this.setToken(token);
     }
     return res.data || res;
+  }
+
+  async getProfile() {
+    try {
+      const res = await this.request('/user/profile');
+      return {
+        success: true,
+        data: res.data || res,
+        message: res.message || 'Profile retrieved',
+      };
+    } catch (e) {
+      return {
+        success: false,
+        data: null,
+        message: e.message,
+      };
+    }
+  }
+
+  async updateProfile(profileData) {
+    const res = await this.request('/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+    return {
+      success: true,
+      data: res.data || res,
+      message: res.message || 'Profile updated successfully',
+    };
+  }
+
+  async getUserPreferences() {
+    try {
+      const res = await this.request('/user/preferences');
+      return {
+        success: true,
+        data: res.data || res,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        data: null,
+        message: e.message,
+      };
+    }
+  }
+
+  async saveUserPreferences(preferences) {
+    const res = await this.request('/user/preferences', {
+      method: 'POST',
+      body: JSON.stringify(preferences),
+    });
+    return {
+      success: true,
+      data: res.data || res,
+    };
+  }
+
+  async getMyLocation() {
+    try {
+      const res = await this.request('/user/my-location');
+      return {
+        success: true,
+        data: res.data || res,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        data: null,
+        message: e.message,
+      };
+    }
+  }
+
+  async saveMyLocation(locationData) {
+    const res = await this.request('/user/save-location', {
+      method: 'POST',
+      body: JSON.stringify(locationData),
+    });
+    return {
+      success: true,
+      data: res.data || res,
+      message: res.message || 'Location saved successfully',
+    };
   }
 
   // 2. CUSTOMERS
@@ -316,7 +418,44 @@ class ApiService {
     });
     return res.data || res;
   }
+
+  async getAllUsers() {
+    try {
+      const res = await this.request('/users');
+      return {
+        success: true,
+        data: res.data?.users || res.data || res || [],
+      };
+    } catch (e) {
+      return {
+        success: false,
+        data: [],
+        message: e.message,
+      };
+    }
+  }
+
+  async blockUser(id, reason = 'Defaulted repayments') {
+    return this.updateUserStatus(id, 'BLOCKED', reason);
+  }
+
+  async unblockUser(id) {
+    return this.updateUserStatus(id, 'ACTIVE', 'Unblocked by admin');
+  }
+
+  async updatePassword({ userId, newPassword, currentPassword }) {
+    const res = await this.request('/auth/update-password', {
+      method: 'POST',
+      body: JSON.stringify({ userId, newPassword, currentPassword }),
+    });
+    return {
+      success: true,
+      data: res.data || res,
+      message: res.message || 'Password updated successfully',
+    };
+  }
 }
 
 export const apiService = new ApiService();
+export { ApiService };
 export default apiService;
