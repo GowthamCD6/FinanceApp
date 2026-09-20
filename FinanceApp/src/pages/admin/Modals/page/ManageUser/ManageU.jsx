@@ -13,7 +13,11 @@ import {
   Alert,
   Animated,
   Image,
+  StatusBar,
+  BackHandler,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { apiService } from '../../../../../services/apiService';
 import Header from '../../../../../components/HeaderComponent/Header';
@@ -82,30 +86,67 @@ const UserRowSkeleton = () => (
   </View>
 );
 
+const ViewDetailsSkeleton = () => (
+  <View style={{ paddingTop: 6, paddingBottom: 24 }}>
+    <View style={{ alignItems: 'center', marginVertical: 14 }}>
+      <SkeletonBox width={80} height={80} borderRadius={40} style={{ marginBottom: 12 }} />
+      <SkeletonBox width={160} height={20} borderRadius={6} style={{ marginBottom: 8 }} />
+      <SkeletonBox width={90} height={22} borderRadius={12} />
+    </View>
+
+    {[1, 2, 3, 4, 5, 6].map((key) => (
+      <View key={key} style={customStyles.inputGroup}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <SkeletonBox width={18} height={18} borderRadius={4} />
+          <SkeletonBox width={130} height={14} borderRadius={4} />
+        </View>
+        <SkeletonBox width="100%" height={52} borderRadius={12} />
+      </View>
+    ))}
+  </View>
+);
+
 export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
-  const { customers, currentOrganization, refreshData } = useApp();
+  const { customers, loans, currentOrganization, refreshData } = useApp();
   const orgId = currentOrganization?.id || 1;
 
+  // Stable top-level Hook declarations
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [editedName, setEditedName] = useState('');
-  const [editedPhone, setEditedPhone] = useState('');
-  const [editedType, setEditedType] = useState('user');
-  const [editedOccupation, setEditedOccupation] = useState('');
-  const [editedShopName, setEditedShopName] = useState('');
-  const [editedAddress, setEditedAddress] = useState('');
-  const [editedCity, setEditedCity] = useState('');
-  const [editedNickname, setEditedNickname] = useState('');
-  const [editedDateOfYear, setEditedDateOfYear] = useState('');
+  const [activeModal, setActiveModal] = useState(null); // 'MENU' | 'EDIT' | 'DELETE' | 'VIEW' | null
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [selectedUserDetails, setSelectedUserDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    phone: '',
+    type: 'user',
+    occupation: '',
+    shopName: '',
+    address: '',
+    city: '',
+    nickname: '',
+    dateOfYear: '',
+  });
+
   const menuButtonRefs = useRef({});
 
-  const [users, setUsers] = useState([]);
+  // Hardware Back button handling
+  useEffect(() => {
+    const backAction = () => {
+      if (activeModal) {
+        setActiveModal(null);
+        return true;
+      }
+      handleDismiss();
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [activeModal]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -129,11 +170,74 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
     fetchUsers();
   }, [orgId]);
 
+  const getUserLoanInfo = (user) => {
+    if (!user) return null;
+
+    // 1. Direct loans array from backend getUserById
+    const backendLoans = Array.isArray(user.loans) ? user.loans : [];
+    // 2. Or matching loans from AppContext
+    const contextLoans = (loans || []).filter((l) =>
+      (l.customer_id && String(l.customer_id) === String(user.id || user.customer_id)) ||
+      (l.customerId && String(l.customerId) === String(user.id || user.customer_id)) ||
+      (l.customer_phone && String(l.customer_phone) === String(user.phone)) ||
+      (l.phone && String(l.phone) === String(user.phone))
+    );
+
+    const allLoans = backendLoans.length > 0 ? backendLoans : contextLoans;
+
+    if (!allLoans || allLoans.length === 0) {
+      return null;
+    }
+
+    const activeLoan = allLoans.find((l) =>
+      ['ACTIVE', 'OVERDUE', 'DISBURSED', 'PARTIALLY_PAID', 'RUNNING'].includes((l.status || '').toUpperCase())
+    ) || allLoans[0];
+
+    if (!activeLoan) return null;
+
+    const principal = parseFloat(
+      activeLoan.principal_amount ||
+      activeLoan.principal ||
+      activeLoan.amount ||
+      activeLoan.loan_amount ||
+      0
+    );
+
+    if (principal <= 0) return null;
+
+    const freq = (activeLoan.repayment_frequency || activeLoan.frequency || '').toUpperCase();
+    const prodName = (activeLoan.product_name || activeLoan.loan_type || '').toLowerCase();
+    const code = (activeLoan.category_code || '').toUpperCase();
+
+    let schemeType = 'Weekly';
+    if (freq === 'DAILY' || prodName.includes('daily') || prodName.includes('shop') || code.includes('DLY')) {
+      schemeType = 'Shop (Daily)';
+    } else if (freq === 'MONTHLY' || prodName.includes('monthly') || code.includes('MO')) {
+      schemeType = 'Monthly';
+    } else if (freq === 'WEEKLY' || prodName.includes('weekly') || code.includes('WK')) {
+      schemeType = 'Weekly';
+    }
+
+    const status = (activeLoan.status || 'ACTIVE').toUpperCase();
+    const totalPaid = parseFloat(activeLoan.total_paid || 0);
+    const remaining = parseFloat(
+      activeLoan.remaining_balance ??
+      (parseFloat(activeLoan.total_repayment_amount || 0) - totalPaid)
+    );
+
+    return {
+      amountText: `₹${principal.toLocaleString('en-IN')}`,
+      schemeType,
+      status,
+      totalLoansCount: allLoans.length,
+      totalPaidText: totalPaid > 0 ? `₹${totalPaid.toLocaleString('en-IN')}` : null,
+      remainingText: remaining > 0 ? `₹${remaining.toLocaleString('en-IN')}` : null,
+    };
+  };
+
   const handleDismiss = () => {
-    setShowMenu(false);
-    setShowEditModal(false);
-    setShowDeleteModal(false);
-    setShowViewModal(false);
+    setActiveModal(null);
+    setSelectedUserDetails(null);
     if (onClose) onClose();
     if (onBack) onBack();
   };
@@ -168,60 +272,76 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
           top: (pageY || 0) + (_height || 0) + 5,
           right: Platform.OS === 'ios' ? 16 : 24,
         });
-        setShowMenu(true);
+        setActiveModal('MENU');
       });
     } else {
       setMenuPosition({ top: 120, right: Platform.OS === 'ios' ? 16 : 24 });
-      setShowMenu(true);
+      setActiveModal('MENU');
     }
   };
 
   const handleEdit = () => {
     if (!selectedUser) return;
-    setEditedName(selectedUser.name || selectedUser.full_name || selectedUser.nickname || '');
-    setEditedPhone(selectedUser.phone || '');
     const roleStr = (selectedUser.role || selectedUser.type || '').toString().toLowerCase();
-    setEditedType(roleStr.includes('admin') ? 'admin' : 'user');
-    setEditedOccupation(selectedUser.occupation || '');
-    setEditedShopName(selectedUser.shop_name || selectedUser.shopName || '');
-    setEditedAddress(selectedUser.address || '');
-    setEditedCity(selectedUser.city || '');
-    setEditedNickname(selectedUser.nickname || '');
     const dob = selectedUser.birthYear || selectedUser.yearOfBirth || selectedUser.dateOfBirth || selectedUser.date_of_birth || '';
-    setEditedDateOfYear(dob && String(dob).length >= 4 ? String(dob).substring(0, 4) : '');
-    setShowMenu(false);
-    setShowEditModal(true);
+
+    setEditFormData({
+      name: selectedUser.name || selectedUser.full_name || selectedUser.nickname || '',
+      phone: selectedUser.phone || '',
+      type: roleStr.includes('admin') ? 'admin' : 'user',
+      occupation: selectedUser.occupation || '',
+      shopName: selectedUser.shop_name || selectedUser.shopName || '',
+      address: selectedUser.address || '',
+      city: selectedUser.city || '',
+      nickname: selectedUser.nickname || '',
+      dateOfYear: dob && String(dob).length >= 4 ? String(dob).substring(0, 4) : '',
+    });
+
+    setActiveModal('EDIT');
   };
 
   const handleDelete = () => {
-    setShowMenu(false);
-    setShowDeleteModal(true);
+    setActiveModal('DELETE');
   };
 
-  const handleView = () => {
-    setShowMenu(false);
-    setShowViewModal(true);
+  const handleView = async () => {
+    if (!selectedUser) return;
+    setActiveModal('VIEW');
+    setSelectedUserDetails(null);
+    setLoadingDetails(true);
+
+    try {
+      const res = await apiService.getUserById(selectedUser.id);
+      const fullData = res?.user || res?.data || res;
+      if (fullData && fullData.id) {
+        setSelectedUserDetails(fullData);
+      }
+    } catch (err) {
+      console.warn('Notice loading user details from API:', err?.message || err);
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   const confirmEdit = async () => {
     if (!selectedUser?.id) return;
-    if (!editedPhone || editedPhone.trim().length !== 10) {
+    if (!editFormData.phone || editFormData.phone.trim().length !== 10) {
       Alert.alert('Validation Error', 'Please enter a valid 10-digit phone number');
       return;
     }
 
     try {
-      const birthYearVal = editedDateOfYear.trim() ? parseInt(editedDateOfYear.trim(), 10) : null;
+      const birthYearVal = editFormData.dateOfYear.trim() ? parseInt(editFormData.dateOfYear.trim(), 10) : null;
       await apiService.updateUser(selectedUser.id, {
-        name: editedName.trim(),
-        phone: editedPhone.trim(),
-        role: editedType === 'admin' ? 'ADMIN' : (selectedUser.role || 'COMMON_CUSTOMER'),
-        type: editedType === 'admin' ? 'Admin' : 'User',
-        occupation: editedOccupation.trim(),
-        shopName: editedShopName.trim(),
-        shop_name: editedShopName.trim(),
-        address: editedAddress.trim(),
-        city: editedCity.trim(),
+        name: editFormData.name.trim(),
+        phone: editFormData.phone.trim(),
+        role: editFormData.type === 'admin' ? 'ADMIN' : (selectedUser.role || 'COMMON_CUSTOMER'),
+        type: editFormData.type === 'admin' ? 'Admin' : 'User',
+        occupation: editFormData.occupation.trim(),
+        shopName: editFormData.shopName.trim(),
+        shop_name: editFormData.shopName.trim(),
+        address: editFormData.address.trim(),
+        city: editFormData.city.trim(),
         birthYear: birthYearVal,
         birth_year: birthYearVal,
         dateOfBirth: birthYearVal ? `${birthYearVal}-01-01` : null,
@@ -233,15 +353,15 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
           user.id === selectedUser.id
             ? {
                 ...user,
-                name: editedName.trim(),
-                phone: editedPhone.trim(),
-                type: editedType === 'admin' ? 'Admin' : 'User',
-                role: editedType === 'admin' ? 'ADMIN' : (user.role || 'COMMON_CUSTOMER'),
-                occupation: editedOccupation.trim(),
-                shopName: editedShopName.trim(),
-                shop_name: editedShopName.trim(),
-                address: editedAddress.trim(),
-                city: editedCity.trim(),
+                name: editFormData.name.trim(),
+                phone: editFormData.phone.trim(),
+                type: editFormData.type === 'admin' ? 'Admin' : 'User',
+                role: editFormData.type === 'admin' ? 'ADMIN' : (user.role || 'COMMON_CUSTOMER'),
+                occupation: editFormData.occupation.trim(),
+                shopName: editFormData.shopName.trim(),
+                shop_name: editFormData.shopName.trim(),
+                address: editFormData.address.trim(),
+                city: editFormData.city.trim(),
                 birthYear: birthYearVal,
                 dateOfBirth: birthYearVal ? `${birthYearVal}-01-01` : user.dateOfBirth,
               }
@@ -250,7 +370,7 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
       );
       if (refreshData) refreshData();
       Alert.alert('Success', 'User profile updated successfully');
-      setShowEditModal(false);
+      setActiveModal(null);
     } catch (error) {
       console.error('Error updating user:', error);
       Alert.alert('Error', error?.message || 'An error occurred while updating the user');
@@ -269,12 +389,13 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
       console.error('Error deleting user:', error);
       Alert.alert('Error', error?.message || 'An error occurred while deleting the user');
     } finally {
-      setShowDeleteModal(false);
+      setActiveModal(null);
     }
   };
 
   const content = (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       {/* Header */}
       <Header
         title="Manage Users"
@@ -386,13 +507,13 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
 
       {/* Actions Menu Modal */}
       <Modal
-        visible={showMenu}
+        visible={activeModal === 'MENU'}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowMenu(false)}>
+        onRequestClose={() => setActiveModal(null)}>
         <Pressable
           style={customStyles.menuOverlay}
-          onPress={() => setShowMenu(false)}>
+          onPress={() => setActiveModal(null)}>
           <View
             style={[
               customStyles.menuModal,
@@ -440,16 +561,16 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
 
       {/* Edit User Modal */}
       <Modal
-        visible={showEditModal}
+        visible={activeModal === 'EDIT'}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowEditModal(false)}>
+        onRequestClose={() => setActiveModal(null)}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={customStyles.centeredModalOverlay}>
           <View style={customStyles.modalContainer}>
             <View style={customStyles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+              <TouchableOpacity onPress={() => setActiveModal(null)}>
                 <MaterialCommunityIcons
                   name="arrow-left"
                   size={24}
@@ -475,8 +596,8 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedName}
-                  onChangeText={(val) => setEditedName(val.replace(/[<>&'"]/g, ''))}
+                  value={editFormData.name}
+                  onChangeText={(val) => setEditFormData((prev) => ({ ...prev, name: val.replace(/[<>&'"]/g, '') }))}
                   placeholder="Enter full name"
                   placeholderTextColor="#9CA3AF"
                 />
@@ -495,8 +616,8 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedPhone}
-                  onChangeText={(val) => setEditedPhone(val.replace(/[^0-9]/g, ''))}
+                  value={editFormData.phone}
+                  onChangeText={(val) => setEditFormData((prev) => ({ ...prev, phone: val.replace(/[^0-9]/g, '') }))}
                   keyboardType="phone-pad"
                   maxLength={10}
                   placeholder="Enter 10-digit phone number"
@@ -516,8 +637,8 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedOccupation}
-                  onChangeText={setEditedOccupation}
+                  value={editFormData.occupation}
+                  onChangeText={(val) => setEditFormData((prev) => ({ ...prev, occupation: val }))}
                   placeholder="e.g. Tailor, Fabrication Worker, Driver"
                   placeholderTextColor="#9CA3AF"
                 />
@@ -535,8 +656,8 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedShopName}
-                  onChangeText={setEditedShopName}
+                  value={editFormData.shopName}
+                  onChangeText={(val) => setEditFormData((prev) => ({ ...prev, shopName: val }))}
                   placeholder="e.g. Sri Balaji General Stores"
                   placeholderTextColor="#9CA3AF"
                 />
@@ -554,8 +675,8 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedDateOfYear}
-                  onChangeText={setEditedDateOfYear}
+                  value={editFormData.dateOfYear}
+                  onChangeText={(val) => setEditFormData((prev) => ({ ...prev, dateOfYear: val }))}
                   keyboardType="numeric"
                   maxLength={4}
                   placeholder="YYYY (e.g. 1990)"
@@ -575,8 +696,8 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedAddress}
-                  onChangeText={setEditedAddress}
+                  value={editFormData.address}
+                  onChangeText={(val) => setEditFormData((prev) => ({ ...prev, address: val }))}
                   placeholder="e.g. 42 Bazaar Road, Saidapet"
                   placeholderTextColor="#9CA3AF"
                 />
@@ -594,15 +715,15 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  value={editedCity}
-                  onChangeText={setEditedCity}
+                  value={editFormData.city}
+                  onChangeText={(val) => setEditFormData((prev) => ({ ...prev, city: val }))}
                   placeholder="e.g. Chennai"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
 
               {/* User Role */}
-              <View style={customStyles.inputGroup}>
+              <View style={[customStyles.inputGroup, { marginBottom: 36 }]}>
                 <View style={customStyles.labelContainer}>
                   <MaterialCommunityIcons
                     name="account-group-outline"
@@ -616,18 +737,18 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                   <TouchableOpacity
                     style={[
                       customStyles.typeOption,
-                      editedType === 'user' && customStyles.typeOptionActive,
+                      editFormData.type === 'user' && customStyles.typeOptionActive,
                     ]}
-                    onPress={() => setEditedType('user')}>
+                    onPress={() => setEditFormData((prev) => ({ ...prev, type: 'user' }))}>
                     <MaterialCommunityIcons
                       name="account"
                       size={18}
-                      color={editedType === 'user' ? '#3B82F6' : '#6B7280'}
+                      color={editFormData.type === 'user' ? '#3B82F6' : '#6B7280'}
                     />
                     <Text
                       style={[
                         customStyles.typeOptionText,
-                        editedType === 'user' && { color: '#3B82F6' },
+                        editFormData.type === 'user' && { color: '#3B82F6' },
                       ]}>
                       User
                     </Text>
@@ -635,24 +756,26 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
                   <TouchableOpacity
                     style={[
                       customStyles.typeOption,
-                      editedType === 'admin' && customStyles.typeOptionActive,
+                      editFormData.type === 'admin' && customStyles.typeOptionActive,
                     ]}
-                    onPress={() => setEditedType('admin')}>
+                    onPress={() => setEditFormData((prev) => ({ ...prev, type: 'admin' }))}>
                     <MaterialCommunityIcons
                       name="shield-crown"
                       size={18}
-                      color={editedType === 'admin' ? '#7C3AED' : '#6B7280'}
+                      color={editFormData.type === 'admin' ? '#7C3AED' : '#6B7280'}
                     />
                     <Text
                       style={[
                         customStyles.typeOptionText,
-                        editedType === 'admin' && { color: '#7C3AED' },
+                        editFormData.type === 'admin' && { color: '#7C3AED' },
                       ]}>
                       Admin
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
+
+              <View style={{ height: 28 }} />
             </ScrollView>
 
             <View style={customStyles.modalActions}>
@@ -675,14 +798,14 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
 
       {/* ===== VIEW MODAL ===== */}
       <Modal
-        visible={showViewModal}
+        visible={activeModal === 'VIEW'}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowViewModal(false)}>
+        onRequestClose={() => setActiveModal(null)}>
         <View style={customStyles.centeredModalOverlay}>
           <View style={customStyles.viewModalContainer}>
             <View style={customStyles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowViewModal(false)}>
+              <TouchableOpacity onPress={() => setActiveModal(null)}>
                 <MaterialCommunityIcons
                   name="arrow-left"
                   size={24}
@@ -697,225 +820,268 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
             <ScrollView
               style={customStyles.modalContent}
               contentContainerStyle={{ paddingBottom: 24 }}>
-              {/* User Avatar Card Header */}
-              {selectedUser && (
-                <View style={{ alignItems: 'center', marginVertical: 14 }}>
-                  <View
-                    style={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: 40,
-                      backgroundColor:
-                        String(selectedUser?.type || selectedUser?.role || '').toLowerCase().includes('admin')
-                          ? '#EDE9FE'
-                          : '#DBEAFE',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      overflow: 'hidden',
-                      borderWidth: 2,
-                      borderColor:
-                        String(selectedUser?.type || selectedUser?.role || '').toLowerCase().includes('admin')
-                          ? '#7C3AED'
-                          : '#3B82F6',
-                      marginBottom: 8,
-                    }}>
-                    {getAvatarUrl(selectedUser.profile_image || selectedUser.avatar) ? (
-                      <Image
-                        source={{ uri: getAvatarUrl(selectedUser.profile_image || selectedUser.avatar) }}
-                        style={{ width: 80, height: 80, borderRadius: 40 }}
-                      />
-                    ) : (
-                      <Text
+              {loadingDetails ? (
+                <ViewDetailsSkeleton />
+              ) : (() => {
+                const effectiveUser = selectedUserDetails || selectedUser;
+                if (!effectiveUser) return null;
+
+                const displayName = effectiveUser.name || effectiveUser.full_name || effectiveUser.nickname || 'User';
+                const isAdmin = String(effectiveUser.type || effectiveUser.role || '').toLowerCase().includes('admin');
+                const avatar = getAvatarUrl(effectiveUser.profile_image || effectiveUser.avatar);
+
+                return (
+                  <>
+                    {/* User Avatar Card Header */}
+                    <View style={{ alignItems: 'center', marginVertical: 14 }}>
+                      <View
                         style={{
-                          fontSize: 32,
-                          fontWeight: '800',
-                          color:
-                            String(selectedUser?.type || selectedUser?.role || '').toLowerCase().includes('admin')
-                              ? '#7C3AED'
-                              : '#3B82F6',
+                          width: 80,
+                          height: 80,
+                          borderRadius: 40,
+                          backgroundColor: isAdmin ? '#EDE9FE' : '#DBEAFE',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          overflow: 'hidden',
+                          borderWidth: 2,
+                          borderColor: isAdmin ? '#7C3AED' : '#3B82F6',
+                          marginBottom: 8,
                         }}>
-                        {(selectedUser.name || selectedUser.full_name || selectedUser.nickname || 'U')
-                          .charAt(0)
-                          .toUpperCase()}
+                        {avatar ? (
+                          <Image
+                            source={{ uri: avatar }}
+                            style={{ width: 80, height: 80, borderRadius: 40 }}
+                          />
+                        ) : (
+                          <Text
+                            style={{
+                              fontSize: 32,
+                              fontWeight: '800',
+                              color: isAdmin ? '#7C3AED' : '#3B82F6',
+                            }}>
+                            {displayName.charAt(0).toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={{ fontSize: 18, fontWeight: '800', color: '#1F2937' }}>
+                        {displayName}
                       </Text>
-                    )}
-                  </View>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#1F2937' }}>
-                    {selectedUser.name || selectedUser.full_name || selectedUser.nickname || 'User'}
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor:
-                        String(selectedUser?.type || selectedUser?.role || '').toLowerCase().includes('admin')
-                          ? '#EDE9FE'
-                          : '#F3F4F6',
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 12,
-                      marginTop: 4,
-                    }}>
-                    <Text
-                      style={{
-                        color:
-                          String(selectedUser?.type || selectedUser?.role || '').toLowerCase().includes('admin')
-                            ? '#7C3AED'
-                            : '#4B5563',
-                        fontSize: 12,
-                        fontWeight: '700',
-                      }}>
-                      {selectedUser?.type || selectedUser?.role || 'User'}
-                    </Text>
-                  </View>
-                </View>
-              )}
+                      <View
+                        style={{
+                          backgroundColor: isAdmin ? '#EDE9FE' : '#F3F4F6',
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 12,
+                          marginTop: 4,
+                        }}>
+                        <Text
+                          style={{
+                            color: isAdmin ? '#7C3AED' : '#4B5563',
+                            fontSize: 12,
+                            fontWeight: '700',
+                          }}>
+                          {effectiveUser.type || (isAdmin ? 'Admin' : 'User')}
+                        </Text>
+                      </View>
+                    </View>
 
-              {/* Full Name */}
-              <View style={customStyles.inputGroup}>
-                <View style={customStyles.labelContainer}>
-                  <MaterialCommunityIcons
-                    name="account-outline"
-                    size={20}
-                    color="#000000"
-                  />
-                  <Text style={styles.inputLabel}>Full Name</Text>
-                </View>
-                <View style={customStyles.viewDataContainer}>
-                  <Text style={customStyles.viewDataText}>
-                    {selectedUser?.name || selectedUser?.full_name || selectedUser?.nickname || 'N/A'}
-                  </Text>
-                </View>
-              </View>
+                    {/* Full Name */}
+                    <View style={customStyles.inputGroup}>
+                      <View style={customStyles.labelContainer}>
+                        <MaterialCommunityIcons
+                          name="account-outline"
+                          size={20}
+                          color="#000000"
+                        />
+                        <Text style={styles.inputLabel}>Full Name</Text>
+                      </View>
+                      <View style={customStyles.viewDataContainer}>
+                        <Text style={customStyles.viewDataText}>{displayName}</Text>
+                      </View>
+                    </View>
 
-              {/* Phone Number */}
-              <View style={customStyles.inputGroup}>
-                <View style={customStyles.labelContainer}>
-                  <MaterialCommunityIcons
-                    name="phone-outline"
-                    size={20}
-                    color="#000000"
-                  />
-                  <Text style={styles.inputLabel}>Phone Number</Text>
-                </View>
-                <View style={customStyles.viewDataContainer}>
-                  <Text style={customStyles.viewDataText}>
-                    {selectedUser?.phone || 'N/A'}
-                  </Text>
-                </View>
-              </View>
+                    {/* Phone Number */}
+                    <View style={customStyles.inputGroup}>
+                      <View style={customStyles.labelContainer}>
+                        <MaterialCommunityIcons
+                          name="phone-outline"
+                          size={20}
+                          color="#000000"
+                        />
+                        <Text style={styles.inputLabel}>Phone Number</Text>
+                      </View>
+                      <View style={customStyles.viewDataContainer}>
+                        <Text style={customStyles.viewDataText}>
+                          {effectiveUser.phone || 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
 
-              {/* Occupation / Profession */}
-              <View style={customStyles.inputGroup}>
-                <View style={customStyles.labelContainer}>
-                  <MaterialCommunityIcons
-                    name="briefcase-outline"
-                    size={20}
-                    color="#000000"
-                  />
-                  <Text style={styles.inputLabel}>Occupation / Profession</Text>
-                </View>
-                <View style={customStyles.viewDataContainer}>
-                  <Text style={customStyles.viewDataText}>
-                    {selectedUser?.occupation || 'N/A'}
-                  </Text>
-                </View>
-              </View>
+                    {/* Occupation / Profession */}
+                    {effectiveUser.occupation ? (
+                      <View style={customStyles.inputGroup}>
+                        <View style={customStyles.labelContainer}>
+                          <MaterialCommunityIcons
+                            name="briefcase-outline"
+                            size={20}
+                            color="#000000"
+                          />
+                          <Text style={styles.inputLabel}>Occupation / Profession</Text>
+                        </View>
+                        <View style={customStyles.viewDataContainer}>
+                          <Text style={customStyles.viewDataText}>
+                            {effectiveUser.occupation}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
 
-              {/* Shop Name */}
-              <View style={customStyles.inputGroup}>
-                <View style={customStyles.labelContainer}>
-                  <MaterialCommunityIcons
-                    name="store-outline"
-                    size={20}
-                    color="#000000"
-                  />
-                  <Text style={styles.inputLabel}>Shop / Stall Name</Text>
-                </View>
-                <View style={customStyles.viewDataContainer}>
-                  <Text style={customStyles.viewDataText}>
-                    {selectedUser?.shop_name || selectedUser?.shopName || 'N/A'}
-                  </Text>
-                </View>
-              </View>
+                    {/* Shop Name */}
+                    {(effectiveUser.shop_name || effectiveUser.shopName) ? (
+                      <View style={customStyles.inputGroup}>
+                        <View style={customStyles.labelContainer}>
+                          <MaterialCommunityIcons
+                            name="store-outline"
+                            size={20}
+                            color="#000000"
+                          />
+                          <Text style={styles.inputLabel}>Shop / Stall Name</Text>
+                        </View>
+                        <View style={customStyles.viewDataContainer}>
+                          <Text style={customStyles.viewDataText}>
+                            {effectiveUser.shop_name || effectiveUser.shopName}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
 
-              {/* Birth Year / Date of Birth */}
-              <View style={customStyles.inputGroup}>
-                <View style={customStyles.labelContainer}>
-                  <MaterialCommunityIcons
-                    name="calendar-blank"
-                    size={20}
-                    color="#000000"
-                  />
-                  <Text style={styles.inputLabel}>Date of Birth / Year</Text>
-                </View>
-                <View style={customStyles.viewDataContainer}>
-                  <Text style={customStyles.viewDataText}>
-                    {selectedUser?.birthYear || (selectedUser?.dateOfBirth ? String(selectedUser.dateOfBirth).split('T')[0] : selectedUser?.yearOfBirth || 'N/A')}
-                  </Text>
-                </View>
-              </View>
+                    {/* Birth Year / Date of Birth */}
+                    {(effectiveUser.birthYear || effectiveUser.birth_year || effectiveUser.dateOfBirth || effectiveUser.date_of_birth) ? (
+                      <View style={customStyles.inputGroup}>
+                        <View style={customStyles.labelContainer}>
+                          <MaterialCommunityIcons
+                            name="calendar-blank"
+                            size={20}
+                            color="#000000"
+                          />
+                          <Text style={styles.inputLabel}>Date of Birth / Year</Text>
+                        </View>
+                        <View style={customStyles.viewDataContainer}>
+                          <Text style={customStyles.viewDataText}>
+                            {effectiveUser.birthYear || effectiveUser.birth_year || (effectiveUser.dateOfBirth ? String(effectiveUser.dateOfBirth).split('T')[0] : effectiveUser.yearOfBirth || 'N/A')}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
 
-              {/* Address & City */}
-              {(selectedUser?.address || selectedUser?.city) && (
-                <View style={customStyles.inputGroup}>
-                  <View style={customStyles.labelContainer}>
-                    <MaterialCommunityIcons
-                      name="map-marker-outline"
-                      size={20}
-                      color="#000000"
-                    />
-                    <Text style={styles.inputLabel}>Address / Location</Text>
-                  </View>
-                  <View style={customStyles.viewDataContainer}>
-                    <Text style={customStyles.viewDataText}>
-                      {[selectedUser?.address, selectedUser?.city].filter(Boolean).join(', ')}
-                    </Text>
-                  </View>
-                </View>
-              )}
+                    {/* Address & City */}
+                    {(effectiveUser.address || effectiveUser.city) ? (
+                      <View style={customStyles.inputGroup}>
+                        <View style={customStyles.labelContainer}>
+                          <MaterialCommunityIcons
+                            name="map-marker-outline"
+                            size={20}
+                            color="#000000"
+                          />
+                          <Text style={styles.inputLabel}>Address / Location</Text>
+                        </View>
+                        <View style={customStyles.viewDataContainer}>
+                          <Text style={customStyles.viewDataText}>
+                            {[effectiveUser.address, effectiveUser.city].filter(Boolean).join(', ')}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
 
-              {/* Member Since */}
-              <View style={customStyles.inputGroup}>
-                <View style={customStyles.labelContainer}>
-                  <MaterialCommunityIcons
-                    name="calendar-check"
-                    size={20}
-                    color="#000000"
-                  />
-                  <Text style={styles.inputLabel}>Member Since</Text>
-                </View>
-                <View style={customStyles.viewDataContainer}>
-                  <Text style={customStyles.viewDataText}>
-                    {selectedUser?.dateJoined || (selectedUser?.joinedDate && selectedUser.joinedDate !== 'N/A'
-                      ? String(selectedUser.joinedDate).split('T')[0]
-                      : selectedUser?.createdAt
-                      ? String(selectedUser.createdAt).split('T')[0]
-                      : 'N/A')}
-                  </Text>
-                </View>
-              </View>
+                    {/* Member Since */}
+                    <View style={customStyles.inputGroup}>
+                      <View style={customStyles.labelContainer}>
+                        <MaterialCommunityIcons
+                          name="calendar-check"
+                          size={20}
+                          color="#000000"
+                        />
+                        <Text style={styles.inputLabel}>Member Since</Text>
+                      </View>
+                      <View style={customStyles.viewDataContainer}>
+                        <Text style={customStyles.viewDataText}>
+                          {effectiveUser.dateJoined || (effectiveUser.joinedDate && effectiveUser.joinedDate !== 'N/A'
+                            ? String(effectiveUser.joinedDate).split('T')[0]
+                            : effectiveUser.createdAt
+                            ? String(effectiveUser.createdAt).split('T')[0]
+                            : 'N/A')}
+                        </Text>
+                      </View>
+                    </View>
 
-              {/* Contributed Groups / Status */}
-              <View style={[customStyles.inputGroup, { marginBottom: 24 }]}>
-                <View style={customStyles.labelContainer}>
-                  <MaterialCommunityIcons
-                    name="account-group-outline"
-                    size={20}
-                    color="#000000"
-                  />
-                  <Text style={styles.inputLabel}>Borrower Code & Status</Text>
-                </View>
-                <View style={[customStyles.viewDataContainer, { minHeight: 52, paddingVertical: 12 }]}>
-                  <Text style={[customStyles.viewDataText, { lineHeight: 22 }]}>
-                    {selectedUser?.customerCode || selectedUser?.customer_code || 'Borrower'} • {selectedUser?.status || 'ACTIVE'}
-                  </Text>
-                </View>
-              </View>
+                    {/* Live Backend Loan Data or No-Loan State */}
+                    {(() => {
+                      const loanInfo = getUserLoanInfo(effectiveUser);
+                      if (!loanInfo) {
+                        return (
+                          <View style={[customStyles.inputGroup, { marginBottom: 24 }]}>
+                            <View style={customStyles.labelContainer}>
+                              <MaterialCommunityIcons
+                                name="cash-off"
+                                size={20}
+                                color="#94A3B8"
+                              />
+                              <Text style={styles.inputLabel}>Active Loan Details</Text>
+                            </View>
+                            <View style={[customStyles.viewDataContainer, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', borderWidth: 1 }]}>
+                              <Text style={[customStyles.viewDataText, { color: '#64748B', fontStyle: 'italic' }]}>
+                                No active loan or loan history
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <View style={customStyles.inputGroup}>
+                            <View style={customStyles.labelContainer}>
+                              <MaterialCommunityIcons
+                                name="cash-multiple"
+                                size={20}
+                                color="#059669"
+                              />
+                              <Text style={styles.inputLabel}>Loan Amount Taken</Text>
+                            </View>
+                            <View style={[customStyles.viewDataContainer, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1 }]}>
+                              <Text style={[customStyles.viewDataText, { color: '#047857', fontWeight: '700', fontSize: 17 }]}>
+                                {loanInfo.amountText}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={[customStyles.inputGroup, { marginBottom: 24 }]}>
+                            <View style={customStyles.labelContainer}>
+                              <MaterialCommunityIcons
+                                name="layers-outline"
+                                size={20}
+                                color="#6B46C1"
+                              />
+                              <Text style={styles.inputLabel}>Lending Scheme Type</Text>
+                            </View>
+                            <View style={[customStyles.viewDataContainer, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', borderWidth: 1 }]}>
+                              <Text style={[customStyles.viewDataText, { color: '#6B46C1', fontWeight: '700', fontSize: 16 }]}>
+                                {loanInfo.schemeType}
+                              </Text>
+                            </View>
+                          </View>
+                        </>
+                      );
+                    })()}
+                  </>
+                );
+              })()}
             </ScrollView>
 
             <View style={customStyles.modalActions}>
               <TouchableOpacity
                 style={customStyles.saveButtonFull}
-                onPress={() => setShowViewModal(false)}>
+                onPress={() => setActiveModal(null)}>
                 <Text style={[customStyles.buttonText, { color: '#FFFFFF' }]}>
                   Close
                 </Text>
@@ -927,10 +1093,10 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
 
       {/* Delete Confirmation Modal */}
       <Modal
-        visible={showDeleteModal}
+        visible={activeModal === 'DELETE'}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowDeleteModal(false)}>
+        onRequestClose={() => setActiveModal(null)}>
         <View style={customStyles.centeredModalOverlay}>
           <View style={customStyles.deleteModal}>
             <MaterialCommunityIcons
@@ -949,7 +1115,7 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
             <View style={customStyles.deleteActions}>
               <TouchableOpacity
                 style={customStyles.cancelButton}
-                onPress={() => setShowDeleteModal(false)}>
+                onPress={() => setActiveModal(null)}>
                 <Text style={customStyles.buttonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -963,7 +1129,7 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 
   if (visible !== undefined) {
@@ -978,6 +1144,10 @@ export const ManageU = ({ visible, onBack, onClose, onOpenAddUser }) => {
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -1190,9 +1360,9 @@ const customStyles = StyleSheet.create({
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   modalActions: {
-    padding: 20,
-    paddingTop: 0,
-    marginTop: -5,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
   },
   buttonText: {
     fontSize: 16,
