@@ -616,7 +616,12 @@ async function getPaymentReport({ startDate, endDate, frequency, status, organiz
 
   // Filter if status filter requested
   const filteredRecords = status && status !== 'ALL'
-    ? records.filter((rec) => rec.status === status)
+    ? records.filter((rec) => {
+        if (status === 'UNPAID' || status === 'PENDING' || status === 'TO_COLLECT') {
+          return rec.status === 'UNPAID' || rec.status === 'OVERDUE' || rec.status === 'PARTIAL' || rec.balance > 0;
+        }
+        return rec.status === status;
+      })
     : records;
 
   const recoveryRate = expectedTotal > 0 ? Math.round((collectedTotal / expectedTotal) * 100) : 0;

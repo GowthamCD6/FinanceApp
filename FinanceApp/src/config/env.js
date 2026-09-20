@@ -8,6 +8,8 @@ import { Platform } from 'react-native';
 
 const CANDIDATE_HOSTS = [
   'http://localhost:5000/api',
+  'http://10.10.70.83:5000/api',
+  'http://192.168.137.1:5000/api',
   'http://10.10.66.224:5000/api',
   'http://10.0.2.2:5000/api',
   'http://127.0.0.1:5000/api',

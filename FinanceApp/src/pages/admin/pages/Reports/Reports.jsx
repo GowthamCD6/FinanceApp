@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,8 @@ import {
   TextInput,
   Modal,
   Alert,
-  ActivityIndicator,
+  Animated,
   RefreshControl,
-  Share,
   Linking,
   Platform,
   StatusBar,
@@ -21,6 +20,7 @@ import LottieView from 'lottie-react-native';
 import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
 import { useApp } from '../../../../context/AppContext';
+import { BorrowerLogModal } from './BorrowerLogModal';
 
 let revenueAnimation;
 try {
@@ -38,15 +38,16 @@ const formatDateStr = (d) => {
 };
 
 const getWeekRange = (refDate = new Date()) => {
-  const d = new Date(refDate);
-  const day = d.getDay();
-  const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diffToMonday));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  const now = new Date(refDate);
+  const day = now.getDay(); // 0 is Sun, 1 is Mon, ..., 6 is Sat
+  const distanceToMonday = (day + 6) % 7;
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distanceToMonday);
+  const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distanceToMonday + 6);
   return {
     start: formatDateStr(monday),
     end: formatDateStr(sunday),
+    monday,
+    sunday,
   };
 };
 
@@ -56,10 +57,75 @@ const getMonthRange = (refDate = new Date()) => {
   return {
     start: formatDateStr(first),
     end: formatDateStr(last),
+    first,
+    last,
   };
 };
 
-// Status Badge Helper
+// Check if two dates are same calendar day
+const isSameDay = (d1, d2) => {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+};
+
+// Format short date (e.g. "20 Sep")
+const formatShortDate = (d) => {
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+};
+
+// Format day with weekday (e.g. "Sun, 20 Sep")
+const formatDayDisplay = (d) => {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+
+  if (isSameDay(d, today)) {
+    return `Today (${formatShortDate(d)})`;
+  }
+  if (isSameDay(d, yesterday)) {
+    return `Yesterday (${formatShortDate(d)})`;
+  }
+  if (isSameDay(d, tomorrow)) {
+    return `Tomorrow (${formatShortDate(d)})`;
+  }
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+// Format week display (e.g. "This Week (14 Sep – 20 Sep)" or "14 Sep – 20 Sep, 2026")
+const formatWeekDisplay = (refDate) => {
+  const today = new Date();
+  const currentWeek = getWeekRange(today);
+  const targetWeek = getWeekRange(refDate);
+
+  const isCurrentWeek = currentWeek.start === targetWeek.start;
+  const rangeStr = `${formatShortDate(targetWeek.monday)} – ${formatShortDate(targetWeek.sunday)}`;
+
+  if (isCurrentWeek) {
+    return `This Week (${rangeStr})`;
+  }
+  return `${rangeStr}, ${targetWeek.monday.getFullYear()}`;
+};
+
+// Format month display (e.g. "This Month (Sep 2026)" or "August 2026")
+const formatMonthDisplay = (refDate) => {
+  const today = new Date();
+  const isCurrentMonth =
+    refDate.getFullYear() === today.getFullYear() &&
+    refDate.getMonth() === today.getMonth();
+
+  const monthName = refDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  if (isCurrentMonth) {
+    return `This Month (${refDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})`;
+  }
+  return monthName;
+};
+
+// Friendly Status Helper
 const getStatusStyle = (status) => {
   switch (status) {
     case 'PAID':
@@ -98,10 +164,107 @@ const getStatusStyle = (status) => {
   }
 };
 
-// Memoized Single Payment Record Card for 60fps Smooth Scrolling
-const RecordCard = React.memo(({ item, onOpenCollect, onOpenDetail }) => {
+// Shimmering Skeleton Box Element
+const SkeletonBox = ({ width, height, borderRadius = 6, style }) => {
+  const animatedValue = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 0.85,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0.3,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [animatedValue]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: '#E2E8F0',
+          opacity: animatedValue,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+// Skeleton for 3 Top Metric Cards
+const MetricCardSkeleton = () => (
+  <View style={styles.metricCardProper}>
+    <View style={styles.metricTopProper}>
+      <SkeletonBox width={45} height={10} borderRadius={3} />
+      <SkeletonBox width={20} height={20} borderRadius={10} />
+    </View>
+    <SkeletonBox width="80%" height={16} borderRadius={4} style={{ marginTop: 6 }} />
+    <SkeletonBox width="50%" height={10} borderRadius={3} style={{ marginTop: 6 }} />
+  </View>
+);
+
+// Skeleton for Borrower Card
+const BorrowerCardSkeleton = () => (
+  <View style={styles.recordCard}>
+    {/* Header row */}
+    <View style={styles.cardHeader}>
+      <SkeletonBox width={38} height={38} borderRadius={19} style={{ marginRight: 10 }} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <SkeletonBox width={130} height={14} borderRadius={4} />
+        <SkeletonBox width={90} height={10} borderRadius={3} />
+      </View>
+      <SkeletonBox width={55} height={20} borderRadius={10} />
+    </View>
+
+    {/* Due strip */}
+    <View style={[styles.dueInfoRow, { borderTopColor: '#F3F4F6' }]}>
+      <SkeletonBox width={140} height={11} borderRadius={3} />
+    </View>
+
+    {/* 3-Column Amount Box */}
+    <View style={styles.amountContainer}>
+      <View style={styles.amountCol}>
+        <SkeletonBox width={50} height={9} borderRadius={3} />
+        <SkeletonBox width={60} height={14} borderRadius={3} style={{ marginTop: 4 }} />
+      </View>
+      <View style={styles.amountDivider} />
+      <View style={styles.amountCol}>
+        <SkeletonBox width={35} height={9} borderRadius={3} />
+        <SkeletonBox width={55} height={14} borderRadius={3} style={{ marginTop: 4 }} />
+      </View>
+      <View style={styles.amountDivider} />
+      <View style={styles.amountCol}>
+        <SkeletonBox width={55} height={9} borderRadius={3} />
+        <SkeletonBox width={60} height={14} borderRadius={3} style={{ marginTop: 4 }} />
+      </View>
+    </View>
+
+    {/* Action Footer */}
+    <View style={styles.cardFooter}>
+      <SkeletonBox width={65} height={32} borderRadius={8} />
+      <SkeletonBox width="60%" height={32} borderRadius={8} style={{ flex: 1 }} />
+    </View>
+  </View>
+);
+
+// Professional Single Payment Record Card
+const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
   const statusStyle = getStatusStyle(item.status);
   const initial = item.customerName ? item.customerName.charAt(0).toUpperCase() : 'C';
+  const balance = parseFloat(item.balance || 0);
+  const isSettled = balance <= 0;
 
   return (
     <View style={styles.recordCard}>
@@ -150,38 +313,24 @@ const RecordCard = React.memo(({ item, onOpenCollect, onOpenDetail }) => {
         </View>
       </View>
 
-      {/* Loan Meta Tags Strip */}
-      <View style={styles.metaStrip}>
-        <View style={styles.metaChip}>
-          <MaterialCommunityIcons name="file-document-outline" size={12} color="#6B46C1" />
-          <Text style={styles.metaChipText}>{item.loanNumber}</Text>
-        </View>
-
-        <View style={styles.metaChip}>
-          <MaterialCommunityIcons name="repeat" size={12} color="#6B7280" />
-          <Text style={styles.metaChipText}>{item.frequency}</Text>
-        </View>
-
-        <View style={styles.metaChip}>
-          <Text style={styles.metaChipText}>Inst. #{item.installmentNumber}</Text>
-        </View>
-
-        <View style={[styles.metaChip, { marginLeft: 'auto' }]}>
+      {/* Due Info Strip */}
+      {item.dueDate ? (
+        <View style={styles.dueInfoRow}>
           <MaterialCommunityIcons
             name="calendar-clock"
-            size={12}
+            size={13}
             color={item.status === 'OVERDUE' ? '#DC2626' : '#6B7280'}
           />
           <Text
             style={[
-              styles.metaChipText,
+              styles.dueInfoText,
               item.status === 'OVERDUE' && { color: '#DC2626', fontWeight: '700' },
             ]}
           >
-            Due: {item.dueDate ? formatDate(item.dueDate) : 'N/A'}
+            Due: {formatDate(item.dueDate)} {item.installmentNumber ? `• Inst. #${item.installmentNumber}` : ''}
           </Text>
         </View>
-      </View>
+      ) : null}
 
       {/* Amount Breakdown Row */}
       <View style={styles.amountContainer}>
@@ -194,7 +343,7 @@ const RecordCard = React.memo(({ item, onOpenCollect, onOpenDetail }) => {
 
         <View style={styles.amountCol}>
           <Text style={styles.amountLabel}>Paid</Text>
-          <Text style={[styles.amountVal, { color: '#10B981' }]}>
+          <Text style={[styles.amountVal, { color: '#059669' }]}>
             {formatINR(item.paidAmount)}
           </Text>
         </View>
@@ -206,10 +355,10 @@ const RecordCard = React.memo(({ item, onOpenCollect, onOpenDetail }) => {
           <Text
             style={[
               styles.amountVal,
-              { color: item.balance > 0 ? '#EF4444' : '#10B981' },
+              { color: balance > 0 ? '#DC2626' : '#059669' },
             ]}
           >
-            {formatINR(item.balance)}
+            {formatINR(balance)}
           </Text>
         </View>
       </View>
@@ -219,37 +368,39 @@ const RecordCard = React.memo(({ item, onOpenCollect, onOpenDetail }) => {
         {item.customerPhone ? (
           <TouchableOpacity
             style={styles.actionIconBtn}
-            onPress={() => Linking.openURL(`tel:${item.customerPhone}`)}
+            onPress={() => onCall(item.customerPhone)}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="phone" size={16} color="#6B46C1" />
+            <MaterialCommunityIcons name="phone" size={15} color="#6B46C1" />
             <Text style={styles.actionIconBtnText}>Call</Text>
           </TouchableOpacity>
         ) : null}
 
-        <TouchableOpacity
-          style={styles.actionIconBtn}
-          onPress={() => onOpenDetail(item)}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="information-outline" size={16} color="#6B7280" />
-          <Text style={[styles.actionIconBtnText, { color: '#6B7280' }]}>Details</Text>
-        </TouchableOpacity>
-
-        {item.balance > 0 ? (
+        {isSettled ? (
           <TouchableOpacity
-            style={styles.collectBtn}
-            onPress={() => onOpenCollect(item)}
-            activeOpacity={0.85}
+            style={styles.settledBadge}
+            onPress={() => onOpenLedger(item)}
+            activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="cash-fast" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.collectBtnText}>Collect {formatINR(item.balance)}</Text>
+            <MaterialCommunityIcons name="check-circle" size={14} color="#059669" />
+            <Text style={styles.settledBadgeText}>Settled (View Log)</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.settledBadge}>
-            <MaterialCommunityIcons name="check-all" size={14} color="#059669" />
-            <Text style={styles.settledBadgeText}>Fully Settled</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.collectBtn}
+            onPress={() => onOpenLedger(item)}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons
+              name="cash"
+              size={16}
+              color="#FFFFFF"
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.collectBtnText}>
+              Collect {formatINR(balance)}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -259,12 +410,12 @@ const RecordCard = React.memo(({ item, onOpenCollect, onOpenDetail }) => {
 export const AdminReports = () => {
   const { currentUser } = useApp();
 
-  // Filter States
-  const [datePreset, setDatePreset] = useState('ALL'); // 'ALL' | 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH'
+  // Filter States (Default to 'ALL' with empty dates so all active records load immediately)
+  const [anchorDate, setAnchorDate] = useState(new Date());
+  const [frequencyFilter, setFrequencyFilter] = useState('ALL'); // 'ALL' | 'WEEKLY' | 'DAILY' | 'MONTHLY'
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [frequencyFilter, setFrequencyFilter] = useState('ALL'); // 'ALL' | 'WEEKLY' | 'DAILY' | 'MONTHLY'
-  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'OVERDUE' | 'UNPAID' | 'PARTIAL' | 'PAID'
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID'
   const [searchQuery, setSearchQuery] = useState('');
 
   // Data States
@@ -299,99 +450,286 @@ export const AdminReports = () => {
   const [detailRecord, setDetailRecord] = useState(null);
 
   // Fetch Report Data from Backend API
-  const fetchReport = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  const fetchReport = useCallback(
+    async (overrideStart, overrideEnd, overrideFreq, overrideStatus, isRefresh = false) => {
+      const sDate = overrideStart !== undefined ? overrideStart : startDate;
+      const eDate = overrideEnd !== undefined ? overrideEnd : endDate;
+      const freq = overrideFreq !== undefined ? overrideFreq : frequencyFilter;
+      const stat = overrideStatus !== undefined ? overrideStatus : statusFilter;
 
-    try {
-      const data = await apiService.getPaymentReport({
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        frequency: frequencyFilter,
-        status: statusFilter,
-      });
-
-      if (data) {
-        setReport({
-          period: data.period || { start: '', end: '' },
-          summary: data.summary || {
-            expected: 0,
-            collected: 0,
-            outstanding: 0,
-            paid_count: 0,
-            unpaid_count: 0,
-            partial_count: 0,
-            overdue_count: 0,
-            total_records: 0,
-            recovery_rate: 0,
-          },
-          records: Array.isArray(data.records) ? data.records : [],
-        });
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    } catch (err) {
-      console.error('Failed to fetch live payment report:', err);
-      Alert.alert(
-        'Network Error',
-        'Could not fetch latest reports from the server. Please pull to refresh or check your connection.'
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [startDate, endDate, frequencyFilter, statusFilter]);
 
-  // Initial & Filter-Triggered Fetch
+      try {
+        const data = await apiService.getPaymentReport({
+          startDate: sDate || undefined,
+          endDate: eDate || undefined,
+          frequency: freq,
+          status: stat,
+        });
+
+        if (data) {
+          setReport({
+            period: data.period || { start: '', end: '' },
+            summary: data.summary || {
+              expected: 0,
+              collected: 0,
+              outstanding: 0,
+              paid_count: 0,
+              unpaid_count: 0,
+              partial_count: 0,
+              overdue_count: 0,
+              total_records: 0,
+              recovery_rate: 0,
+            },
+            records: Array.isArray(data.records) ? data.records : [],
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch live payment report:', err);
+        Alert.alert(
+          'Network Error',
+          'Could not fetch latest reports from the server. Please pull to refresh or check your connection.'
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [startDate, endDate, frequencyFilter, statusFilter]
+  );
+
+  // Calculate and apply date range for a given anchor date and frequency
+  const applyDateRange = useCallback(
+    (refDate, freq, stat = statusFilter) => {
+      let s = '';
+      let e = '';
+      if (freq === 'DAILY') {
+        const dayStr = formatDateStr(refDate);
+        s = dayStr;
+        e = dayStr;
+      } else if (freq === 'WEEKLY') {
+        const w = getWeekRange(refDate);
+        s = w.start;
+        e = w.end;
+      } else if (freq === 'MONTHLY') {
+        const m = getMonthRange(refDate);
+        s = m.start;
+        e = m.end;
+      } else {
+        s = '';
+        e = '';
+      }
+
+      setStartDate(s);
+      setEndDate(e);
+      fetchReport(s, e, freq, stat, false);
+    },
+    [fetchReport, statusFilter]
+  );
+
+  // Initial Fetch on mount
   useEffect(() => {
-    fetchReport();
-  }, [fetchReport]);
-
-  // Preset Date Selection Handler
-  const handlePresetSelect = useCallback((preset) => {
-    setDatePreset(preset);
-    const today = new Date();
-
-    if (preset === 'ALL') {
-      setStartDate('');
-      setEndDate('');
-    } else if (preset === 'TODAY') {
-      const t = formatDateStr(today);
-      setStartDate(t);
-      setEndDate(t);
-    } else if (preset === 'THIS_WEEK') {
-      const w = getWeekRange(today);
-      setStartDate(w.start);
-      setEndDate(w.end);
-    } else if (preset === 'THIS_MONTH') {
-      const m = getMonthRange(today);
-      setStartDate(m.start);
-      setEndDate(m.end);
-    }
+    applyDateRange(anchorDate, frequencyFilter, statusFilter);
   }, []);
 
-  // Client-Side Search Filtering
-  const filteredRecords = useMemo(() => {
-    if (!report.records) return [];
-    if (!searchQuery.trim()) return report.records;
+  // Frequency Filter Tab Selection Handler
+  const handleFrequencySelect = useCallback(
+    (freq) => {
+      setFrequencyFilter(freq);
+      applyDateRange(anchorDate, freq, statusFilter);
+    },
+    [anchorDate, applyDateRange, statusFilter]
+  );
 
-    const query = searchQuery.toLowerCase().trim();
-    return report.records.filter((rec) => {
-      const name = (rec.customerName || '').toLowerCase();
-      const phone = (rec.customerPhone || '').toLowerCase();
-      const loanNo = (rec.loanNumber || '').toLowerCase();
-      const shop = (rec.shopName || '').toLowerCase();
-      return (
-        name.includes(query) ||
-        phone.includes(query) ||
-        loanNo.includes(query) ||
-        shop.includes(query)
-      );
+  // Status Filter Selection Handler
+  const handleStatusSelect = useCallback(
+    (stat) => {
+      setStatusFilter(stat);
+      fetchReport(startDate, endDate, frequencyFilter, stat, false);
+    },
+    [fetchReport, startDate, endDate, frequencyFilter]
+  );
+
+  // Date Shift Navigator Handlers (Previous / Next / Reset)
+  const handlePrevDate = useCallback(() => {
+    const next = new Date(anchorDate);
+    if (frequencyFilter === 'DAILY') {
+      next.setDate(next.getDate() - 1);
+    } else if (frequencyFilter === 'WEEKLY') {
+      next.setDate(next.getDate() - 7);
+    } else if (frequencyFilter === 'MONTHLY') {
+      next.setMonth(next.getMonth() - 1);
+    }
+    setAnchorDate(next);
+    applyDateRange(next, frequencyFilter, statusFilter);
+  }, [anchorDate, frequencyFilter, statusFilter, applyDateRange]);
+
+  const handleNextDate = useCallback(() => {
+    const next = new Date(anchorDate);
+    if (frequencyFilter === 'DAILY') {
+      next.setDate(next.getDate() + 1);
+    } else if (frequencyFilter === 'WEEKLY') {
+      next.setDate(next.getDate() + 7);
+    } else if (frequencyFilter === 'MONTHLY') {
+      next.setMonth(next.getMonth() + 1);
+    }
+    setAnchorDate(next);
+    applyDateRange(next, frequencyFilter, statusFilter);
+  }, [anchorDate, frequencyFilter, statusFilter, applyDateRange]);
+
+  const handleResetToCurrent = useCallback(() => {
+    const now = new Date();
+    setAnchorDate(now);
+    applyDateRange(now, frequencyFilter, statusFilter);
+  }, [frequencyFilter, statusFilter, applyDateRange]);
+
+  // Check if current anchor is active period (e.g. today / this week / this month)
+  const isAnchorCurrent = useMemo(() => {
+    const today = new Date();
+    if (frequencyFilter === 'DAILY') {
+      return isSameDay(anchorDate, today);
+    }
+    if (frequencyFilter === 'WEEKLY') {
+      return getWeekRange(anchorDate).start === getWeekRange(today).start;
+    }
+    if (frequencyFilter === 'MONTHLY') {
+      return anchorDate.getFullYear() === today.getFullYear() && anchorDate.getMonth() === today.getMonth();
+    }
+    return true;
+  }, [anchorDate, frequencyFilter]);
+
+  // Display text for date navigator center box
+  const getDateDisplayText = useCallback(() => {
+    if (frequencyFilter === 'DAILY') {
+      return formatDayDisplay(anchorDate);
+    }
+    if (frequencyFilter === 'WEEKLY') {
+      return formatWeekDisplay(anchorDate);
+    }
+    if (frequencyFilter === 'MONTHLY') {
+      return formatMonthDisplay(anchorDate);
+    }
+    return 'All Active Records';
+  }, [anchorDate, frequencyFilter]);
+
+  // Group raw installments into unique borrower cards for the selected period/filter
+  const borrowerCards = useMemo(() => {
+    if (!report.records || report.records.length === 0) return [];
+
+    const map = new Map();
+
+    report.records.forEach((rec) => {
+      const key = rec.loanId || rec.loanNumber || rec.customerId;
+      if (!map.has(key)) {
+        map.set(key, {
+          key: String(key),
+          loanId: rec.loanId,
+          customerId: rec.customerId,
+          userId: rec.userId,
+          customerName: rec.customerName,
+          customerPhone: rec.customerPhone,
+          customerAddress: rec.customerAddress,
+          shopName: rec.shopName,
+          loanNumber: rec.loanNumber,
+          frequency: rec.frequency,
+          expectedAmount: 0,
+          paidAmount: 0,
+          balance: 0,
+          installmentsCount: 0,
+          unpaidCount: 0,
+          overdueCount: 0,
+          paidCount: 0,
+          earliestDueDate: null,
+          earliestUnpaidNumber: null,
+          records: [],
+        });
+      }
+
+      const card = map.get(key);
+      card.expectedAmount += parseFloat(rec.expectedAmount || 0);
+      card.paidAmount += parseFloat(rec.paidAmount || 0);
+      card.balance += parseFloat(rec.balance || 0);
+      card.installmentsCount += 1;
+      card.records.push(rec);
+
+      if (rec.status === 'PAID') {
+        card.paidCount += 1;
+      } else if (rec.status === 'OVERDUE') {
+        card.overdueCount += 1;
+        card.unpaidCount += 1;
+      } else {
+        card.unpaidCount += 1;
+      }
+
+      if (rec.status !== 'PAID' && (!card.earliestDueDate || rec.dueDate < card.earliestDueDate)) {
+        card.earliestDueDate = rec.dueDate;
+        card.earliestUnpaidNumber = rec.installmentNumber;
+      }
     });
-  }, [report.records, searchQuery]);
 
-  // Open Collect Modal
+    const list = Array.from(map.values()).map((card) => {
+      let status = 'UNPAID';
+      let sortPriority = 2;
+
+      if (card.balance <= 0) {
+        status = 'PAID';
+        sortPriority = 4;
+      } else if (card.overdueCount > 0) {
+        status = 'OVERDUE';
+        sortPriority = 1;
+      } else if (card.paidAmount > 0) {
+        status = 'PARTIAL';
+        sortPriority = 3;
+      } else {
+        status = 'UNPAID';
+        sortPriority = 2;
+      }
+
+      return {
+        ...card,
+        status,
+        sortPriority,
+        dueDate: card.earliestDueDate || (card.records[0] ? card.records[0].dueDate : ''),
+        installmentNumber: card.earliestUnpaidNumber || (card.records[0] ? card.records[0].installmentNumber : 1),
+      };
+    });
+
+    list.sort((a, b) => {
+      if (a.sortPriority !== b.sortPriority) return a.sortPriority - b.sortPriority;
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    });
+
+    return list;
+  }, [report.records]);
+
+  // Client-Side Search Filtering over Borrower Cards
+  const filteredBorrowers = useMemo(() => {
+    if (!searchQuery.trim()) return borrowerCards;
+    const q = searchQuery.toLowerCase().trim();
+    return borrowerCards.filter(
+      (b) =>
+        b.customerName?.toLowerCase().includes(q) ||
+        b.customerPhone?.toLowerCase().includes(q) ||
+        b.loanNumber?.toLowerCase().includes(q) ||
+        b.shopName?.toLowerCase().includes(q)
+    );
+  }, [borrowerCards, searchQuery]);
+
+  // Full-Screen Borrower Ledger Modal State
+  const [borrowerLedgerVisible, setBorrowerLedgerVisible] = useState(false);
+  const [selectedBorrower, setSelectedBorrower] = useState(null);
+
+  // Open Full-Screen Borrower Ledger Modal
+  const handleOpenBorrowerLedger = useCallback((borrower) => {
+    setSelectedBorrower(borrower);
+    setBorrowerLedgerVisible(true);
+  }, []);
+
+  // Open Collect Modal (Legacy / Quick Action)
   const openCollectModal = useCallback((record) => {
     setSelectedRecord(record);
     setCollectAmount(String(record.balance || record.expectedAmount || ''));
@@ -444,7 +782,7 @@ export const AdminReports = () => {
         'Payment Recorded',
         `Successfully collected ${formatINR(parsedAmt)} for ${selectedRecord.customerName}.`
       );
-      fetchReport(true);
+      fetchReport(startDate, endDate, frequencyFilter, statusFilter, true);
     } catch (err) {
       console.error('Error recording payment:', err);
       Alert.alert('Collection Failed', err.message || 'Failed to record payment on server.');
@@ -453,178 +791,77 @@ export const AdminReports = () => {
     }
   };
 
-  // Share Summary Report
-  const handleShareSummary = useCallback(async () => {
-    try {
-      const summary = report.summary;
-      const text = `📊 *Apex Finance — Collection Report*\n` +
-        `📅 Period: ${datePreset}\n` +
-        `━━━━━━━━━━━━━━━━━━\n` +
-        `💰 Expected: ${formatINR(summary.expected)}\n` +
-        `✅ Collected: ${formatINR(summary.collected)}\n` +
-        `⚠️ Outstanding: ${formatINR(summary.outstanding)}\n` +
-        `📈 Recovery Rate: ${summary.recovery_rate}%\n` +
-        `━━━━━━━━━━━━━━━━━━\n` +
-        `Overdue: ${summary.overdue_count} | Unpaid: ${summary.unpaid_count} | Paid: ${summary.paid_count}\n` +
-        `Total Records: ${summary.total_records}`;
-
-      await Share.share({
-        title: 'Collection Report',
-        message: text,
-      });
-    } catch (err) {
-      console.log('Error sharing summary:', err);
-    }
-  }, [report.summary, datePreset]);
-
-  // Render FlatList Header with all filters, search, and metrics
+  // Simplified Mom-Friendly Header
   const renderListHeader = () => {
+    const totalPending =
+      (report.summary.overdue_count || 0) +
+      (report.summary.unpaid_count || 0) +
+      (report.summary.partial_count || 0);
+
     return (
       <View>
-        {/* Top Control Bar: Date Presets & Quick Actions */}
-        <View style={styles.topControlRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.presetContainer}
-          >
-            {[
-              { key: 'ALL', label: 'All Time', icon: 'calendar-range' },
-              { key: 'TODAY', label: 'Today', icon: 'calendar-today' },
-              { key: 'THIS_WEEK', label: 'This Week', icon: 'calendar-week' },
-              { key: 'THIS_MONTH', label: 'This Month', icon: 'calendar-month' },
-            ].map((p) => {
-              const active = datePreset === p.key;
-              return (
-                <TouchableOpacity
-                  key={p.key}
-                  style={[styles.presetChip, active && styles.presetChipActive]}
-                  onPress={() => handlePresetSelect(p.key)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={p.icon}
-                    size={13}
-                    color={active ? '#FFFFFF' : '#6B7280'}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={[styles.presetChipText, active && styles.presetChipTextActive]}>
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Quick Refresh & Share */}
-          <View style={styles.headerIconsRow}>
-            <TouchableOpacity
-              style={styles.miniIconBtn}
-              onPress={() => fetchReport(true)}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="refresh" size={18} color="#6B46C1" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.miniIconBtn, { marginLeft: 6 }]}
-              onPress={handleShareSummary}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="share-variant-outline" size={18} color="#6B46C1" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Frequency Filter Tabs */}
-        <View style={styles.frequencyContainer}>
-          {['ALL', 'WEEKLY', 'DAILY', 'MONTHLY'].map((freq) => {
-            const active = frequencyFilter === freq;
-            return (
-              <TouchableOpacity
-                key={freq}
-                style={[styles.freqTab, active && styles.freqTabActive]}
-                onPress={() => setFrequencyFilter(freq)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.freqTabText, active && styles.freqTabTextActive]}>
-                  {freq === 'ALL' ? 'All Freq' : freq.charAt(0) + freq.slice(1).toLowerCase()}
+        {/* Summary Metric Dashboard (Clean White Cards matching Borrower Card design) */}
+        <View style={styles.metricsThreeRow}>
+          {loading && !refreshing ? (
+            <>
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+            </>
+          ) : (
+            <>
+              {/* Card 1: To Collect */}
+              <View style={styles.metricCardProper}>
+                <View style={styles.metricTopProper}>
+                  <Text style={styles.metricLabelProper}>TO COLLECT</Text>
+                  <View style={[styles.metricIconBox, { backgroundColor: '#FEE2E2' }]}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={13} color="#DC2626" />
+                  </View>
+                </View>
+                <Text style={[styles.metricValueProper, { color: '#DC2626' }]} numberOfLines={1}>
+                  {formatINR(report.summary.outstanding)}
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
+                <Text style={styles.metricSubtextProper}>
+                  {totalPending} Due
+                </Text>
+              </View>
+
+              {/* Card 2: Collected */}
+              <View style={styles.metricCardProper}>
+                <View style={styles.metricTopProper}>
+                  <Text style={styles.metricLabelProper}>COLLECTED</Text>
+                  <View style={[styles.metricIconBox, { backgroundColor: '#DCFCE7' }]}>
+                    <MaterialCommunityIcons name="check-decagram" size={13} color="#059669" />
+                  </View>
+                </View>
+                <Text style={[styles.metricValueProper, { color: '#059669' }]} numberOfLines={1}>
+                  {formatINR(report.summary.collected)}
+                </Text>
+                <Text style={styles.metricSubtextProper}>
+                  {report.summary.paid_count || 0} Paid
+                </Text>
+              </View>
+
+              {/* Card 3: Total */}
+              <View style={styles.metricCardProper}>
+                <View style={styles.metricTopProper}>
+                  <Text style={styles.metricLabelProper}>TOTAL</Text>
+                  <View style={[styles.metricIconBox, { backgroundColor: '#F3E8FF' }]}>
+                    <MaterialCommunityIcons name="calendar-clock" size={13} color="#6B46C1" />
+                  </View>
+                </View>
+                <Text style={[styles.metricValueProper, { color: '#111827' }]} numberOfLines={1}>
+                  {formatINR(report.summary.expected)}
+                </Text>
+                <Text style={styles.metricSubtextProper}>
+                  {report.summary.total_records || 0} Total
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
-        {/* Summary Metric Dashboard (4 Cards in 2x2 Grid) */}
-        <View style={styles.metricsGrid}>
-          {/* Card 1: Expected */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>TOTAL EXPECTED</Text>
-              <View style={[styles.metricIconBox, { backgroundColor: '#F3E8FF' }]}>
-                <MaterialCommunityIcons name="calendar-clock" size={15} color="#6B46C1" />
-              </View>
-            </View>
-            <Text style={styles.metricValue}>{formatINR(report.summary.expected)}</Text>
-            <Text style={styles.metricSubtext}>
-              {report.summary.total_records} Total Installments
-            </Text>
-          </View>
-
-          {/* Card 2: Collected */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>COLLECTED</Text>
-              <View style={[styles.metricIconBox, { backgroundColor: '#ECFDF5' }]}>
-                <MaterialCommunityIcons name="check-decagram" size={15} color="#10B981" />
-              </View>
-            </View>
-            <Text style={[styles.metricValue, { color: '#10B981' }]}>
-              {formatINR(report.summary.collected)}
-            </Text>
-            <Text style={styles.metricSubtext}>
-              {report.summary.paid_count} Settled Loans
-            </Text>
-          </View>
-
-          {/* Card 3: Outstanding */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>OUTSTANDING</Text>
-              <View style={[styles.metricIconBox, { backgroundColor: '#FEF2F2' }]}>
-                <MaterialCommunityIcons name="alert-circle-outline" size={15} color="#EF4444" />
-              </View>
-            </View>
-            <Text style={[styles.metricValue, { color: '#EF4444' }]}>
-              {formatINR(report.summary.outstanding)}
-            </Text>
-            <Text style={styles.metricSubtext}>
-              {report.summary.overdue_count + report.summary.unpaid_count} Pending Payments
-            </Text>
-          </View>
-
-          {/* Card 4: Recovery Rate */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>RECOVERY RATE</Text>
-              <View style={[styles.metricIconBox, { backgroundColor: '#EFF6FF' }]}>
-                <MaterialCommunityIcons name="percent" size={15} color="#3B82F6" />
-              </View>
-            </View>
-            <Text style={[styles.metricValue, { color: '#6B46C1' }]}>
-              {report.summary.recovery_rate}%
-            </Text>
-            <View style={styles.progressBarBg}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${Math.min(100, report.summary.recovery_rate || 0)}%` },
-                ]}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Status Filter Pills Row */}
+        {/* Status Filter Pills */}
         <View style={styles.statusSection}>
           <ScrollView
             horizontal
@@ -633,10 +870,8 @@ export const AdminReports = () => {
           >
             {[
               { key: 'ALL', label: 'All', count: report.summary.total_records, color: '#6B46C1' },
-              { key: 'OVERDUE', label: 'Overdue', count: report.summary.overdue_count, color: '#EF4444' },
-              { key: 'UNPAID', label: 'Unpaid', count: report.summary.unpaid_count, color: '#F59E0B' },
-              { key: 'PARTIAL', label: 'Partial', count: report.summary.partial_count, color: '#3B82F6' },
-              { key: 'PAID', label: 'Paid', count: report.summary.paid_count, color: '#10B981' },
+              { key: 'UNPAID', label: 'To Collect', count: totalPending, color: '#DC2626' },
+              { key: 'PAID', label: 'Paid', count: report.summary.paid_count, color: '#059669' },
             ].map((s) => {
               const active = statusFilter === s.key;
               return (
@@ -646,7 +881,7 @@ export const AdminReports = () => {
                     styles.statusPill,
                     active && { backgroundColor: s.color, borderColor: s.color },
                   ]}
-                  onPress={() => setStatusFilter(s.key)}
+                  onPress={() => handleStatusSelect(s.key)}
                   activeOpacity={0.7}
                 >
                   <Text
@@ -655,23 +890,8 @@ export const AdminReports = () => {
                       active && { color: '#FFFFFF' },
                     ]}
                   >
-                    {s.label}
+                    {s.label} ({s.count || 0})
                   </Text>
-                  <View
-                    style={[
-                      styles.statusBadgeCount,
-                      active && { backgroundColor: 'rgba(255,255,255,0.25)' },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusBadgeCountText,
-                        active && { color: '#FFFFFF' },
-                      ]}
-                    >
-                      {s.count || 0}
-                    </Text>
-                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -684,7 +904,7 @@ export const AdminReports = () => {
             <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search customer, phone, loan code..."
+              placeholder="Search customer name..."
               placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -698,30 +918,28 @@ export const AdminReports = () => {
           </View>
         </View>
 
-        {/* Records Count Bar */}
+        {/* Clean Count Header */}
         <View style={styles.recordsHeader}>
           <Text style={styles.recordsHeaderText}>
-            PAYMENT OBLIGATIONS ({filteredRecords.length})
-          </Text>
-          <Text style={styles.recordsHeaderSub}>
-            Sorted by urgency & due date
+            Customers ({filteredBorrowers.length})
           </Text>
         </View>
-
-        {/* Loading Indicator */}
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#6B46C1" />
-            <Text style={styles.loadingText}>Fetching live reports...</Text>
-          </View>
-        )}
       </View>
     );
   };
 
-  // Render Empty State
+  // Render Empty State or Skeletons
   const renderEmpty = () => {
-    if (loading) return null;
+    if (loading && !refreshing) {
+      return (
+        <View style={{ marginTop: 6 }}>
+          <BorrowerCardSkeleton />
+          <BorrowerCardSkeleton />
+          <BorrowerCardSkeleton />
+          <BorrowerCardSkeleton />
+        </View>
+      );
+    }
 
     return (
       <View style={styles.emptyContainer}>
@@ -743,48 +961,130 @@ export const AdminReports = () => {
             ? `No records matching "${searchQuery}".`
             : 'No payment dues found for the selected period or filters.'}
         </Text>
-        {(datePreset !== 'ALL' || frequencyFilter !== 'ALL' || statusFilter !== 'ALL' || searchQuery) && (
+        {(frequencyFilter !== 'ALL' || statusFilter !== 'ALL' || searchQuery) && (
           <TouchableOpacity
             style={styles.resetFilterBtn}
             onPress={() => {
-              setDatePreset('ALL');
-              setStartDate('');
-              setEndDate('');
               setFrequencyFilter('ALL');
               setStatusFilter('ALL');
               setSearchQuery('');
+              fetchReport('', '', 'ALL', 'ALL', false);
             }}
             activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="filter-remove-outline" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.resetFilterText}>Reset All Filters</Text>
+            <MaterialCommunityIcons name="filter-remove" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.resetFilterText}>Clear Filters</Text>
           </TouchableOpacity>
         )}
       </View>
     );
   };
 
-  // Render Single Record Item
+  // Render Single Borrower Card
   const renderItem = ({ item }) => (
-    <RecordCard
+    <BorrowerCard
       item={item}
-      onOpenCollect={openCollectModal}
+      onOpenLedger={handleOpenBorrowerLedger}
       onOpenDetail={openDetailModal}
+      onCall={(phone) => Linking.openURL(`tel:${phone}`)}
     />
   );
 
   // Key extractor
   const keyExtractor = (item, index) => {
-    return String(item.scheduleId || `${item.loanId}-${item.installmentNumber}-${index}`);
+    return String(item.key || item.loanId || `${item.customerId}-${index}`);
   };
 
   return (
     <View style={styles.fullscreenContainer}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
+      {/* Full-Width Top Frequency Tabs Attached to Header */}
+      <View style={styles.headerAttachedTabBar}>
+        {[
+          { key: 'ALL', label: 'All', icon: 'layers-outline' },
+          { key: 'WEEKLY', label: 'Weekly', icon: 'calendar-week' },
+          { key: 'DAILY', label: 'Daily', icon: 'calendar-today' },
+          { key: 'MONTHLY', label: 'Monthly', icon: 'calendar-month' },
+        ].map((freq) => {
+          const active = frequencyFilter === freq.key;
+          return (
+            <TouchableOpacity
+              key={freq.key}
+              style={styles.headerAttachedTab}
+              onPress={() => handleFrequencySelect(freq.key)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.tabContentRow}>
+                <MaterialCommunityIcons
+                  name={freq.icon}
+                  size={15}
+                  color={active ? '#6B46C1' : '#6B7280'}
+                  style={{ marginRight: 5 }}
+                />
+                <Text style={[styles.headerAttachedTabText, active && styles.headerAttachedTabTextActive]}>
+                  {freq.label}
+                </Text>
+              </View>
+              {active && <View style={styles.tabActiveBottomLine} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Interactive Date Navigation Bar (Prev / Next & Current Period Reset) */}
+      <View style={styles.dateNavContainer}>
+        {frequencyFilter !== 'ALL' ? (
+          <>
+            <TouchableOpacity
+              style={styles.dateNavArrowBtn}
+              onPress={handlePrevDate}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="chevron-left" size={24} color="#6B46C1" />
+            </TouchableOpacity>
+
+            <View style={styles.dateNavCenterBox}>
+              <MaterialCommunityIcons name="calendar" size={15} color="#6B46C1" style={{ marginRight: 6 }} />
+              <Text style={styles.dateNavCenterText} numberOfLines={1}>
+                {getDateDisplayText()}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.dateNavArrowBtn}
+              onPress={handleNextDate}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="chevron-right" size={24} color="#6B46C1" />
+            </TouchableOpacity>
+
+            {!isAnchorCurrent && (
+              <TouchableOpacity
+                style={styles.dateNavResetBtn}
+                onPress={handleResetToCurrent}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="restore" size={13} color="#6B46C1" style={{ marginRight: 3 }} />
+                <Text style={styles.dateNavResetText}>
+                  {frequencyFilter === 'DAILY' ? 'Today' : frequencyFilter === 'WEEKLY' ? 'This Week' : 'This Month'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+          <View style={styles.dateNavAllBox}>
+            <MaterialCommunityIcons name="calendar-check" size={16} color="#6B46C1" style={{ marginRight: 6 }} />
+            <Text style={styles.dateNavCenterText}>All Active Payment Records</Text>
+          </View>
+        )}
+      </View>
+
       {/* High-Performance Virtualized FlatList */}
       <FlatList
-        data={filteredRecords}
+        data={filteredBorrowers}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         ListHeaderComponent={renderListHeader}
@@ -799,14 +1099,22 @@ export const AdminReports = () => {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => fetchReport(true)}
+            onRefresh={() => fetchReport(startDate, endDate, frequencyFilter, statusFilter, true)}
             colors={['#6B46C1']}
             tintColor="#6B46C1"
           />
         }
       />
 
-      {/* Collect Payment Modal */}
+      {/* Separate Borrower Log & Complete Installment History Modal */}
+      <BorrowerLogModal
+        visible={borrowerLedgerVisible}
+        onClose={() => setBorrowerLedgerVisible(false)}
+        borrower={selectedBorrower}
+        onPaymentSuccess={() => fetchReport()}
+      />
+
+      {/* Collect Payment Modal (Legacy) */}
       <Modal
         visible={collectModalVisible}
         transparent
@@ -1021,54 +1329,64 @@ const styles = StyleSheet.create({
     paddingBottom: 90,
   },
 
-  // Top Control Bar
-  topControlRow: {
+
+  // Full-Width Top Frequency Tabs (Attached to Header)
+  headerAttachedTabBar: {
+    width: '100%',
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 4,
-    paddingRight: 16,
-  },
-  presetContainer: {
-    paddingHorizontal: 16,
-    gap: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  presetChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 18,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  presetChipActive: {
-    backgroundColor: '#6B46C1',
-    borderColor: '#6B46C1',
-    shadowColor: '#6B46C1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
     elevation: 2,
   },
-  presetChipText: {
-    fontSize: 12,
+  headerAttachedTab: {
+    flex: 1,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  tabContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAttachedTabText: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#6B7280',
   },
-  presetChipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  headerAttachedTabTextActive: {
+    color: '#6B46C1',
+    fontWeight: '800',
   },
-  headerIconsRow: {
+  tabActiveBottomLine: {
+    position: 'absolute',
+    bottom: 0,
+    left: 10,
+    right: 10,
+    height: 3,
+    backgroundColor: '#6B46C1',
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
+
+  // Interactive Date Navigator Bar
+  dateNavContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 6,
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  miniIconBtn: {
+  dateNavArrowBtn: {
     width: 34,
     height: 34,
     borderRadius: 8,
@@ -1076,50 +1394,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Frequency Tabs
-  frequencyContainer: {
+  dateNavCenterBox: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: 3,
-  },
-  freqTab: {
-    flex: 1,
-    paddingVertical: 6,
     alignItems: 'center',
-    borderRadius: 8,
+    justifyContent: 'center',
+    flex: 1,
+    paddingHorizontal: 8,
   },
-  freqTabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  freqTabText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  freqTabTextActive: {
-    color: '#6B46C1',
+  dateNavCenterText: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#1F2937',
+  },
+  dateNavResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+    marginLeft: 4,
+  },
+  dateNavResetText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B46C1',
+  },
+  dateNavAllBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    paddingVertical: 4,
   },
 
-  // Metric Dashboard Grid
-  metricsGrid: {
+  // Proper 3 Metric Cards matching Borrower card design
+  metricsThreeRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 8,
   },
-  metricCard: {
-    width: '46%',
-    margin: '2%',
+  metricCardProper: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
@@ -1127,65 +1446,69 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
-  },
-  metricTop: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
   },
-  metricLabel: {
-    fontSize: 10,
+  metricTopProper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  metricLabelProper: {
+    fontSize: 9,
     fontWeight: '700',
     color: '#6B7280',
     letterSpacing: 0.3,
   },
   metricIconBox: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  metricValue: {
-    fontSize: 16,
+  metricValueProper: {
+    fontSize: 14,
     fontWeight: '800',
-    color: '#111827',
+    marginTop: 2,
   },
-  metricSubtext: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 3,
+  metricSubtextProper: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 2,
   },
-  progressBarBg: {
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
+
+  // Due info row
+  dueInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 6,
-    overflow: 'hidden',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
-  progressBarFill: {
-    height: 4,
-    backgroundColor: '#6B46C1',
-    borderRadius: 2,
+  dueInfoText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginLeft: 4,
   },
 
   // Status Filter Pills
   statusSection: {
-    marginTop: 8,
+    marginTop: 10,
   },
   statusContainer: {
     paddingHorizontal: 16,
     gap: 8,
   },
   statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -1193,18 +1516,6 @@ const styles = StyleSheet.create({
   },
   statusPillText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#4B5563',
-    marginRight: 6,
-  },
-  statusBadgeCount: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 10,
-  },
-  statusBadgeCountText: {
-    fontSize: 10,
     fontWeight: '700',
     color: '#4B5563',
   },
@@ -1234,22 +1545,14 @@ const styles = StyleSheet.create({
 
   // Records Header
   recordsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 6,
   },
   recordsHeaderText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#6B7280',
-    letterSpacing: 0.5,
-  },
-  recordsHeaderSub: {
-    fontSize: 11,
-    color: '#9CA3AF',
+    color: '#4B5563',
   },
 
   // Loading

@@ -43,7 +43,9 @@ async function getPaymentReport(req, res) {
   try {
     const orgId = req.query.organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
     const branchId = req.query.branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
-    const { start_date, end_date, frequency, status } = req.query;
+    const start_date = req.query.start_date || req.query.startDate;
+    const end_date = req.query.end_date || req.query.endDate;
+    const { frequency, status } = req.query;
     const data = await reportService.getPaymentReport({
       startDate: start_date,
       endDate: end_date,

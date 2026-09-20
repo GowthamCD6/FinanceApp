@@ -473,8 +473,14 @@ class ApiService {
   // 12. REPORTS & ANALYTICS
   async getPaymentReport(params = {}) {
     const query = new URLSearchParams();
-    if (params.startDate) query.append('start_date', params.startDate);
-    if (params.endDate) query.append('end_date', params.endDate);
+    if (params.startDate) {
+      query.append('start_date', params.startDate);
+      query.append('startDate', params.startDate);
+    }
+    if (params.endDate) {
+      query.append('end_date', params.endDate);
+      query.append('endDate', params.endDate);
+    }
     if (params.frequency && params.frequency !== 'ALL') query.append('frequency', params.frequency);
     if (params.status && params.status !== 'ALL') query.append('status', params.status);
     if (params.organizationId) query.append('organizationId', params.organizationId);
