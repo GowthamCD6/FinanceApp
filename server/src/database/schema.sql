@@ -701,6 +701,20 @@ CREATE TABLE IF NOT EXISTS notifications (
     INDEX idx_notifications_read (is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS broadcast_notifications (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    audience VARCHAR(50) NOT NULL DEFAULT 'ALL',
+    priority VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+    channels VARCHAR(255) NOT NULL DEFAULT 'PUSH_IN_APP',
+    author_name VARCHAR(150) NOT NULL DEFAULT 'Executive Super Admin',
+    reach_count INT UNSIGNED NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL DEFAULT 'SENT',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_broadcast_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 12. SYSTEM GOVERNANCE, POLICIES & MOBILE PLATFORM
 CREATE TABLE IF NOT EXISTS privacy_policies (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

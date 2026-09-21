@@ -111,7 +111,7 @@ const BlockUserScreen = ({ onBack }) => {
         onPress: async () => {
           try {
             setSubmitting(true);
-            const response = await ApiService.makeRequest('/admin/users/unblock', {
+            const response = await apiService.makeRequest('/admin/users/unblock', {
               method: 'POST',
               body: JSON.stringify({ userId }),
             });
@@ -148,7 +148,7 @@ const BlockUserScreen = ({ onBack }) => {
 
     try {
       setSubmitting(true);
-      const response = await ApiService.makeRequest('/admin/users/block', {
+      const response = await apiService.makeRequest('/admin/users/block', {
         method: 'POST',
         body: JSON.stringify({
           userId: selectedUser.id,

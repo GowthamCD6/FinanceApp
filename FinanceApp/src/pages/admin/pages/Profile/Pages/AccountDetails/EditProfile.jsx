@@ -140,7 +140,7 @@ const EditProfile = ({ onBack }) => {
 	useEffect(() => {
 		const loadProfile = async () => {
 			try {
-				const response = await ApiService.getProfile();
+				const response = await apiService.getProfile();
 				if (response.success && response.data?.user) {
 					const user = response.data.user;
 					const profile = response.data.profile || {};

@@ -115,7 +115,7 @@ const PasswordManagement = ({ onClose, onBack }) => {
     try {
       setLoadingDetails(true);
       const cleanUserId = encodeURIComponent(String(userId).trim());
-      const response = await ApiService.makeRequest(`/admin/users/${cleanUserId}/passwordDetails`, {
+      const response = await apiService.makeRequest(`/admin/users/${cleanUserId}/passwordDetails`, {
         method: 'GET',
       });
 
@@ -218,7 +218,7 @@ const PasswordManagement = ({ onClose, onBack }) => {
     try {
       setIsUpdating(true);
 
-      const response = await ApiService.makeRequest('/admin/users/updatePassword', {
+      const response = await apiService.makeRequest('/admin/users/updatePassword', {
         method: 'POST',
         body: JSON.stringify({
           userId: selectedUser.id,
@@ -268,7 +268,7 @@ const PasswordManagement = ({ onClose, onBack }) => {
     try {
       setIsUpdating(true);
 
-      const response = await ApiService.makeRequest('/admin/users/resetPassword', {
+      const response = await apiService.makeRequest('/admin/users/resetPassword', {
         method: 'POST',
         body: JSON.stringify({
           userId: userId,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,12 +24,13 @@ try {
     setItem: async () => {},
   };
 }
+
 import { useApp } from '../../../../context/AppContext';
 import { useLanguage } from '../../../../utils/LanguageContext';
 import Colors from '../../../../theme/colors';
 import { formatINR } from '../../../../utils/helpers';
 
-// Dedicated Profile Pages
+// Dedicated Profile Subpages
 import EditProfile from './Pages/AccountDetails/EditProfile';
 import PasswordManagement from './Pages/PasswordManagement/PasswordManagement';
 import SecurPermis from './Pages/SecurityLock/SecurityPermision';
@@ -37,11 +38,8 @@ import LanguageSettings from './Pages/LanguageSettings/LanguageSettings';
 import BlockUserScreen from './Pages/BlockUser/BlockUser';
 import UserL from './Pages/UserLocation/UserL';
 import MyLocation from './Pages/MyLocation/MyLocation';
-
-// Additional Dedicated Pages
 import NotificationSettings from './Pages/NotificationSettings/NotificationSettings';
 import OTPRequests from './Pages/OTPRequests/OTPRequests';
-import AuctionSettings from './Pages/AuctionSettings/AuctionSettings';
 import DataExport from './Pages/DataExport/DataExport';
 import HelpSupport from './Pages/HelpSupport/HelpSupport';
 import PrivacyPolicy from './Pages/PrivacyPolicy/PrivacyPolicy';
@@ -52,11 +50,11 @@ export const AdminProfile = () => {
 
   const [imageError, setImageError] = useState(false);
   const [userData, setUserData] = useState({
-    name: currentUser?.name || 'Gowtham Admin',
+    name: currentUser?.name || 'Administrator',
     role: currentUser?.role_type || currentUser?.role || 'Admin',
-    phone: currentUser?.phone || '+91 98401 55678',
-    email: currentUser?.email || 'admin@apexfinance.in',
-    branch: 'Apex Central Branch - Route 4',
+    phone: currentUser?.phone || '',
+    email: currentUser?.email || '',
+    branch: currentUser?.branch_name || 'Central Operations Route',
     userImage: '',
   });
 
@@ -65,7 +63,7 @@ export const AdminProfile = () => {
 
   useEffect(() => {
     loadUserData();
-  }, []);
+  }, [currentUser]);
 
   const loadUserData = async () => {
     try {
@@ -73,27 +71,53 @@ export const AdminProfile = () => {
       const storedPhone = await AsyncStorage.getItem('userPhone');
       const storedRole = await AsyncStorage.getItem('userRole');
       const storedImage = await AsyncStorage.getItem('userImage');
+      const storedEmail = await AsyncStorage.getItem('userEmail');
 
       setUserData(prev => ({
         ...prev,
         name: storedName || currentUser?.name || prev.name,
         phone: storedPhone || currentUser?.phone || prev.phone,
-        role: storedRole || currentUser?.role_type || prev.role,
+        email: storedEmail || currentUser?.email || prev.email,
+        role: storedRole || currentUser?.role_type || currentUser?.role || prev.role,
+        branch: currentUser?.branch_name || prev.branch,
         userImage: storedImage || prev.userImage,
       }));
+      setImageError(false);
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Error loading user profile data:', error);
     }
   };
 
   const displayName = userData.name || 'Admin';
-  const displayPhone = userData.phone || '';
+  const displayPhone = userData.phone || currentUser?.phone || '';
+  const displayEmail = userData.email || currentUser?.email || '';
   const profileInitial = displayName ? displayName.charAt(0).toUpperCase() : 'A';
+
+  // Dynamic metrics calculation
+  const totalBorrowers = useMemo(() => {
+    if (Array.isArray(customers)) return customers.length;
+    return 0;
+  }, [customers]);
+
+  const activeLoansCount = useMemo(() => {
+    if (Array.isArray(loans)) {
+      const active = loans.filter(l => l.status === 'ACTIVE' || l.status === 'DISBURSED');
+      return active.length > 0 ? active.length : loans.length;
+    }
+    return 0;
+  }, [loans]);
+
+  const todayCollectedAmt = useMemo(() => {
+    if (fundMetrics?.todayCollected !== undefined) {
+      return fundMetrics.todayCollected;
+    }
+    return 0;
+  }, [fundMetrics]);
 
   const handleLogout = () => {
     Alert.alert(
       t('Logout'),
-      'Are you sure you want to logout from this device?',
+      'Are you sure you want to sign out from this administration session?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -117,17 +141,17 @@ export const AdminProfile = () => {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Follow Us', `Join Apex Finance on ${fallbackName}!`);
+        Alert.alert('Follow Us', `Join Apex Microfinance on ${fallbackName}!`);
       }
     } catch {
-      Alert.alert('Follow Us', `Join Apex Finance on ${fallbackName}!`);
+      Alert.alert('Follow Us', `Join Apex Microfinance on ${fallbackName}!`);
     }
   };
 
   const handleShareApp = async () => {
     try {
       await Share.share({
-        title: 'Apex Microfinance Platform',
+        title: 'Apex Microfinance Operations Platform',
         message: 'Manage your micro-lending loans, daily collections, and portfolio records securely with Apex Finance App!\nDownload now: https://play.google.com/store/apps/details?id=com.apexfinance',
       });
     } catch (error) {
@@ -136,109 +160,102 @@ export const AdminProfile = () => {
   };
 
   const handleRateApp = () => {
-    Alert.alert('Rate App', 'Thank you for rating Apex Microfinance App on Play Store!');
+    Alert.alert('Rate App', 'Thank you for supporting Apex Microfinance on Google Play Store!');
   };
 
   const settingSections = [
     {
-      title: t('Account'),
+      title: 'Profile & Security',
       items: [
         {
-          icon: 'account-edit',
+          icon: 'account-edit-outline',
           title: t('Edit Profile'),
-          subtitle: t('Update your personal information'),
-          iconColor: '#555555',
+          subtitle: 'Update personal contact, address & photo',
+          iconColor: '#7C3AED',
+          bgColor: '#F5F3FF',
           onPress: () => setActiveModal('EDIT_PROFILE'),
+        },
+        {
+          icon: 'shield-lock-outline',
+          title: 'App Biometric & PIN Lock',
+          subtitle: 'Secure app access with device fingerprint / PIN',
+          iconColor: '#059669',
+          bgColor: '#ECFDF5',
+          onPress: () => setActiveModal('SECURITY_PERM'),
         },
         {
           icon: 'key-change',
           title: t('Password Management'),
-          subtitle: t('View and manage user passwords'),
-          iconColor: '#6B46C1',
+          subtitle: 'Manage passwords and staff credentials',
+          iconColor: '#2563EB',
+          bgColor: '#EFF6FF',
           onPress: () => setActiveModal('PASSWORD_MGMT'),
         },
-        {
-          icon: 'shield-account',
-          title: t('Password & Security'),
-          subtitle: t('Password and authentication'),
-          iconColor: '#555555',
-          onPress: () => setActiveModal('SECURITY_PERM'),
-        },
       ],
     },
     {
-      title: t('App Settings'),
+      title: 'Field & Collection Operations',
       items: [
         {
-          icon: 'bell-outline',
-          title: t('Notifications'),
-          subtitle: t('Manage notification preferences'),
-          iconColor: '#555555',
-          onPress: () => setActiveModal('NOTIFICATIONS'),
-        },
-        {
-          icon: 'earth',
-          title: t('Language'),
-          subtitle: language === 'ta' ? 'தமிழ் (Tamil)' : 'English, Tamil',
-          iconColor: '#555555',
-          onPress: () => setActiveModal('LANGUAGE'),
-        },
-      ],
-    },
-    {
-      title: t('Group Management'),
-      items: [
-        {
-          icon: 'key-chain',
-          title: t('OTP Requests'),
-          subtitle: t('Manage user OTP verification requests'),
-          iconColor: '#3B82F6',
-          onPress: () => setActiveModal('OTP_REQUESTS'),
-        },
-        {
-          icon: 'gavel',
-          title: t('Auction Settings'),
-          subtitle: t('Set default auction rules and duration'),
-          iconColor: '#555555',
-          onPress: () => setActiveModal('AUCTION_SETTINGS'),
-        },
-      ],
-    },
-    {
-      title: t('Data & Privacy'),
-      items: [
-        {
-          icon: 'download',
-          title: t('Data Export'),
-          subtitle: t('Download all your group data and history'),
-          iconColor: '#555555',
-          onPress: () => setActiveModal('DATA_EXPORT'),
-        },
-        {
-          icon: 'account-cancel',
-          title: t('Block User'),
-          subtitle: 'Manage blocked or defaulting accounts',
-          iconColor: '#EF4444',
-          onPress: () => setActiveModal('BLOCK_USER'),
-        },
-      ],
-    },
-    {
-      title: t('Location & Tracking'),
-      items: [
-        {
-          icon: 'map-marker-radius',
+          icon: 'map-marker-radius-outline',
           title: t('User Location Map'),
-          subtitle: 'Live collection route & borrower map',
+          subtitle: 'Live collection route & borrower GPS directory',
           iconColor: '#10B981',
+          bgColor: '#ECFDF5',
           onPress: () => setActiveModal('USER_LOCATION'),
         },
         {
           icon: 'crosshairs-gps',
-          title: t('Location Sharing'),
-          subtitle: t('Control location sharing preferences'),
-          iconColor: '#555555',
+          title: 'Agent GPS Tracking',
+          subtitle: 'Field officer live location and route sharing',
+          iconColor: '#6366F1',
+          bgColor: '#EEF2FF',
           onPress: () => setActiveModal('MY_LOCATION'),
+        },
+        {
+          icon: 'shield-key-outline',
+          title: 'Field OTP Verifications',
+          subtitle: 'Approve real-time field collection verification codes',
+          iconColor: '#3B82F6',
+          bgColor: '#EFF6FF',
+          onPress: () => setActiveModal('OTP_REQUESTS'),
+        },
+      ],
+    },
+    {
+      title: 'Data & System Preferences',
+      items: [
+        {
+          icon: 'file-download-outline',
+          title: t('Data Export'),
+          subtitle: 'Download CSV collection sheets, loan books & KYC',
+          iconColor: '#0D9488',
+          bgColor: '#F0FDFA',
+          onPress: () => setActiveModal('DATA_EXPORT'),
+        },
+        {
+          icon: 'account-cancel-outline',
+          title: t('Block User'),
+          subtitle: 'Manage blocked or defaulting accounts',
+          iconColor: '#EF4444',
+          bgColor: '#FEF2F2',
+          onPress: () => setActiveModal('BLOCK_USER'),
+        },
+        {
+          icon: 'bell-ring-outline',
+          title: t('Notifications'),
+          subtitle: 'Morning targets, overdue alerts & SMS receipts',
+          iconColor: '#D97706',
+          bgColor: '#FFFBEB',
+          onPress: () => setActiveModal('NOTIFICATIONS'),
+        },
+        {
+          icon: 'translate',
+          title: t('Language'),
+          subtitle: language === 'ta' ? 'தமிழ் (Tamil)' : 'English',
+          iconColor: '#8B5CF6',
+          bgColor: '#F5F3FF',
+          onPress: () => setActiveModal('LANGUAGE'),
         },
       ],
     },
@@ -246,31 +263,35 @@ export const AdminProfile = () => {
       title: t('Support'),
       items: [
         {
-          icon: 'help-circle',
+          icon: 'help-circle-outline',
           title: t('Help & Support'),
-          subtitle: t('FAQs, tutorials, contact support'),
-          iconColor: '#555555',
+          subtitle: 'Helpline, WhatsApp support & FAQs',
+          iconColor: '#0284C7',
+          bgColor: '#F0F9FF',
           onPress: () => setActiveModal('HELP_SUPPORT'),
         },
         {
-          icon: 'lock-outline',
-          title: t('Privacy Controls'),
-          subtitle: t('Control privacy policies and profile data'),
-          iconColor: '#555555',
+          icon: 'shield-check-outline',
+          title: 'Privacy Policy & Compliance',
+          subtitle: 'RBI lending directions & data security policy',
+          iconColor: '#475569',
+          bgColor: '#F8FAFC',
           onPress: () => setActiveModal('PRIVACY_POLICY'),
         },
         {
           icon: 'share-variant-outline',
           title: t('Share App'),
-          subtitle: t('Invite friends to join'),
-          iconColor: '#555555',
+          subtitle: 'Recommend Apex Finance to partner institutions',
+          iconColor: '#6B7280',
+          bgColor: '#F3F4F6',
           onPress: handleShareApp,
         },
         {
           icon: 'star-outline',
           title: t('Rate App'),
-          subtitle: t('Rate us on Play Store'),
-          iconColor: '#555555',
+          subtitle: 'Leave your review on Play Store',
+          iconColor: '#EAB308',
+          bgColor: '#FEFCE8',
           onPress: handleRateApp,
         },
       ],
@@ -281,7 +302,7 @@ export const AdminProfile = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Dedicated Separate Pages (Full-Screen Slide) */}
+      {/* Dedicated Subpages (Modal Slides) */}
       <Modal
         visible={activeModal === 'EDIT_PROFILE'}
         animationType="slide"
@@ -380,16 +401,6 @@ export const AdminProfile = () => {
       </Modal>
 
       <Modal
-        visible={activeModal === 'AUCTION_SETTINGS'}
-        animationType="slide"
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <AuctionSettings
-          onBack={() => setActiveModal(null)}
-        />
-      </Modal>
-
-      <Modal
         visible={activeModal === 'DATA_EXPORT'}
         animationType="slide"
         onRequestClose={() => setActiveModal(null)}
@@ -425,40 +436,75 @@ export const AdminProfile = () => {
       >
         {/* Profile Card Header */}
         <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            {userData.userImage && !imageError ? (
-              <Image
-                source={{ uri: userData.userImage }}
-                style={styles.avatarImage}
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <Text style={styles.avatarInitial}>{profileInitial}</Text>
-            )}
-          </View>
+          <TouchableOpacity
+            style={styles.avatarWrap}
+            onPress={() => setActiveModal('EDIT_PROFILE')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.avatar}>
+              {userData.userImage && !imageError ? (
+                <Image
+                  source={{ uri: userData.userImage }}
+                  style={styles.avatarImage}
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <Text style={styles.avatarInitial}>{profileInitial}</Text>
+              )}
+            </View>
+            <View style={styles.avatarEditBadge}>
+              <MaterialCommunityIcons name="camera" size={14} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+
           <Text style={styles.userName}>{displayName.toUpperCase()}</Text>
+
           {Boolean(displayPhone) && (
-            <Text style={styles.userPhone}>{displayPhone}</Text>
+            <View style={styles.contactRow}>
+              <MaterialCommunityIcons name="phone-outline" size={14} color="#64748B" />
+              <Text style={styles.userPhone}>{displayPhone}</Text>
+            </View>
           )}
-          <Text style={styles.userStatus}>{userData.role || 'Admin'} Account</Text>
+
+          {Boolean(displayEmail) && (
+            <View style={styles.contactRow}>
+              <MaterialCommunityIcons name="email-outline" size={14} color="#64748B" />
+              <Text style={styles.userEmail}>{displayEmail}</Text>
+            </View>
+          )}
+
+          <View style={styles.roleTag}>
+            <MaterialCommunityIcons name="shield-check" size={13} color="#7C3AED" style={{ marginRight: 4 }} />
+            <Text style={styles.roleTagText}>{userData.role || 'Admin'} • Operations Officer</Text>
+          </View>
+
+          {/* Quick Edit Profile Action Button */}
+          <TouchableOpacity
+            style={styles.quickEditBtn}
+            onPress={() => setActiveModal('EDIT_PROFILE')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="account-edit-outline" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
+            <Text style={styles.quickEditBtnText}>Edit Profile Information</Text>
+          </TouchableOpacity>
 
           {/* Officer Metrics Bar */}
           <View style={styles.scorecardContainer}>
             <View style={styles.scorecardItem}>
-              <Text style={styles.scorecardVal}>{customers?.length || 18}</Text>
+              <Text style={styles.scorecardVal}>{totalBorrowers}</Text>
               <Text style={styles.scorecardLbl}>Borrowers</Text>
             </View>
             <View style={styles.scorecardDivider} />
             <View style={styles.scorecardItem}>
-              <Text style={styles.scorecardVal}>{loans?.length || 12}</Text>
+              <Text style={styles.scorecardVal}>{activeLoansCount}</Text>
               <Text style={styles.scorecardLbl}>Active Loans</Text>
             </View>
             <View style={styles.scorecardDivider} />
             <View style={styles.scorecardItem}>
-              <Text style={[styles.scorecardVal, { color: '#10B981' }]}>
-                {formatINR(fundMetrics?.todayCollected || 48500)}
+              <Text style={[styles.scorecardVal, { color: '#059669' }]}>
+                {formatINR(todayCollectedAmt)}
               </Text>
-              <Text style={styles.scorecardLbl}>Collected Today</Text>
+              <Text style={styles.scorecardLbl}>Today's Collection</Text>
             </View>
           </View>
         </View>
@@ -476,15 +522,17 @@ export const AdminProfile = () => {
                     activeOpacity={0.7}
                   >
                     <View style={styles.menuItemContent}>
-                      <MaterialCommunityIcons
-                        name={item.icon}
-                        size={24}
-                        color={item.iconColor}
-                      />
+                      <View style={[styles.iconWrap, { backgroundColor: item.bgColor || '#F3F4F6' }]}>
+                        <MaterialCommunityIcons
+                          name={item.icon}
+                          size={20}
+                          color={item.iconColor}
+                        />
+                      </View>
                       <View style={styles.menuItemTextBox}>
                         <Text style={styles.menuItemText}>{item.title}</Text>
                         {item.subtitle ? (
-                          <Text style={styles.menuItemSubtitle}>
+                          <Text style={styles.menuItemSubtitle} numberOfLines={1}>
                             {item.subtitle}
                           </Text>
                         ) : null}
@@ -492,8 +540,8 @@ export const AdminProfile = () => {
                     </View>
                     <MaterialCommunityIcons
                       name="chevron-right"
-                      size={24}
-                      color="#CCCCCC"
+                      size={20}
+                      color="#94A3B8"
                     />
                   </TouchableOpacity>
                   {itemIndex < section.items.length - 1 && (
@@ -507,53 +555,55 @@ export const AdminProfile = () => {
 
         {/* Follow Us & Social Handles */}
         <View style={styles.followSection}>
-          <Text style={styles.followText}>{t('Follow Us')}</Text>
+          <Text style={styles.followText}>Connect with Apex Microfinance</Text>
           <View style={styles.socialIcons}>
             <TouchableOpacity
               style={styles.socialIcon}
               onPress={() => handleOpenSocial('https://facebook.com', 'Facebook')}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="facebook" size={24} color="#1877F2" />
+              <MaterialCommunityIcons name="facebook" size={22} color="#1877F2" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialIcon}
               onPress={() => handleOpenSocial('https://instagram.com', 'Instagram')}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="instagram" size={24} color="#E4405F" />
+              <MaterialCommunityIcons name="instagram" size={22} color="#E4405F" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialIcon}
               onPress={() => handleOpenSocial('https://youtube.com', 'YouTube')}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="youtube" size={24} color="#FF0000" />
+              <MaterialCommunityIcons name="youtube" size={22} color="#FF0000" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialIcon}
               onPress={() => handleOpenSocial('https://wa.me', 'WhatsApp')}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="whatsapp" size={24} color="#25D366" />
+              <MaterialCommunityIcons name="whatsapp" size={22} color="#25D366" />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+
+          {/* Logout Button */}
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="logout-variant" size={18} color="#EF4444" style={{ marginRight: 8 }} />
             <Text style={styles.logoutText}>{t('Logout')}</Text>
           </TouchableOpacity>
-          <Text style={styles.versionText}>{t('Version')} 1.0.0 • Apex Finance</Text>
+
+          <Text style={styles.versionText}>{t('Version')} 1.0.0 • Apex Microfinance Platform</Text>
         </View>
       </ScrollView>
-
-
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  fullscreenContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#F8FAFC',
   },
   scrollContent: {
     paddingBottom: 90,
@@ -565,65 +615,112 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#E2E8F0',
+  },
+  avatarWrap: {
+    position: 'relative',
+    marginBottom: 12,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#6B46C1',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#7C3AED',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
     overflow: 'hidden',
-    shadowColor: '#6B46C1',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 4,
   },
   avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
   },
   avatarInitial: {
-    fontSize: 34,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#1E1B4B',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   userName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#0F172A',
     marginBottom: 4,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Regular' : 'System',
+    fontFamily: Platform.OS === 'android' ? 'Roboto-Bold' : 'System',
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
+    gap: 6,
   },
   userPhone: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  userStatus: {
     fontSize: 13,
-    color: '#6B46C1',
-    fontWeight: '600',
-    backgroundColor: '#F3E8FF',
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  userEmail: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  roleTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    borderColor: '#E9D5FF',
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    overflow: 'hidden',
-    marginTop: 4,
-    textAlign: 'center',
+    marginTop: 6,
+  },
+  roleTagText: {
+    fontSize: 12,
+    color: '#7C3AED',
+    fontWeight: '700',
+  },
+  quickEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  quickEditBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
   scorecardContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
     marginTop: 18,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -636,85 +733,94 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scorecardVal: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#111827',
+    color: '#0F172A',
   },
   scorecardLbl: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#64748B',
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   scorecardDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#CBD5E1',
   },
   settingsContainer: {
     paddingHorizontal: 16,
-    marginTop: 24,
+    marginTop: 20,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 10,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#475569',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   menuCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#E2E8F0',
   },
   menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
   },
   menuItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 8,
+  },
+  iconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   menuItemTextBox: {
-    marginLeft: 16,
+    marginLeft: 12,
     flex: 1,
   },
   menuItemText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   menuItemSubtitle: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#64748B',
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
-    marginLeft: 56,
+    backgroundColor: '#F1F5F9',
+    marginLeft: 62,
   },
   followSection: {
     alignItems: 'center',
-    marginTop: 32,
-    marginBottom: 12,
+    marginTop: 28,
+    marginBottom: 16,
     paddingHorizontal: 16,
   },
   followText: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 14,
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 12,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Regular' : 'System',
   },
   socialIcons: {
     flexDirection: 'row',
@@ -723,40 +829,45 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   socialIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
     paddingVertical: 10,
     paddingHorizontal: 24,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 20,
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    borderRadius: 8,
   },
   logoutText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#EF4444',
     fontWeight: '700',
   },
   versionText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Regular' : 'System',
+    fontSize: 11,
+    color: '#94A3B8',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
+    fontWeight: '600',
   },
 });
 

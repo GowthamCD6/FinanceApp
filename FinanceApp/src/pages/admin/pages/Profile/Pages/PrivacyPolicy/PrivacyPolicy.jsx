@@ -89,7 +89,7 @@ const PrivacyPolicy = ({ onBack }) => {
         </View>
 
         <Text style={styles.subtitle}>
-          RBI Microfinance & Chit Fund Regulatory Compliance Guidelines.
+          RBI Microfinance Lending Directions & Data Regulatory Guidelines.
         </Text>
 
         {/* Policy Sections */}

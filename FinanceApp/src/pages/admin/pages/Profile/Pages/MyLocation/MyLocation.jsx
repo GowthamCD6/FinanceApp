@@ -113,7 +113,7 @@ const MyLocation = ({ onBack, animatedValue }) => {
       if (authUser?.id || authUser?.userId) {
         try {
           console.log('Loading location from backend...');
-          const backendResponse = await ApiService.getMyLocation();
+          const backendResponse = await apiService.getMyLocation();
 
           if (backendResponse?.success && backendResponse?.data?.location) {
             const backendLocation = backendResponse.data.location;
@@ -500,7 +500,7 @@ const MyLocation = ({ onBack, animatedValue }) => {
         userId
       );
 
-      const result = await ApiService.saveMyLocation({
+      const result = await apiService.saveMyLocation({
         ...locationData,
         savedToDatabase: true,
       });
