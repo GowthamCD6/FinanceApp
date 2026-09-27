@@ -20,6 +20,7 @@ import Header from '../../../../components/HeaderComponent/Header';
 import { useApp } from '../../../../context/AppContext';
 import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
+import { BorrowerLogModal } from '../Reports/BorrowerLogModal';
 import styles from './IssueLoanStyles';
 
 const lendingAnimation = require('../../../../animation/MoneyLending.json');
@@ -45,6 +46,8 @@ export const IssueLoanModal = ({
   const [customerLoans, setCustomerLoans] = useState([]);
   const [selectedLoanTab, setSelectedLoanTab] = useState('ACTIVE'); // 'ACTIVE' | 'COMPLETED'
   const [isAddLoanModalOpen, setIsAddLoanModalOpen] = useState(false);
+  const [selectedLoanForLedger, setSelectedLoanForLedger] = useState(null);
+  const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Dynamic Lending Config loaded from server
@@ -133,6 +136,10 @@ export const IssueLoanModal = ({
   useEffect(() => {
     if (!visible) return;
     const backAction = () => {
+      if (isLedgerModalOpen) {
+        setIsLedgerModalOpen(false);
+        return true;
+      }
       if (isAddLoanModalOpen) {
         setIsAddLoanModalOpen(false);
         return true;
@@ -142,7 +149,7 @@ export const IssueLoanModal = ({
     };
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
-  }, [visible, isAddLoanModalOpen, onClose]);
+  }, [visible, isLedgerModalOpen, isAddLoanModalOpen, onClose]);
 
   // Fetch all registered borrowers for picker
   useEffect(() => {
@@ -331,6 +338,33 @@ export const IssueLoanModal = ({
     });
     return { activeLoans: active, completedLoans: completed };
   }, [customerLoans]);
+
+  // Open Borrower Loan Ledger / Action Modal for active collections or completed logs
+  const handleOpenLoanAction = useCallback((loan) => {
+    const lPrincipal = Number(loan.principal_amount || loan.principal || 0);
+    const lRepayable = Number(loan.total_repayment_amount || loan.total_repayment || 0);
+    const lPaid = Number(loan.total_paid || (lRepayable - Number(loan.outstanding_amount || 0)));
+    const lBalance = Number(loan.outstanding_amount ?? (lRepayable - lPaid));
+
+    const record = {
+      customerId: selectedBorrower?.id || selectedBorrower?.customer_id || selectedBorrower?.userId || loan.customer_id,
+      userId: selectedBorrower?.user_id || selectedBorrower?.id || loan.user_id,
+      customerName: selectedBorrower?.name || selectedBorrower?.full_name || loan.customer_name || 'Borrower',
+      customerPhone: selectedBorrower?.phone || loan.customer_phone || loan.phone || '',
+      customerAddress: [selectedBorrower?.address, selectedBorrower?.city].filter(Boolean).join(', '),
+      shopName: selectedBorrower?.shop_name || loan.shop_name || '',
+      loanId: loan.id,
+      loanNumber: loan.loan_number || loan.loan_code || `LOAN #${loan.id}`,
+      frequency: loan.repayment_frequency || loan.frequency || selectedBorrower?.frequency || 'WEEKLY',
+      balance: lBalance,
+      expectedAmount: lRepayable,
+      paidAmount: lPaid,
+      status: loan.status || 'ACTIVE',
+      records: loan.installments || [],
+    };
+    setSelectedLoanForLedger(record);
+    setIsLedgerModalOpen(true);
+  }, [selectedBorrower]);
 
   // Real-time Calculation
   const principalAmountNum = parseFloat(formData.principal_amount) || 0;
@@ -553,7 +587,7 @@ export const IssueLoanModal = ({
                   activeOpacity={0.8}
                 >
                   <MaterialCommunityIcons
-                    name="cash-clock"
+                    name="clock-time-four-outline"
                     size={16}
                     color={selectedLoanTab === 'ACTIVE' ? '#6B46C1' : '#64748B'}
                   />
@@ -639,18 +673,28 @@ export const IssueLoanModal = ({
                   activeLoans.map((l, index) => {
                     const lPrincipal = Number(l.principal_amount || l.principal || 0);
                     const lRepayable = Number(l.total_repayment_amount || l.total_repayment || 0);
-                    const lOutstanding = Number(l.outstanding_amount ?? (lRepayable - Number(l.total_paid || 0)));
+                    const lPaid = Number(l.total_paid || (lRepayable - Number(l.outstanding_amount || 0)));
+                    const lOutstanding = Number(l.outstanding_amount ?? (lRepayable - lPaid));
                     const isOverdue = l.status === 'OVERDUE';
+                    const percentPaid = lRepayable > 0 ? Math.min(100, Math.max(0, Math.round(((lRepayable - lOutstanding) / lRepayable) * 100))) : 0;
+                    const freq = l.repayment_frequency || l.frequency || 'WEEKLY';
 
                     return (
-                      <View key={l.id || index} style={[styles.loanItemCard, isOverdue && styles.loanItemCardOverdue]}>
+                      <TouchableOpacity
+                        key={l.id || index}
+                        style={[styles.loanItemCard, isOverdue && styles.loanItemCardOverdue]}
+                        onPress={() => handleOpenLoanAction(l)}
+                        activeOpacity={0.88}
+                      >
+                        {/* Top Row: Loan Code Tag & Status Badge */}
                         <View style={styles.loanItemHeader}>
                           <View style={styles.loanItemCodeTag}>
                             <MaterialCommunityIcons name="file-document-outline" size={13} color="#6B46C1" />
-                            <Text style={styles.loanItemCodeText}>
+                            <Text style={styles.loanItemCodeText} numberOfLines={1} ellipsizeMode="middle">
                               {l.loan_number || l.loan_code || `LOAN #${l.id || index + 1}`}
                             </Text>
                           </View>
+
                           <View
                             style={[
                               styles.loanStatusBadge,
@@ -666,6 +710,24 @@ export const IssueLoanModal = ({
                               {l.status || 'ACTIVE'}
                             </Text>
                           </View>
+                        </View>
+
+                        {/* Sub Header: Scheme Group Badge & Disbursed Date */}
+                        <View style={styles.loanItemSubHeader}>
+                          <View style={styles.loanGroupBadge}>
+                            <MaterialCommunityIcons
+                              name={freq === 'DAILY' ? 'store' : freq === 'MONTHLY' ? 'calendar-month' : 'account-group'}
+                              size={12}
+                              color="#475569"
+                            />
+                            <Text style={styles.loanGroupBadgeText}>{freq} SCHEME</Text>
+                          </View>
+
+                          {l.disbursed_at && (
+                            <Text style={styles.loanItemFooterDate}>
+                              Disbursed: {formatDate(l.disbursed_at)}
+                            </Text>
+                          )}
                         </View>
 
                         <View style={styles.loanItemGrid}>
@@ -690,12 +752,38 @@ export const IssueLoanModal = ({
                           </View>
                         </View>
 
-                        {l.disbursed_at && (
-                          <Text style={styles.loanItemFooterDate}>
-                            Disbursed on: {formatDate(l.disbursed_at)} ({l.repayment_frequency || 'WEEKLY'})
+                        {/* Payment Progress Bar */}
+                        <View style={styles.loanProgressBarBg}>
+                          <View
+                            style={[
+                              styles.loanProgressBarFill,
+                              {
+                                width: `${percentPaid}%`,
+                                backgroundColor: isOverdue ? '#DC2626' : '#6B46C1',
+                              },
+                            ]}
+                          />
+                        </View>
+                        <View style={styles.loanProgressMetaRow}>
+                          <Text style={styles.loanProgressMetaText}>
+                            Collected: <Text style={{ fontWeight: '700', color: '#111827' }}>{formatINR(Math.max(0, lRepayable - lOutstanding))}</Text> ({percentPaid}%)
                           </Text>
-                        )}
-                      </View>
+                          <Text style={styles.loanProgressMetaText}>
+                            Remaining: <Text style={{ fontWeight: '700', color: isOverdue ? '#DC2626' : '#6B46C1' }}>{formatINR(lOutstanding)}</Text>
+                          </Text>
+                        </View>
+
+                        {/* Action Trigger Button */}
+                        <TouchableOpacity
+                          style={styles.loanActionBtn}
+                          onPress={() => handleOpenLoanAction(l)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialCommunityIcons name="cash-register" size={17} color="#FFFFFF" />
+                          <Text style={styles.loanActionBtnText}>Action / Collect Payments</Text>
+                          <MaterialCommunityIcons name="chevron-right" size={18} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
                     );
                   })
                 )
@@ -712,16 +800,40 @@ export const IssueLoanModal = ({
                   completedLoans.map((l, index) => {
                     const lPrincipal = Number(l.principal_amount || l.principal || 0);
                     const lRepayable = Number(l.total_repayment_amount || l.total_repayment || 0);
+                    const lProfit = Math.max(0, lRepayable - lPrincipal);
+                    const freq = l.repayment_frequency || l.frequency || 'WEEKLY';
+                    const schemeName =
+                      freq === 'DAILY'
+                        ? 'Merchant (Daily Scheme)'
+                        : freq === 'MONTHLY'
+                        ? 'Salaried (Monthly Scheme)'
+                        : 'Borrower (Weekly Scheme)';
+                    const totalTenure =
+                      l.total_installments ||
+                      l.tenure ||
+                      l.duration ||
+                      (freq === 'DAILY' ? 100 : freq === 'MONTHLY' ? 12 : 10);
+                    const settledDate = l.settled_at || l.closed_at || l.updated_at || l.disbursed_at;
 
                     return (
-                      <View key={l.id || index} style={[styles.loanItemCard, { borderColor: '#BBF7D0', backgroundColor: '#F0FDF4' }]}>
+                      <TouchableOpacity
+                        key={l.id || index}
+                        style={[
+                          styles.loanItemCard,
+                          { borderColor: '#BBF7D0', backgroundColor: '#F0FDF4' },
+                        ]}
+                        onPress={() => handleOpenLoanAction(l)}
+                        activeOpacity={0.88}
+                      >
+                        {/* Top Row: Loan Code Tag & Completed Status Badge */}
                         <View style={styles.loanItemHeader}>
                           <View style={[styles.loanItemCodeTag, { backgroundColor: '#DCFCE7' }]}>
                             <MaterialCommunityIcons name="check-circle" size={13} color="#15803D" />
-                            <Text style={[styles.loanItemCodeText, { color: '#15803D' }]}>
+                            <Text style={[styles.loanItemCodeText, { color: '#15803D' }]} numberOfLines={1} ellipsizeMode="middle">
                               {l.loan_number || l.loan_code || `LOAN #${l.id || index + 1}`}
                             </Text>
                           </View>
+
                           <View style={[styles.loanStatusBadge, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
                             <Text style={[styles.loanStatusBadgeText, { color: '#15803D' }]}>
                               COMPLETED
@@ -729,7 +841,23 @@ export const IssueLoanModal = ({
                           </View>
                         </View>
 
-                        <View style={styles.loanItemGrid}>
+                        {/* Sub Header: Scheme Group Badge & Settled Date */}
+                        <View style={styles.loanItemSubHeader}>
+                          <View style={[styles.loanGroupBadge, { backgroundColor: '#DCFCE7' }]}>
+                            <MaterialCommunityIcons
+                              name={freq === 'DAILY' ? 'store' : freq === 'MONTHLY' ? 'calendar-month' : 'account-group'}
+                              size={12}
+                              color="#15803D"
+                            />
+                            <Text style={[styles.loanGroupBadgeText, { color: '#15803D' }]}>{freq} SCHEME</Text>
+                          </View>
+
+                          <Text style={[styles.loanItemFooterDate, { color: '#15803D' }]}>
+                            Settled: {formatDate(settledDate)}
+                          </Text>
+                        </View>
+
+                        <View style={[styles.loanItemGrid, { backgroundColor: '#FFFFFF' }]}>
                           <View style={styles.loanItemCol}>
                             <Text style={styles.loanItemColLabel}>Disbursed</Text>
                             <Text style={styles.loanItemColVal}>{formatINR(lPrincipal)}</Text>
@@ -739,17 +867,46 @@ export const IssueLoanModal = ({
                             <Text style={[styles.loanItemColVal, { color: '#15803D' }]}>{formatINR(lRepayable)}</Text>
                           </View>
                           <View style={styles.loanItemCol}>
-                            <Text style={styles.loanItemColLabel}>Status</Text>
-                            <Text style={[styles.loanItemColVal, { color: '#15803D' }]}>Fully Settled</Text>
+                            <Text style={styles.loanItemColLabel}>Profit Earned</Text>
+                            <Text style={[styles.loanItemColVal, { color: '#059669' }]}>+{formatINR(lProfit)}</Text>
                           </View>
                         </View>
 
-                        {l.disbursed_at && (
-                          <Text style={[styles.loanItemFooterDate, { color: '#15803D' }]}>
-                            Settled Loan • Disbursed {formatDate(l.disbursed_at)}
-                          </Text>
-                        )}
-                      </View>
+                        {/* Detailed Group Log Information */}
+                        <View style={styles.loanCompletedLogBox}>
+                          <View style={styles.loanCompletedLogRow}>
+                            <Text style={styles.loanCompletedLogLabel}>Lending Scheme:</Text>
+                            <Text style={styles.loanCompletedLogVal}>{schemeName}</Text>
+                          </View>
+                          {l.disbursed_at && (
+                            <View style={styles.loanCompletedLogRow}>
+                              <Text style={styles.loanCompletedLogLabel}>Disbursed Date:</Text>
+                              <Text style={styles.loanCompletedLogVal}>{formatDate(l.disbursed_at)}</Text>
+                            </View>
+                          )}
+                          <View style={styles.loanCompletedLogRow}>
+                            <Text style={styles.loanCompletedLogLabel}>Settled / Closed Date:</Text>
+                            <Text style={styles.loanCompletedLogVal}>{formatDate(settledDate)}</Text>
+                          </View>
+                          <View style={styles.loanCompletedLogRow}>
+                            <Text style={styles.loanCompletedLogLabel}>Installments Cleared:</Text>
+                            <Text style={styles.loanCompletedLogVal}>
+                              All {totalTenure} Installments Paid (100% Cleared)
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* View Full Ledger Log Action Button */}
+                        <TouchableOpacity
+                          style={styles.loanViewLogBtn}
+                          onPress={() => handleOpenLoanAction(l)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialCommunityIcons name="clipboard-text-clock-outline" size={16} color="#059669" />
+                          <Text style={styles.loanViewLogBtnText}>View Payment History & Ledger Log</Text>
+                          <MaterialCommunityIcons name="chevron-right" size={16} color="#059669" />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
                     );
                   })
                 )
@@ -769,22 +926,12 @@ export const IssueLoanModal = ({
           <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-            {/* Inner Modal Header */}
-            <View style={styles.modalHeaderRow}>
-              <View>
-                <Text style={styles.modalTitle}>Allot New Loan</Text>
-                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                  For: {borrowerName} ({borrowerPhone})
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => setIsAddLoanModalOpen(false)}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="close" size={20} color="#475569" />
-              </TouchableOpacity>
-            </View>
+            {/* Standard Header Component matching AddUser */}
+            <Header
+              title="Allot New Loan"
+              onBack={() => setIsAddLoanModalOpen(false)}
+              showBackButton={true}
+            />
 
             <KeyboardAvoidingView
               style={{ flex: 1 }}
@@ -796,11 +943,28 @@ export const IssueLoanModal = ({
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
+                {/* Borrower Summary Banner */}
+                <View style={styles.borrowerBanner}>
+                  <View style={styles.avatarMini}>
+                    <Text style={styles.avatarMiniText}>{borrowerName.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.borrowerBannerName}>{borrowerName}</Text>
+                    <Text style={styles.borrowerBannerPhone}>{borrowerPhone || 'No phone registered'}</Text>
+                  </View>
+                  <View style={styles.loanGroupBadge}>
+                    <MaterialCommunityIcons name="shield-check" size={12} color="#059669" />
+                    <Text style={[styles.loanGroupBadgeText, { color: '#059669' }]}>
+                      Limit: {formatINR(creditLimit)}
+                    </Text>
+                  </View>
+                </View>
+
                 {/* 1. Category / Scheme Selector (3 Chips matching AddU) */}
                 <View style={styles.divisionContainer}>
                   <View style={styles.sectionHeadingRow}>
-                    <MaterialCommunityIcons name="tune" size={18} color="#6B46C1" />
-                    <Text style={styles.sectionHeadingTitle}>Loan Scheme & Category</Text>
+                    <MaterialCommunityIcons name="layers-outline" size={18} color="#6B46C1" />
+                    <Text style={styles.sectionHeadingTitle}>Lending Scheme *</Text>
                   </View>
                   <View style={styles.divisionRow}>
                     {categories.map((cat) => {
@@ -813,11 +977,11 @@ export const IssueLoanModal = ({
                             isSelected && styles.divisionChipSelected,
                           ]}
                           onPress={() => handleSelectCategory(cat)}
-                          activeOpacity={0.8}
+                          activeOpacity={0.7}
                         >
                           <MaterialCommunityIcons
                             name={cat.icon}
-                            size={18}
+                            size={22}
                             color={isSelected ? '#6B46C1' : '#64748B'}
                           />
                           <Text
@@ -837,11 +1001,11 @@ export const IssueLoanModal = ({
                   </View>
                 </View>
 
-                {/* 2. Funding Source Selector */}
+                {/* 2. Funding Source Selector (matching AddU) */}
                 <View style={styles.divisionContainer}>
                   <View style={styles.sectionHeadingRow}>
                     <MaterialCommunityIcons name="bank-transfer" size={18} color="#6B46C1" />
-                    <Text style={styles.sectionHeadingTitle}>Disbursement Funding Source</Text>
+                    <Text style={styles.sectionHeadingTitle}>Disbursement Funding Source *</Text>
                   </View>
                   <View style={styles.divisionRow}>
                     <TouchableOpacity
@@ -852,11 +1016,11 @@ export const IssueLoanModal = ({
                       onPress={() =>
                         setFormData((prev) => ({ ...prev, funding_source: 'VAULT' }))
                       }
-                      activeOpacity={0.8}
+                      activeOpacity={0.7}
                     >
                       <MaterialCommunityIcons
                         name="safe"
-                        size={18}
+                        size={22}
                         color={formData.funding_source === 'VAULT' ? '#6B46C1' : '#64748B'}
                       />
                       <Text
@@ -878,11 +1042,11 @@ export const IssueLoanModal = ({
                       onPress={() =>
                         setFormData((prev) => ({ ...prev, funding_source: 'HANDS_ON' }))
                       }
-                      activeOpacity={0.8}
+                      activeOpacity={0.7}
                     >
                       <MaterialCommunityIcons
                         name="hand-coin"
-                        size={18}
+                        size={22}
                         color={formData.funding_source === 'HANDS_ON' ? '#6B46C1' : '#64748B'}
                       />
                       <Text
@@ -898,25 +1062,26 @@ export const IssueLoanModal = ({
                   </View>
                 </View>
 
-                {/* 3. Principal Amount */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    Principal Amount <Text style={styles.required}>*</Text>
-                  </Text>
-                  <View style={[styles.inputBox, errors.principal_amount && styles.inputBoxError]}>
-                    <MaterialCommunityIcons name="currency-inr" size={20} color="#6B46C1" />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. 5000"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="numeric"
-                      value={formData.principal_amount}
-                      onChangeText={(val) => {
-                        setFormData((prev) => ({ ...prev, principal_amount: val }));
-                        if (errors.principal_amount) setErrors((prev) => ({ ...prev, principal_amount: null }));
-                      }}
-                    />
+                {/* 3. Principal Amount (matching AddU inputs) */}
+                <View style={styles.inputContainer}>
+                  <View style={styles.labelContainer}>
+                    <View style={styles.labelLeft}>
+                      <MaterialCommunityIcons name="currency-inr" size={16} color="#6B7280" />
+                      <Text style={styles.inputLabel}>Principal Amount</Text>
+                      <Text style={styles.requiredStar}>*</Text>
+                    </View>
                   </View>
+                  <TextInput
+                    style={[styles.textInput, errors.principal_amount && styles.inputError]}
+                    placeholder="e.g. 5000"
+                    placeholderTextColor="#A0A0A0"
+                    keyboardType="numeric"
+                    value={formData.principal_amount}
+                    onChangeText={(val) => {
+                      setFormData((prev) => ({ ...prev, principal_amount: val }));
+                      if (errors.principal_amount) setErrors((prev) => ({ ...prev, principal_amount: null }));
+                    }}
+                  />
                   {errors.principal_amount && (
                     <Text style={styles.errorText}>{errors.principal_amount}</Text>
                   )}
@@ -944,83 +1109,88 @@ export const IssueLoanModal = ({
                   </View>
                 </View>
 
-                {/* 4. Interest Rate & Tenure Row */}
-                <View style={styles.twoColumnRow}>
+                {/* 4. Interest Rate & Tenure Row (matching AddU) */}
+                <View style={styles.rowTwoInputs}>
                   <View style={styles.columnHalf}>
-                    <Text style={styles.label}>
-                      Interest Rate (%) <Text style={styles.required}>*</Text>
-                    </Text>
-                    <View style={[styles.inputBox, errors.interest_rate && styles.inputBoxError]}>
-                      <MaterialCommunityIcons name="percent" size={18} color="#6B46C1" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="25"
-                        placeholderTextColor="#94A3B8"
-                        keyboardType="numeric"
-                        value={formData.interest_rate}
-                        onChangeText={(val) => {
-                          setFormData((prev) => ({ ...prev, interest_rate: val }));
-                          if (errors.interest_rate) setErrors((prev) => ({ ...prev, interest_rate: null }));
-                        }}
-                      />
+                    <View style={styles.labelContainer}>
+                      <View style={styles.labelLeft}>
+                        <MaterialCommunityIcons name="percent" size={15} color="#6B7280" />
+                        <Text style={styles.inputLabel}>Interest Rate</Text>
+                        <Text style={styles.requiredStar}>*</Text>
+                      </View>
                     </View>
+                    <TextInput
+                      style={[styles.textInput, errors.interest_rate && styles.inputError]}
+                      placeholder="25"
+                      placeholderTextColor="#A0A0A0"
+                      keyboardType="numeric"
+                      value={formData.interest_rate}
+                      onChangeText={(val) => {
+                        setFormData((prev) => ({ ...prev, interest_rate: val }));
+                        if (errors.interest_rate) setErrors((prev) => ({ ...prev, interest_rate: null }));
+                      }}
+                    />
                     {errors.interest_rate && <Text style={styles.errorText}>{errors.interest_rate}</Text>}
                   </View>
 
                   <View style={styles.columnHalf}>
-                    <Text style={styles.label}>
-                      Tenure ({tenureUnit}) <Text style={styles.required}>*</Text>
-                    </Text>
-                    <View style={[styles.inputBox, errors.tenure && styles.inputBoxError]}>
-                      <MaterialCommunityIcons name="calendar-clock" size={18} color="#6B46C1" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="10"
-                        placeholderTextColor="#94A3B8"
-                        keyboardType="numeric"
-                        value={formData.tenure}
-                        onChangeText={(val) => {
-                          setFormData((prev) => ({ ...prev, tenure: val }));
-                          if (errors.tenure) setErrors((prev) => ({ ...prev, tenure: null }));
-                        }}
-                      />
+                    <View style={styles.labelContainer}>
+                      <View style={styles.labelLeft}>
+                        <MaterialCommunityIcons name="calendar-clock" size={15} color="#6B7280" />
+                        <Text style={styles.inputLabel}>Tenure ({tenureUnit})</Text>
+                        <Text style={styles.requiredStar}>*</Text>
+                      </View>
                     </View>
+                    <TextInput
+                      style={[styles.textInput, errors.tenure && styles.inputError]}
+                      placeholder="10"
+                      placeholderTextColor="#A0A0A0"
+                      keyboardType="numeric"
+                      value={formData.tenure}
+                      onChangeText={(val) => {
+                        setFormData((prev) => ({ ...prev, tenure: val }));
+                        if (errors.tenure) setErrors((prev) => ({ ...prev, tenure: null }));
+                      }}
+                    />
                     {errors.tenure && <Text style={styles.errorText}>{errors.tenure}</Text>}
                   </View>
                 </View>
 
-                {/* 5. Live Repayment & Income Summary Box */}
-                <View style={styles.liveCalculationBox}>
-                  <View style={styles.calcHeader}>
+                {/* 5. Live Repayment & Income Summary Box (matching AddU previewBox) */}
+                <View style={styles.previewBox}>
+                  <View style={styles.previewHeader}>
                     <MaterialCommunityIcons name="calculator" size={18} color="#6B46C1" />
-                    <Text style={styles.calcTitle}>Repayment & Revenue Breakdown</Text>
+                    <Text style={styles.previewTitle}>Repayment & Revenue Breakdown</Text>
                   </View>
 
-                  <View style={styles.calcGrid}>
-                    <View style={styles.calcItem}>
-                      <Text style={styles.calcLabel}>Principal</Text>
-                      <Text style={styles.calcValue}>{formatINR(principalAmountNum)}</Text>
+                  <View style={styles.previewGrid}>
+                    <View style={styles.previewItem}>
+                      <Text style={styles.previewLabel}>PRINCIPAL</Text>
+                      <Text style={styles.previewValue}>{formatINR(principalAmountNum)}</Text>
                     </View>
-                    <View style={styles.calcItem}>
-                      <Text style={styles.calcLabel}>Total Repayable</Text>
-                      <Text style={[styles.calcValue, { color: '#6B46C1' }]}>{formatINR(totalRepayableNum)}</Text>
+
+                    <View style={[styles.previewItem, styles.previewHighlight]}>
+                      <Text style={styles.previewLabel}>REPAYABLE</Text>
+                      <Text style={styles.previewValueHighlight}>{formatINR(totalRepayableNum)}</Text>
                     </View>
-                    <View style={styles.calcItem}>
-                      <Text style={styles.calcLabel}>Installment ({activeCategory.repayment_frequency})</Text>
-                      <Text style={[styles.calcValue, { color: '#059669' }]}>
-                        {formatINR(installmentAmountNum)} / {tenureUnitSingular.toLowerCase()}
+
+                    <View style={styles.previewItem}>
+                      <Text style={styles.previewLabel}>{activeCategory.repayment_frequency.slice(0, 3)} EMI</Text>
+                      <Text style={[styles.previewValue, { color: '#059669' }]}>
+                        {formatINR(installmentAmountNum)}
                       </Text>
                     </View>
-                    <View style={styles.calcItem}>
-                      <Text style={styles.calcLabel}>Contracted Revenue</Text>
-                      <Text style={[styles.calcValue, { color: '#059669' }]}>
+
+                    <View style={styles.previewItem}>
+                      <Text style={styles.previewLabel}>REVENUE</Text>
+                      <Text style={[styles.previewValue, { color: '#059669' }]}>
                         +{formatINR(interestAmountNum)}
                       </Text>
                     </View>
                   </View>
                 </View>
 
-                {/* 6. Disburse Action Button */}
+                {/* 6. Disburse Action Button (matching AddU createButton) */}
                 <View style={styles.actionWrap}>
                   <TouchableOpacity
                     style={[styles.createButton, submitting && styles.createButtonDisabled]}
@@ -1046,6 +1216,20 @@ export const IssueLoanModal = ({
             </KeyboardAvoidingView>
           </SafeAreaView>
         </Modal>
+
+        {/* 7. BORROWER LOAN LEDGER / ACTION / COLLECTION MODAL */}
+        <BorrowerLogModal
+          visible={isLedgerModalOpen}
+          onClose={() => setIsLedgerModalOpen(false)}
+          borrower={selectedLoanForLedger}
+          onPaymentSuccess={() => {
+            if (selectedBorrower) {
+              fetchBorrowerLoans(selectedBorrower);
+            }
+            if (refreshData) refreshData();
+            if (onLoanIssued) onLoanIssued();
+          }}
+        />
       </SafeAreaView>
     </Modal>
   );

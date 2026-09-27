@@ -11,34 +11,25 @@ export default StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 32,
+    paddingTop: 0,
+    paddingBottom: 6,
   },
 
-  // Lottie Animation Hero Header
+  // Plain Lottie Animation Hero Header (matching AddUser page)
   animationContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 12,
-    marginTop: 4,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#6B46C1',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    marginTop: -6,
+    marginBottom: 4,
+    height: 160,
   },
   animation: {
     width: 200,
-    height: 200,
+    height: 160,
   },
 
   // Borrower Summary Hero Card
@@ -290,15 +281,15 @@ export default StyleSheet.create({
   loanItemCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    padding: 14,
+    padding: 12,
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    marginBottom: 10,
+    marginBottom: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
-    elevation: 1,
+    elevation: 2,
   },
   loanItemCardOverdue: {
     borderColor: '#FECACA',
@@ -308,20 +299,27 @@ export default StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 4,
+    gap: 8,
+  },
+  loanItemSubHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   loanItemCodeTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: '#F5F3FF',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    flexShrink: 1,
   },
   loanItemCodeText: {
     fontSize: 11,
-    fontWeight: '700',
     color: '#6B46C1',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
@@ -330,6 +328,8 @@ export default StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loanStatusBadgeActive: {
     backgroundColor: '#ECFDF5',
@@ -341,7 +341,6 @@ export default StyleSheet.create({
   },
   loanStatusBadgeText: {
     fontSize: 10,
-    fontWeight: '800',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   loanStatusBadgeTextActive: {
@@ -355,7 +354,7 @@ export default StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderRadius: 10,
     paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
   },
   loanItemCol: {
@@ -369,8 +368,7 @@ export default StyleSheet.create({
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   loanItemColVal: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
     color: '#111827',
     marginTop: 2,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
@@ -378,7 +376,118 @@ export default StyleSheet.create({
   loanItemFooterDate: {
     fontSize: 10,
     color: '#64748B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+
+  // Active Loan Action Button
+  loanActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6B46C1',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     marginTop: 8,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  loanActionBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    textAlign: 'center',
+  },
+
+  // Group / Category Badge
+  loanGroupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  loanGroupBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#475569',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
+  // Completed Loan Log Container & Rows
+  loanCompletedLogBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    padding: 10,
+    marginTop: 8,
+    gap: 6,
+  },
+  loanCompletedLogRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  loanCompletedLogLabel: {
+    fontSize: 11,
+    color: '#475569',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+  loanCompletedLogVal: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803D',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  loanViewLogBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    gap: 6,
+  },
+  loanViewLogBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#059669',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
+  // Progress Bar for Active Loans
+  loanProgressBarBg: {
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  loanProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#6B46C1',
+    borderRadius: 3,
+  },
+  loanProgressMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  loanProgressMetaText: {
+    fontSize: 10,
+    color: '#64748B',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
 
@@ -431,18 +540,18 @@ export default StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
 
-  // Scheme / Category Selection (3 Chips)
+  // Scheme / Category Selection (matching AddU)
   divisionContainer: {
-    marginBottom: 18,
+    marginBottom: 20,
   },
   divisionRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   divisionChip: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
     paddingVertical: 12,
@@ -453,16 +562,11 @@ export default StyleSheet.create({
   divisionChipSelected: {
     backgroundColor: '#F5F3FF',
     borderColor: '#6B46C1',
-    shadowColor: '#6B46C1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
   divisionChipTitle: {
     fontSize: 12,
     color: '#334155',
-    marginTop: 5,
+    marginTop: 6,
     textAlign: 'center',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
@@ -470,68 +574,113 @@ export default StyleSheet.create({
     color: '#6B46C1',
   },
   divisionChipRate: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#059669',
     marginTop: 2,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
 
-  // Input Groups
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
-  },
-  required: {
-    color: '#EF4444',
-  },
-  inputBox: {
+  // Borrower Mini Banner in Allot Modal
+  borrowerBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1.5,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingHorizontal: 12,
-    height: 48,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 18,
+    gap: 10,
   },
-  inputBoxError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
+  avatarMini: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1.5,
+    borderColor: '#DDD6FE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#111827',
+  avatarMiniText: {
+    fontSize: 16,
+    color: '#6B46C1',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
-    paddingVertical: 0,
   },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 11,
-    marginTop: 4,
+  borrowerBannerName: {
+    fontSize: 14,
+    color: '#212121',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  borrowerBannerPhone: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
 
-  // Preset Quick Amount Chips
+  // Input Field Container Styles (matching AddU)
+  inputContainer: {
+    marginBottom: 18,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  labelLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 15,
+    color: '#212121',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  requiredStar: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  textInput: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    backgroundColor: '#F5F5F5',
+    color: '#212121',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 6,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
+  },
+
+  // Preset Quick Amount Chips (matching AddU)
   presetChipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 10,
   },
   presetChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
   },
   presetChipSelected: {
@@ -539,7 +688,7 @@ export default StyleSheet.create({
     borderColor: '#6B46C1',
   },
   presetChipText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#475569',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
@@ -547,67 +696,82 @@ export default StyleSheet.create({
     color: '#6B46C1',
   },
 
-  // Two Column Inputs Row
-  twoColumnRow: {
+  // Two Column Inputs Row (matching AddU)
+  rowTwoInputs: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
   },
   columnHalf: {
     flex: 1,
   },
 
-  // Live Calculation Breakdown Box
-  liveCalculationBox: {
+  // Live Calculation Preview Box (matching AddU previewBox)
+  previewBox: {
     backgroundColor: '#F5F3FF',
     borderRadius: 14,
     padding: 14,
-    borderWidth: 1.5,
-    borderColor: '#DDD6FE',
+    marginTop: 4,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
   },
-  calcHeader: {
+  previewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  calcTitle: {
-    fontSize: 12,
+  previewTitle: {
+    fontSize: 13,
     color: '#6B46C1',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
-  calcGrid: {
+  previewGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 8,
   },
-  calcItem: {
+  previewItem: {
     flex: 1,
-    minWidth: '45%',
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  calcLabel: {
+  previewHighlight: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#6B46C1',
+  },
+  previewLabel: {
     fontSize: 10,
     color: '#64748B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
     textTransform: 'uppercase',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
-  calcValue: {
-    fontSize: 14,
-    color: '#111827',
-    marginTop: 2,
+  previewValue: {
+    fontSize: 13,
+    color: '#212121',
+    marginTop: 4,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  previewValueHighlight: {
+    fontSize: 13,
+    color: '#6B46C1',
+    marginTop: 4,
+    textAlign: 'center',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
 
-  // Primary Action Disburse Button
+  // Primary Action Disburse Button (matching AddU createButton)
   actionWrap: {
-    marginTop: 8,
-    marginBottom: 20,
+    marginTop: 12,
+    marginBottom: Platform.OS === 'ios' ? 28 : 20,
   },
   createButton: {
     flexDirection: 'row',
@@ -615,19 +779,19 @@ export default StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#6B46C1',
     borderRadius: 14,
-    paddingVertical: 15,
-    gap: 8,
-    shadowColor: '#6B46C1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    paddingVertical: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
     elevation: 4,
   },
   createButtonDisabled: {
     opacity: 0.6,
   },
   createButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },

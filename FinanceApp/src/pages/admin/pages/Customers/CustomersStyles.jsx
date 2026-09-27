@@ -12,7 +12,7 @@ export default StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 32,
+    paddingBottom: 6,
   },
 
   // Top Full-Width Attached Tab Bar (matching Reports exactly)
@@ -224,24 +224,25 @@ export default StyleSheet.create({
   searchSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F5F5F5',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 46,
+    paddingHorizontal: 14,
+    height: 48,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'transparent',
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    color: '#111827',
+    fontSize: 15,
+    color: '#212121',
     marginLeft: 8,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    paddingVertical: 0,
   },
   headerAddBtn: {
     flexDirection: 'row',
@@ -250,7 +251,7 @@ export default StyleSheet.create({
     gap: 4,
     backgroundColor: '#6B46C1',
     paddingHorizontal: 12,
-    height: 46,
+    height: 48,
     borderRadius: 12,
   },
   headerAddBtnText: {
@@ -265,7 +266,7 @@ export default StyleSheet.create({
     gap: 4,
     backgroundColor: '#059669',
     paddingHorizontal: 12,
-    height: 46,
+    height: 48,
     borderRadius: 12,
   },
   headerIssueLoanBtnText: {
@@ -296,12 +297,11 @@ export default StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   recordsHeaderText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
+    color: '#212121',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   recordsHeaderSub: {
@@ -313,15 +313,15 @@ export default StyleSheet.create({
   // Borrower Card (Matching Reports Page Card Architecture)
   recordCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 2,
   },
   cardHeader: {
@@ -332,25 +332,20 @@ export default StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#6B46C1',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    borderWidth: 1.5,
-    borderColor: '#DBEAFE',
   },
   avatarShop: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+    backgroundColor: '#6B46C1',
   },
   avatarMonthly: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#DDD6FE',
+    backgroundColor: '#6B46C1',
   },
   avatarInitial: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontSize: 16,
+    color: '#FFFFFF',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   cardTitleBox: {
@@ -364,8 +359,7 @@ export default StyleSheet.create({
   },
   customerName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
+    color: '#212121',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   shopPill: {
@@ -555,14 +549,13 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F5F3FF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#DDD6FE',
   },
   actionIconBtnText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#4B5563',
+    color: '#6B46C1',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   actionWhatsAppBtn: {

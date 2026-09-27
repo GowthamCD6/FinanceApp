@@ -1007,3 +1007,206 @@ GDKChit/
 ├── README.md
 └── tsconfig.json
 ```
+
+---
+
+## 10. Add User & Borrower Standard Design Specification
+
+> **Reference Implementation**: `src/pages/Admin/Modals/page/AddUser/AddU.jsx` & `AddUsty.jsx`  
+> **Applicable Pages**: Add Borrower (`AddU.jsx`), Allot Loan Modal (`IssueLoanModal.jsx`), Manage Borrowers (`ManageU.jsx`), Borrower Directory (`CustomersScreen.jsx`), Borrower History & Profile Screens, Financial Reports (`Reports.jsx`), Ledger & Settlement Logs (`BorrowerLogModal.jsx`), SuperAdmin Reports (`SuperAdminReports.jsx`).
+
+This design specification establishes the gold standard for all container spacing, backgrounds, typography, form inputs, selector chips, breakdown preview boxes, and action buttons across the mobile app.
+
+### 10.1 Canvas & Container Standard
+
+| Element | Property | Token / Value | Notes |
+| :--- | :--- | :--- | :--- |
+| **Main Screen Canvas** | `backgroundColor` | `#FFFFFF` (Pure White) | Crisp, professional surface without muddy off-white tints. |
+| **SafeAreaView** | `edges` | `['top', 'left', 'right', 'bottom']` | Full edge handling with `backgroundColor: '#FFFFFF'`. |
+| **Scroll Container** | `paddingHorizontal` | `20px` (or `18px`) | Uniform lateral gutter. |
+| **Scroll Padding Top** | `paddingTop` | `16px` (`0px` for hero animation headers) | Consistent top clearance under the navigation bar. |
+| **Scroll Padding Bottom** | `paddingBottom` | `Platform.OS === 'ios' ? 44 : 32` | Prevents navigation bar / home indicator collision. |
+
+---
+
+### 10.2 Header Component Standard
+
+All screens and modals must use the shared `<Header />` component:
+
+```jsx
+<Header
+  title="Add New Borrower"
+  onBack={handleDismiss}
+  showBackButton={true}
+/>
+```
+
+- **Background**: `#FFFFFF`
+- **Back Icon**: Clean SVG Left Arrow with touch padding
+- **Title**: `fontSize: 17px`, `color: #212121`, `Gilroy-Bold` / `Poppins-Bold`
+- **Divider**: `#E5E7EB` (1px subtle bottom separator)
+
+---
+
+### 10.3 Lottie Hero Animation (Plain Style)
+
+Lottie animations must be placed cleanly **without heavy card frames, borders, or shadows**:
+
+```javascript
+animationContainer: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: -6,
+  marginBottom: 16,
+  height: 160,
+},
+animation: {
+  width: 200,
+  height: 160,
+},
+```
+
+---
+
+### 10.4 Section Titles & Category Selector Chips
+
+#### Section Header
+- **Row**: `flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12`
+- **Icon**: Size `18px`, color `#6B46C1`
+- **Title**: `fontSize: 15px`, `color: #212121`, `Gilroy-Bold` / `Poppins-Bold`
+
+#### Selector Chips (Lending Scheme & Funding Source)
+- **Grid Layout**: `flexDirection: 'row', gap: 10`
+- **Base / Inactive State**:
+  - `backgroundColor`: `#F8FAFC`
+  - `borderRadius`: `14px`
+  - `borderWidth`: `1.5px`
+  - `borderColor`: `#E2E8F0`
+  - `paddingVertical`: `12px`
+  - `paddingHorizontal`: `6px`
+  - Icon color: `#64748B`
+  - Title: `fontSize: 12px`, `color: #334155`, bold
+  - Rate / Subtext: `fontSize: 11px`, `color: #059669`, bold
+- **Selected / Active State**:
+  - `backgroundColor`: `#F5F3FF`
+  - `borderColor`: `#6B46C1`
+  - Icon color: `#6B46C1`
+  - Title: `color: #6B46C1`
+
+---
+
+### 10.5 Form Field Labels & Inputs
+
+```jsx
+<View style={styles.inputContainer}>
+  <View style={styles.labelContainer}>
+    <View style={styles.labelLeft}>
+      <MaterialCommunityIcons name="account" size={16} color="#6B7280" />
+      <Text style={styles.inputLabel}>Full Name</Text>
+      <Text style={styles.requiredStar}>*</Text>
+    </View>
+  </View>
+  <TextInput
+    style={[styles.textInput, errors.name && styles.inputError]}
+    placeholder="Enter borrower full name"
+    placeholderTextColor="#A0A0A0"
+    value={formData.name}
+    onChangeText={...}
+  />
+  {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+</View>
+```
+
+| UI Element | CSS / Style Definition |
+| :--- | :--- |
+| **Input Container** | `marginBottom: 18px` |
+| **Label Container** | `flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8px, gap: 6px` |
+| **Label Icon** | Size `16px`, `color: #6B7280` |
+| **Label Text** | `fontSize: 15px`, `color: #212121`, `Gilroy-Bold` / `Poppins-Bold` |
+| **Required Star** | `color: #EF4444`, `fontSize: 14px`, `fontWeight: '700'` |
+| **Text Input Box** | `backgroundColor: #F5F5F5`, `borderRadius: 12px`, `paddingHorizontal: 16px`, `paddingVertical: 14px`, `fontSize: 16px`, `color: #212121`, `Gilroy-Bold` / `Poppins-Bold`, `borderWidth: 1px`, `borderColor: transparent` |
+| **Input Error State** | `borderColor: #EF4444`, `backgroundColor: #FEF2F2` |
+| **Error Helper Text** | `color: #EF4444`, `fontSize: 12px`, `marginTop: 6px`, `Gilroy-Regular` / `Poppins-Regular` |
+| **Two-Column Input Row** | `flexDirection: 'row', gap: 12px` |
+
+---
+
+### 10.6 Preset Quick Amount Chips
+
+- **Row**: `flexDirection: 'row', flexWrap: 'wrap', gap: 8px, marginTop: 10px`
+- **Chip Base**: `backgroundColor: #F8FAFC`, `borderRadius: 10px`, `paddingHorizontal: 12px`, `paddingVertical: 7px`, `borderWidth: 1.5px`, `borderColor: #E2E8F0`
+- **Chip Text**: `fontSize: 12px`, `color: #475569`, `Gilroy-Bold` / `Poppins-Bold`
+- **Chip Selected**: `backgroundColor: #F5F3FF`, `borderColor: #6B46C1`, text `color: #6B46C1`
+
+---
+
+### 10.7 Live Calculation Preview Box (`previewBox`)
+
+Used for dynamic financial breakdowns (Principal, Repayable, Installment, and Contracted Revenue):
+
+```jsx
+<View style={styles.previewBox}>
+  <View style={styles.previewHeader}>
+    <MaterialCommunityIcons name="calculator" size={18} color="#6B46C1" />
+    <Text style={styles.previewTitle}>Repayment & Revenue Breakdown</Text>
+  </View>
+
+  <View style={styles.previewGrid}>
+    <View style={styles.previewItem}>
+      <Text style={styles.previewLabel}>PRINCIPAL</Text>
+      <Text style={styles.previewValue}>{formatINR(principal)}</Text>
+    </View>
+
+    <View style={[styles.previewItem, styles.previewHighlight]}>
+      <Text style={styles.previewLabel}>REPAYABLE</Text>
+      <Text style={styles.previewValueHighlight}>{formatINR(totalRepayable)}</Text>
+    </View>
+
+    <View style={styles.previewItem}>
+      <Text style={styles.previewLabel}>EMI</Text>
+      <Text style={[styles.previewValue, { color: '#059669' }]}>{formatINR(installment)}</Text>
+    </View>
+
+    <View style={styles.previewItem}>
+      <Text style={styles.previewLabel}>REVENUE</Text>
+      <Text style={[styles.previewValue, { color: '#059669' }]}>+{formatINR(interest)}</Text>
+    </View>
+  </View>
+</View>
+```
+
+- **Container (`previewBox`)**: `backgroundColor: #F5F3FF`, `borderRadius: 14px`, `padding: 14px`, `borderWidth: 1px`, `borderColor: #DDD6FE`, `marginBottom: 16px`
+- **Header**: `flexDirection: 'row', alignItems: 'center', gap: 6px, marginBottom: 12px`
+- **Tiles (`previewItem`)**: `flex: 1`, `backgroundColor: #FFFFFF`, `borderRadius: 10px`, `padding: 10px`, `alignItems: 'center'`, `elevation: 1`
+- **Highlight Tile**: `borderWidth: 1.5px`, `borderColor: #6B46C1`
+- **Label**: `fontSize: 10px`, `color: #64748B`, uppercase, bold
+- **Values**: `fontSize: 13px`, `color: #212121`, bold (`#6B46C1` on highlight, `#059669` on revenue)
+
+---
+
+### 10.8 Primary Action Button (`createButton`)
+
+```javascript
+createButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#6B46C1',
+  borderRadius: 14,
+  paddingVertical: 16,
+  gap: 10,
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12,
+  shadowRadius: 4,
+  elevation: 4,
+},
+createButtonDisabled: {
+  opacity: 0.6,
+},
+createButtonText: {
+  fontSize: 16,
+  color: '#FFFFFF',
+  fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+},
+```

@@ -144,3 +144,30 @@ When developing or refactoring any new page or modal:
 - [ ] Modals display the user's name and details via a structured identity card; no manual product name inputs.
 - [ ] Inputs have `42px` height, `1px solid #D1D5DB`, and `0.9375rem` font size.
 - [ ] Verified with `npm run build` with zero compiler warnings or broken layouts.
+
+---
+
+## 7. Mobile App Design Standards (Add User UI Reference)
+
+For the React Native Mobile Application (`FinanceApp`), all forms, modals, allotment flows, and borrower screens strictly follow the **Add User** design specification:
+
+### A. Mobile Surface & Canvas Tokens
+- **Canvas / Root Container**: `#FFFFFF` (`safeArea`, `container`, `scrollContainer`)
+- **Scroll Content Padding**: `paddingHorizontal: 20`, `paddingTop: 16`, `paddingBottom: 32` (Android) / `44` (iOS)
+- **Input Field Background**: `#F5F5F5` with `borderRadius: 12`, `paddingVertical: 14`, `paddingHorizontal: 16`, `fontSize: 16`
+- **Active Accent / CTA**: `#6B46C1` (Primary Fintech Purple)
+- **Calculation Preview Box**: `#F5F3FF` with `borderColor: #DDD6FE` and `borderRadius: 14`
+- **Subtle Selection Chips**: `#F8FAFC` base with `#E2E8F0` border; `#F5F3FF` active with `#6B46C1` border
+
+### B. Mobile Typography Scale
+- **Headings & Field Labels**: `15px` – `16px`, `Gilroy-Bold` (Android) / `Poppins-Bold` (iOS), `#212121`
+- **Input Text**: `16px`, `Gilroy-Bold` / `Poppins-Bold`, `#212121`
+- **Placeholder Text**: `16px`, `#A0A0A0`
+- **Error Validation**: `12px`, `Gilroy-Regular` / `Poppins-Regular`, `#EF4444`
+- **Metric Labels & Breakdown**: `10px` uppercase labels (`#64748B`), `13px` bold amounts
+
+### C. Standard Component Architecture
+1. **Top Header**: Uniform `<Header title="..." />` with centered title and standard back navigation.
+2. **Hero Animation**: Plain, unboxed Lottie animation (`160x160`, `marginTop: -6`, `marginBottom: 10`).
+3. **Preset Chips**: Horizontal flex wrap with `gap: 8`, `borderRadius: 10`.
+4. **Primary CTA**: Full-width button with `backgroundColor: '#6B46C1'`, `borderRadius: 14`, `paddingVertical: 16`, and elevation.
