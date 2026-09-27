@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Animated,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +19,125 @@ import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
 import apiService from '../../../../services/apiService';
 import styles from './DashboardStyles';
+
+// ===== ANIMATED SKELETON PLACEHOLDER COMPONENT =====
+const SkeletonItem = ({ width, height, borderRadius = 8, style }) => {
+  const animatedOpacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedOpacity, {
+          toValue: 0.85,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedOpacity, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [animatedOpacity]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: '#E2E8F0',
+          opacity: animatedOpacity,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+// ===== COMPLETE DASHBOARD SKELETON VIEW =====
+const DashboardSkeletonView = () => {
+  return (
+    <View style={styles.skeletonContainer}>
+      {/* 1. Vault Card Skeleton */}
+      <View style={styles.skeletonCard}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ gap: 8 }}>
+            <SkeletonItem width={160} height={12} borderRadius={4} />
+            <SkeletonItem width={140} height={28} borderRadius={6} />
+            <SkeletonItem width={110} height={12} borderRadius={4} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <SkeletonItem width={75} height={34} borderRadius={10} />
+            <SkeletonItem width={75} height={34} borderRadius={10} />
+          </View>
+        </View>
+        <SkeletonItem width="100%" height={38} borderRadius={10} />
+      </View>
+
+      {/* 2. Profit Pool Card Skeleton */}
+      <View style={[styles.skeletonCard, { backgroundColor: '#FAF5FF', borderColor: '#E9D5FF' }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ gap: 8 }}>
+            <SkeletonItem width={140} height={12} borderRadius={4} />
+            <SkeletonItem width={120} height={24} borderRadius={6} />
+          </View>
+          <SkeletonItem width={90} height={32} borderRadius={8} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+          <SkeletonItem width="48%" height={38} borderRadius={10} />
+          <SkeletonItem width="48%" height={38} borderRadius={10} />
+        </View>
+      </View>
+
+      {/* 3. Quick Actions Grid Skeleton */}
+      <View style={styles.skeletonGrid}>
+        {[1, 2, 3, 4].map((i) => (
+          <View key={i} style={styles.skeletonGridItem}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <SkeletonItem width={38} height={38} borderRadius={10} />
+              <View style={{ gap: 6, flex: 1 }}>
+                <SkeletonItem width={70} height={13} borderRadius={4} />
+                <SkeletonItem width={50} height={10} borderRadius={4} />
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* 4. Portfolio Metrics 2x2 Skeleton */}
+      <View style={styles.skeletonGrid}>
+        {[1, 2, 3, 4].map((i) => (
+          <View key={i} style={styles.skeletonGridItem}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <SkeletonItem width={80} height={10} borderRadius={4} />
+              <SkeletonItem width={22} height={22} borderRadius={11} />
+            </View>
+            <SkeletonItem width={100} height={18} borderRadius={4} />
+            <SkeletonItem width={70} height={10} borderRadius={4} />
+          </View>
+        ))}
+      </View>
+
+      {/* 5. Today's Target Card Skeleton */}
+      <View style={styles.skeletonCard}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <SkeletonItem width={150} height={14} borderRadius={4} />
+          <SkeletonItem width={70} height={20} borderRadius={6} />
+        </View>
+        <SkeletonItem width="100%" height={8} borderRadius={4} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <SkeletonItem width={80} height={12} borderRadius={4} />
+          <SkeletonItem width={80} height={12} borderRadius={4} />
+        </View>
+      </View>
+    </View>
+  );
+};
 
 export const AdminDashboard = ({
   onNavigate,
@@ -30,7 +150,10 @@ export const AdminDashboard = ({
   const {
     fundMetrics,
     loans,
+    customers,
     currentOrganization,
+    currentUser,
+    loggedInUser,
     loading: contextLoading,
     refreshData: contextRefreshData,
   } = useApp();
@@ -46,7 +169,7 @@ export const AdminDashboard = ({
     totalProfitWithdrawn: 0,
     totalProfitReinvested: 0,
   });
-  const [loadingFund, setLoadingFund] = useState(false);
+  const [loadingFund, setLoadingFund] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Capital Injection Modal State
@@ -74,7 +197,6 @@ export const AdminDashboard = ({
   // Fetch Live Fund Summary from server
   const fetchLiveFund = useCallback(async () => {
     try {
-      setLoadingFund(true);
       const data = await apiService.getFundSummary();
       if (data) {
         setLiveFund({
@@ -222,6 +344,12 @@ export const AdminDashboard = ({
       .slice(0, 6);
   }, [loans]);
 
+  const activeLoansCount = useMemo(() => {
+    return (loans || []).filter(
+      (l) => l.status === 'ACTIVE' || l.status === 'DISBURSED' || l.status === 'PARTIALLY_PAID'
+    ).length;
+  }, [loans]);
+
   const todayTargetProgress = useMemo(() => {
     if (!fundMetrics?.todayTarget || fundMetrics.todayTarget <= 0) return 0;
     return Math.min(1, (fundMetrics.todayCollected || 0) / fundMetrics.todayTarget);
@@ -230,381 +358,418 @@ export const AdminDashboard = ({
   const todayDateStr = useMemo(() => {
     const today = new Date();
     return today.toLocaleDateString('en-IN', {
-      weekday: 'long',
+      weekday: 'short',
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
   }, []);
 
+  // Personalized Display Name
+  const adminName = useMemo(() => {
+    const name = currentUser?.name || loggedInUser?.name || 'Administrator';
+    return name;
+  }, [currentUser, loggedInUser]);
+
+  const adminInitial = useMemo(() => {
+    return (adminName.charAt(0) || 'A').toUpperCase();
+  }, [adminName]);
+
+  const isInitialLoading = loadingFund && !refreshing;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Top Header Row */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerLeft}>
-          <View style={styles.orgTag}>
-            <MaterialCommunityIcons name="shield-check" size={12} color="#6B46C1" />
-            <Text style={styles.orgTagText}>
-              {currentOrganization?.name || 'APEX MICROFINANCE'}
-            </Text>
+      {/* ===== TOP CLEAN PERSONAL GREETING HERO BAR ===== */}
+      <View style={styles.heroGreetingRow}>
+        <View style={styles.heroLeft}>
+          <View style={styles.avatarWrap}>
+            <Text style={styles.avatarText}>{adminInitial}</Text>
           </View>
-          <Text style={styles.headerTitle}>Admin Center</Text>
-          <Text style={styles.headerSubtitle}>{todayDateStr}</Text>
+          <View style={styles.greetingCol}>
+            <Text style={styles.greetingSalute}>Welcome back,</Text>
+            <Text style={styles.greetingName} numberOfLines={1}>
+              {adminName}
+            </Text>
+            <Text style={styles.heroDateSub}>{todayDateStr}</Text>
+          </View>
         </View>
 
-        <View style={styles.headerRightActions}>
+        <View style={styles.heroRight}>
+          <View style={styles.orgPill}>
+            <MaterialCommunityIcons name="shield-check" size={12} color="#6B46C1" />
+            <Text style={styles.orgPillText} numberOfLines={1}>
+              {currentOrganization?.name || 'APEX'}
+            </Text>
+          </View>
+
           <TouchableOpacity
             style={styles.syncBtn}
             onPress={onRefresh}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="sync" size={15} color="#374151" />
-            <Text style={styles.syncBtnText}>Sync</Text>
+            {refreshing ? (
+              <ActivityIndicator size="small" color="#6B46C1" />
+            ) : (
+              <MaterialCommunityIcons name="sync" size={18} color="#475569" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing || contextLoading}
-            onRefresh={onRefresh}
-            colors={['#6B46C1']}
-            tintColor="#6B46C1"
-          />
-        }
-      >
-        {/* 1. Branch Vault Liquidity Card */}
-        <View style={styles.vaultCard}>
-          <View style={styles.vaultTop}>
-            <View>
-              <Text style={styles.vaultLabel}>BRANCH CASH VAULT & LIQUIDITY</Text>
-              <Text style={styles.vaultAmount}>
-                {formatINR(liveFund.availableCash)}
-              </Text>
-              <Text style={styles.vaultSub}>● Active Vault Reserve Balance</Text>
-            </View>
-            <View style={styles.vaultBtnCol}>
-              <TouchableOpacity
-                style={styles.btnInject}
-                onPress={() => setCapitalModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="bank-plus" size={13} color="#059669" />
-                <Text style={styles.btnInjectText}>+ Capital</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.btnExpense}
-                onPress={() => setExpenseModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="receipt" size={13} color="#DC2626" />
-                <Text style={styles.btnExpenseText}>- Expense</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.settlementBar}
-            onPress={onOpenSettlement}
-            activeOpacity={0.85}
-          >
-            <View style={styles.settlementLeft}>
-              <MaterialCommunityIcons name="lock-check" size={16} color="#6B46C1" />
-              <Text style={styles.settlementText}>
-                Day-End Cash Reconciliation & Vault Lock
-              </Text>
-            </View>
-            <Text style={styles.settlementArrow}>Review →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 2. Realized Profit Pool Card with Reinvest & Withdraw Actions */}
-        <View style={styles.profitPoolCard}>
-          <View style={styles.profitTopRow}>
-            <View>
-              <Text style={styles.profitLabel}>REALIZED PROFIT POOL</Text>
-              <Text style={styles.profitAmount}>
-                {formatINR(liveFund.availableProfitPool)}
-              </Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={{ fontSize: 10, color: '#6B7280', fontWeight: '600' }}>Contracted Profit</Text>
-              <Text style={{ fontSize: 13, color: '#059669', fontWeight: '700' }}>
-                +{formatINR(liveFund.lendingIncome)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.profitBtnRow}>
-            <TouchableOpacity
-              style={styles.btnReinvest}
-              onPress={() => {
-                setProfitActionMode('REINVEST');
-                setProfitAmount(String(liveFund.availableProfitPool || ''));
-                setProfitModalVisible(true);
-              }}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons name="transfer-right" size={14} color="#FFFFFF" />
-              <Text style={styles.btnReinvestText}>Reinvest to Capital</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.btnWithdraw}
-              onPress={() => {
-                setProfitActionMode('WITHDRAW');
-                setProfitAmount(String(liveFund.availableProfitPool || ''));
-                setProfitModalVisible(true);
-              }}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons name="bank-transfer-out" size={14} color="#6B46C1" />
-              <Text style={styles.btnWithdrawText}>Withdraw Profit</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* 3. 4-Card Quick Operations Grid */}
-        <View style={styles.actionSection}>
-          <View style={styles.actionGrid}>
-            {/* Action 1: Collect Payment */}
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => onOpenCollect && onOpenCollect(dueTodayLoans[0] || null)}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
-                <MaterialCommunityIcons name="wallet-outline" size={20} color="#059669" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.actionLabel}>Collect EMI</Text>
-                <Text style={styles.actionSublabel}>Record payment</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Action 2: Onboard Borrower */}
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={onOpenAddUser}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconBox, { backgroundColor: '#F5F3FF' }]}>
-                <MaterialCommunityIcons name="account-plus-outline" size={20} color="#6B46C1" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.actionLabel}>Add Borrower</Text>
-                <Text style={styles.actionSublabel}>Create account</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Action 3: Disburse Loan */}
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={onOpenDisburse}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconBox, { backgroundColor: '#EFF6FF' }]}>
-                <MaterialCommunityIcons name="cash-plus" size={20} color="#2563EB" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.actionLabel}>Disburse Loan</Text>
-                <Text style={styles.actionSublabel}>Issue capital</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Action 4: Branch Expense */}
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => setExpenseModalVisible(true)}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconBox, { backgroundColor: '#FEF2F2' }]}>
-                <MaterialCommunityIcons name="receipt" size={20} color="#DC2626" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.actionLabel}>Add Expense</Text>
-                <Text style={styles.actionSublabel}>Branch cost</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* 4. Core Capital & Portfolio Metrics (2x2 Clean Cards) */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Portfolio Accounting</Text>
-        </View>
-
-        <View style={styles.metricGrid}>
-          {/* Card 1: Total Net Capital */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>NET CAPITAL</Text>
-              <View style={[styles.metricIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                <MaterialCommunityIcons name="bank" size={13} color="#2563EB" />
-              </View>
-            </View>
-            <Text style={[styles.metricValue, { color: '#2563EB' }]} numberOfLines={1}>
-              {formatINR(liveFund.totalCapital)}
-            </Text>
-            <Text style={styles.metricSub}>Injected capital base</Text>
-          </View>
-
-          {/* Card 2: Interest Profit */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>CONTRACTED PROFIT</Text>
-              <View style={[styles.metricIconWrap, { backgroundColor: '#ECFDF5' }]}>
-                <MaterialCommunityIcons name="trending-up" size={13} color="#059669" />
-              </View>
-            </View>
-            <Text style={[styles.metricValue, { color: '#059669' }]} numberOfLines={1}>
-              {formatINR(liveFund.lendingIncome)}
-            </Text>
-            <Text style={styles.metricSub}>Lending interest income</Text>
-          </View>
-
-          {/* Card 3: Recovered Inflows */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>RECOVERED INFLOWS</Text>
-              <View style={[styles.metricIconWrap, { backgroundColor: '#ECFDF5' }]}>
-                <MaterialCommunityIcons name="wallet-outline" size={13} color="#059669" />
-              </View>
-            </View>
-            <Text style={[styles.metricValue, { color: '#059669' }]} numberOfLines={1}>
-              {formatINR(fundMetrics.totalRecoveredCash)}
-            </Text>
-            <Text style={styles.metricSub}>Principal + Profit Inflow</Text>
-          </View>
-
-          {/* Card 4: Outstanding Due */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>OUTSTANDING DUE</Text>
-              <View style={[styles.metricIconWrap, { backgroundColor: '#FEF2F2' }]}>
-                <MaterialCommunityIcons name="alert-circle-outline" size={13} color="#DC2626" />
-              </View>
-            </View>
-            <Text style={[styles.metricValue, { color: '#DC2626' }]} numberOfLines={1}>
-              {formatINR(fundMetrics.outstandingTotal || liveFund.outstandingPrincipal)}
-            </Text>
-            <Text style={styles.metricSub}>Circulating balance</Text>
-          </View>
-        </View>
-
-        {/* 5. Today's Recovery Target Banner */}
-        <View style={styles.todayCard}>
-          <View style={styles.todayHeader}>
-            <View>
-              <Text style={styles.todayTitle}>Today's Recovery Target</Text>
-              <Text style={styles.todaySubtitle}>
-                Field recovery vs scheduled daily installments
-              </Text>
-            </View>
-            <View style={styles.todayBadge}>
-              <Text style={styles.todayBadgeText}>
-                {Math.round(todayTargetProgress * 100)}% Recovered
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.todayProgressTrack}>
-            <View
-              style={[
-                styles.todayProgressFill,
-                { width: `${todayTargetProgress * 100}%` },
-              ]}
+      {/* ===== MAIN CONTENT OR SHIMMER SKELETON ===== */}
+      {isInitialLoading ? (
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          <DashboardSkeletonView />
+        </ScrollView>
+      ) : (
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#6B46C1']}
+              tintColor="#6B46C1"
             />
-          </View>
-
-          <View style={styles.todayStatsRow}>
-            <View>
-              <Text style={styles.todayStatLabel}>Recovered Today</Text>
-              <Text style={[styles.todayStatVal, { color: '#059669' }]}>
-                {formatINR(fundMetrics.todayCollected)}
-              </Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.todayStatLabel}>Daily Target Due</Text>
-              <Text style={styles.todayStatVal}>
-                {formatINR(fundMetrics.todayTarget)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 6. Due Today Collection Queue */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Due Today Collection Queue</Text>
-          <TouchableOpacity
-            onPress={() => onNavigate && onNavigate('customers')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sectionActionText}>View All Borrowers →</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.dueList}>
-          {dueTodayLoans.length === 0 ? (
-            <View style={styles.emptyDueCard}>
-              <Text style={styles.emptyDueText}>
-                All daily collections for today are balanced! 🎉
-              </Text>
-            </View>
-          ) : (
-            dueTodayLoans.map((loan) => (
-              <TouchableOpacity
-                key={loan.id}
-                style={styles.dueCard}
-                onPress={() => onOpenLedger && onOpenLedger(loan)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.dueLeft}>
-                  <View style={styles.dueAvatar}>
-                    <Text style={styles.dueAvatarText}>
-                      {(loan.customer_name || 'B').charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text style={styles.dueBorrowerName}>
-                      {loan.customer_name || 'Borrower Account'}
-                    </Text>
-                    <Text style={styles.dueLoanSub}>
-                      {loan.repayment_frequency || 'WEEKLY'} •{' '}
-                      {loan.loan_code || loan.loan_number || `LN-${loan.id}`}
-                    </Text>
-                  </View>
+          }
+        >
+          {/* 1. Branch Vault Cash & Liquidity Card */}
+          <View style={styles.vaultCard}>
+            <View style={styles.vaultTop}>
+              <View>
+                <View style={styles.vaultLabelRow}>
+                  <MaterialCommunityIcons name="safe" size={14} color="#64748B" />
+                  <Text style={styles.vaultLabel}>BRANCH CASH VAULT</Text>
                 </View>
+                <Text style={styles.vaultAmount}>
+                  {formatINR(liveFund.availableCash)}
+                </Text>
+                <Text style={styles.vaultSub}>● Physical cash ready for disbursals</Text>
+              </View>
 
-                <View style={styles.dueRight}>
-                  <Text style={styles.dueAmount}>
-                    {formatINR(loan.emi_amount || 1000)}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.btnQuickCollect}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      if (onOpenCollect) onOpenCollect(loan);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.btnQuickCollectText}>Collect</Text>
-                  </TouchableOpacity>
+              <View style={styles.vaultActionBtns}>
+                <TouchableOpacity
+                  style={styles.btnInject}
+                  onPress={() => setCapitalModalVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="bank-plus" size={14} color="#059669" />
+                  <Text style={styles.btnInjectText}>+ Capital</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.btnExpense}
+                  onPress={() => setExpenseModalVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="receipt" size={14} color="#DC2626" />
+                  <Text style={styles.btnExpenseText}>- Expense</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.settlementBar}
+              onPress={onOpenSettlement}
+              activeOpacity={0.85}
+            >
+              <View style={styles.settlementLeft}>
+                <MaterialCommunityIcons name="lock-check" size={16} color="#6B46C1" />
+                <Text style={styles.settlementText}>
+                  Day-End Cash Reconciliation & Vault Lock
+                </Text>
+              </View>
+              <Text style={styles.settlementArrow}>Review →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 2. Realized Profit Pool Card */}
+          <View style={styles.profitPoolCard}>
+            <View style={styles.profitTopRow}>
+              <View>
+                <Text style={styles.profitLabel}>REALIZED PROFIT POOL</Text>
+                <Text style={styles.profitAmount}>
+                  {formatINR(liveFund.availableProfitPool)}
+                </Text>
+                <Text style={styles.profitSub}>Accumulated interest earnings</Text>
+              </View>
+
+              <View style={styles.contractedBadge}>
+                <Text style={styles.contractedLabel}>Contracted Profit</Text>
+                <Text style={styles.contractedVal}>
+                  +{formatINR(liveFund.lendingIncome)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.profitBtnRow}>
+              <TouchableOpacity
+                style={styles.btnReinvest}
+                onPress={() => {
+                  setProfitActionMode('REINVEST');
+                  setProfitAmount(String(liveFund.availableProfitPool || ''));
+                  setProfitModalVisible(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="transfer-right" size={15} color="#FFFFFF" />
+                <Text style={styles.btnReinvestText}>Reinvest to Capital</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.btnWithdraw}
+                onPress={() => {
+                  setProfitActionMode('WITHDRAW');
+                  setProfitAmount(String(liveFund.availableProfitPool || ''));
+                  setProfitModalVisible(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="bank-transfer-out" size={15} color="#6B46C1" />
+                <Text style={styles.btnWithdrawText}>Withdraw Profit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 3. 4-Card Quick Operations Grid */}
+          <View style={styles.actionSection}>
+            <View style={styles.actionGrid}>
+              {/* Action 1: Collect Payment */}
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => onOpenCollect && onOpenCollect(dueTodayLoans[0] || null)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
+                  <MaterialCommunityIcons name="wallet-outline" size={20} color="#059669" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionLabel}>Collect EMI</Text>
+                  <Text style={styles.actionSublabel}>Record payment</Text>
                 </View>
               </TouchableOpacity>
-            ))
-          )}
-        </View>
-      </ScrollView>
 
-      {/* ===== 1. INJECT CAPITAL / INITIAL VAULT MODAL ===== */}
+              {/* Action 2: Onboard Borrower */}
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={onOpenAddUser}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.actionIconBox, { backgroundColor: '#F5F3FF' }]}>
+                  <MaterialCommunityIcons name="account-plus-outline" size={20} color="#6B46C1" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionLabel}>Add Borrower</Text>
+                  <Text style={styles.actionSublabel}>New customer</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Action 3: Disburse Loan */}
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={onOpenDisburse}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.actionIconBox, { backgroundColor: '#EFF6FF' }]}>
+                  <MaterialCommunityIcons name="cash-plus" size={20} color="#2563EB" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionLabel}>Disburse Loan</Text>
+                  <Text style={styles.actionSublabel}>Issue capital</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Action 4: Branch Expense */}
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => setExpenseModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.actionIconBox, { backgroundColor: '#FEF2F2' }]}>
+                  <MaterialCommunityIcons name="receipt" size={20} color="#DC2626" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionLabel}>Add Expense</Text>
+                  <Text style={styles.actionSublabel}>Branch cost</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 4. Portfolio Summary Metrics (2x2 Clean Cards) */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Portfolio Summary</Text>
+          </View>
+
+          <View style={styles.metricGrid}>
+            {/* Card 1: Outstanding Due Principal */}
+            <View style={styles.metricCard}>
+              <View style={styles.metricTop}>
+                <Text style={styles.metricLabel}>OUTSTANDING PRINCIPAL</Text>
+                <View style={[styles.metricIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                  <MaterialCommunityIcons name="clock-outline" size={13} color="#DC2626" />
+                </View>
+              </View>
+              <Text style={[styles.metricValue, { color: '#DC2626' }]} numberOfLines={1}>
+                {formatINR(fundMetrics.outstandingTotal || liveFund.outstandingPrincipal)}
+              </Text>
+              <Text style={styles.metricSub}>Active capital in market</Text>
+            </View>
+
+            {/* Card 2: Total Net Capital */}
+            <View style={styles.metricCard}>
+              <View style={styles.metricTop}>
+                <Text style={styles.metricLabel}>NET CAPITAL</Text>
+                <View style={[styles.metricIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                  <MaterialCommunityIcons name="bank" size={13} color="#2563EB" />
+                </View>
+              </View>
+              <Text style={[styles.metricValue, { color: '#2563EB' }]} numberOfLines={1}>
+                {formatINR(liveFund.totalCapital)}
+              </Text>
+              <Text style={styles.metricSub}>Branch equity fund</Text>
+            </View>
+
+            {/* Card 3: Recovered Inflows */}
+            <View style={styles.metricCard}>
+              <View style={styles.metricTop}>
+                <Text style={styles.metricLabel}>RECOVERED INFLOWS</Text>
+                <View style={[styles.metricIconWrap, { backgroundColor: '#ECFDF5' }]}>
+                  <MaterialCommunityIcons name="trending-up" size={13} color="#059669" />
+                </View>
+              </View>
+              <Text style={[styles.metricValue, { color: '#059669' }]} numberOfLines={1}>
+                {formatINR(fundMetrics.totalRecoveredCash)}
+              </Text>
+              <Text style={styles.metricSub}>Principal + profit collected</Text>
+            </View>
+
+            {/* Card 4: Active Loans */}
+            <View style={styles.metricCard}>
+              <View style={styles.metricTop}>
+                <Text style={styles.metricLabel}>ACTIVE LOANS</Text>
+                <View style={[styles.metricIconWrap, { backgroundColor: '#F5F3FF' }]}>
+                  <MaterialCommunityIcons name="account-group" size={13} color="#6B46C1" />
+                </View>
+              </View>
+              <Text style={[styles.metricValue, { color: '#6B46C1' }]} numberOfLines={1}>
+                {activeLoansCount} Active
+              </Text>
+              <Text style={styles.metricSub}>Borrower accounts</Text>
+            </View>
+          </View>
+
+          {/* 5. Today's Recovery Target Banner */}
+          <View style={styles.todayCard}>
+            <View style={styles.todayHeader}>
+              <View>
+                <Text style={styles.todayTitle}>Today's Collection Target</Text>
+                <Text style={styles.todaySubtitle}>
+                  Field collection progress against scheduled dues
+                </Text>
+              </View>
+              <View style={styles.todayBadge}>
+                <Text style={styles.todayBadgeText}>
+                  {Math.round(todayTargetProgress * 100)}% Done
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.todayProgressTrack}>
+              <View
+                style={[
+                  styles.todayProgressFill,
+                  { width: `${todayTargetProgress * 100}%` },
+                ]}
+              />
+            </View>
+
+            <View style={styles.todayStatsRow}>
+              <View>
+                <Text style={styles.todayStatLabel}>Collected Today</Text>
+                <Text style={[styles.todayStatVal, { color: '#059669' }]}>
+                  {formatINR(fundMetrics.todayCollected)}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.todayStatLabel}>Target Scheduled</Text>
+                <Text style={styles.todayStatVal}>
+                  {formatINR(fundMetrics.todayTarget)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 6. Due Today Collection Queue */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Due Today Collection Queue</Text>
+            <TouchableOpacity
+              onPress={() => onNavigate && onNavigate('customers')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionActionText}>View All →</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.dueList}>
+            {dueTodayLoans.length === 0 ? (
+              <View style={styles.emptyDueCard}>
+                <Text style={styles.emptyDueText}>
+                  All scheduled collections for today are settled! 🎉
+                </Text>
+              </View>
+            ) : (
+              dueTodayLoans.map((loan) => (
+                <TouchableOpacity
+                  key={loan.id}
+                  style={styles.dueCard}
+                  onPress={() => onOpenLedger && onOpenLedger(loan)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.dueLeft}>
+                    <View style={styles.dueAvatar}>
+                      <Text style={styles.dueAvatarText}>
+                        {(loan.customer_name || 'B').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.dueBorrowerName} numberOfLines={1}>
+                        {loan.customer_name || 'Borrower Account'}
+                      </Text>
+                      <Text style={styles.dueLoanSub}>
+                        {loan.repayment_frequency || 'WEEKLY'} •{' '}
+                        {loan.loan_code || loan.loan_number || `LN-${loan.id}`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.dueRight}>
+                    <Text style={styles.dueAmount}>
+                      {formatINR(loan.emi_amount || 1000)}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.btnQuickCollect}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        if (onOpenCollect) onOpenCollect(loan);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.btnQuickCollectText}>Collect</Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ===== 1. INJECT CAPITAL MODAL ===== */}
       <Modal
         visible={capitalModalVisible}
         transparent={true}
@@ -633,7 +798,7 @@ export const AdminDashboard = ({
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Capital Source</Text>
+              <Text style={styles.inputLabel}>Funding Source</Text>
               <View style={styles.sourceSelectorRow}>
                 <TouchableOpacity
                   style={[styles.sourceChip, capitalSource === 'BANK' && styles.sourceChipActive]}
@@ -649,7 +814,7 @@ export const AdminDashboard = ({
                   onPress={() => setCapitalSource('CASH')}
                 >
                   <Text style={[styles.sourceChipText, capitalSource === 'CASH' && styles.sourceChipTextActive]}>
-                    💵 Physical Cash Float
+                    💵 Physical Cash
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -661,7 +826,7 @@ export const AdminDashboard = ({
                 style={styles.textInput}
                 value={capitalDescription}
                 onChangeText={setCapitalDescription}
-                placeholder="e.g. Initial branch capital injection"
+                placeholder="e.g. Branch vault cash injection"
                 placeholderTextColor="#9CA3AF"
               />
             </View>
@@ -685,7 +850,7 @@ export const AdminDashboard = ({
         </View>
       </Modal>
 
-      {/* ===== 2. PROFIT MANAGEMENT MODAL (REINVEST / WITHDRAW) ===== */}
+      {/* ===== 2. PROFIT MANAGEMENT MODAL ===== */}
       <Modal
         visible={profitModalVisible}
         transparent={true}
@@ -703,9 +868,9 @@ export const AdminDashboard = ({
               </TouchableOpacity>
             </View>
 
-            <View style={{ backgroundColor: '#F5F3FF', padding: 12, borderRadius: 10, marginBottom: 14 }}>
+            <View style={{ backgroundColor: '#FAF5FF', padding: 12, borderRadius: 10, marginBottom: 14, borderWidth: 1, borderColor: '#DDD6FE' }}>
               <Text style={{ fontSize: 11, color: '#6B46C1', fontWeight: '700' }}>AVAILABLE REALIZED PROFIT</Text>
-              <Text style={{ fontSize: 18, color: '#6B46C1', fontWeight: '800', marginTop: 2 }}>
+              <Text style={{ fontSize: 20, color: '#581C87', fontWeight: '800', marginTop: 2 }}>
                 {formatINR(liveFund.availableProfitPool)}
               </Text>
             </View>
@@ -755,7 +920,7 @@ export const AdminDashboard = ({
                 style={styles.textInput}
                 value={profitDescription}
                 onChangeText={setProfitDescription}
-                placeholder={profitActionMode === 'REINVEST' ? 'e.g. Added to lending float' : 'e.g. Admin dividend payout'}
+                placeholder={profitActionMode === 'REINVEST' ? 'e.g. Added to lending float' : 'e.g. Admin payout'}
                 placeholderTextColor="#9CA3AF"
               />
             </View>
@@ -785,7 +950,7 @@ export const AdminDashboard = ({
         </View>
       </Modal>
 
-      {/* ===== 3. OPERATIONAL EXPENSE MODAL ===== */}
+      {/* ===== 3. RECORD EXPENSE MODAL ===== */}
       <Modal
         visible={expenseModalVisible}
         transparent={true}

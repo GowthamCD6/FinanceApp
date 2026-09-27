@@ -265,28 +265,30 @@ export const Routes = () => {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Top Header */}
-      <Header
-        title={headerConfig.title}
-        subtitle={headerConfig.subtitle}
-        showBackButton={headerConfig.showBackButton}
-        onBack={headerConfig.onBack}
-        rightComponent={
-          organizations && organizations.length > 1 ? (
-            <TouchableOpacity
-              style={styles.tenantPill}
-              onPress={() => {
-                const nextOrg = organizations.find((o) => o.id !== currentOrganization?.id) || organizations[0];
-                switchOrganization(nextOrg.id);
-              }}
-            >
-              <Text style={styles.tenantPillText}>
-                {currentOrganization?.code || 'Switch Org'}
-              </Text>
-            </TouchableOpacity>
-          ) : null
-        }
-      />
+      {/* Top Header - Hidden on Dashboard for clean personal greeting */}
+      {activeTab !== 'dashboard' && (
+        <Header
+          title={headerConfig.title}
+          subtitle={headerConfig.subtitle}
+          showBackButton={headerConfig.showBackButton}
+          onBack={headerConfig.onBack}
+          rightComponent={
+            organizations && organizations.length > 1 ? (
+              <TouchableOpacity
+                style={styles.tenantPill}
+                onPress={() => {
+                  const nextOrg = organizations.find((o) => o.id !== currentOrganization?.id) || organizations[0];
+                  switchOrganization(nextOrg.id);
+                }}
+              >
+                <Text style={styles.tenantPillText}>
+                  {currentOrganization?.code || 'Switch Org'}
+                </Text>
+              </TouchableOpacity>
+            ) : null
+          }
+        />
+      )}
 
       {/* Main Screen Body based on Role & Active Tab */}
       <View style={styles.viewport}>
