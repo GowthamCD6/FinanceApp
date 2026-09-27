@@ -520,6 +520,48 @@ class ApiService {
     return res.data || res;
   }
 
+  // 13. LOCATION & BIOMETRIC PERMISSIONS (Profile Features)
+  async saveMyLocation(locationData) {
+    const res = await this.request('/users/locations', {
+      method: 'POST',
+      body: JSON.stringify(locationData),
+    });
+    return {
+      success: true,
+      data: res.data || res,
+      message: 'Location saved successfully',
+    };
+  }
+
+  async getMyLocation(userId) {
+    const res = await this.request(`/users/locations?userId=${userId}`);
+    return res.data || res;
+  }
+
+  async getUserLocations(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const endpoint = queryString ? `/admin/users/locations?${queryString}` : '/admin/users/locations';
+    const res = await this.request(endpoint);
+    return res.data || res || [];
+  }
+
+  async saveBiometricSetting(settingData) {
+    const res = await this.request('/users/security/biometrics', {
+      method: 'POST',
+      body: JSON.stringify(settingData),
+    });
+    return {
+      success: true,
+      data: res.data || res,
+      message: 'Biometric setting updated successfully',
+    };
+  }
+
+  async getBiometricSetting(userId) {
+    const res = await this.request(`/users/security/biometrics?userId=${userId}`);
+    return res.data || res;
+  }
+
   async recordPayment(paymentData) {
     const res = await this.request('/payments', {
       method: 'POST',
@@ -532,3 +574,4 @@ class ApiService {
 export const apiService = new ApiService();
 export { ApiService };
 export default apiService;
+

@@ -80,10 +80,100 @@ async function updateUserStatus(req, res) {
   }
 }
 
+async function saveBiometrics(req, res) {
+  try {
+    const userId = req.body.userId || req.user?.id || req.params.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required.' });
+    }
+    const result = await userService.saveBiometricSettings(userId, req.body);
+    return res.json({
+      success: true,
+      message: 'Biometric security settings saved successfully.',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Save biometrics error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function getBiometrics(req, res) {
+  try {
+    const userId = req.query.userId || req.user?.id || req.params.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required.' });
+    }
+    const result = await userService.getBiometricSettings(userId);
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Get biometrics error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function saveLocation(req, res) {
+  try {
+    const userId = req.body.userId || req.user?.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required to save location.' });
+    }
+    const result = await userService.saveUserLocation(userId, req.body);
+    return res.json({
+      success: true,
+      message: 'User location saved successfully.',
+      data: { location: result },
+    });
+  } catch (error) {
+    console.error('Save location error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function getLocation(req, res) {
+  try {
+    const userId = req.query.userId || req.user?.id || req.params.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required.' });
+    }
+    const result = await userService.getUserLocation(userId);
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Get location error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function getAdminUserLocations(req, res) {
+  try {
+    const orgId = req.query.organizationId || req.headers['x-organization-id'] || req.user?.organization_id || null;
+    const search = req.query.search || '';
+    const result = await userService.getAllUserLocations(orgId, search);
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Get admin user locations error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   createUser,
   getUsers,
   getUserById,
   updateUser,
   updateUserStatus,
+  saveBiometrics,
+  getBiometrics,
+  saveLocation,
+  getLocation,
+  getAdminUserLocations,
 };

@@ -186,6 +186,46 @@ CREATE TABLE IF NOT EXISTS user_roles (
     CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 2.1 USER SECURITY & BIOMETRICS (FINGERPRINT LOCK)
+CREATE TABLE IF NOT EXISTS user_security_settings (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+    is_fingerprint_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    biometric_type VARCHAR(50) NOT NULL DEFAULT 'FINGERPRINT',
+    device_model VARCHAR(100) NULL,
+    device_id VARCHAR(150) NULL,
+    biometric_token VARCHAR(255) NULL,
+    last_authenticated_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_security_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_sec_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.2 USER & BORROWER GPS LOCATIONS
+CREATE TABLE IF NOT EXISTS user_locations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    organization_id BIGINT UNSIGNED NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    accuracy DECIMAL(8, 2) NULL,
+    full_address TEXT NULL,
+    city VARCHAR(100) NULL,
+    state VARCHAR(100) NULL,
+    postal_code VARCHAR(20) NULL,
+    is_location_sharing_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    saved_to_database BOOLEAN NOT NULL DEFAULT TRUE,
+    captured_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_locations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_locations_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL,
+    INDEX idx_user_loc_user (user_id),
+    INDEX idx_user_loc_org (organization_id),
+    INDEX idx_user_loc_captured (captured_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 3. CUSTOMERS (BORROWERS & SHOPKEEPERS)
 CREATE TABLE IF NOT EXISTS customers (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

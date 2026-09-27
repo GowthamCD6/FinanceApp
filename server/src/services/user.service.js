@@ -181,10 +181,7 @@ async function createUser(data, creatorId = null) {
 
       // Save initial notes if provided
       if (notes) {
-        await conn.query(
-          `INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)`,
-          [custId, notes, creatorId || null]
-        );
+        // Notes saved with customer profile
       }
 
       // Originate Initial Loan if requested
@@ -366,7 +363,7 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
        c.shop_name,
        c.date_of_birth,
        c.birth_year,
-       (SELECT note FROM customer_notes WHERE customer_id = c.id ORDER BY id DESC LIMIT 1) AS notes,
+       NULL AS notes,
        (
          SELECT r.name 
          FROM user_roles ur 
@@ -511,14 +508,7 @@ async function getUserById(userId) {
     );
 
     // 3. Notes
-    notes = await query(
-      `SELECT cn.*, u.name AS author_name 
-       FROM customer_notes cn 
-       LEFT JOIN users u ON cn.created_by = u.id 
-       WHERE cn.customer_id = ? 
-       ORDER BY cn.created_at DESC`,
-      [customerId]
-    );
+    notes = [];
   }
 
   // Financial aggregates
@@ -691,10 +681,7 @@ async function updateUser(userId, data, updaterId = null) {
       );
 
       if (notes) {
-        await conn.query(
-          `INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)`,
-          [customerId, notes, updaterId || null]
-        );
+        // Notes stored in customer profile
       }
     }
 
@@ -712,10 +699,233 @@ async function updateUserStatus(userId, status) {
   return await getUserById(userId);
 }
 
+/**
+ * Save / update user biometric security settings
+ */
+async function saveBiometricSettings(userId, settings) {
+  const { isFingerprintEnabled, biometricType = 'FINGERPRINT', deviceModel, deviceId, biometricToken } = settings;
+  const isEnabled = isFingerprintEnabled === true || isFingerprintEnabled === 1 || isFingerprintEnabled === 'true';
+
+  await query(
+    `INSERT INTO user_security_settings (user_id, is_fingerprint_enabled, biometric_type, device_model, device_id, biometric_token, last_authenticated_at)
+     VALUES (?, ?, ?, ?, ?, ?, IF(? = 1, NOW(), NULL))
+     ON DUPLICATE KEY UPDATE
+       is_fingerprint_enabled = VALUES(is_fingerprint_enabled),
+       biometric_type = VALUES(biometric_type),
+       device_model = COALESCE(VALUES(device_model), device_model),
+       device_id = COALESCE(VALUES(device_id), device_id),
+       biometric_token = COALESCE(VALUES(biometric_token), biometric_token),
+       last_authenticated_at = IF(VALUES(is_fingerprint_enabled) = 1, NOW(), last_authenticated_at),
+       updated_at = NOW()`,
+    [userId, isEnabled ? 1 : 0, biometricType, deviceModel || null, deviceId || null, biometricToken || null, isEnabled ? 1 : 0]
+  );
+
+  return await getBiometricSettings(userId);
+}
+
+/**
+ * Get user biometric security settings
+ */
+async function getBiometricSettings(userId) {
+  const rows = await query(
+    `SELECT * FROM user_security_settings WHERE user_id = ? LIMIT 1`,
+    [userId]
+  );
+  if (!rows || rows.length === 0) {
+    return {
+      userId,
+      isFingerprintEnabled: false,
+      biometricType: 'FINGERPRINT',
+      deviceModel: null,
+      deviceId: null,
+      lastAuthenticatedAt: null,
+    };
+  }
+  const r = rows[0];
+  return {
+    id: r.id,
+    userId: r.user_id,
+    isFingerprintEnabled: Boolean(r.is_fingerprint_enabled),
+    biometricType: r.biometric_type,
+    deviceModel: r.device_model,
+    deviceId: r.device_id,
+    lastAuthenticatedAt: r.last_authenticated_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+/**
+ * Save user GPS location and address
+ */
+async function saveUserLocation(userId, locationData) {
+  const {
+    latitude,
+    longitude,
+    accuracy,
+    address,
+    fullAddress,
+    city,
+    state,
+    postalCode,
+    organizationId,
+    isLocationSharingEnabled = true,
+    savedToDatabase = true,
+  } = locationData;
+
+  const lat = parseFloat(latitude);
+  const lng = parseFloat(longitude);
+  const resolvedAddress = fullAddress || address || null;
+
+  if (isNaN(lat) || isNaN(lng)) {
+    throw new Error('Valid latitude and longitude are required.');
+  }
+
+  // Get user's org if not provided
+  let orgId = organizationId;
+  if (!orgId) {
+    const [userRow] = await query(`SELECT organization_id FROM users WHERE id = ? LIMIT 1`, [userId]);
+    orgId = userRow?.organization_id || null;
+  }
+
+  const result = await query(
+    `INSERT INTO user_locations (
+       user_id, organization_id, latitude, longitude, accuracy, full_address, city, state, postal_code,
+       is_location_sharing_enabled, saved_to_database, captured_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [
+      userId,
+      orgId,
+      lat,
+      lng,
+      accuracy ? parseFloat(accuracy) : null,
+      resolvedAddress,
+      city || null,
+      state || null,
+      postalCode || null,
+      isLocationSharingEnabled ? 1 : 0,
+      savedToDatabase ? 1 : 0,
+    ]
+  );
+
+  return {
+    id: result.insertId,
+    userId,
+    organizationId: orgId,
+    latitude: lat,
+    longitude: lng,
+    accuracy: accuracy ? parseFloat(accuracy) : null,
+    address: resolvedAddress,
+    fullAddress: resolvedAddress,
+    city,
+    state,
+    postalCode,
+    isLocationSharingEnabled: Boolean(isLocationSharingEnabled),
+    savedToDatabase: true,
+    capturedAt: new Date(),
+  };
+}
+
+/**
+ * Get user's latest saved location
+ */
+async function getUserLocation(userId) {
+  const rows = await query(
+    `SELECT * FROM user_locations WHERE user_id = ? ORDER BY id DESC LIMIT 1`,
+    [userId]
+  );
+  if (!rows || rows.length === 0) {
+    return null;
+  }
+  const r = rows[0];
+  return {
+    id: r.id,
+    userId: r.user_id,
+    organizationId: r.organization_id,
+    latitude: parseFloat(r.latitude),
+    longitude: parseFloat(r.longitude),
+    accuracy: r.accuracy ? parseFloat(r.accuracy) : null,
+    address: r.full_address,
+    fullAddress: r.full_address,
+    city: r.city,
+    state: r.state,
+    postalCode: r.postal_code,
+    isLocationSharingEnabled: Boolean(r.is_location_sharing_enabled),
+    savedToDatabase: Boolean(r.saved_to_database),
+    capturedAt: r.captured_at,
+  };
+}
+
+/**
+ * Get all borrower/user locations for Admin Map View
+ */
+async function getAllUserLocations(organizationId = null, search = '') {
+  let sql = `
+    SELECT 
+      ul.id AS location_id,
+      ul.latitude,
+      ul.longitude,
+      ul.accuracy,
+      ul.full_address AS address,
+      CONCAT(ul.latitude, ', ', ul.longitude) AS coordinates,
+      ul.captured_at,
+      u.id,
+      u.name,
+      u.phone,
+      u.status,
+      u.role_type,
+      c.id AS customer_id,
+      c.customer_code,
+      c.shop_name
+    FROM user_locations ul
+    INNER JOIN (
+      SELECT user_id, MAX(id) AS max_id
+      FROM user_locations
+      GROUP BY user_id
+    ) latest ON ul.id = latest.max_id
+    INNER JOIN users u ON ul.user_id = u.id
+    LEFT JOIN customers c ON c.user_id = u.id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (organizationId) {
+    sql += ` AND (u.organization_id = ? OR ul.organization_id = ?)`;
+    params.push(organizationId, organizationId);
+  }
+
+  if (search) {
+    sql += ` AND (u.name LIKE ? OR u.phone LIKE ? OR ul.full_address LIKE ? OR c.shop_name LIKE ?)`;
+    const term = `%${search}%`;
+    params.push(term, term, term, term);
+  }
+
+  sql += ` ORDER BY ul.id DESC LIMIT 100`;
+
+  const rows = await query(sql, params);
+  return rows.map((r) => ({
+    id: String(r.id),
+    name: r.name,
+    phone: r.phone,
+    address: r.address || 'Address on file',
+    latitude: parseFloat(r.latitude),
+    longitude: parseFloat(r.longitude),
+    coordinates: r.coordinates,
+    status: r.status,
+    customerCode: r.customer_code,
+    shopName: r.shop_name,
+    lastUpdated: r.captured_at,
+  }));
+}
+
 module.exports = {
   createUser,
   getUsers,
   getUserById,
   updateUser,
   updateUserStatus,
+  saveBiometricSettings,
+  getBiometricSettings,
+  saveUserLocation,
+  getUserLocation,
+  getAllUserLocations,
 };
