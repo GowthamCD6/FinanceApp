@@ -238,7 +238,7 @@ const Login = ({ navigation, onLoginSuccess, onBack }) => {
                     <MaterialCommunityIcons
                       name="phone"
                       size={20}
-                      color={phoneFocused ? '#2842C4' : '#6B7280'}
+                      color={phoneFocused ? '#6B46C1' : '#6B7280'}
                     />
                   </View>
                   <TextInput
@@ -267,7 +267,7 @@ const Login = ({ navigation, onLoginSuccess, onBack }) => {
                     <MaterialCommunityIcons
                       name="lock-outline"
                       size={20}
-                      color={passFocused ? '#2842C4' : '#6B7280'}
+                      color={passFocused ? '#6B46C1' : '#6B7280'}
                     />
                   </View>
                   <TextInput
@@ -296,7 +296,7 @@ const Login = ({ navigation, onLoginSuccess, onBack }) => {
                     <MaterialCommunityIcons
                       name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                       size={20}
-                      color="#2842C4"
+                      color="#6B46C1"
                     />
                   </Pressable>
                 </View>

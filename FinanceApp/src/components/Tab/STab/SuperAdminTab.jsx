@@ -35,7 +35,7 @@ export const SuperAdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
   const leftTabs = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2);
 
-  const activeColor = '#7C3AED';
+  const activeColor = '#6B46C1';
   const inactiveColor = '#6B7280';
 
   const renderTabItem = (tab) => {
@@ -161,11 +161,11 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#6B46C1',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
-    shadowColor: '#7C3AED',
+    shadowColor: '#6B46C1',
     shadowOffset: {
       width: 0,
       height: 4,

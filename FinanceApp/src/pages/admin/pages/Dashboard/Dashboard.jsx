@@ -13,7 +13,6 @@ import {
   Animated,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
@@ -365,10 +364,13 @@ export const AdminDashboard = ({
     });
   }, []);
 
-  // Personalized Display Name
+  // Formatted User Name (Proper Title Case)
   const adminName = useMemo(() => {
-    const name = currentUser?.name || loggedInUser?.name || 'Administrator';
-    return name;
+    const rawName = currentUser?.name || loggedInUser?.name || 'Administrator';
+    return rawName
+      .split(' ')
+      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ''))
+      .join(' ');
   }, [currentUser, loggedInUser]);
 
   const adminInitial = useMemo(() => {
@@ -376,9 +378,10 @@ export const AdminDashboard = ({
   }, [adminName]);
 
   const isInitialLoading = loadingFund && !refreshing;
+  const isVaultDeficit = (liveFund.availableCash || 0) < 0;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* ===== TOP CLEAN PERSONAL GREETING HERO BAR ===== */}
@@ -398,23 +401,11 @@ export const AdminDashboard = ({
 
         <View style={styles.heroRight}>
           <View style={styles.orgPill}>
-            <MaterialCommunityIcons name="shield-check" size={12} color="#6B46C1" />
+            <MaterialCommunityIcons name="shield-check" size={13} color="#6B46C1" />
             <Text style={styles.orgPillText} numberOfLines={1}>
-              {currentOrganization?.name || 'APEX'}
+              {currentOrganization?.name || 'Apex Finance'}
             </Text>
           </View>
-
-          <TouchableOpacity
-            style={styles.syncBtn}
-            onPress={onRefresh}
-            activeOpacity={0.7}
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color="#6B46C1" />
-            ) : (
-              <MaterialCommunityIcons name="sync" size={18} color="#475569" />
-            )}
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -445,10 +436,12 @@ export const AdminDashboard = ({
                   <MaterialCommunityIcons name="safe" size={14} color="#64748B" />
                   <Text style={styles.vaultLabel}>BRANCH CASH VAULT</Text>
                 </View>
-                <Text style={styles.vaultAmount}>
+                <Text style={[styles.vaultAmount, isVaultDeficit && { color: '#DC2626' }]}>
                   {formatINR(liveFund.availableCash)}
                 </Text>
-                <Text style={styles.vaultSub}>● Physical cash ready for disbursals</Text>
+                <Text style={[styles.vaultSub, isVaultDeficit && { color: '#DC2626' }]}>
+                  {isVaultDeficit ? '● Vault cash currently in deficit' : '● Physical cash ready for disbursals'}
+                </Text>
               </View>
 
               <View style={styles.vaultActionBtns}>
@@ -1024,7 +1017,7 @@ export const AdminDashboard = ({
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

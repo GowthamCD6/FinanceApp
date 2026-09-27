@@ -16,7 +16,7 @@ export default StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 6, // Flush with bottom tab bar per Add User specification
   },
 
@@ -26,8 +26,8 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 10 : 12,
-    paddingBottom: 12,
+    paddingTop: 6,
+    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
@@ -78,35 +78,25 @@ export default StyleSheet.create({
   heroRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'flex-end',
   },
   orgPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F8FAFC',
+    gap: 5,
+    backgroundColor: '#F5F3FF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    borderColor: '#DDD6FE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   orgPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
+    color: '#6B46C1',
     fontFamily: FONT_BOLD,
-    maxWidth: 90,
-  },
-  syncBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    maxWidth: 130,
   },
 
   // ===== 1. BRANCH CASH VAULT CARD =====
@@ -609,7 +599,7 @@ export default StyleSheet.create({
   // ===== SKELETON PLACEHOLDERS =====
   skeletonContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 10,
     gap: 14,
   },
   skeletonGreetingRow: {

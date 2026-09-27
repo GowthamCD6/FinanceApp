@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   decorativeLine: {
     width: 60,
     height: 4,
-    backgroundColor: '#2842C4',
+    backgroundColor: '#6B46C1',
     borderRadius: 2,
     marginTop: 4,
   },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   inputFocused: {
-    borderColor: '#2842C4',
+    borderColor: '#6B46C1',
   },
   inputError: {
     borderColor: '#FF4444',
@@ -181,8 +181,8 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   checkboxChecked: {
-    backgroundColor: '#2842C4',
-    borderColor: '#2842C4',
+    backgroundColor: '#6B46C1',
+    borderColor: '#6B46C1',
   },
   checkboxText: {
     fontSize: 13,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   linkText: {
-    color: '#2842C4',
+    color: '#6B46C1',
     fontWeight: '700',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
     textDecorationLine: 'underline',
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#2842C4',
+    backgroundColor: '#6B46C1',
     borderRadius: 16,
   },
   btntext: {
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   modalButton: {
     width: '100%',
     height: 48,
-    backgroundColor: '#2842C4',
+    backgroundColor: '#6B46C1',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',

@@ -74,7 +74,7 @@ export const Routes = () => {
     return (
       <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }]}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <ActivityIndicator size="large" color="#2842C4" />
+        <ActivityIndicator size="large" color="#6B46C1" />
       </SafeAreaView>
     );
   }

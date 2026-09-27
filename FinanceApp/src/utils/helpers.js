@@ -35,7 +35,11 @@ export const colors = {
  */
 export function formatINR(amount) {
   if (isNaN(amount) || amount === null || amount === undefined) return '₹0';
-  return '₹' + Math.round(amount).toLocaleString('en-IN');
+  const num = Math.round(Number(amount));
+  if (num < 0) {
+    return '-₹' + Math.abs(num).toLocaleString('en-IN');
+  }
+  return '₹' + num.toLocaleString('en-IN');
 }
 
 /**
