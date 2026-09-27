@@ -15,6 +15,7 @@ import {
   BackHandler,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -98,33 +99,60 @@ const BlockUserScreen = ({ onBack }) => {
     }
   };
 
+  const handleForceLogout = user => {
+    if (submitting) return;
+    Alert.alert(
+      t('Force Logout') || 'Force Logout',
+      `Are you sure you want to force logout ${user.name}? This will immediately terminate their active session on their device.`,
+      [
+        { text: t('Cancel') || 'Cancel', style: 'cancel' },
+        {
+          text: t('Force Logout') || 'Force Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setSubmitting(true);
+              const response = await apiService.forceLogout(user.id, 'Session terminated by administrator');
+              if (response && (response.success || response.data)) {
+                Alert.alert('Success', `${user.name} has been force-logged out. Their session will end automatically.`);
+                fetchUsers();
+              } else {
+                Alert.alert('Error', response?.message || 'Failed to force logout user');
+              }
+            } catch (error) {
+              console.error('Error force logging out user:', error);
+              Alert.alert('Error', error.message || 'Failed to force logout user.');
+            } finally {
+              setSubmitting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleUnblock = userId => {
     if (submitting) return;
-    Alert.alert(t('Unblock User'), t('Are you sure you want to unblock this user?'), [
+    Alert.alert(t('Reactivate User') || 'Reactivate User', t('Are you sure you want to unblock and reactivate this user account?') || 'Are you sure you want to unblock and reactivate this user account?', [
       {
-        text: t('Cancel'),
+        text: t('Cancel') || 'Cancel',
         style: 'cancel',
       },
       {
-        text: t('Unblock'),
-        style: 'destructive',
+        text: t('Reactivate') || 'Reactivate',
         onPress: async () => {
           try {
             setSubmitting(true);
-            const response = await apiService.makeRequest('/admin/users/unblock', {
-              method: 'POST',
-              body: JSON.stringify({ userId }),
-            });
-            const data = await response.json();
-            if (data.success) {
-              Alert.alert('Success', t('User has been unblocked'));
+            const response = await apiService.unblockUser(userId);
+            if (response && (response.success || response.data)) {
+              Alert.alert('Success', t('User account has been reactivated successfully'));
               fetchUsers();
             } else {
-              Alert.alert('Error', data.message || 'Failed to unblock user');
+              Alert.alert('Error', response?.message || 'Failed to unblock user');
             }
           } catch (error) {
             console.error('Error unblocking user:', error);
-            Alert.alert('Error', 'Failed to unblock user. Please try again.');
+            Alert.alert('Error', error.message || 'Failed to unblock user. Please try again.');
           } finally {
             setSubmitting(false);
           }
@@ -142,32 +170,25 @@ const BlockUserScreen = ({ onBack }) => {
   const confirmBlock = async () => {
     if (submitting) return;
     if (!blockReason.trim()) {
-      Alert.alert('Error', t('Provide a reason for blocking'));
+      Alert.alert('Error', t('Provide a reason for deactivating') || 'Please provide a reason for deactivating/blocking');
       return;
     }
 
     try {
       setSubmitting(true);
-      const response = await apiService.makeRequest('/admin/users/block', {
-        method: 'POST',
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          reason: blockReason.trim(),
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        Alert.alert('Success', t('User has been blocked'));
+      const response = await apiService.blockUser(selectedUser.id, blockReason.trim());
+      if (response && (response.success || response.data)) {
+        Alert.alert('Success', t('User account has been deactivated and blocked.') || 'User account has been deactivated and blocked.');
         setShowBlockModal(false);
         setBlockReason('');
         setSelectedUser(null);
         fetchUsers();
       } else {
-        Alert.alert('Error', data.message || 'Failed to block user');
+        Alert.alert('Error', response?.message || 'Failed to deactivate user');
       }
     } catch (error) {
       console.error('Error blocking user:', error);
-      Alert.alert('Error', 'Failed to block user. Please try again.');
+      Alert.alert('Error', error.message || 'Failed to deactivate user. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -177,14 +198,14 @@ const BlockUserScreen = ({ onBack }) => {
     <View style={styles.userCard}>
       <View style={styles.cardContent}>
         <View style={styles.userInfoWrapper}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+          <View style={[styles.avatarContainer, styles.blockedAvatar]}>
+            <Text style={[styles.avatarText, styles.blockedAvatarText]}>{item.name.charAt(0)}</Text>
           </View>
           <View style={styles.userDetails}>
             <Text style={styles.userName}>{item.name}</Text>
             <Text style={styles.userPhone}>{item.phone}</Text>
             {item.blockReason ? (
-              <Text style={styles.blockReason} numberOfLines={1}>
+              <Text style={styles.blockReason} numberOfLines={2}>
                 Reason: {item.blockReason}
               </Text>
             ) : null}
@@ -192,21 +213,21 @@ const BlockUserScreen = ({ onBack }) => {
         </View>
         <View style={styles.rightSection}>
           <View style={styles.statusContainer}>
-            <Text style={styles.statusLabel}>Status:</Text>
             <Text style={[styles.statusText, styles.blockedStatus]}>
-              Blocked
+              Deactivated
             </Text>
           </View>
           <TouchableOpacity
             style={styles.unblockButton}
             onPress={() => handleUnblock(item.id)}
+            disabled={submitting}
           >
             <MaterialCommunityIcons
               name="account-check"
-              size={18}
+              size={16}
               color="#FFF"
             />
-            <Text style={styles.buttonTextSmall}>Unblock</Text>
+            <Text style={styles.buttonTextSmall}>Reactivate</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -223,25 +244,35 @@ const BlockUserScreen = ({ onBack }) => {
           <View style={styles.userDetails}>
             <Text style={styles.userName}>{item.name}</Text>
             <Text style={styles.userPhone}>{item.phone}</Text>
+            <Text style={styles.userRoleText}>{item.role || 'BORROWER'}</Text>
           </View>
         </View>
-        <View style={styles.rightSection}>
-          <View style={styles.statusContainer}>
-            <Text style={styles.statusLabel}>Status:</Text>
-            <Text style={[styles.statusText, styles.activeStatus]}>
-              {item.status}
-            </Text>
-          </View>
+        <View style={styles.rightSectionActions}>
+          <TouchableOpacity
+            style={styles.forceLogoutButton}
+            onPress={() => handleForceLogout(item)}
+            disabled={submitting}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name="logout-variant"
+              size={15}
+              color="#7C3AED"
+            />
+            <Text style={styles.forceLogoutButtonText}>Force Logout</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.blockButton}
             onPress={() => handleBlockUser(item)}
+            disabled={submitting}
+            activeOpacity={0.8}
           >
             <MaterialCommunityIcons
               name="account-cancel"
-              size={18}
+              size={15}
               color="#FFF"
             />
-            <Text style={styles.buttonTextSmall}>Block</Text>
+            <Text style={styles.buttonTextSmall}>Deactivate</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -266,7 +297,7 @@ const BlockUserScreen = ({ onBack }) => {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header */}
@@ -334,7 +365,7 @@ const BlockUserScreen = ({ onBack }) => {
       {/* User List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0066FF" />
+          <ActivityIndicator size="large" color="#7C3AED" />
           <Text style={styles.loadingText}>{t('Loading data...')}</Text>
         </View>
       ) : (
@@ -412,16 +443,46 @@ const BlockUserScreen = ({ onBack }) => {
                     size={20}
                     color="#000000"
                   />
-                  <Text style={styles.inputLabel}>{t('Block Reason')}</Text>
+                  <Text style={styles.inputLabel}>{t('Deactivation Reason') || 'Deactivation Reason'}</Text>
                   <Text style={styles.requiredStar}>*</Text>
                 </View>
+
+                {/* Quick preset reasons */}
+                <View style={styles.quickReasonsContainer}>
+                  {[
+                    'Defaulted loan payments',
+                    'Suspicious account activity',
+                    'Phone lost / Security risk',
+                    'Customer requested closure',
+                  ].map((preset, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.quickReasonChip,
+                        blockReason === preset && styles.quickReasonChipActive,
+                      ]}
+                      onPress={() => setBlockReason(preset)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.quickReasonText,
+                          blockReason === preset && styles.quickReasonTextActive,
+                        ]}
+                      >
+                        {preset}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
                 <TextInput
                   style={styles.textArea}
-                  placeholder={t('Enter reason...')}
+                  placeholder={t('Or type specific reason...')}
                   value={blockReason}
                   onChangeText={setBlockReason}
                   multiline
-                  numberOfLines={4}
+                  numberOfLines={3}
                   textAlignVertical="top"
                   placeholderTextColor="#9CA3AF"
                 />
@@ -443,7 +504,7 @@ const BlockUserScreen = ({ onBack }) => {
                       size={20}
                       color="#FFFFFF"
                     />
-                    <Text style={styles.buttonText}>{t('Confirm Block')}</Text>
+                    <Text style={styles.buttonText}>{t('Confirm Deactivation') || 'Confirm Deactivation'}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -451,7 +512,7 @@ const BlockUserScreen = ({ onBack }) => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -468,17 +529,17 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#F3F4F6',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 4,
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   activeTab: {
-    backgroundColor: '#0066FF',
+    backgroundColor: '#7C3AED',
   },
   tabText: {
     fontSize: 14,
@@ -498,31 +559,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 14,
-    height: 58,
-    marginBottom: -10,
+    height: 52,
+    marginBottom: -6,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 16,
+    fontSize: 15,
     color: '#1F2937',
     fontFamily:
       Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
   },
   listContentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
-    paddingTop: 8,
+    paddingBottom: 24,
+    paddingTop: 10,
   },
   userCard: {
     backgroundColor: '#FFFFFF',
-    marginBottom: 8,
-    padding: 12,
-    borderRadius: 12,
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3E8FF',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   cardContent: {
     flexDirection: 'row',
@@ -539,20 +605,82 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#EDE9FE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    marginTop: 2,
+  },
+  blockedAvatar: {
+    backgroundColor: '#FEE2E2',
   },
   avatarText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3B82F6',
+    color: '#7C3AED',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  blockedAvatarText: {
+    color: '#EF4444',
   },
   userDetails: {
     flex: 1,
+  },
+  userRoleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7C3AED',
+    marginTop: 3,
+    textTransform: 'uppercase',
+  },
+  rightSectionActions: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  forceLogoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    gap: 4,
+  },
+  forceLogoutButtonText: {
+    color: '#7C3AED',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-SemiBold' : 'Poppins-SemiBold',
+  },
+  quickReasonsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+  },
+  quickReasonChip: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  quickReasonChipActive: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#7C3AED',
+  },
+  quickReasonText: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+  quickReasonTextActive: {
+    color: '#7C3AED',
+    fontWeight: '600',
   },
   rightSection: {
     alignItems: 'center',

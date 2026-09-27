@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/apiService';
 import { ENV } from '../config/env';
@@ -233,6 +234,37 @@ export const AppProvider = ({ children }) => {
       apiService.setToken(null);
     }
   };
+
+  // Automated session health check & force-logout/deactivation watcher
+  useEffect(() => {
+    // 1. Instant trigger when any API call returns 401/403 or deactivated status
+    apiService.onSessionTerminated((info) => {
+      const msg = info?.message || 'Your session has been terminated by administrator.';
+      Alert.alert('Session Notice', msg, [{ text: 'OK', onPress: () => logout() }]);
+      logout();
+    });
+
+    if (!isAuthenticated || !loggedInUser?.id) return;
+
+    // 2. Periodic background verification check every 20 seconds
+    const intervalId = setInterval(async () => {
+      try {
+        const verifyRes = await apiService.verifySession(loggedInUser.id);
+        if (verifyRes && verifyRes.valid === false) {
+          const reasonMsg = verifyRes.reason === 'ACCOUNT_DEACTIVATED'
+            ? (verifyRes.message || 'Your account has been deactivated by administrator.')
+            : (verifyRes.message || 'You have been logged out by administrator.');
+
+          Alert.alert('Notice', reasonMsg, [{ text: 'OK', onPress: () => logout() }]);
+          logout();
+        }
+      } catch (err) {
+        // Silently ignore temporary network hiccups during periodic check
+      }
+    }, 20000);
+
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated, loggedInUser?.id]);
 
   const currentUser = useMemo(() => {
     return loggedInUser || {

@@ -342,7 +342,8 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
      WHERE ${whereSql}`,
     params
   );
-  const total = countRows[0]?.total || 0;  const users = await query(
+  const total = countRows[0]?.total || 0;
+  const users = await query(
     `SELECT 
        u.id,
        u.name,
@@ -353,6 +354,8 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
        u.daily_target,
        u.designation,
        u.status,
+       u.force_logout_at,
+       u.deactivated_reason,
        u.created_at AS date_joined,
        c.id AS customer_id,
        c.customer_code,
@@ -406,6 +409,8 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
       effectiveRole = 'COMMON_CUSTOMER';
     }
 
+    const isActive = u.status === 'ACTIVE' ? 1 : 0;
+
     return {
       id: u.id,
       customerId: u.customer_id,
@@ -421,6 +426,9 @@ async function getUsers({ search, role, status, organizationId, branchId, scope,
       dailyTarget: parseFloat(u.daily_target || 0),
       designation: u.designation || (effectiveRole === 'FIELD_AGENT' ? 'Route Field Collector' : (effectiveRole === 'ADMIN' ? 'Branch Administrator' : 'Staff')),
       status: u.status,
+      isActive,
+      blockReason: u.deactivated_reason || '',
+      forceLogoutAt: u.force_logout_at || null,
       notes: u.notes || '',
       occupation: u.occupation || '',
       shopName: u.shop_name || '',
@@ -693,10 +701,101 @@ async function updateUser(userId, data, updaterId = null) {
  * Update user active/suspended status
  */
 async function updateUserStatus(userId, status) {
-  const nextStatus = status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+  const validStatuses = ['ACTIVE', 'INACTIVE', 'SUSPENDED'];
+  const nextStatus = validStatuses.includes(status) ? status : (status === 'BLOCKED' ? 'INACTIVE' : 'ACTIVE');
   await query(`UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?`, [nextStatus, userId]);
   await query(`UPDATE customers SET status = ?, updated_at = NOW() WHERE user_id = ?`, [nextStatus, userId]);
   return await getUserById(userId);
+}
+
+/**
+ * Force logout a user by setting force_logout_at timestamp.
+ * The mobile app polls session health and auto-logs out when this is set.
+ */
+async function forceLogoutUser(userId, reason = '') {
+  const [userRows] = await query(`SELECT id, name, status FROM users WHERE id = ? LIMIT 1`, [userId]);
+  if (!userRows) throw new Error('User not found.');
+
+  await query(
+    `UPDATE users SET force_logout_at = NOW(), updated_at = NOW() WHERE id = ?`,
+    [userId]
+  );
+
+  return { userId, forceLogoutAt: new Date(), reason };
+}
+
+/**
+ * Block / deactivate a user account. Sets status to INACTIVE and timestamps force_logout_at.
+ */
+async function blockUser(userId, reason = '') {
+  const existingUsers = await query(`SELECT id, name, status FROM users WHERE id = ? LIMIT 1`, [userId]);
+  if (!existingUsers || existingUsers.length === 0) throw new Error('User not found.');
+
+  await query(
+    `UPDATE users SET status = 'INACTIVE', deactivated_reason = ?, force_logout_at = NOW(), updated_at = NOW() WHERE id = ?`,
+    [reason || 'Deactivated by administrator', userId]
+  );
+  await query(
+    `UPDATE customers SET status = 'INACTIVE', updated_at = NOW() WHERE user_id = ?`,
+    [userId]
+  );
+
+  return await getUserById(userId);
+}
+
+/**
+ * Unblock / reactivate a user account. Sets status back to ACTIVE and clears force_logout_at.
+ */
+async function unblockUser(userId) {
+  const existingUsers = await query(`SELECT id, name, status FROM users WHERE id = ? LIMIT 1`, [userId]);
+  if (!existingUsers || existingUsers.length === 0) throw new Error('User not found.');
+
+  await query(
+    `UPDATE users SET status = 'ACTIVE', deactivated_reason = NULL, force_logout_at = NULL, updated_at = NOW() WHERE id = ?`,
+    [userId]
+  );
+  await query(
+    `UPDATE customers SET status = 'ACTIVE', updated_at = NOW() WHERE user_id = ?`,
+    [userId]
+  );
+
+  return await getUserById(userId);
+}
+
+/**
+ * Verify user session health. Returns user status and force_logout_at.
+ * Used by the mobile app to detect if admin has force-logged out or deactivated the user.
+ */
+async function verifyUserSession(userId) {
+  const rows = await query(
+    `SELECT id, name, status, force_logout_at, last_login_at FROM users WHERE id = ? LIMIT 1`,
+    [userId]
+  );
+  if (!rows || rows.length === 0) {
+    return { valid: false, reason: 'USER_NOT_FOUND' };
+  }
+
+  const user = rows[0];
+
+  if (user.status !== 'ACTIVE') {
+    return {
+      valid: false,
+      reason: 'ACCOUNT_DEACTIVATED',
+      status: user.status,
+      message: 'Your account has been deactivated by the administrator.',
+    };
+  }
+
+  if (user.force_logout_at) {
+    return {
+      valid: false,
+      reason: 'FORCE_LOGOUT',
+      forceLogoutAt: user.force_logout_at,
+      message: 'You have been logged out by the administrator.',
+    };
+  }
+
+  return { valid: true, status: user.status };
 }
 
 /**
@@ -917,15 +1016,165 @@ async function getAllUserLocations(organizationId = null, search = '') {
   }));
 }
 
+/**
+ * Save / update user notification preferences
+ */
+async function saveNotificationPreferences(userId, prefs = {}) {
+  const dailyTarget = prefs.dailyTarget !== undefined ? (prefs.dailyTarget ? 1 : 0) : 1;
+  const overdueAlert = prefs.overdueAlert !== undefined ? (prefs.overdueAlert ? 1 : 0) : 1;
+  const smsReceipts = prefs.smsReceipts !== undefined ? (prefs.smsReceipts ? 1 : 0) : 1;
+  const whatsappAlerts = prefs.whatsappAlerts !== undefined ? (prefs.whatsappAlerts ? 1 : 0) : 1;
+
+  await query(
+    `INSERT INTO user_notification_preferences (user_id, daily_target, overdue_alert, sms_receipts, whatsapp_alerts)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       daily_target = VALUES(daily_target),
+       overdue_alert = VALUES(overdue_alert),
+       sms_receipts = VALUES(sms_receipts),
+       whatsapp_alerts = VALUES(whatsapp_alerts),
+       updated_at = NOW()`,
+    [userId, dailyTarget, overdueAlert, smsReceipts, whatsappAlerts]
+  );
+
+  return await getNotificationPreferences(userId);
+}
+
+/**
+ * Get user notification preferences
+ */
+async function getNotificationPreferences(userId) {
+  const rows = await query(
+    `SELECT * FROM user_notification_preferences WHERE user_id = ? LIMIT 1`,
+    [userId]
+  );
+  if (!rows || rows.length === 0) {
+    return {
+      userId,
+      dailyTarget: true,
+      overdueAlert: true,
+      smsReceipts: true,
+      whatsappAlerts: true,
+    };
+  }
+  const r = rows[0];
+  return {
+    id: r.id,
+    userId: r.user_id,
+    dailyTarget: Boolean(r.daily_target),
+    overdueAlert: Boolean(r.overdue_alert),
+    smsReceipts: Boolean(r.sms_receipts),
+    whatsappAlerts: Boolean(r.whatsapp_alerts),
+    updatedAt: r.updated_at,
+  };
+}
+
+/**
+ * Get password details for admin user password management
+ */
+async function getPasswordDetails(userId) {
+  const rows = await query(
+    `SELECT u.id, u.name, u.phone, u.email, u.status, u.role_type, u.last_login_at, u.created_at, u.updated_at,
+            c.date_of_birth, c.birth_year,
+            (CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN 'Configured' ELSE 'Not Set' END) as password_status
+     FROM users u
+     LEFT JOIN customers c ON c.user_id = u.id OR c.phone = u.phone
+     WHERE u.id = ? LIMIT 1`,
+    [userId]
+  );
+  if (!rows || rows.length === 0) {
+    throw new Error('User not found.');
+  }
+  const u = rows[0];
+  const birthYear = u.birth_year || (u.date_of_birth ? new Date(u.date_of_birth).getFullYear() : null);
+
+  return {
+    userId: u.id,
+    name: u.name,
+    phone: u.phone,
+    email: u.email,
+    status: u.status,
+    role: u.role_type || 'BORROWER',
+    currentPassword: '••••••••',
+    passwordStatus: u.password_status,
+    lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never logged in',
+    birthYear: birthYear || 'Default (1234)',
+    updatedAt: u.updated_at,
+  };
+}
+
+/**
+ * Update user password
+ */
+async function updateUserPassword(userId, newPassword) {
+  if (!newPassword || String(newPassword).length < 4) {
+    throw new Error('Password must be at least 4 characters long.');
+  }
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(String(newPassword).trim(), salt);
+  const res = await query(
+    `UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?`,
+    [passwordHash, userId]
+  );
+  if (res.affectedRows === 0) {
+    throw new Error('User not found.');
+  }
+  return { success: true, message: 'Password updated successfully.' };
+}
+
+/**
+ * Reset user password to default (birth year or 1234)
+ */
+async function resetUserPassword(userId) {
+  const rows = await query(
+    `SELECT u.id, c.date_of_birth, c.birth_year
+     FROM users u
+     LEFT JOIN customers c ON c.user_id = u.id OR c.phone = u.phone
+     WHERE u.id = ? LIMIT 1`,
+    [userId]
+  );
+  if (!rows || rows.length === 0) {
+    throw new Error('User not found.');
+  }
+  const u = rows[0];
+  let defaultPass = '1234';
+  if (u.birth_year) {
+    defaultPass = String(u.birth_year);
+  } else if (u.date_of_birth) {
+    const yr = new Date(u.date_of_birth).getFullYear();
+    if (!isNaN(yr)) defaultPass = String(yr);
+  }
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(defaultPass, salt);
+  await query(
+    `UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?`,
+    [passwordHash, userId]
+  );
+  return {
+    success: true,
+    defaultPassword: defaultPass,
+    message: `Password reset to default successfully (${defaultPass}).`,
+  };
+}
+
 module.exports = {
   createUser,
   getUsers,
   getUserById,
   updateUser,
   updateUserStatus,
+  forceLogoutUser,
+  blockUser,
+  unblockUser,
+  verifyUserSession,
   saveBiometricSettings,
   getBiometricSettings,
   saveUserLocation,
   getUserLocation,
   getAllUserLocations,
+  saveNotificationPreferences,
+  getNotificationPreferences,
+  getPasswordDetails,
+  updateUserPassword,
+  resetUserPassword,
 };

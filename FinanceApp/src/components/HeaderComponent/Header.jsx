@@ -36,12 +36,11 @@ const Header = ({
               width={backIconWidth}
               height={backIconHeight}
               fill={backIconFill}
-              marginTop={-10}
             />
           </TouchableOpacity>
         )}
 
-        <Text style={[styles.headerTitle, titleStyle]}>
+        <Text style={[styles.headerTitle, titleStyle]} numberOfLines={1}>
           {title}
         </Text>
 
@@ -71,19 +70,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 20,
-    paddingBottom: 12,
+    paddingVertical: 10,
   },
   backButton: {
-    padding: 4,
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#212121',
-    marginLeft: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 12,
     fontFamily: Platform.OS === 'android' ? 'Roboto-Medium' : 'System',
-    marginTop: -10,
     flex: 1,
   },
   rightComponent: {

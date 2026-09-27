@@ -10,6 +10,7 @@ import {
   BackHandler,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
 import Header from '../../../../../../components/HeaderComponent/Header';
 
@@ -65,7 +66,7 @@ const PrivacyPolicy = ({ onBack }) => {
   ];
 
   return (
-    <View style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header
         title="Privacy Controls & Policy"
@@ -118,7 +119,7 @@ const PrivacyPolicy = ({ onBack }) => {
           Last updated: September 2026 • Apex Finance Pvt. Ltd.
         </Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -115,31 +115,34 @@ const MyLocation = ({ onBack, animatedValue }) => {
           console.log('Loading location from backend...');
           const backendResponse = await apiService.getMyLocation();
 
-          if (backendResponse?.success && backendResponse?.data?.location) {
-            const backendLocation = backendResponse.data.location;
+          if (backendResponse?.success && (backendResponse?.data?.location || backendResponse?.data)) {
+            const backendLocation = backendResponse.data.location || backendResponse.data;
             const resolvedLatitude = Number(backendLocation.latitude);
             const resolvedLongitude = Number(backendLocation.longitude);
 
-            const hydratedLocation = {
-              latitude: resolvedLatitude,
-              longitude: resolvedLongitude,
-              accuracy: backendLocation.accuracy ?? null,
-              timestamp: backendLocation.capturedAt || backendLocation.updatedAt || Date.now(),
-            };
+            // Only use backend data if it has valid coordinates
+            if (!isNaN(resolvedLatitude) && !isNaN(resolvedLongitude) && resolvedLatitude !== 0) {
+              const hydratedLocation = {
+                latitude: resolvedLatitude,
+                longitude: resolvedLongitude,
+                accuracy: backendLocation.accuracy ?? null,
+                timestamp: backendLocation.capturedAt || backendLocation.updatedAt || Date.now(),
+              };
 
-            setCurrentLocation(hydratedLocation);
-            setAddress(backendLocation.address || formatCoordinates(resolvedLatitude, resolvedLongitude));
-            setFullAddress(backendLocation.address || formatCoordinates(resolvedLatitude, resolvedLongitude));
-            setSavedToDatabase(Boolean(backendLocation.savedToDatabase));
-            setHasSharedAddress(true);
-            setLastUpdated(
-              backendLocation.updatedAt
-                ? new Date(backendLocation.updatedAt)
-                : backendLocation.capturedAt
-                  ? new Date(backendLocation.capturedAt)
-                  : new Date(),
-            );
-            return;
+              setCurrentLocation(hydratedLocation);
+              setAddress(backendLocation.address || formatCoordinates(resolvedLatitude, resolvedLongitude));
+              setFullAddress(backendLocation.address || formatCoordinates(resolvedLatitude, resolvedLongitude));
+              setSavedToDatabase(Boolean(backendLocation.savedToDatabase));
+              setHasSharedAddress(true);
+              setLastUpdated(
+                backendLocation.updatedAt
+                  ? new Date(backendLocation.updatedAt)
+                  : backendLocation.capturedAt
+                    ? new Date(backendLocation.capturedAt)
+                    : new Date(),
+              );
+              return;
+            }
           }
         } catch (backendError) {
           console.log('Backend location load failed, falling back to local storage:', backendError);
@@ -556,7 +559,7 @@ const MyLocation = ({ onBack, animatedValue }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <Header 
         title={t('My Location')}
         onBack={() => {
@@ -737,7 +740,7 @@ const MyLocation = ({ onBack, animatedValue }) => {
         visible={showShareLocationInfo}
         onClose={() => setShowShareLocationInfo(false)}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -41,6 +41,7 @@ app.get('/health', (req, res) => {
 // Mount modular routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/admin/users', userRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/customers', customerRoutes);

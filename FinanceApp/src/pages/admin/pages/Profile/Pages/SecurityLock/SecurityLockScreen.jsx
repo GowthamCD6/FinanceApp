@@ -115,7 +115,7 @@ const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
       
       {/* Time and Date Header */}
@@ -186,7 +186,7 @@ const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
 
       {/* Home Indicator */}
       <View style={styles.homeIndicator} />
-    </View>
+    </SafeAreaView>
   );
 };
 

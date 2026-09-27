@@ -14,6 +14,7 @@ import {
   Modal,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 let AsyncStorage;
 try {
@@ -487,26 +488,6 @@ export const AdminProfile = () => {
             <MaterialCommunityIcons name="account-edit-outline" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
             <Text style={styles.quickEditBtnText}>Edit Profile Information</Text>
           </TouchableOpacity>
-
-          {/* Officer Metrics Bar */}
-          <View style={styles.scorecardContainer}>
-            <View style={styles.scorecardItem}>
-              <Text style={styles.scorecardVal}>{totalBorrowers}</Text>
-              <Text style={styles.scorecardLbl}>Borrowers</Text>
-            </View>
-            <View style={styles.scorecardDivider} />
-            <View style={styles.scorecardItem}>
-              <Text style={styles.scorecardVal}>{activeLoansCount}</Text>
-              <Text style={styles.scorecardLbl}>Active Loans</Text>
-            </View>
-            <View style={styles.scorecardDivider} />
-            <View style={styles.scorecardItem}>
-              <Text style={[styles.scorecardVal, { color: '#059669' }]}>
-                {formatINR(todayCollectedAmt)}
-              </Text>
-              <Text style={styles.scorecardLbl}>Today's Collection</Text>
-            </View>
-          </View>
         </View>
 
         {/* Grouped Settings Sections */}
@@ -612,7 +593,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingTop: 12,
+    paddingBottom: 20,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
@@ -714,39 +696,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#7C3AED',
-  },
-  scorecardContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginTop: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    width: '100%',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  scorecardItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  scorecardVal: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  scorecardLbl: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  scorecardDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#CBD5E1',
   },
   settingsContainer: {
     paddingHorizontal: 16,

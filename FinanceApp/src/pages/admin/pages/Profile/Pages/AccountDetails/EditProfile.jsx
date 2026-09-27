@@ -406,7 +406,7 @@ const EditProfile = ({ onBack }) => {
 	};
 
 	return (
-		<View style={styles.container}>
+		<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 			<Header 
 				title="Edit Profile"
 				onBack={handleBack}
@@ -673,7 +673,7 @@ const EditProfile = ({ onBack }) => {
 					<View style={styles.bottomSpacing} />
 				</View>
 			</ScrollView>
-		</View>
+		</SafeAreaView>
 	);
 };
 

@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
 import Header from '../../../../../../components/HeaderComponent/Header';
 
@@ -43,7 +44,7 @@ const AuctionSettings = ({ onBack }) => {
   };
 
   return (
-    <View style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header
         title="Auction & Loan Rules"
@@ -125,7 +126,7 @@ const AuctionSettings = ({ onBack }) => {
           <Text style={styles.saveButtonText}>Save Rules</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

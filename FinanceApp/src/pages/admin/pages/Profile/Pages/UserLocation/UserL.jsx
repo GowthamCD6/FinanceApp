@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -387,11 +388,11 @@ const UserL = ({ onBack }) => {
   );
 
   return (
-    <View style={styles.mainContainer}>
+    <SafeAreaView style={styles.mainContainer} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
       {renderUserList()}
       {renderLocationModal()}
-    </View>
+    </SafeAreaView>
   );
 };
 

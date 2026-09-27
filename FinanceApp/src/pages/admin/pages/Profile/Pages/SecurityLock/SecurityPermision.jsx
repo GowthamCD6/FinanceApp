@@ -16,8 +16,10 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import BiometricService from '../../../../../../services/BiometricService';
+import apiService from '../../../../../../services/apiService';
 import LockInfo from './Lock-Info-Modal/LockInfo';
 import Header from '../../../../../../components/HeaderComponent/Header';
+import { useApp } from '../../../../../../context/AppContext';
 
 const lockAnimation = require('../../../../../../animation/Lock_Authentication.1.json');
 
@@ -40,6 +42,9 @@ const SecurPermis = ({ onBack }) => {
   const [securityEnabled, setSecurityEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [helpModalVisible, setHelpModalVisible] = useState(false);
+  const [syncingToBackend, setSyncingToBackend] = useState(false);
+  const { currentUser } = useApp();
+  const authUser = currentUser;
 
   // Load security setting on component mount
   useEffect(() => {
@@ -66,8 +71,32 @@ const SecurPermis = ({ onBack }) => {
     try {
       console.log('Loading security setting...');
       const state = BiometricService.getState();
-      console.log('Security enabled:', state.isSecurityEnabled);
+      console.log('Local security enabled:', state.isSecurityEnabled);
       setSecurityEnabled(state.isSecurityEnabled);
+
+      // Also try to sync from backend
+      const userId = authUser?.id || authUser?.userId;
+      if (userId) {
+        try {
+          const backendRes = await apiService.getBiometricSetting(userId);
+          if (backendRes?.data?.isFingerprintEnabled !== undefined) {
+            const backendEnabled = Boolean(backendRes.data.isFingerprintEnabled);
+            console.log('Backend biometric setting:', backendEnabled);
+            // If backend and local differ, prefer backend
+            if (backendEnabled !== state.isSecurityEnabled) {
+              console.log('Syncing backend state to local...');
+              if (backendEnabled) {
+                await BiometricService.enableSecurity();
+              } else {
+                await BiometricService.disableSecurity();
+              }
+              setSecurityEnabled(backendEnabled);
+            }
+          }
+        } catch (backendErr) {
+          console.log('Backend biometric fetch failed, using local:', backendErr.message);
+        }
+      }
     } catch (error) {
       console.error('Error loading security setting:', error);
     } finally {
@@ -119,6 +148,25 @@ const SecurPermis = ({ onBack }) => {
 
       if (result.success) {
         setSecurityEnabled(true);
+
+        // Sync to backend database
+        const userId = authUser?.id || authUser?.userId;
+        if (userId) {
+          setSyncingToBackend(true);
+          try {
+            await apiService.saveBiometricSetting({
+              userId,
+              isFingerprintEnabled: true,
+              biometricType: 'FINGERPRINT',
+            });
+            console.log('Biometric setting synced to backend: ENABLED');
+          } catch (syncErr) {
+            console.warn('Failed to sync biometric to backend:', syncErr.message);
+          } finally {
+            setSyncingToBackend(false);
+          }
+        }
+
         Alert.alert(
           'Security Enabled',
           'App security has been successfully enabled. The app will now lock automatically when you switch to other apps or when the device is locked.',
@@ -147,6 +195,25 @@ const SecurPermis = ({ onBack }) => {
               
               if (result.success) {
                 setSecurityEnabled(false);
+
+                // Sync to backend database
+                const userId = authUser?.id || authUser?.userId;
+                if (userId) {
+                  setSyncingToBackend(true);
+                  try {
+                    await apiService.saveBiometricSetting({
+                      userId,
+                      isFingerprintEnabled: false,
+                      biometricType: 'FINGERPRINT',
+                    });
+                    console.log('Biometric setting synced to backend: DISABLED');
+                  } catch (syncErr) {
+                    console.warn('Failed to sync biometric to backend:', syncErr.message);
+                  } finally {
+                    setSyncingToBackend(false);
+                  }
+                }
+
                 Alert.alert(
                   'Security Disabled',
                   'App security has been disabled. The app will no longer require authentication.',
@@ -163,7 +230,7 @@ const SecurPermis = ({ onBack }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <Header 
         title="Security Settings"
         onBack={handleBack}
@@ -237,7 +304,7 @@ const SecurPermis = ({ onBack }) => {
         visible={helpModalVisible}
         onClose={() => setHelpModalVisible(false)}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

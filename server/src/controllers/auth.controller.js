@@ -90,8 +90,8 @@ async function login(req, res) {
       });
     }
 
-    // Update last login timestamp
-    await query(`UPDATE users SET last_login_at = NOW() WHERE id = ?`, [user.id]);
+    // Update last login timestamp and clear force_logout_at flag
+    await query(`UPDATE users SET last_login_at = NOW(), force_logout_at = NULL WHERE id = ?`, [user.id]);
 
     // Fetch user roles
     const roles = await query(

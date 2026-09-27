@@ -10,15 +10,22 @@ import {
   BackHandler,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../../../../../components/HeaderComponent/Header';
+import { useApp } from '../../../../../../context/AppContext';
+import apiService from '../../../../../../services/apiService';
 
 const NotificationSettings = ({ onBack }) => {
+  const { currentUser } = useApp();
   const [dailyTarget, setDailyTarget] = useState(true);
   const [overdueAlert, setOverdueAlert] = useState(true);
   const [smsReceipts, setSmsReceipts] = useState(true);
   const [whatsappAlerts, setWhatsappAlerts] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleBack = () => {
     if (onBack) {
@@ -35,9 +42,57 @@ const NotificationSettings = ({ onBack }) => {
     return () => backHandler.remove();
   }, [onBack]);
 
-  const handleSave = () => {
-    Alert.alert('Preferences Saved', 'Your notification preferences have been updated successfully.');
-    handleBack();
+  // Load preferences from backend on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      if (!currentUser?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const res = await apiService.getNotificationPreferences(currentUser.id);
+        const data = res?.data || res;
+        if (data) {
+          if (data.dailyTarget !== undefined) setDailyTarget(Boolean(data.dailyTarget));
+          else if (data.daily_target !== undefined) setDailyTarget(Boolean(data.daily_target));
+
+          if (data.overdueAlert !== undefined) setOverdueAlert(Boolean(data.overdueAlert));
+          else if (data.overdue_alert !== undefined) setOverdueAlert(Boolean(data.overdue_alert));
+
+          if (data.smsReceipts !== undefined) setSmsReceipts(Boolean(data.smsReceipts));
+          else if (data.sms_receipts !== undefined) setSmsReceipts(Boolean(data.sms_receipts));
+
+          if (data.whatsappAlerts !== undefined) setWhatsappAlerts(Boolean(data.whatsappAlerts));
+          else if (data.whatsapp_alerts !== undefined) setWhatsappAlerts(Boolean(data.whatsapp_alerts));
+        }
+      } catch (err) {
+        console.warn('Error loading preferences:', err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPreferences();
+  }, [currentUser?.id]);
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      await apiService.saveNotificationPreferences(currentUser?.id, {
+        dailyTarget,
+        overdueAlert,
+        smsReceipts,
+        whatsappAlerts,
+      });
+      Alert.alert('Preferences Saved', 'Your notification preferences have been updated successfully.');
+      handleBack();
+    } catch (error) {
+      Alert.alert('Save Failed', error.message || 'Could not save notification preferences. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const notificationItems = [
@@ -76,7 +131,7 @@ const NotificationSettings = ({ onBack }) => {
   ];
 
   return (
-    <View style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header
         title="Notification Preferences"
@@ -84,52 +139,68 @@ const NotificationSettings = ({ onBack }) => {
         showBackButton={true}
       />
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Icon Header */}
-        <View style={styles.animationContainer}>
-          <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="bell-ring-outline" size={52} color="#D97706" />
-          </View>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#7C3AED" />
+          <Text style={styles.loadingText}>Loading preferences...</Text>
         </View>
-
-        <Text style={styles.subtitle}>
-          Manage push alerts, collection reminders, and SMS notifications.
-        </Text>
-
-        {/* Notification Toggle Cards */}
-        <View style={styles.cardContainer}>
-          {notificationItems.map((item, index) => (
-            <View key={index} style={styles.settingCard}>
-              <View style={styles.settingCardLeft}>
-                <View style={[styles.settingIconBox, { backgroundColor: item.iconColor + '15' }]}>
-                  <MaterialCommunityIcons name={item.icon} size={22} color={item.iconColor} />
-                </View>
-                <View style={styles.settingTextBox}>
-                  <Text style={styles.settingTitle}>{item.title}</Text>
-                  <Text style={styles.settingSub}>{item.subtitle}</Text>
-                </View>
-              </View>
-              <Switch
-                value={item.value}
-                onValueChange={item.onValueChange}
-                trackColor={{ false: '#E5E7EB', true: '#7C3AED' }}
-                thumbColor={item.value ? '#FFFFFF' : '#9CA3AF'}
-              />
+      ) : (
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Icon Header */}
+          <View style={styles.animationContainer}>
+            <View style={styles.iconCircle}>
+              <MaterialCommunityIcons name="bell-ring-outline" size={48} color="#D97706" />
             </View>
-          ))}
-        </View>
+          </View>
 
-        {/* Save Button */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
-          <MaterialCommunityIcons name="content-save-check-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.saveButtonText}>Save Preferences</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+          <Text style={styles.subtitle}>
+            Manage push alerts, collection reminders, and SMS notifications.
+          </Text>
+
+          {/* Notification Toggle Cards */}
+          <View style={styles.cardContainer}>
+            {notificationItems.map((item, index) => (
+              <View key={index} style={styles.settingCard}>
+                <View style={styles.settingCardLeft}>
+                  <View style={[styles.settingIconBox, { backgroundColor: item.iconColor + '15' }]}>
+                    <MaterialCommunityIcons name={item.icon} size={22} color={item.iconColor} />
+                  </View>
+                  <View style={styles.settingTextBox}>
+                    <Text style={styles.settingTitle}>{item.title}</Text>
+                    <Text style={styles.settingSub}>{item.subtitle}</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={item.value}
+                  onValueChange={item.onValueChange}
+                  trackColor={{ false: '#E5E7EB', true: '#7C3AED' }}
+                  thumbColor={item.value ? '#FFFFFF' : '#9CA3AF'}
+                />
+              </View>
+            ))}
+          </View>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
+            onPress={handleSave}
+            disabled={isSaving}
+            activeOpacity={0.8}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+            ) : (
+              <MaterialCommunityIcons name="content-save-check-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            )}
+            <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Preferences'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+    </SafeAreaView>
   );
 };
 
@@ -142,19 +213,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F7F7',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
   animationContainer: {
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 6,
   },
   iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: '#FEF3C7',
     justifyContent: 'center',
     alignItems: 'center',
@@ -165,11 +248,11 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 24,
-    marginTop: 12,
+    marginBottom: 20,
+    marginTop: 8,
     paddingHorizontal: 20,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
@@ -222,13 +305,13 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flexDirection: 'row',
-    backgroundColor: '#6B46C1',
+    backgroundColor: '#7C3AED',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 28,
-    shadowColor: '#6B46C1',
+    marginTop: 24,
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

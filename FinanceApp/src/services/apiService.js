@@ -6,6 +6,11 @@ class ApiService {
     this.token = null;
     this.organizationId = null;
     this.branchId = null;
+    this.sessionTerminatedCallback = null;
+  }
+
+  onSessionTerminated(callback) {
+    this.sessionTerminatedCallback = callback;
   }
 
   setToken(token) {
@@ -50,6 +55,15 @@ class ApiService {
         clearTimeout(timeoutId);
         const json = await response.json();
         if (!response.ok) {
+          if (
+            (response.status === 401 || response.status === 403) &&
+            typeof this.sessionTerminatedCallback === 'function' &&
+            (json.reason === 'FORCE_LOGOUT' ||
+             json.reason === 'ACCOUNT_DEACTIVATED' ||
+             (json.message && /deactivated|suspended|logged out/i.test(json.message)))
+          ) {
+            this.sessionTerminatedCallback(json);
+          }
           throw new Error(json.message || `HTTP ${response.status}`);
         }
         // Remember working host
@@ -159,33 +173,7 @@ class ApiService {
     };
   }
 
-  async getMyLocation() {
-    try {
-      const res = await this.request('/user/my-location');
-      return {
-        success: true,
-        data: res.data || res,
-      };
-    } catch (e) {
-      return {
-        success: false,
-        data: null,
-        message: e.message,
-      };
-    }
-  }
 
-  async saveMyLocation(locationData) {
-    const res = await this.request('/user/save-location', {
-      method: 'POST',
-      body: JSON.stringify(locationData),
-    });
-    return {
-      success: true,
-      data: res.data || res,
-      message: res.message || 'Location saved successfully',
-    };
-  }
 
   // 2. CUSTOMERS
   async getCustomers() {
@@ -473,12 +461,34 @@ class ApiService {
     }
   }
 
-  async blockUser(id, reason = 'Defaulted repayments') {
-    return this.updateUserStatus(id, 'BLOCKED', reason);
+  async forceLogout(userId, reason = 'Forced logout by administrator') {
+    const res = await this.request('/users/force-logout', {
+      method: 'POST',
+      body: JSON.stringify({ userId, reason }),
+    });
+    return res;
+  }
+
+  async blockUser(id, reason = 'Account deactivated by administrator') {
+    const res = await this.request('/users/block', {
+      method: 'POST',
+      body: JSON.stringify({ userId: id, reason }),
+    });
+    return res;
   }
 
   async unblockUser(id) {
-    return this.updateUserStatus(id, 'ACTIVE', 'Unblocked by admin');
+    const res = await this.request('/users/unblock', {
+      method: 'POST',
+      body: JSON.stringify({ userId: id }),
+    });
+    return res;
+  }
+
+  async verifySession(userId) {
+    const endpoint = userId ? `/users/session/verify?userId=${userId}` : '/users/session/verify';
+    const res = await this.request(endpoint);
+    return res;
   }
 
   async updatePassword({ userId, newPassword, currentPassword }) {
@@ -534,8 +544,20 @@ class ApiService {
   }
 
   async getMyLocation(userId) {
-    const res = await this.request(`/users/locations?userId=${userId}`);
-    return res.data || res;
+    const endpoint = userId ? `/users/locations?userId=${userId}` : '/users/locations';
+    try {
+      const res = await this.request(endpoint);
+      return {
+        success: true,
+        data: res.data || res,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        data: null,
+        message: e.message,
+      };
+    }
   }
 
   async getUserLocations(params = {}) {
@@ -559,6 +581,26 @@ class ApiService {
 
   async getBiometricSetting(userId) {
     const res = await this.request(`/users/security/biometrics?userId=${userId}`);
+    return res.data || res;
+  }
+
+  // 14. NOTIFICATION PREFERENCES
+  async getNotificationPreferences(userId) {
+    const endpoint = userId ? `/users/preferences/notifications?userId=${userId}` : '/users/preferences/notifications';
+    try {
+      const res = await this.request(endpoint);
+      return res.data || res;
+    } catch (e) {
+      console.warn('Failed to load notification preferences:', e.message);
+      return null;
+    }
+  }
+
+  async saveNotificationPreferences(userId, prefs) {
+    const res = await this.request('/users/preferences/notifications', {
+      method: 'POST',
+      body: JSON.stringify({ userId, ...prefs }),
+    });
     return res.data || res;
   }
 

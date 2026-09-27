@@ -50,7 +50,7 @@ class BiometricService {
           setTimeout(() => reject(new Error('Preferences timeout')), 1500)
         );
         const prefRes = await Promise.race([
-          ApiService.getUserPreferences(),
+          apiService.getUserPreferences(),
           timeoutPromise
         ]);
         if (prefRes && prefRes.success && prefRes.data && prefRes.data.securityEnabled !== undefined) {
@@ -267,7 +267,7 @@ class BiometricService {
       this.notifyListeners();
 
       try {
-        await ApiService.updateUserPreferences({ securityEnabled: true });
+        await apiService.saveBiometricSetting({ isFingerprintEnabled: true });
       } catch (backendErr) {
         console.error('BiometricService: Failed to sync enabled security to backend:', backendErr);
       }
@@ -298,7 +298,7 @@ class BiometricService {
       this.notifyListeners();
 
       try {
-        await ApiService.updateUserPreferences({ securityEnabled: false });
+        await apiService.saveBiometricSetting({ isFingerprintEnabled: false });
       } catch (backendErr) {
         console.error('BiometricService: Failed to sync disabled security to backend:', backendErr);
       }

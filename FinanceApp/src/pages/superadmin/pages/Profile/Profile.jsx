@@ -14,6 +14,7 @@ import {
   Switch,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
 import Colors from '../../../../theme/colors';
@@ -391,7 +392,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingTop: 12,
+    paddingBottom: 20,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',

@@ -11,6 +11,7 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../../../../../components/HeaderComponent/Header';
 import { useLanguage } from '../../../../../../utils/LanguageContext';
 
@@ -53,7 +54,7 @@ const LanguageSettings = ({ onBack }) => {
   };
 
   return (
-    <View style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header
         title={t('Language Settings')}
@@ -151,7 +152,7 @@ const LanguageSettings = ({ onBack }) => {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
