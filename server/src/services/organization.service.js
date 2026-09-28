@@ -566,41 +566,25 @@ const organizationService = {
   // Get organization lending & interest rate schemes
   getLendingConfig: async (orgId) => {
     try {
-      const alters = [
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_interest_rate DECIMAL(5,2) DEFAULT 10.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_tenure_days INT DEFAULT 100",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_interest_rate DECIMAL(5,2) DEFAULT 10.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_tenure_weeks INT DEFAULT 10",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_interest_rate DECIMAL(5,2) DEFAULT 18.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_tenure_months INT DEFAULT 12",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_loan_enabled BOOLEAN DEFAULT TRUE",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_min_amount DECIMAL(15,2) DEFAULT 2000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_max_amount DECIMAL(15,2) DEFAULT 100000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_min_amount DECIMAL(15,2) DEFAULT 5000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_max_amount DECIMAL(15,2) DEFAULT 150000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_min_amount DECIMAL(15,2) DEFAULT 100000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_max_amount DECIMAL(15,2) DEFAULT 500000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_collection_days VARCHAR(100) DEFAULT 'MON,WED,FRI'",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_collection_grace_days INT DEFAULT 2",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_start_day INT DEFAULT 1",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_end_day INT DEFAULT 5",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_grace_days INT DEFAULT 3",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_operating_days VARCHAR(100) DEFAULT 'MON,TUE,WED,THU,FRI,SAT'"
-      ];
-      for (const alt of alters) {
-        try { await query(alt); } catch (e) {}
+      let targetOrgId = orgId;
+      const orgCheck = await query(`SELECT id FROM organizations WHERE id = ? LIMIT 1`, [orgId]);
+      if (!orgCheck || orgCheck.length === 0) {
+        const anyOrg = await query(`SELECT id FROM organizations ORDER BY id ASC LIMIT 1`);
+        if (anyOrg && anyOrg.length > 0) {
+          targetOrgId = anyOrg[0].id;
+        }
       }
 
-      const rows = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
+      const rows = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [targetOrgId]);
       if (rows && rows.length > 0) return rows[0];
 
       await query(
         `INSERT INTO organization_settings 
          (organization_id, daily_loan_enabled, weekly_loan_enabled, monthly_loan_enabled, daily_interest_rate, daily_tenure_days, weekly_interest_rate, weekly_tenure_weeks, monthly_interest_rate, monthly_tenure_months, max_active_loans_per_customer, auto_eligibility_check, grace_period_days, default_interest_rate, currency_symbol, weekly_collection_days, weekly_collection_grace_days, monthly_collection_start_day, monthly_collection_end_day, monthly_collection_grace_days, daily_operating_days)
          VALUES (?, 1, 1, 1, 10.00, 100, 10.00, 10, 18.00, 12, 1, 1, 0, 10.00, '₹', 'MON,WED,FRI', 2, 1, 5, 3, 'MON,TUE,WED,THU,FRI,SAT')`,
-        [orgId]
+        [targetOrgId]
       );
-      const created = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [orgId]);
+      const created = await query(`SELECT * FROM organization_settings WHERE organization_id = ? LIMIT 1`, [targetOrgId]);
       return created && created.length > 0 ? created[0] : null;
     } catch (err) {
       console.warn('Fallback in getLendingConfig:', err.message);

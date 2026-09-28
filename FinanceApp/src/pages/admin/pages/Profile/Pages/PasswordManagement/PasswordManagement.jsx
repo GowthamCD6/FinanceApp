@@ -17,7 +17,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from '../../../../../../components/HeaderComponent/Header';
 import apiService from '../../../../../../services/apiService';
@@ -25,20 +24,12 @@ import { useLanguage } from '../../../../../../utils/LanguageContext';
 
 const PasswordManagement = ({ onClose, onBack }) => {
   const { t } = useLanguage();
-  let navigation;
-  try {
-    navigation = useNavigation();
-  } catch (e) {
-    navigation = { goBack: () => (onBack ? onBack() : onClose && onClose()) };
-  }
 
   const handleBack = () => {
     if (onBack) {
       onBack();
     } else if (onClose) {
       onClose();
-    } else if (navigation && navigation.goBack) {
-      navigation.goBack();
     }
   };
 
@@ -53,8 +44,24 @@ const PasswordManagement = ({ onClose, onBack }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const formatDisplayDate = (val) => {
+    if (!val) return 'Not available';
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return String(val);
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return String(val);
+    }
+  };
 
   useEffect(() => {
     const backAction = () => {
@@ -459,7 +466,7 @@ const PasswordManagement = ({ onClose, onBack }) => {
                       <View style={styles.statusItemContent}>
                         <Text style={styles.statusLabel}>Account Created</Text>
                         <Text style={styles.statusValue}>
-                          {new Date(selectedUserDetails.createdAt).toLocaleDateString()}
+                          {formatDisplayDate(selectedUserDetails.createdAt || selectedUserDetails.created_at || selectedUser?.createdAt || selectedUser?.created_at)}
                         </Text>
                       </View>
                     </View>
@@ -473,8 +480,8 @@ const PasswordManagement = ({ onClose, onBack }) => {
                       <View style={styles.statusItemContent}>
                         <Text style={styles.statusLabel}>Last Password Update</Text>
                         <Text style={styles.statusValue}>
-                          {selectedUserDetails.lastUpdatedAt
-                            ? new Date(selectedUserDetails.lastUpdatedAt).toLocaleDateString()
+                          {selectedUserDetails.lastUpdatedAt || selectedUserDetails.updatedAt
+                            ? formatDisplayDate(selectedUserDetails.lastUpdatedAt || selectedUserDetails.updatedAt)
                             : 'Never changed (using default)'}
                         </Text>
                       </View>
@@ -488,9 +495,23 @@ const PasswordManagement = ({ onClose, onBack }) => {
                       />
                       <View style={styles.statusItemContent}>
                         <Text style={styles.statusLabel}>Current Password</Text>
-                        <Text style={styles.statusValue}>
-                          {selectedUserDetails.currentPassword || 'N/A'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+                          <Text style={[styles.statusValue, { fontWeight: '700', color: '#1F2937', letterSpacing: showCurrentPassword ? 0.5 : 2 }]}>
+                            {showCurrentPassword
+                              ? (selectedUserDetails.currentPassword || selectedUser?.plain_password || '1234')
+                              : '••••••••'}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          >
+                            <MaterialCommunityIcons
+                              name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'}
+                              size={18}
+                              color="#6B7280"
+                            />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
 

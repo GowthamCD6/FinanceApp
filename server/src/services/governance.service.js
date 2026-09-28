@@ -475,31 +475,6 @@ const governanceService = {
   // 7. ORG LENDING CONFIG & INTEREST RATES
   getLendingConfig: async (orgId = 1) => {
     try {
-      const alters = [
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_interest_rate DECIMAL(5,2) DEFAULT 10.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_tenure_days INT DEFAULT 100",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_interest_rate DECIMAL(5,2) DEFAULT 10.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_tenure_weeks INT DEFAULT 10",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_interest_rate DECIMAL(5,2) DEFAULT 18.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_tenure_months INT DEFAULT 12",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_loan_enabled BOOLEAN DEFAULT TRUE",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_min_amount DECIMAL(15,2) DEFAULT 2000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_max_amount DECIMAL(15,2) DEFAULT 100000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_min_amount DECIMAL(15,2) DEFAULT 5000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_max_amount DECIMAL(15,2) DEFAULT 150000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_min_amount DECIMAL(15,2) DEFAULT 10000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_max_amount DECIMAL(15,2) DEFAULT 500000.00",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_collection_days VARCHAR(100) DEFAULT 'MON,WED,FRI'",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS weekly_collection_grace_days INT DEFAULT 2",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_start_day INT DEFAULT 1",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_end_day INT DEFAULT 5",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS monthly_collection_grace_days INT DEFAULT 3",
-        "ALTER TABLE organization_settings ADD COLUMN IF NOT EXISTS daily_operating_days VARCHAR(100) DEFAULT 'MON,TUE,WED,THU,FRI,SAT'"
-      ];
-      for (const alt of alters) {
-        try { await query(alt); } catch (e) {}
-      }
-
       let validOrgId = orgId;
       const orgCheck = await query(`SELECT id FROM organizations WHERE id = ? LIMIT 1`, [orgId]);
       if (!orgCheck || orgCheck.length === 0) {

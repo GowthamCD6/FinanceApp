@@ -127,9 +127,9 @@ async function createUser(data, creatorId = null) {
 
     // Insert into users
     const [userRes] = await conn.query(
-      `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, role_type, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [effectiveOrgId, effectiveBranchId, displayName, rawPhone, userEmail, passwordHash, role, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', dateJoined || new Date()]
+      `INSERT INTO users (organization_id, branch_id, name, phone, email, password_hash, plain_password, role_type, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [effectiveOrgId, effectiveBranchId, displayName, rawPhone, userEmail, passwordHash, plainPwd, role, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', dateJoined || new Date()]
     );
     const userId = userRes.insertId;
 
@@ -1072,9 +1072,12 @@ async function getNotificationPreferences(userId) {
 /**
  * Get password details for admin user password management
  */
+/**
+ * Get password details for admin user password management
+ */
 async function getPasswordDetails(userId) {
   const rows = await query(
-    `SELECT u.id, u.name, u.phone, u.email, u.status, u.role_type, u.last_login_at, u.created_at, u.updated_at,
+    `SELECT u.id, u.name, u.phone, u.email, u.status, u.role_type, u.plain_password, u.last_login_at, u.created_at, u.updated_at,
             c.date_of_birth, c.birth_year,
             (CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN 'Configured' ELSE 'Not Set' END) as password_status
      FROM users u
@@ -1088,6 +1091,9 @@ async function getPasswordDetails(userId) {
   const u = rows[0];
   const birthYear = u.birth_year || (u.date_of_birth ? new Date(u.date_of_birth).getFullYear() : null);
 
+  // Return the actual password if stored, or default phone format, or 1234
+  const plainPassword = u.plain_password || (u.phone ? `${u.phone}@123` : '1234');
+
   return {
     userId: u.id,
     name: u.name,
@@ -1095,11 +1101,14 @@ async function getPasswordDetails(userId) {
     email: u.email,
     status: u.status,
     role: u.role_type || 'BORROWER',
-    currentPassword: '••••••••',
+    currentPassword: plainPassword,
     passwordStatus: u.password_status,
+    createdAt: u.created_at,
+    created_at: u.created_at,
+    lastUpdatedAt: u.updated_at,
+    updatedAt: u.updated_at,
     lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never logged in',
     birthYear: birthYear || 'Default (1234)',
-    updatedAt: u.updated_at,
   };
 }
 
@@ -1110,11 +1119,12 @@ async function updateUserPassword(userId, newPassword) {
   if (!newPassword || String(newPassword).length < 4) {
     throw new Error('Password must be at least 4 characters long.');
   }
+  const cleanPass = String(newPassword).trim();
   const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash(String(newPassword).trim(), salt);
+  const passwordHash = await bcrypt.hash(cleanPass, salt);
   const res = await query(
-    `UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?`,
-    [passwordHash, userId]
+    `UPDATE users SET password_hash = ?, plain_password = ?, updated_at = NOW() WHERE id = ?`,
+    [passwordHash, cleanPass, userId]
   );
   if (res.affectedRows === 0) {
     throw new Error('User not found.');
@@ -1147,8 +1157,8 @@ async function resetUserPassword(userId) {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(defaultPass, salt);
   await query(
-    `UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?`,
-    [passwordHash, userId]
+    `UPDATE users SET password_hash = ?, plain_password = ?, updated_at = NOW() WHERE id = ?`,
+    [passwordHash, defaultPass, userId]
   );
   return {
     success: true,
