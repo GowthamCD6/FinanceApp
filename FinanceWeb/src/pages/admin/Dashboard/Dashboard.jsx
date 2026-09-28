@@ -4,6 +4,7 @@ import { api } from '../../../services/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import {
   Users,
+  Building,
   UserPlus,
   Receipt,
   Calendar,
@@ -356,9 +357,13 @@ const CollectionVelocityChart = ({ data = [] }) => {
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { isBranchAdmin } = useAuth();
-  const { activeOrg, activeBranchId } = useOrg();
+  const { user, isBranchAdmin, userOrgName } = useAuth();
+  const { activeOrg, activeBranchId, branches, activeBranch } = useOrg();
   const [metrics, setMetrics] = useState(null);
+
+  const currentOrgName = activeOrg?.name || user?.organization_name || userOrgName || 'Apex Finance Organization';
+  const currentOrgCode = activeOrg?.code || user?.organization_code || '';
+  const currentBranchName = activeBranch?.name || branches?.find(b => String(b.id) === String(activeBranchId))?.name || '';
   const [weeklyDues, setWeeklyDues] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -578,6 +583,19 @@ export const AdminDashboard = () => {
       {/* 1. Header (Standard Clean Fintech Style) */}
       <div className="dash-page-header">
         <div className="dash-title-area">
+          <div className="dash-org-badge-strip">
+            <span className="dash-org-pill">
+              <Building size={14} className="dash-org-pill-icon" />
+              <span className="dash-org-pill-name">{currentOrgName}</span>
+              {currentOrgCode && <span className="dash-org-pill-code">{currentOrgCode}</span>}
+            </span>
+            {currentBranchName && (
+              <span className="dash-branch-pill">
+                <span className="dash-branch-dot" />
+                <span>{currentBranchName}</span>
+              </span>
+            )}
+          </div>
           <h1 className="dash-page-title">Financial Accounting & Capital Performance</h1>
         </div>
 

@@ -25,8 +25,10 @@ import {
 import './Profile.css';
 
 export const AdminProfile = () => {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, userOrgName } = useAuth();
   const { activeOrg } = useOrg();
+  const currentOrgName = activeOrg?.name || user?.organization_name || userOrgName || 'Apex Finance Organization';
+  const currentOrgCode = activeOrg?.code || user?.organization_code || '';
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -124,6 +126,36 @@ export const AdminProfile = () => {
         <div className="directory-title-area">
           <div className="directory-title-row">
             <h1 className="directory-page-title">Admin Profile & Branch Operations</h1>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              color: '#1e3a8a',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '9999px',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+            }}>
+              <Building size={14} color="#2563eb" />
+              <span>{currentOrgName}</span>
+              {currentOrgCode && (
+                <span style={{
+                  background: '#dbeafe',
+                  color: '#1d4ed8',
+                  padding: '0.1rem 0.4rem',
+                  borderRadius: '4px',
+                  fontSize: '0.725rem',
+                  fontWeight: 800,
+                  marginLeft: '0.2rem',
+                }}>
+                  {currentOrgCode}
+                </span>
+              )}
+            </span>
           </div>
         </div>
 
@@ -332,10 +364,10 @@ export const AdminProfile = () => {
                 <div className="prof-detail-row">
                   <span className="prof-detail-label">
                     <Building size={14} />
-                    <span>Branch Operations Hub:</span>
+                    <span>Lending Organization:</span>
                   </span>
-                  <strong className="prof-detail-val">
-                    {activeOrg ? `${activeOrg.name} • ${activeOrg.code}` : 'Central Operations Hub'}
+                  <strong className="prof-detail-val" style={{ color: '#1e40af', fontWeight: 700 }}>
+                    {currentOrgName} {currentOrgCode ? `(${currentOrgCode})` : ''}
                   </strong>
                 </div>
 

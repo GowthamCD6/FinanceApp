@@ -52,6 +52,69 @@
   line-height: 1.4;
 }
 
+/* Organization & Branch Brand Badges */
+.dash-org-badge-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.dash-org-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.dash-org-pill-icon {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.dash-org-pill-name {
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.dash-org-pill-code {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.725rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.dash-branch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.dash-branch-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
 .dash-header-actions {
   display: flex;
   align-items: center;

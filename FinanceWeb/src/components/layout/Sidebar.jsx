@@ -356,7 +356,7 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
             <Landmark size={18} color="#ffffff" />
           </div>
           <span className="mobile-brand-title">
-            {activeOrg ? activeOrg.name : "Finance Web"}
+            FinanceWeb
           </span>
         </div>
       </header>
@@ -395,12 +395,10 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
               </div>
               <div className="company-name">
                 <div className="company-title">
-                  {isInsideOrg && activeOrg ? activeOrg.name : "Finance Web"}
+                  FinanceWeb
                 </div>
                 <div className="company-subtitle">
-                  {isInsideOrg && activeOrg
-                    ? activeOrg.code
-                    : "Platform Governance"}
+                  Lending Platform
                 </div>
               </div>
             </div>

@@ -46,7 +46,7 @@ import OTPRequests from './Pages/OTPRequests/OTPRequests';
 import DataExport from './Pages/DataExport/DataExport';
 
 export const AdminProfile = () => {
-  const { currentUser, logout, fundMetrics, customers, loans } = useApp();
+  const { currentUser, logout, fundMetrics, customers, loans, currentOrganization } = useApp();
   const { t, language } = useLanguage();
 
   const [imageError, setImageError] = useState(false);
@@ -831,6 +831,16 @@ export const AdminProfile = () => {
             <Text style={styles.roleTagText}>{userData.role || 'Admin'} • Operations Officer</Text>
           </View>
 
+          {Boolean(currentOrganization?.name || currentUser?.organization_name) && (
+            <View style={styles.orgTag}>
+              <MaterialCommunityIcons name="office-building" size={13} color="#2563EB" style={{ marginRight: 4 }} />
+              <Text style={styles.orgTagText}>
+                {currentOrganization?.name || currentUser?.organization_name}
+                {Boolean(currentOrganization?.code) ? ` (${currentOrganization.code})` : ''}
+              </Text>
+            </View>
+          )}
+
           {/* Quick Edit Profile Action Button */}
           <TouchableOpacity
             style={styles.quickEditBtn}
@@ -1030,6 +1040,22 @@ const styles = StyleSheet.create({
   roleTagText: {
     fontSize: 12,
     color: '#7C3AED',
+    fontWeight: '700',
+  },
+  orgTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  orgTagText: {
+    fontSize: 12,
+    color: '#1D4ED8',
     fontWeight: '700',
   },
   quickEditBtn: {
