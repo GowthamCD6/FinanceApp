@@ -149,6 +149,13 @@
   border-color: #4f46e5;
 }
 
+.cal-filter-select:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
 .cal-spinning svg {
   animation: spin 0.8s linear infinite;
 }
@@ -755,3 +762,23 @@
 .detail-empty p {
   margin: 0;
 }
+
+/* -----------------------------------------------------------------------------
+   6. Fintech-Grade Shimmer Skeleton Loader
+   ----------------------------------------------------------------------------- */
+.directory-skeleton-bar {
+  background: #e2e8f0;
+  border-radius: 4px;
+  animation: directoryPulse 1.5s ease-in-out infinite;
+}
+
+.directory-skeleton-avatar {
+  background: #e2e8f0;
+  animation: directoryPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes directoryPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+

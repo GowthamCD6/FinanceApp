@@ -21,12 +21,8 @@ import {
   RefreshCw,
   Phone,
   Navigation,
-  CheckCircle2,
-  AlertTriangle,
   ArrowRight,
   Briefcase,
-  Layers,
-  Search,
 } from 'lucide-react';
 import './BranchAdminDashboard.css';
 
@@ -274,20 +270,6 @@ export const BranchAdminDashboard = () => {
             <div className="bnc-text">
               <h4>Monthly Customers</h4>
               <p>Monthly tenure micro-business loan recovery</p>
-            </div>
-            <ArrowRight size={16} className="bnc-arrow" />
-          </div>
-
-          <div
-            className="branch-nav-card"
-            onClick={() => navigate(`${orgPrefix}/loans`)}
-          >
-            <div className="bnc-icon-wrap icon-indigo">
-              <CreditCard size={22} />
-            </div>
-            <div className="bnc-text">
-              <h4>Loan Portfolio</h4>
-              <p>Disbursements, loan approvals & active portfolios</p>
             </div>
             <ArrowRight size={16} className="bnc-arrow" />
           </div>

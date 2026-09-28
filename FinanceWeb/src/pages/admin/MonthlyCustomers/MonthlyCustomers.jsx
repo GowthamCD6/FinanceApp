@@ -17,7 +17,6 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
   Check,
   AlertTriangle,
   RotateCcw,

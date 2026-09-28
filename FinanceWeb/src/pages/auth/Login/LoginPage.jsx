@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import logoImg from '../../../assets/logo-tight.png';
 import {
-  Landmark,
   ArrowRight,
   Lock,
   Mail,

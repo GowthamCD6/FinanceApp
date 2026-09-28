@@ -5,10 +5,8 @@ import { Modal } from '../../../components/common/Modal';
 import { Pagination } from '../../../components/common/Pagination';
 import { TableSkeleton, CardSkeleton } from '../../../components/common/Skeleton';
 import {
-  DollarSign,
   Receipt,
   Search,
-  CheckCircle2,
   Printer,
   RefreshCw,
 } from 'lucide-react';

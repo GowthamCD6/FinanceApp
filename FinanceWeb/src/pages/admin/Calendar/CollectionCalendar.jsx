@@ -5,19 +5,13 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
   TrendingUp,
-  CheckCircle2,
   Clock,
-  AlertTriangle,
-  Building,
   DollarSign,
   Receipt,
-  Users,
   Search,
   Filter,
   ArrowRight,
-  CreditCard,
 } from 'lucide-react';
 import { api } from '../../../services/api';
 import { useOrg } from '../../../context/OrgContext';
@@ -272,6 +266,108 @@ export const CollectionCalendar = () => {
     }
   };
 
+  // ==========================================
+  // SKELETON LOADING STATE
+  // ==========================================
+  if (loading) {
+    return (
+      <div className="collection-calendar-page">
+        {/* Header Skeleton */}
+        <div className="directory-page-header">
+          <div className="directory-title-area">
+            <div className="directory-skeleton-bar" style={{ width: 280, height: 28, borderRadius: 6 }} />
+          </div>
+          <div className="directory-header-actions">
+            <div className="directory-skeleton-bar" style={{ width: 190, height: 38, borderRadius: 6 }} />
+            <div className="directory-skeleton-bar" style={{ width: 75, height: 38, borderRadius: 6 }} />
+            <div className="directory-skeleton-bar" style={{ width: 130, height: 38, borderRadius: 6 }} />
+            <div className="directory-skeleton-bar" style={{ width: 130, height: 38, borderRadius: 6 }} />
+          </div>
+        </div>
+
+        {/* 4 KPI Skeletons */}
+        <div className="directory-kpi-grid">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="directory-kpi-card">
+              <div className="directory-kpi-top">
+                <div className="directory-skeleton-bar" style={{ width: '50%', height: 13 }} />
+                <div className="directory-skeleton-avatar" style={{ width: 32, height: 32, borderRadius: 6 }} />
+              </div>
+              <div className="directory-skeleton-bar" style={{ width: '65%', height: 28, margin: '0.4rem 0' }} />
+              <div className="directory-skeleton-bar" style={{ width: '40%', height: 11 }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Workspace Skeleton */}
+        <div className="cal-workspace">
+          {/* Calendar Grid Skeleton */}
+          <div className="cal-card">
+            <div className="cal-card-header">
+              <div className="directory-skeleton-bar" style={{ width: 220, height: 20, borderRadius: 4 }} />
+              <div className="directory-skeleton-bar" style={{ width: 180, height: 14, borderRadius: 4 }} />
+            </div>
+            <div className="cal-weekdays">
+              {WEEKDAYS.map((w, idx) => (
+                <div key={idx} style={{ padding: '0.4rem' }}>
+                  <div className="directory-skeleton-bar" style={{ width: '60%', height: 12, margin: '0 auto' }} />
+                </div>
+              ))}
+            </div>
+            <div className="cal-grid">
+              {[...Array(35)].map((_, i) => (
+                <div key={i} className="cal-cell" style={{ background: '#f8fafc', minHeight: 90 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <div className="directory-skeleton-bar" style={{ width: 18, height: 14 }} />
+                    <div className="directory-skeleton-bar" style={{ width: 24, height: 12, borderRadius: 3 }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div className="directory-skeleton-bar" style={{ width: '85%', height: 10 }} />
+                    <div className="directory-skeleton-bar" style={{ width: '70%', height: 10 }} />
+                    <div className="directory-skeleton-bar" style={{ width: '100%', height: 3, marginTop: 4 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Day Detail Card Skeleton */}
+          <div className="cal-detail-card">
+            <div className="detail-header" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="directory-skeleton-bar" style={{ width: 80, height: 10 }} />
+                <div className="directory-skeleton-bar" style={{ width: 150, height: 20 }} />
+              </div>
+            </div>
+            <div className="detail-stats-row">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="detail-stat-box">
+                  <div className="directory-skeleton-bar" style={{ width: '60%', height: 10, marginBottom: 6 }} />
+                  <div className="directory-skeleton-bar" style={{ width: '80%', height: 18 }} />
+                </div>
+              ))}
+            </div>
+            <div className="directory-skeleton-bar" style={{ width: '100%', height: 34, borderRadius: 6, marginBottom: '0.85rem' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="detail-item" style={{ padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ width: '60%' }}>
+                      <div className="directory-skeleton-bar" style={{ width: '70%', height: 14, marginBottom: 4 }} />
+                      <div className="directory-skeleton-bar" style={{ width: '45%', height: 10 }} />
+                    </div>
+                    <div className="directory-skeleton-bar" style={{ width: 45, height: 18, borderRadius: 4 }} />
+                  </div>
+                  <div className="directory-skeleton-bar" style={{ width: '100%', height: 38, borderRadius: 4 }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="collection-calendar-page">
       {/* 1. Standard Page Header */}
@@ -280,9 +376,6 @@ export const CollectionCalendar = () => {
           <div className="directory-title-row">
             <h1 className="directory-page-title">Daily Collection Calendar</h1>
           </div>
-          <p className="directory-page-subtitle">
-            Daily collection targets vs. actual recoveries — reconcile and tally the total month receipts.
-          </p>
         </div>
 
         <div className="directory-header-actions">
@@ -318,37 +411,32 @@ export const CollectionCalendar = () => {
             Today
           </button>
 
-          {/* Refresh Button */}
-          <button
-            type="button"
-            className={`directory-btn-secondary ${refreshing ? 'cal-spinning' : ''}`}
-            onClick={() => fetchMonthData(true)}
-            disabled={refreshing || loading}
-            title="Refresh Live Tally"
-          >
-            <RefreshCw size={15} />
-            <span>{refreshing ? 'Syncing...' : 'Refresh'}</span>
-          </button>
-
           {/* Branch Dropdown */}
-          {branches && branches.length > 0 && (
-            <select
-              className="cal-filter-select"
-              value={selectedBranch}
-              onChange={(e) => {
+          <select
+            className="cal-filter-select"
+            value={selectedBranch}
+            onChange={(e) => {
+              if (branches && branches.length > 0) {
                 setSelectedBranch(e.target.value);
                 if (!isBranchAdmin) setActiveBranchId(e.target.value);
-              }}
-              disabled={isBranchAdmin}
-            >
-              <option value="ALL">All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={String(b.id)}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          )}
+              }
+            }}
+            disabled={isBranchAdmin || !branches || branches.length === 0}
+            title={!branches || branches.length === 0 ? 'No branches available' : 'Select Branch'}
+          >
+            {branches && branches.length > 0 ? (
+              <>
+                <option value="ALL">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={String(b.id)}>
+                    {b.name}
+                  </option>
+                ))}
+              </>
+            ) : (
+              <option value="ALL">No Branch</option>
+            )}
+          </select>
 
           {/* Scheme Filter */}
           <select

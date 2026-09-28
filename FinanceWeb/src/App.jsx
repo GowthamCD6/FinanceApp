@@ -32,7 +32,6 @@ import { MonthlyCollect } from './pages/Admin/MonthlyCustomers/MonthlyCollect';
 import { ManageUsers } from './pages/Admin/ManageUser/ManageUsers';
 import { ManageStaff } from './pages/Admin/ManageStaff/ManageStaff';
 import { AddUser } from './pages/Admin/Adduser/AddUser';
-import { AdminLoans } from './pages/Admin/AdminLoans';
 import { AdminReports } from './pages/Admin/Reports/Reports';
 import { AdminProfile } from './pages/Admin/Profile/Profile';
 import { LendingInterestRates } from './pages/Admin/InterestRates/LendingInterestRates';
@@ -104,7 +103,6 @@ export default function App() {
                     <Route path="users" element={<ManageUsers />} />
                     <Route path="staff" element={<ManageStaff />} />
                     <Route path="users/add" element={<AddUser />} />
-                    <Route path="loans" element={<AdminLoans />} />
                     <Route path="calendar" element={<CollectionCalendar />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="profile" element={<AdminProfile />} />
@@ -136,7 +134,6 @@ export default function App() {
                     <Route path="users" element={<ManageUsers />} />
                     <Route path="staff" element={<ManageStaff />} />
                     <Route path="users/add" element={<AddUser />} />
-                    <Route path="loans" element={<AdminLoans />} />
                     <Route path="calendar" element={<CollectionCalendar />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="profile" element={<AdminProfile />} />
@@ -167,7 +164,6 @@ export default function App() {
                   <Route path="/staff" element={<Navigate to="/admin/staff" replace />} />
                   <Route path="/branches" element={<Navigate to="/admin/branches" replace />} />
                   <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />
-                  <Route path="/loans" element={<Navigate to="/admin/loans" replace />} />
                   <Route path="/calendar" element={<Navigate to="/admin/calendar" replace />} />
                   <Route path="/interest-rates" element={<Navigate to="/admin/interest-rates" replace />} />
                   <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />

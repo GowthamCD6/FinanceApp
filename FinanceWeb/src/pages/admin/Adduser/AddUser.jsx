@@ -4,7 +4,6 @@ import { api } from '../../../services/api';
 import {
   UserPlus,
   ArrowRight,
-  CheckCircle2,
   AlertCircle,
   Check,
   RefreshCw,
@@ -17,7 +16,6 @@ import {
   Store,
   Calendar,
   Users,
-  ExternalLink,
   Wallet,
   Landmark,
 } from 'lucide-react';

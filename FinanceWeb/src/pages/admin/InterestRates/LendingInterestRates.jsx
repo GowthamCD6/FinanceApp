@@ -2,22 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useOrg } from '../../../context/OrgContext';
 import { api } from '../../../services/api';
 import {
-  Percent,
   Calendar,
   Save,
   CheckCircle2,
-  AlertCircle,
-  Building,
-  Clock,
-  Layers,
-  Sliders,
-  ShieldCheck,
   CalendarDays,
-  Check,
   Info,
   Store,
   TrendingUp,
-  Zap,
 } from 'lucide-react';
 import './LendingInterestRates.css';
 

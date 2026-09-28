@@ -8,7 +8,6 @@ import {
   Phone,
   MapPin,
   CheckCircle2,
-  AlertTriangle,
   Users,
   ArrowRight,
   Clock,

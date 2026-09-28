@@ -21,14 +21,10 @@ import {
   CalendarDays,
   Clock,
   UserPlus,
-  CreditCard,
   Receipt,
-  Landmark,
-  ArrowLeft,
   User,
   Percent,
   Server,
-  MapPin,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useOrg } from "../../context/OrgContext";
@@ -268,11 +264,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
 
       { label: "Loan Operations", section: true },
       {
-        path: `${orgPrefix}/loans`,
-        label: "Loan Portfolio",
-        icon: CreditCard,
-      },
-      {
         path: `${orgPrefix}/interest-rates`,
         label: "Lending Rates & Tenures",
         icon: Percent,
@@ -350,13 +341,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         path: `${orgPrefix}/reports`,
         label: "Reports & Recovery",
         icon: Receipt,
-      },
-
-      { label: "Loan Operations", section: true },
-      {
-        path: `${orgPrefix}/loans`,
-        label: "Branch Loans",
-        icon: CreditCard,
       },
 
       { label: "Borrower Management", section: true },

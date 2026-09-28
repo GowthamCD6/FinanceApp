@@ -7,10 +7,8 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
-  TrendingUp,
   Store,
   Calendar,
-  Phone,
   Navigation,
   ShieldCheck,
   RefreshCw,
@@ -18,8 +16,6 @@ import {
   QrCode,
   ArrowRight,
   UserCheck,
-  Layers,
-  Radio
 } from 'lucide-react';
 
 export const RouteStaffDashboard = () => {

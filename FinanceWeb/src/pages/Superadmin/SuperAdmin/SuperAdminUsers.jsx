@@ -5,18 +5,10 @@ import { StatusBadge } from '../../../components/common/Badge';
 import { Pagination } from '../../../components/common/Pagination';
 import { TableSkeleton } from '../../../components/common/Skeleton';
 import {
-  ShieldCheck,
   UserPlus,
   Search,
-  Mail,
   Phone,
-  CheckCircle2,
-  Power,
-  RotateCw,
-  Lock,
-  User,
   Shield,
-  Key,
 } from 'lucide-react';
 import './SuperAdminUsers.css';
 

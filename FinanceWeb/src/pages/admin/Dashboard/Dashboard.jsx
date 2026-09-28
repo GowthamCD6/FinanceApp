@@ -12,27 +12,20 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
-  CreditCard,
   Store,
   DollarSign,
   Percent,
   PieChart,
   Activity,
   Wallet,
-  Landmark,
   PlusCircle,
-  ArrowDownRight,
-  ArrowUpRight,
   FileText,
   X,
-  RefreshCw,
   Search,
   Send,
   RotateCcw,
   Sparkles,
   Phone,
-  ShieldCheck,
-  AlertCircle,
 } from 'lucide-react';
 
 import { useOrg } from '../../../context/OrgContext';
@@ -654,10 +647,6 @@ export const AdminDashboard = () => {
           <button className="directory-btn-secondary" onClick={() => navigate(getOrgPath('weekly-customers'))}>
             <Calendar size={16} />
             <span>Weekly Borrowers</span>
-          </button>
-          <button className="directory-btn-secondary" onClick={() => navigate(getOrgPath('loans'))}>
-            <CreditCard size={16} />
-            <span>Loan Portfolio</span>
           </button>
           <button className="directory-btn-primary" onClick={() => navigate(getOrgPath('users/add'))}>
             <UserPlus size={16} />
