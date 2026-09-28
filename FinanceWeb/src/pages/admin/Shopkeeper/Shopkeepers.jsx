@@ -756,6 +756,11 @@ export const Shopkeepers = () => {
                                   {shop.stall_no}
                                 </span>
                               )}
+                              {shop.collection_mode === 'LUMP_SUM_END' && (
+                                <span className="mc-code-pill" style={{ background: '#F5F3FF', color: '#7C3AED', borderColor: '#DDD6FE', fontWeight: 800 }}>
+                                  🎯 Pay at End
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -795,7 +800,7 @@ export const Shopkeepers = () => {
                       <td style={{ textAlign: 'center' }}>
                         <div className="mc-amount-primary">{formatCurrency(dailyTarget)}</div>
                         <div className="mc-amount-secondary">
-                          {isCollected ? 'Cleared today' : 'Today Due'}
+                          {shop.collection_mode === 'LUMP_SUM_END' ? '🎯 Pay at End' : isCollected ? 'Cleared today' : 'Today Due'}
                         </div>
                       </td>
 

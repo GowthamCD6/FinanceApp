@@ -21,7 +21,11 @@ import {
   MapPin,
   ArrowRight,
   AlertTriangle,
+  Pencil,
+  Trash2,
+  Plus,
 } from 'lucide-react';
+import { EditLoanModal, DeleteLoanModal, CreateLoanModal } from '../../../components/loans/LoanModals';
 
 export const ShopkeeperCollect = () => {
   const navigate = useNavigate();
@@ -40,6 +44,34 @@ export const ShopkeeperCollect = () => {
   const [submitting, setSubmitting] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
 
+  // Repayment Collection Mode: 'NORMAL' vs 'LUMP_SUM_END' (Get amount at end of last day)
+  const [collectionMode, setCollectionMode] = useState(shop?.collection_mode || 'NORMAL');
+  const [updatingMode, setUpdatingMode] = useState(false);
+  const [settleFullBalance, setSettleFullBalance] = useState(false);
+
+  // Synchronize collectionMode whenever shop data loads from database
+  useEffect(() => {
+    if (shop?.collection_mode) {
+      setCollectionMode(shop.collection_mode);
+    }
+  }, [shop?.collection_mode]);
+
+  // Handler to toggle and persist collection mode to database
+  const handleToggleCollectionMode = async (newMode) => {
+    if (!shop || updatingMode || collectionMode === newMode) return;
+    setUpdatingMode(true);
+    try {
+      await api.updateCustomerCollectionMode(shop.id, newMode);
+      setCollectionMode(newMode);
+      setShop((prev) => (prev ? { ...prev, collection_mode: newMode } : prev));
+      await fetchShopData(false);
+    } catch (err) {
+      alert('Failed to update repayment collection mode: ' + (err.message || err));
+    } finally {
+      setUpdatingMode(false);
+    }
+  };
+
   // Active Loan Card Selection
   const [selectedLoans, setSelectedLoans] = useState({});
   const [activeTab, setActiveTab] = useState('COLLECT'); // 'COLLECT' | 'SCHEDULE'
@@ -48,6 +80,29 @@ export const ShopkeeperCollect = () => {
   // Daily Log Modal State
   const [selectedLoanForModal, setSelectedLoanForModal] = useState(null);
   const [modalFilterStatus, setModalFilterStatus] = useState('ALL'); // 'ALL' | 'PAID' | 'PENDING'
+
+  // Loan Management Modal States (Edit, Delete, Issue New)
+  const [editingLoan, setEditingLoan] = useState(null);
+  const [deletingLoan, setDeletingLoan] = useState(null);
+  const [isCreatingLoan, setIsCreatingLoan] = useState(false);
+
+  const handleLoanUpdated = async (updatedLoan) => {
+    await fetchShopData(false);
+    if (selectedLoanForModal && selectedLoanForModal.id === updatedLoan.id) {
+      setSelectedLoanForModal(updatedLoan);
+    }
+  };
+
+  const handleLoanDeleted = async (deletedLoanId) => {
+    await fetchShopData(false);
+    if (selectedLoanForModal && selectedLoanForModal.id === deletedLoanId) {
+      setSelectedLoanForModal(null);
+    }
+  };
+
+  const handleLoanCreated = async () => {
+    await fetchShopData(false);
+  };
 
   const getOrgPath = (sub) => (activeOrg ? `/org/${activeOrg.id}/${sub}` : `/admin/${sub}`);
   const formatCurrency = (amt) => '₹' + Number(amt || 0).toLocaleString('en-IN');
@@ -70,24 +125,30 @@ export const ShopkeeperCollect = () => {
 
   const activeLoans = shop?.loans || shop?.active_loans || [];
 
-  // Helper to generate day-wise installment logs for a loan card (with OVERDUE detection)
+  // Helper to generate day-wise installment logs for a loan card (with OVERDUE and LUMP_SUM_END detection)
   const getLoanInstallments = (loan) => {
     if (!loan) return [];
 
     const todayStr = toCleanIsoDate(new Date());
+    const isLumpSum = (loan.collection_mode || collectionMode) === 'LUMP_SUM_END';
 
-    // If backend returned real installments, use them but add overdue logic
+    // If backend returned real installments, use them but add overdue / lump-sum logic
     if (Array.isArray(loan.installments) && loan.installments.length > 0) {
-      return loan.installments.map((inst) => {
+      const lastIdx = loan.installments.length - 1;
+      return loan.installments.map((inst, idx) => {
         let status = inst.status;
         const dueStr = toCleanIsoDate(inst.due_date);
         let daysOverdue = 0;
 
-        if (status !== 'PAID' && dueStr && dueStr < todayStr) {
-          status = 'OVERDUE';
-          daysOverdue = Math.max(1, Math.floor((new Date(todayStr) - new Date(dueStr)) / 86400000));
-        } else if (status !== 'PAID' && dueStr === todayStr) {
-          status = 'TODAY_DUE';
+        if (status !== 'PAID') {
+          if (isLumpSum && idx < lastIdx) {
+            status = 'DUE_AT_END';
+          } else if (dueStr && dueStr < todayStr) {
+            status = 'OVERDUE';
+            daysOverdue = Math.max(1, Math.floor((new Date(todayStr) - new Date(dueStr)) / 86400000));
+          } else if (dueStr === todayStr) {
+            status = 'TODAY_DUE';
+          }
         }
         return { ...inst, due_date: dueStr, status, days_overdue: daysOverdue };
       });
@@ -118,6 +179,8 @@ export const ShopkeeperCollect = () => {
         paidAt = dateStr;
         receiptNo = `REC-DLY-${104800 + i}`;
         mode = i % 2 === 0 ? 'CASH' : 'UPI';
+      } else if (isLumpSum && i < total) {
+        status = 'DUE_AT_END';
       } else if (dateStr === todayStr) {
         status = 'TODAY_DUE';
       } else if (dateStr < todayStr) {
@@ -349,10 +412,21 @@ export const ShopkeeperCollect = () => {
     return !isLoanPaidOnDate(l, collectionDate);
   });
 
+  const isLumpSumMode = collectionMode === 'LUMP_SUM_END';
+  const isMaturityDate = Boolean(loanDateBounds.maxDate && collectionDate === loanDateBounds.maxDate);
+  const shouldCollectFullBalance = isLumpSumMode && (settleFullBalance || isMaturityDate);
+
+  // Helper to determine payable amount for a single loan
+  const getLoanPayableAmount = (loan) => {
+    if (shouldCollectFullBalance) {
+      return Number(loan.remaining_balance || (Number(loan.installment_amount || loan.daily_due || 900) * (loan.total_installments || 25)));
+    }
+    return Number(loan.installment_amount || loan.daily_due || 900);
+  };
+
   // Calculate total selected payable sum
   const totalPayableAmount = payableSelectedLoans.reduce((sum, l) => {
-    const amt = Number(l.installment_amount || l.daily_due || 900);
-    return sum + amt;
+    return sum + getLoanPayableAmount(l);
   }, 0);
 
   // Total daily due for this merchant across all active loans
@@ -393,7 +467,7 @@ export const ShopkeeperCollect = () => {
       const collectedItems = [];
 
       for (const loan of payableSelectedLoans) {
-        const amt = loan.installment_amount || loan.daily_due || 900;
+        const amt = getLoanPayableAmount(loan);
         const res = await api.recordShopkeeperCollection(
           shop.id,
           loan.loan_code,
@@ -816,6 +890,97 @@ export const ShopkeeperCollect = () => {
         </div>
       </div>
 
+      {/* Repayment Collection Method Switcher */}
+      <div
+        className="card"
+        style={{
+          padding: '1rem 1.25rem',
+          marginBottom: '1.25rem',
+          border: collectionMode === 'LUMP_SUM_END' ? '1.5px solid #818CF8' : '1.5px solid #E2E8F0',
+          borderRadius: 12,
+          background: collectionMode === 'LUMP_SUM_END' ? 'linear-gradient(135deg, #F5F3FF 0%, #FFFFFF 100%)' : '#FFFFFF',
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 3 }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+              Repayment Collection Method
+            </span>
+            <span
+              style={{
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                padding: '2px 8px',
+                borderRadius: 20,
+                background: collectionMode === 'LUMP_SUM_END' ? '#EDE9FE' : '#ECFDF5',
+                color: collectionMode === 'LUMP_SUM_END' ? '#6D28D9' : '#047857',
+                border: `1px solid ${collectionMode === 'LUMP_SUM_END' ? '#C4B5FD' : '#A7F3D0'}`,
+              }}
+            >
+              {collectionMode === 'LUMP_SUM_END' ? '🎯 Get Amount at End (Last Day)' : '✅ Normal Daily Installments'}
+            </span>
+            {updatingMode && (
+              <span style={{ fontSize: '0.7rem', color: '#6366F1', fontWeight: 700 }}>Saving to database...</span>
+            )}
+          </div>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+            {collectionMode === 'LUMP_SUM_END'
+              ? `Borrower pays full loan balance on the final maturity day (${loanDateBounds.maxDate || 'Last Day'}). Daily collections are deferred until the end.`
+              : 'Borrower pays standard daily installment amount on every scheduled business day.'}
+          </p>
+        </div>
+
+        {/* Action Toggle Buttons */}
+        <div style={{ display: 'flex', gap: '0.5rem', background: '#F1F5F9', padding: '0.3rem', borderRadius: 10, border: '1px solid #CBD5E1' }}>
+          <button
+            type="button"
+            disabled={updatingMode}
+            onClick={() => handleToggleCollectionMode('NORMAL')}
+            className={`btn btn-sm ${collectionMode === 'NORMAL' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              fontSize: '0.8rem',
+              padding: '0.45rem 1rem',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: collectionMode === 'NORMAL' ? 'var(--primary)' : 'transparent',
+              borderColor: collectionMode === 'NORMAL' ? 'var(--primary)' : 'transparent',
+              color: collectionMode === 'NORMAL' ? '#FFFFFF' : 'var(--text-secondary)',
+            }}
+          >
+            <Check size={14} /> Normal (Daily)
+          </button>
+
+          <button
+            type="button"
+            disabled={updatingMode}
+            onClick={() => handleToggleCollectionMode('LUMP_SUM_END')}
+            className={`btn btn-sm ${collectionMode === 'LUMP_SUM_END' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              fontSize: '0.8rem',
+              padding: '0.45rem 1rem',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: collectionMode === 'LUMP_SUM_END' ? 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)' : 'transparent',
+              borderColor: collectionMode === 'LUMP_SUM_END' ? '#7C3AED' : 'transparent',
+              color: collectionMode === 'LUMP_SUM_END' ? '#FFFFFF' : 'var(--text-secondary)',
+              boxShadow: collectionMode === 'LUMP_SUM_END' ? '0 2px 8px rgba(124, 58, 237, 0.35)' : 'none',
+            }}
+          >
+            🎯 Get Amount at the End
+          </button>
+        </div>
+      </div>
+
       {/* ===================================================================== */}
       {/* TAB 1: SIMULTANEOUS MULTI-CARD COLLECTION WORKSPACE                   */}
       {/* ===================================================================== */}
@@ -823,13 +988,30 @@ export const ShopkeeperCollect = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem' }}>
           {/* Left Column: Active Loan Cards Shelf */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                Active Daily Loan Cards ({activeLoans.length})
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Click card to select for collection
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                  Active Daily Loan Cards ({activeLoans.length})
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  Click card to select for collection
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={() => setIsCreatingLoan(true)}
+                style={{
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '0.35rem 0.75rem',
+                }}
+              >
+                <Plus size={14} /> Issue New Loan
+              </button>
             </div>
 
             {activeLoans.map((loan, idx) => {
@@ -1033,29 +1215,72 @@ export const ShopkeeperCollect = () => {
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => handleOpenLoanModal(loan)}
-                      style={{
-                        fontSize: '0.75rem',
-                        padding: '0.35rem 0.75rem',
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        color: 'var(--primary)',
-                        borderColor: '#C7D2FE',
-                        background: '#EEF2FF',
-                      }}
-                    >
-                      <Calendar size={13} /> View Daily Log Modal ↗
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => handleOpenLoanModal(loan)}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.35rem 0.65rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          color: 'var(--primary)',
+                          borderColor: '#C7D2FE',
+                          background: '#EEF2FF',
+                        }}
+                      >
+                        <Calendar size={13} /> Daily Log ↗
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setEditingLoan(loan)}
+                        title="Edit Loan Details"
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.35rem 0.65rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          color: '#4338CA',
+                          borderColor: '#C7D2FE',
+                          background: '#FFFFFF',
+                        }}
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setDeletingLoan(loan)}
+                        title="Delete Loan"
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.35rem 0.65rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          color: '#DC2626',
+                          borderColor: '#FECACA',
+                          background: '#FEF2F2',
+                        }}
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
 
                     {/* Status Pill for the currently selected date */}
                     {(() => {
                       const firstLoanDue = loanInstallments.length > 0 ? loanInstallments[0].due_date : loan.issue_date;
                       const isBeforeThisLoanTenure = Boolean(firstLoanDue && collectionDate < firstLoanDue);
+                      const maturityDate = loanDateBounds.maxDate || loan.maturity_date;
 
                       if (isPaidForToday) {
                         return (
@@ -1095,6 +1320,48 @@ export const ShopkeeperCollect = () => {
                             }}
                           >
                             <Clock size={13} color="#2563EB" /> Starts {firstLoanDue}
+                          </span>
+                        );
+                      }
+
+                      // Lump Sum Mode Handling
+                      if (collectionMode === 'LUMP_SUM_END') {
+                        if (collectionDate === maturityDate) {
+                          return (
+                            <span
+                              style={{
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                color: '#6D28D9',
+                                background: '#EDE9FE',
+                                border: '1px solid #C4B5FD',
+                                padding: '0.25rem 0.65rem',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              🎯 Full Settlement Due Today: {formatCurrency(loan.remaining_balance || shop.total_outstanding)}
+                            </span>
+                          );
+                        }
+                        return (
+                          <span
+                            style={{
+                              fontSize: '0.74rem',
+                              fontWeight: 800,
+                              color: '#6D28D9',
+                              background: '#F5F3FF',
+                              border: '1px solid #DDD6FE',
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            🎯 Deferred — Full Payment on Last Day ({maturityDate || 'Maturity'})
                           </span>
                         );
                       }
@@ -1426,6 +1693,71 @@ export const ShopkeeperCollect = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmitPayment}>
+                {/* Lump Sum Mode Info & Settle Option */}
+                {isLumpSumMode && (
+                  <div
+                    style={{
+                      background: '#FAF5FF',
+                      border: '1.5px solid #D8B4FE',
+                      borderRadius: 10,
+                      padding: '0.85rem 1rem',
+                      marginBottom: '1rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#6B21A8', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        🎯 Lump Sum Mode (Pay at End)
+                      </span>
+                      {loanDateBounds.maxDate && (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#7C3AED', background: '#EDE9FE', padding: '2px 8px', borderRadius: 4 }}>
+                          Last Day: {loanDateBounds.maxDate}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.78rem', color: '#581C87', lineHeight: 1.4 }}>
+                      {collectionDate === loanDateBounds.maxDate
+                        ? 'Final maturity day has arrived! The entire loan balance is due for collection.'
+                        : `Borrower will pay the entire loan at the end (${loanDateBounds.maxDate || 'maturity'}). Standard daily dues are deferred.`}
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSettleFullBalance((prev) => !prev)}
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 800,
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          background: shouldCollectFullBalance ? '#7C3AED' : '#FFFFFF',
+                          color: shouldCollectFullBalance ? '#FFFFFF' : '#6B21A8',
+                          border: '1.5px solid #7C3AED',
+                        }}
+                      >
+                        {shouldCollectFullBalance ? '✓ Collecting Full Loan Balance' : 'Settle Full Balance Now'}
+                      </button>
+                      {loanDateBounds.maxDate && collectionDate !== loanDateBounds.maxDate && (
+                        <button
+                          type="button"
+                          onClick={() => setCollectionDate(loanDateBounds.maxDate)}
+                          style={{
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            background: '#EDE9FE',
+                            color: '#6B21A8',
+                            border: '1px solid #C4B5FD',
+                          }}
+                        >
+                          Go to Last Day ({loanDateBounds.maxDate}) →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Selected Cards Summary Strip */}
                 <div
                   style={{
@@ -1629,19 +1961,23 @@ export const ShopkeeperCollect = () => {
                               style={{
                                 background: isPaid
                                   ? '#D1FAE5'
-                                  : isOverdueInst
-                                    ? '#FEE2E2'
-                                    : isTodayDue
-                                      ? '#FEF3C7'
-                                      : '#F1F5F9',
+                                  : inst.status === 'DUE_AT_END'
+                                    ? '#EDE9FE'
+                                    : isOverdueInst
+                                      ? '#FEE2E2'
+                                      : isTodayDue
+                                        ? '#FEF3C7'
+                                        : '#F1F5F9',
                                 color: isPaid
                                   ? '#065F46'
-                                  : isOverdueInst
-                                    ? '#991B1B'
-                                    : isTodayDue
-                                      ? '#92400E'
-                                      : 'var(--text-muted)',
-                                border: `1px solid ${isPaid ? '#A7F3D0' : isOverdueInst ? '#FECACA' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
+                                  : inst.status === 'DUE_AT_END'
+                                    ? '#6D28D9'
+                                    : isOverdueInst
+                                      ? '#991B1B'
+                                      : isTodayDue
+                                        ? '#92400E'
+                                        : 'var(--text-muted)',
+                                border: `1px solid ${isPaid ? '#A7F3D0' : inst.status === 'DUE_AT_END' ? '#C4B5FD' : isOverdueInst ? '#FECACA' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
                                 fontWeight: 800,
                                 fontSize: '0.72rem',
                                 display: 'inline-flex',
@@ -1649,7 +1985,7 @@ export const ShopkeeperCollect = () => {
                                 gap: 4,
                               }}
                             >
-                              {isPaid ? 'PAID' : isOverdueInst ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
+                              {isPaid ? 'PAID' : inst.status === 'DUE_AT_END' ? '🎯 DUE AT END' : isOverdueInst ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                             </span>
                           </td>
                           <td>
@@ -1759,24 +2095,64 @@ export const ShopkeeperCollect = () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="btn btn-icon"
-                onClick={() => setSelectedLoanForModal(null)}
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '50%',
-                  width: 34,
-                  height: 34,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-              >
-                <X size={18} color="var(--text-muted)" />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setEditingLoan(selectedLoanForModal)}
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    padding: '0.35rem 0.75rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    color: '#4338CA',
+                    borderColor: '#C7D2FE',
+                    background: '#EEF2FF',
+                  }}
+                >
+                  <Pencil size={13} /> Edit Loan
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setDeletingLoan(selectedLoanForModal)}
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    padding: '0.35rem 0.75rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    color: '#DC2626',
+                    borderColor: '#FECACA',
+                    background: '#FEF2F2',
+                  }}
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-icon"
+                  onClick={() => setSelectedLoanForModal(null)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '50%',
+                    width: 34,
+                    height: 34,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <X size={18} color="var(--text-muted)" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -1953,19 +2329,23 @@ export const ShopkeeperCollect = () => {
                                 style={{
                                   background: isPaid
                                     ? '#D1FAE5'
-                                    : isOverdueModal
-                                      ? '#FEE2E2'
-                                      : isTodayDue
-                                        ? '#FEF3C7'
-                                        : '#F1F5F9',
+                                    : inst.status === 'DUE_AT_END'
+                                      ? '#EDE9FE'
+                                      : isOverdueModal
+                                        ? '#FEE2E2'
+                                        : isTodayDue
+                                          ? '#FEF3C7'
+                                          : '#F1F5F9',
                                   color: isPaid
                                     ? '#065F46'
-                                    : isOverdueModal
-                                      ? '#991B1B'
-                                      : isTodayDue
-                                        ? '#92400E'
-                                        : 'var(--text-muted)',
-                                  border: `1px solid ${isPaid ? '#A7F3D0' : isOverdueModal ? '#FECACA' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
+                                    : inst.status === 'DUE_AT_END'
+                                      ? '#6D28D9'
+                                      : isOverdueModal
+                                        ? '#991B1B'
+                                        : isTodayDue
+                                          ? '#92400E'
+                                          : 'var(--text-muted)',
+                                  border: `1px solid ${isPaid ? '#A7F3D0' : inst.status === 'DUE_AT_END' ? '#C4B5FD' : isOverdueModal ? '#FECACA' : isTodayDue ? '#FDE68A' : '#E2E8F0'}`,
                                   fontWeight: 800,
                                   fontSize: '0.7rem',
                                   display: 'inline-flex',
@@ -1973,7 +2353,7 @@ export const ShopkeeperCollect = () => {
                                   gap: 4,
                                 }}
                               >
-                                {isPaid ? 'PAID' : isOverdueModal ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
+                                {isPaid ? 'PAID' : inst.status === 'DUE_AT_END' ? '🎯 DUE AT END' : isOverdueModal ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                               </span>
                             </td>
                             <td>
@@ -2072,8 +2452,36 @@ export const ShopkeeperCollect = () => {
           </div>
         </div>
       )}
+
+      {/* ===================================================================== */}
+      {/* LOAN ACTION MODALS: EDIT, DELETE, ISSUE NEW                           */}
+      {/* ===================================================================== */}
+      <EditLoanModal
+        isOpen={Boolean(editingLoan)}
+        loan={editingLoan}
+        customer={shop}
+        onClose={() => setEditingLoan(null)}
+        onSuccess={handleLoanUpdated}
+      />
+
+      <DeleteLoanModal
+        isOpen={Boolean(deletingLoan)}
+        loan={deletingLoan}
+        customer={shop}
+        onClose={() => setDeletingLoan(null)}
+        onSuccess={handleLoanDeleted}
+      />
+
+      <CreateLoanModal
+        isOpen={isCreatingLoan}
+        customer={shop}
+        defaultFrequency="DAILY"
+        onClose={() => setIsCreatingLoan(false)}
+        onSuccess={handleLoanCreated}
+      />
     </div>
   );
 };
 
 export default ShopkeeperCollect;
+

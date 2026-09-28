@@ -732,7 +732,14 @@ export const WeeklyCustomers = () => {
                           </div>
                           <div className="mc-borrower-info">
                             <div className="mc-borrower-name">{cust.name}</div>
-                            <span className="mc-code-pill">{cust.customer_code}</span>
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+                              <span className="mc-code-pill">{cust.customer_code}</span>
+                              {cust.collection_mode === 'LUMP_SUM_END' && (
+                                <span className="mc-code-pill" style={{ background: '#F5F3FF', color: '#7C3AED', borderColor: '#DDD6FE', fontWeight: 800 }}>
+                                  🎯 Pay at End
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -776,7 +783,7 @@ export const WeeklyCustomers = () => {
                       <td style={{ textAlign: 'center' }}>
                         <div className="mc-amount-primary">{formatCurrency(weeklyDue)}</div>
                         <div className="mc-amount-secondary">
-                          {isPaid ? 'Cleared this week' : `Week ${currentWeekInfo.weekNo} Due`}
+                          {cust.collection_mode === 'LUMP_SUM_END' ? '🎯 Pay at End' : isPaid ? 'Cleared this week' : `Week ${currentWeekInfo.weekNo} Due`}
                         </div>
                       </td>
 

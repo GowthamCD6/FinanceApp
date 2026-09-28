@@ -471,7 +471,8 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
        c.address,
        c.city,
        c.occupation,
-       c.status AS customer_status
+       c.status AS customer_status,
+       c.collection_mode
      FROM customers c
      WHERE ${whereClauses.join(' AND ')}
      ORDER BY c.id DESC`,
@@ -552,6 +553,7 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
       paid_installments: paidInstallments,
       remaining_balance: Number(outstandingBalance),
       status: loan.status,
+      collection_mode: loan.collection_mode || cust.collection_mode || 'NORMAL',
       issue_date: loan.disbursement_date ? String(loan.disbursement_date).slice(0, 10) : '2026-09-16',
       maturity_date: loan.maturity_date ? String(loan.maturity_date).slice(0, 10) : (schedule.length > 0 ? schedule[schedule.length - 1].due_date : null),
       schedule,
@@ -579,6 +581,7 @@ async function getWeeklyCustomers({ search, status, area, organizationId, branch
       phone: cust.phone,
       address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
       occupation: cust.occupation || 'Self Employed',
+      collection_mode: cust.collection_mode || (activeLoanObj?.collection_mode) || 'NORMAL',
       active_loan: activeLoanObj,
       loans: activeLoanObj ? [activeLoanObj] : [],
       paid_installments: paidInstWk,
@@ -639,7 +642,8 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
        c.stall_no,
        c.market_location,
        c.occupation,
-       c.status AS customer_status
+       c.status AS customer_status,
+       c.collection_mode
      FROM customers c
      WHERE ${whereClauses.join(' AND ')}
      ORDER BY c.id DESC`,
@@ -794,6 +798,7 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
         daily_due: instAmt,
         remaining_balance: remaining,
         status: l.status,
+        collection_mode: l.collection_mode || shop.collection_mode || 'NORMAL',
         issue_date: issueDateClean,
         maturity_date: maturityDateClean,
         installments: installmentList,
@@ -815,8 +820,15 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
       l.installments?.some(i => i.due_date === targetDate && i.status === 'PAID')
     );
 
+    const isLumpSumEnd = (shop.collection_mode === 'LUMP_SUM_END') || formattedLoans.some(l => l.collection_mode === 'LUMP_SUM_END');
     const isCollectedOnTargetDate = targetDatePayments.length > 0 || hasPaidInstallmentOnTarget;
-    const currentStatus = isCollectedOnTargetDate ? 'COLLECTED' : 'PENDING';
+    let currentStatus = isCollectedOnTargetDate ? 'COLLECTED' : 'PENDING';
+    if (!isCollectedOnTargetDate && isLumpSumEnd) {
+      const primaryMat = formattedLoans[0]?.maturity_date;
+      if (primaryMat && targetDate < primaryMat) {
+        currentStatus = 'DUE_AT_END';
+      }
+    }
 
     // Route / Status filters
     if (status && status !== 'ALL' && currentStatus !== status) {
@@ -842,6 +854,7 @@ async function getShopkeepers({ search, status, route, organizationId, branchId,
       shop_name: shop.shop_name || `${shop.name}'s General Stores`,
       market_location: marketLoc,
       stall_no: shop.stall_no || `Stall #${(shop.id * 7) % 50 + 1}`,
+      collection_mode: shop.collection_mode || (primaryLoan?.collection_mode) || 'NORMAL',
       total_principal_given: totalPrincipal,
       daily_collection_target: dailyTarget,
       total_outstanding: totalOutstanding,
@@ -904,7 +917,8 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
        c.address,
        c.city,
        c.occupation,
-       c.status AS customer_status
+       c.status AS customer_status,
+       c.collection_mode
      FROM customers c
      WHERE ${whereClauses.join(' AND ')}
      ORDER BY c.id DESC`,
@@ -1015,6 +1029,7 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
       paid_installments: paidInstallments,
       remaining_balance: outstandingBalance,
       status: loan.status,
+      collection_mode: loan.collection_mode || cust.collection_mode || 'NORMAL',
       start_date: startIssueDate,
       issue_date: startIssueDate,
       end_date: endMaturityDate,
@@ -1039,6 +1054,7 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
       phone: cust.phone,
       address: cust.address || `${cust.city || 'Chennai'}, Tamil Nadu`,
       occupation: cust.occupation || 'Salaried Professional',
+      collection_mode: cust.collection_mode || (activeLoanObj?.collection_mode) || 'NORMAL',
       active_loan: activeLoanObj,
       loans: [activeLoanObj],
       paid_installments: paidInstallments,
@@ -1055,6 +1071,29 @@ async function getMonthlyCustomers({ search, status, organizationId, branchId } 
   return result;
 }
 
+/**
+ * Update collection mode (NORMAL vs LUMP_SUM_END) for a customer and active loans
+ */
+async function updateCollectionMode(customerId, collectionMode, loanId = null) {
+  const mode = collectionMode === 'LUMP_SUM_END' ? 'LUMP_SUM_END' : 'NORMAL';
+
+  // 1. Update customer collection_mode
+  await query(`UPDATE customers SET collection_mode = ?, updated_at = NOW() WHERE id = ?`, [mode, customerId]);
+
+  // 2. Update loan(s)
+  if (loanId) {
+    await query(`UPDATE loans SET collection_mode = ?, updated_at = NOW() WHERE id = ?`, [mode, loanId]);
+  } else {
+    await query(
+      `UPDATE loans SET collection_mode = ?, updated_at = NOW() 
+       WHERE customer_id = ? AND status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'PENDING')`,
+      [mode, customerId]
+    );
+  }
+
+  return { success: true, customerId, loanId, collectionMode: mode };
+}
+
 module.exports = {
   createCustomer,
   getCustomers,
@@ -1065,4 +1104,5 @@ module.exports = {
   getWeeklyCustomers,
   getShopkeepers,
   getMonthlyCustomers,
+  updateCollectionMode,
 };

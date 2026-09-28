@@ -9,6 +9,8 @@ async function bootstrapDatabase() {
       "ALTER TABLE customers ADD COLUMN IF NOT EXISTS branch_id BIGINT UNSIGNED NULL",
       "ALTER TABLE loans ADD COLUMN IF NOT EXISTS branch_id BIGINT UNSIGNED NULL",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS branch_id BIGINT UNSIGNED NULL",
+      "ALTER TABLE loans ADD COLUMN IF NOT EXISTS collection_mode VARCHAR(30) NOT NULL DEFAULT 'NORMAL'",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS collection_mode VARCHAR(30) NOT NULL DEFAULT 'NORMAL'",
     ];
 
     for (const sql of alters) {

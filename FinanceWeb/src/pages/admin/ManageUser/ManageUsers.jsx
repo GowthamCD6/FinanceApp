@@ -276,6 +276,7 @@ export const ManageUsers = () => {
       frequency: initialFreq,
       interest_rate: String(defaultRate),
       tenure: String(defaultTenure),
+      collection_mode: target.collection_mode || 'NORMAL',
     });
     setIsQuickLoanModalOpen(true);
   };
@@ -334,8 +335,12 @@ export const ManageUsers = () => {
         customerId: quickLoanTarget.customerId || quickLoanTarget.id,
         principal: principalNum,
         frequency: quickLoanForm.frequency,
+        repayment_frequency: quickLoanForm.frequency,
+        collection_mode: quickLoanForm.collection_mode || 'NORMAL',
+        collectionMode: quickLoanForm.collection_mode || 'NORMAL',
         interest_rate: parseFloat(quickLoanForm.interest_rate) || 25.0,
         tenure: parseInt(quickLoanForm.tenure) || 10,
+        total_installments: parseInt(quickLoanForm.tenure) || 10,
         tenure_weeks: quickLoanForm.frequency === 'WEEKLY' ? parseInt(quickLoanForm.tenure) : undefined,
         tenure_days: quickLoanForm.frequency === 'DAILY' ? parseInt(quickLoanForm.tenure) : undefined,
         tenure_months: quickLoanForm.frequency === 'MONTHLY' ? parseInt(quickLoanForm.tenure) : undefined,
@@ -1125,6 +1130,48 @@ export const ManageUsers = () => {
                   >
                     <span className="quick-loan-division-name">Salaried (Monthly)</span>
                     <span className="quick-loan-division-meta">{lendingConfig.monthly_interest_rate}% Flat • {lendingConfig.monthly_tenure_months} Mos</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Repayment Collection Mode Option (Normal vs Lump Sum at End) */}
+              <div style={{ marginBottom: '0.85rem' }}>
+                <label className="form-label" style={{ marginBottom: '0.45rem', display: 'block' }}>Repayment Option</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+                  <div
+                    onClick={() => setQuickLoanForm((p) => ({ ...p, collection_mode: 'NORMAL' }))}
+                    style={{
+                      padding: '0.6rem 0.75rem',
+                      borderRadius: 8,
+                      border: quickLoanForm.collection_mode === 'NORMAL' ? '2px solid var(--primary)' : '1px solid #CBD5E1',
+                      background: quickLoanForm.collection_mode === 'NORMAL' ? '#EEF2FF' : '#FFFFFF',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.8rem', color: quickLoanForm.collection_mode === 'NORMAL' ? 'var(--primary)' : 'var(--text-primary)', display: 'block' }}>
+                      Normal Installments
+                    </strong>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                      Periodic payments each scheduled cycle
+                    </span>
+                  </div>
+
+                  <div
+                    onClick={() => setQuickLoanForm((p) => ({ ...p, collection_mode: 'LUMP_SUM_END' }))}
+                    style={{
+                      padding: '0.6rem 0.75rem',
+                      borderRadius: 8,
+                      border: quickLoanForm.collection_mode === 'LUMP_SUM_END' ? '2px solid #7C3AED' : '1px solid #CBD5E1',
+                      background: quickLoanForm.collection_mode === 'LUMP_SUM_END' ? '#EDE9FE' : '#FFFFFF',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.8rem', color: quickLoanForm.collection_mode === 'LUMP_SUM_END' ? '#6D28D9' : 'var(--text-primary)', display: 'block' }}>
+                      Get Amount at End
+                    </strong>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                      Full repayment on final maturity day
+                    </span>
                   </div>
                 </div>
               </div>

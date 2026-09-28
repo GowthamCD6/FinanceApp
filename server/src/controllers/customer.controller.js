@@ -124,6 +124,21 @@ async function getMonthlyCustomers(req, res) {
   }
 }
 
+async function updateCollectionMode(req, res) {
+  try {
+    const { collectionMode, loanId } = req.body;
+    const result = await customerService.updateCollectionMode(req.params.id, collectionMode, loanId);
+    return res.json({
+      success: true,
+      message: `Collection mode updated to ${result.collectionMode === 'LUMP_SUM_END' ? 'Lump Sum at End' : 'Normal Installments'}`,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Update collection mode error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   createCustomer,
   getCustomers,
@@ -134,4 +149,5 @@ module.exports = {
   getWeeklyCustomers,
   getShopkeepers,
   getMonthlyCustomers,
+  updateCollectionMode,
 };

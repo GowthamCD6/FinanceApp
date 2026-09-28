@@ -95,10 +95,12 @@ async function createLoanApplication(data, userId) {
   );
   const policyId = policyRows?.[0]?.id || null;
 
+  const collectionMode = data.collection_mode || data.collectionMode || (customer[0].collection_mode || 'NORMAL');
+
   const result = await query(
     `INSERT INTO loans 
-     (organization_id, branch_id, loan_number, customer_id, product_id, policy_id, parent_loan_id, principal_amount, contracted_income_amount, interest_rate, total_repayment_amount, total_installments, repayment_frequency, status, application_date, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_DATE, ?)`,
+     (organization_id, branch_id, loan_number, customer_id, product_id, policy_id, parent_loan_id, principal_amount, contracted_income_amount, interest_rate, total_repayment_amount, total_installments, repayment_frequency, collection_mode, status, application_date, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_DATE, ?)`,
     [
       effectiveOrgId,
       effectiveBranchId,
@@ -113,11 +115,15 @@ async function createLoanApplication(data, userId) {
       totalRepaymentAmount,
       numInstallments,
       frequency,
+      collectionMode,
       notes || null,
     ]
   );
 
   const loanId = result.insertId;
+
+  // Sync collection mode with customer
+  await query(`UPDATE customers SET collection_mode = ?, updated_at = NOW() WHERE id = ?`, [collectionMode, customerId]);
 
   // Record initial status history & event
   await query(
@@ -138,11 +144,40 @@ async function createLoanApplication(data, userId) {
         income: contractedIncome,
         installments: numInstallments,
         frequency,
+        collectionMode,
         fundingSource: data.funding_source || data.fundingSource || 'VAULT',
       }),
       userId || 1,
     ]
   );
+
+  // Auto-approve and disburse if requested or active
+  if (data.autoDisburse || data.status === 'ACTIVE') {
+    try {
+      await approveLoan(loanId, userId || 1);
+      const disbRes = await disburseLoan({
+        loanId,
+        fundAccountId: data.fundAccountId || 1,
+        userId: userId || 1,
+        fundingSource: data.funding_source || 'VAULT',
+      });
+      return {
+        id: loanId,
+        loanNumber,
+        customerId,
+        principalAmount: parsedPrincipal,
+        contractedIncomeAmount: contractedIncome,
+        totalRepaymentAmount,
+        totalInstallments: numInstallments,
+        frequency,
+        collectionMode,
+        status: 'ACTIVE',
+        disbursedAmount: disbRes.disbursedAmount,
+      };
+    } catch (e) {
+      console.warn('Auto-disbursement notice:', e.message);
+    }
+  }
 
   return {
     id: loanId,
@@ -153,6 +188,7 @@ async function createLoanApplication(data, userId) {
     totalRepaymentAmount,
     totalInstallments: numInstallments,
     frequency,
+    collectionMode,
     status: 'PENDING',
   };
 }
@@ -543,6 +579,216 @@ async function createRepeatLoan({ customerId, requestedAmount = 15000, notes, us
   );
 }
 
+/**
+ * Update loan collection mode (NORMAL vs LUMP_SUM_END)
+ */
+async function updateLoanCollectionMode(loanId, collectionMode) {
+  const mode = collectionMode === 'LUMP_SUM_END' ? 'LUMP_SUM_END' : 'NORMAL';
+  await query(`UPDATE loans SET collection_mode = ?, updated_at = NOW() WHERE id = ?`, [mode, loanId]);
+
+  // Sync with customer
+  const loans = await query(`SELECT customer_id FROM loans WHERE id = ? LIMIT 1`, [loanId]);
+  if (loans.length > 0) {
+    await query(`UPDATE customers SET collection_mode = ?, updated_at = NOW() WHERE id = ?`, [mode, loans[0].customer_id]);
+  }
+
+  return { success: true, loanId, collectionMode: mode };
+}
+
+/**
+ * Update loan terms (principal, interest, tenure, collection mode, dates, status, notes)
+ */
+async function updateLoan(loanId, data, userId) {
+  const rows = await query(`SELECT * FROM loans WHERE id = ? LIMIT 1`, [loanId]);
+  if (!rows || rows.length === 0) throw new Error('Loan not found.');
+  const loan = rows[0];
+
+  const principal = data.principalAmount !== undefined ? parseFloat(data.principalAmount) : (data.principal !== undefined ? parseFloat(data.principal) : parseFloat(loan.principal_amount));
+  const interestRate = data.interestRate !== undefined ? parseFloat(data.interestRate) : (data.interest_rate !== undefined ? parseFloat(data.interest_rate) : parseFloat(loan.interest_rate));
+  const totalInstallments = data.totalInstallments !== undefined ? parseInt(data.totalInstallments, 10) : (data.total_installments !== undefined ? parseInt(data.total_installments, 10) : (data.tenure !== undefined ? parseInt(data.tenure, 10) : parseInt(loan.total_installments, 10)));
+  const frequency = data.frequency || data.repayment_frequency || loan.repayment_frequency;
+  const collectionMode = data.collectionMode || data.collection_mode || loan.collection_mode || 'NORMAL';
+  const notes = data.notes !== undefined ? data.notes : loan.notes;
+  const disbursementDateStr = data.disbursementDate || data.disbursement_date || data.startDate || data.start_date || loan.disbursement_date || loan.application_date;
+
+  const contractedIncome = Math.round(((principal * interestRate) / 100) * 100) / 100;
+  const totalRepaymentAmount = principal + contractedIncome;
+
+  const daysInterval = frequency === 'DAILY' ? 1 : (frequency === 'MONTHLY' ? 30 : 7);
+  let maturityDate = loan.maturity_date;
+  if (disbursementDateStr) {
+    const d = new Date(disbursementDateStr);
+    d.setDate(d.getDate() + totalInstallments * daysInterval);
+    maturityDate = d.toISOString().slice(0, 10);
+  }
+
+  // Update loans table
+  await query(
+    `UPDATE loans SET
+       principal_amount = ?,
+       contracted_income_amount = ?,
+       interest_rate = ?,
+       total_repayment_amount = ?,
+       total_installments = ?,
+       repayment_frequency = ?,
+       collection_mode = ?,
+       disbursement_date = ?,
+       maturity_date = ?,
+       notes = ?,
+       updated_at = NOW()
+     WHERE id = ?`,
+    [
+      principal,
+      contractedIncome,
+      interestRate,
+      totalRepaymentAmount,
+      totalInstallments,
+      frequency,
+      collectionMode,
+      disbursementDateStr ? String(disbursementDateStr).slice(0, 10) : null,
+      maturityDate,
+      notes,
+      loanId,
+    ]
+  );
+
+  // Sync collection mode with customer
+  await query(`UPDATE customers SET collection_mode = ?, updated_at = NOW() WHERE id = ?`, [collectionMode, loan.customer_id]);
+
+  // Update or regenerate installment schedule
+  const existingInstallments = await query(`SELECT * FROM loan_installments WHERE loan_id = ? ORDER BY installment_number ASC`, [loanId]);
+  const paidCount = existingInstallments.filter(i => i.status === 'PAID' || parseFloat(i.paid_amount || 0) >= parseFloat(i.scheduled_amount || 0)).length;
+  const totalPaidSoFar = existingInstallments.reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0);
+
+  if (paidCount === 0 && existingInstallments.length > 0) {
+    // No payments collected yet — regenerate clean installments
+    await query(`DELETE FROM loan_installments WHERE loan_id = ?`, [loanId]);
+    const principalPerInst = Math.floor((principal / totalInstallments) * 100) / 100;
+    const incomePerInst = Math.floor((contractedIncome / totalInstallments) * 100) / 100;
+    let principalRemainder = Math.round((principal - principalPerInst * totalInstallments) * 100) / 100;
+    let incomeRemainder = Math.round((contractedIncome - incomePerInst * totalInstallments) * 100) / 100;
+
+    const baseDate = disbursementDateStr ? new Date(disbursementDateStr) : new Date();
+
+    for (let i = 1; i <= totalInstallments; i++) {
+      const dueDate = new Date(baseDate);
+      dueDate.setDate(dueDate.getDate() + i * daysInterval);
+
+      const curPrincipal = i === totalInstallments ? principalPerInst + principalRemainder : principalPerInst;
+      const curIncome = i === totalInstallments ? incomePerInst + incomeRemainder : incomePerInst;
+      const scheduledAmount = curPrincipal + curIncome;
+
+      await query(
+        `INSERT INTO loan_installments 
+         (loan_id, installment_number, due_date, scheduled_amount, principal_component, income_component, paid_amount, outstanding_amount, status)
+         VALUES (?, ?, ?, ?, ?, ?, 0.00, ?, 'PENDING')`,
+        [loanId, i, dueDate.toISOString().slice(0, 10), scheduledAmount, curPrincipal, curIncome, scheduledAmount]
+      );
+    }
+  } else if (existingInstallments.length > 0) {
+    // Adjust remaining unpaid installments
+    const remainingRepayable = Math.max(0, totalRepaymentAmount - totalPaidSoFar);
+    const unpaidInstallments = existingInstallments.filter(i => i.status !== 'PAID');
+    if (unpaidInstallments.length > 0) {
+      const perUnpaid = Math.round((remainingRepayable / unpaidInstallments.length) * 100) / 100;
+      for (let i = 0; i < unpaidInstallments.length; i++) {
+        const inst = unpaidInstallments[i];
+        const sched = i === unpaidInstallments.length - 1 ? (remainingRepayable - perUnpaid * (unpaidInstallments.length - 1)) : perUnpaid;
+        await query(
+          `UPDATE loan_installments SET scheduled_amount = ?, outstanding_amount = ? WHERE id = ?`,
+          [sched, sched, inst.id]
+        );
+      }
+    }
+  }
+
+  // Audit log
+  await query(
+    `INSERT INTO loan_events (loan_id, event_type, payload, performed_by)
+     VALUES (?, 'LOAN_UPDATED', ?, ?)`,
+    [
+      loanId,
+      JSON.stringify({
+        principal,
+        interestRate,
+        totalInstallments,
+        collectionMode,
+        disbursementDate: disbursementDateStr,
+        updatedBy: userId || 1,
+      }),
+      userId || 1,
+    ]
+  );
+
+  return await getLoanById(loanId);
+}
+
+/**
+ * Delete a loan and all its associated artifacts (installments, payments, events, logs)
+ */
+async function deleteLoan(loanId, userId) {
+  return await withTransaction(async (conn) => {
+    const [rows] = await conn.query(`SELECT * FROM loans WHERE id = ? FOR UPDATE`, [loanId]);
+    if (rows.length === 0) throw new Error('Loan not found.');
+    const loan = rows[0];
+
+    // 1. Unlink parent_loan_id from any child loans
+    await conn.query(`UPDATE loans SET parent_loan_id = NULL WHERE parent_loan_id = ?`, [loanId]);
+
+    // 2. Delete payment allocations
+    await conn.query(
+      `DELETE FROM payment_allocations 
+       WHERE installment_id IN (SELECT id FROM loan_installments WHERE loan_id = ?)
+          OR payment_id IN (SELECT id FROM payments WHERE loan_id = ?)`,
+      [loanId, loanId]
+    );
+
+    // 3. Delete payments
+    await conn.query(`DELETE FROM payments WHERE loan_id = ?`, [loanId]);
+
+    // 4. Delete loan installments
+    await conn.query(`DELETE FROM loan_installments WHERE loan_id = ?`, [loanId]);
+
+    // 5. Delete loan events & status history
+    await conn.query(`DELETE FROM loan_events WHERE loan_id = ?`, [loanId]);
+    await conn.query(`DELETE FROM loan_status_history WHERE loan_id = ?`, [loanId]);
+
+    // 6. Delete collection visits
+    await conn.query(`DELETE FROM collection_visits WHERE loan_id = ?`, [loanId]);
+
+    // 7. Delete journal entries / lines for this loan if any
+    const [jeRows] = await conn.query(`SELECT id FROM journal_entries WHERE reference_type = 'LOAN_DISBURSEMENT' AND reference_id = ?`, [loanId]);
+    for (const je of jeRows) {
+      await conn.query(`DELETE FROM journal_entry_lines WHERE journal_entry_id = ?`, [je.id]);
+      await conn.query(`DELETE FROM journal_entries WHERE id = ?`, [je.id]);
+    }
+
+    // 8. Delete fund transactions for this loan
+    await conn.query(`DELETE FROM fund_transactions WHERE reference_type = 'LOAN' AND reference_id = ?`, [loanId]);
+
+    // 9. Delete loan
+    await conn.query(`DELETE FROM loans WHERE id = ?`, [loanId]);
+
+    // 10. Audit log
+    try {
+      await conn.query(
+        `INSERT INTO audit_logs (organization_id, user_id, action, entity_type, entity_id, new_values, reason)
+         VALUES (?, ?, 'LOAN_DELETE', 'LOAN', ?, ?, 'Loan deleted by administrator')`,
+        [loan.organization_id || 1, userId || 1, loanId, JSON.stringify({ loanNumber: loan.loan_number, customerId: loan.customer_id })]
+      );
+    } catch (err) {
+      console.warn('Audit log write error on delete loan:', err.message);
+    }
+
+    return {
+      success: true,
+      message: `Loan ${loan.loan_number} successfully deleted.`,
+      loanId,
+      customerId: loan.customer_id,
+    };
+  });
+}
+
 module.exports = {
   createLoanApplication,
   createRepeatLoan,
@@ -550,5 +796,9 @@ module.exports = {
   disburseLoan,
   getLoans,
   getLoanById,
+  updateLoanCollectionMode,
+  updateLoan,
+  deleteLoan,
 };
+
 

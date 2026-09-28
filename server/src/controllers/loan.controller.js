@@ -107,6 +107,49 @@ async function createRepeatLoan(req, res) {
   }
 }
 
+async function updateCollectionMode(req, res) {
+  try {
+    const { collectionMode } = req.body;
+    const result = await loanService.updateLoanCollectionMode(req.params.id, collectionMode);
+    return res.json({
+      success: true,
+      message: `Loan collection mode updated to ${result.collectionMode === 'LUMP_SUM_END' ? 'Lump Sum at End' : 'Normal Installments'}`,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Update loan collection mode error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function updateLoan(req, res) {
+  try {
+    const result = await loanService.updateLoan(req.params.id, req.body, req.user?.id || 1);
+    return res.json({
+      success: true,
+      message: 'Loan updated successfully.',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Update loan error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function deleteLoan(req, res) {
+  try {
+    const result = await loanService.deleteLoan(req.params.id, req.user?.id || 1);
+    return res.json({
+      success: true,
+      message: result.message || 'Loan deleted successfully.',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Delete loan error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   createLoan,
   createRepeatLoan,
@@ -115,5 +158,10 @@ module.exports = {
   getLoans,
   getLoanById,
   getProducts,
+  updateCollectionMode,
+  updateLoan,
+  deleteLoan,
 };
+
+
 

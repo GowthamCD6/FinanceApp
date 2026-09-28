@@ -35,6 +35,8 @@ router.get('/', requirePermission('CUSTOMER_READ'), customerController.getCustom
 router.get('/:id', requirePermission('CUSTOMER_READ'), customerController.getCustomerById);
 // Update customer status (ACTIVE, INACTIVE, BLOCKED, UNDER_REVIEW)
 router.patch('/:id/status', requirePermission('CUSTOMER_UPDATE'), customerController.updateCustomerStatus);
+// Update customer / loan collection mode (NORMAL vs LUMP_SUM_END)
+router.patch('/:id/collection-mode', requirePermission('CUSTOMER_UPDATE'), customerController.updateCollectionMode);
 
 module.exports = router;
 
