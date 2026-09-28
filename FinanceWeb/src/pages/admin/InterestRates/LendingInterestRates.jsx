@@ -32,7 +32,7 @@ const ALL_WEEKDAYS = [
 ];
 
 export const LendingInterestRates = () => {
-  const { activeOrg } = useOrg();
+  const { activeOrg, refreshLendingConfig } = useOrg();
   const orgId = activeOrg?.id || 1;
 
   const [loading, setLoading] = useState(true);
@@ -172,6 +172,9 @@ export const LendingInterestRates = () => {
     setSaving(true);
     try {
       await api.updateLendingConfig(orgId, config);
+      if (typeof refreshLendingConfig === 'function') {
+        await refreshLendingConfig();
+      }
       showToast('Lending schemes and collection schedules saved successfully!');
     } catch (err) {
       showToast('Failed to save configuration.');

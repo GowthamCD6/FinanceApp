@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useOrg } from '../../context/OrgContext';
-import { api } from '../../services/api';
-import { StatCard } from '../../components/common/StatCard';
-import { StatusBadge } from '../../components/common/Badge';
+import { useAuth } from '../../../context/AuthContext';
+import { useOrg } from '../../../context/OrgContext';
+import { api } from '../../../services/api';
+import { StatCard } from '../../../components/common/StatCard';
+import { StatusBadge } from '../../../components/common/Badge';
 import {
   Building,
   MapPin,

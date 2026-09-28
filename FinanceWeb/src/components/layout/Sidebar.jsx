@@ -18,6 +18,7 @@ import {
   Bell,
   Store,
   Calendar,
+  CalendarDays,
   Clock,
   UserPlus,
   CreditCard,
@@ -54,6 +55,7 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     activeBranchId,
     setActiveBranchId,
     activeBranch,
+    lendingConfig,
   } = useOrg();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [governanceOpen, setGovernanceOpen] = useState(true);
@@ -149,6 +151,25 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     }
   };
 
+    // Dynamic scheme checks from database lending config
+  const isDailyEnabled =
+    lendingConfig?.daily_loan_enabled !== false &&
+    lendingConfig?.daily_loan_enabled !== 0 &&
+    lendingConfig?.daily_loan_enabled !== '0' &&
+    lendingConfig?.daily_loan_enabled !== 'false';
+
+  const isWeeklyEnabled =
+    lendingConfig?.weekly_loan_enabled !== false &&
+    lendingConfig?.weekly_loan_enabled !== 0 &&
+    lendingConfig?.weekly_loan_enabled !== '0' &&
+    lendingConfig?.weekly_loan_enabled !== 'false';
+
+  const isMonthlyEnabled =
+    lendingConfig?.monthly_loan_enabled !== false &&
+    lendingConfig?.monthly_loan_enabled !== 0 &&
+    lendingConfig?.monthly_loan_enabled !== '0' &&
+    lendingConfig?.monthly_loan_enabled !== 'false';
+
   const roleMenus = {
     superadmin: [
       { label: "Overview", section: true },
@@ -203,32 +224,48 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     admin: [
       { label: "Overview", section: true },
       { path: `${orgPrefix}/dashboard`, label: "Admin Dashboard", icon: LayoutDashboard },
-      { label: "Customer Ledger", section: true },
+
+      { label: "Customer Ledgers", section: true },
+      ...(isDailyEnabled
+        ? [
+            {
+              path: `${orgPrefix}/shopkeepers`,
+              label: "Shopkeeper Ledger",
+              icon: Store,
+            },
+          ]
+        : []),
+      ...(isWeeklyEnabled
+        ? [
+            {
+              path: `${orgPrefix}/weekly-customers`,
+              label: "Weekly Customers",
+              icon: Calendar,
+            },
+          ]
+        : []),
+      ...(isMonthlyEnabled
+        ? [
+            {
+              path: `${orgPrefix}/monthly-customers`,
+              label: "Monthly Customers",
+              icon: Clock,
+            },
+          ]
+        : []),
+
+      { label: "Collections & Recovery", section: true },
       {
-        path: `${orgPrefix}/shopkeepers`,
-        label: "Shopkeeper Ledger",
-        icon: Store,
+        path: `${orgPrefix}/calendar`,
+        label: "Collection Calendar",
+        icon: CalendarDays,
       },
       {
-        path: `${orgPrefix}/weekly-customers`,
-        label: "Weekly Customers",
-        icon: Calendar,
+        path: `${orgPrefix}/reports`,
+        label: "Reports & Recovery",
+        icon: Receipt,
       },
-      {
-        path: `${orgPrefix}/monthly-customers`,
-        label: "Monthly Customers",
-        icon: Clock,
-      },
-      {
-        path: `${orgPrefix}/users`,
-        label: "Manage Borrowers",
-        icon: Users,
-      },
-      {
-        path: `${orgPrefix}/users/add`,
-        label: "Onboard Borrower",
-        icon: UserPlus,
-      },
+
       { label: "Loan Operations", section: true },
       {
         path: `${orgPrefix}/loans`,
@@ -240,11 +277,19 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         label: "Lending Rates & Tenures",
         icon: Percent,
       },
+
+      { label: "Borrower Management", section: true },
       {
-        path: `${orgPrefix}/reports`,
-        label: "Reports & Recovery",
-        icon: Receipt,
+        path: `${orgPrefix}/users`,
+        label: "Manage Borrowers",
+        icon: Users,
       },
+      {
+        path: `${orgPrefix}/users/add`,
+        label: "Onboard Borrower",
+        icon: UserPlus,
+      },
+
       { label: "Administration", section: true },
       {
         path: `${orgPrefix}/branches`,
@@ -265,22 +310,56 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     branch_admin: [
       { label: "Branch Overview", section: true },
       { path: `${orgPrefix}/dashboard`, label: "Branch Dashboard", icon: LayoutDashboard },
-      { label: "Customer Ledger", section: true },
+
+      { label: "Customer Ledgers", section: true },
+      ...(isDailyEnabled
+        ? [
+            {
+              path: `${orgPrefix}/shopkeepers`,
+              label: "Shopkeeper Ledger",
+              icon: Store,
+            },
+          ]
+        : []),
+      ...(isWeeklyEnabled
+        ? [
+            {
+              path: `${orgPrefix}/weekly-customers`,
+              label: "Weekly Customers",
+              icon: Calendar,
+            },
+          ]
+        : []),
+      ...(isMonthlyEnabled
+        ? [
+            {
+              path: `${orgPrefix}/monthly-customers`,
+              label: "Monthly Customers",
+              icon: Clock,
+            },
+          ]
+        : []),
+
+      { label: "Collections & Recovery", section: true },
       {
-        path: `${orgPrefix}/shopkeepers`,
-        label: "Shopkeeper Ledger",
-        icon: Store,
+        path: `${orgPrefix}/calendar`,
+        label: "Collection Calendar",
+        icon: CalendarDays,
       },
       {
-        path: `${orgPrefix}/weekly-customers`,
-        label: "Weekly Customers",
-        icon: Calendar,
+        path: `${orgPrefix}/reports`,
+        label: "Reports & Recovery",
+        icon: Receipt,
       },
+
+      { label: "Loan Operations", section: true },
       {
-        path: `${orgPrefix}/monthly-customers`,
-        label: "Monthly Customers",
-        icon: Clock,
+        path: `${orgPrefix}/loans`,
+        label: "Branch Loans",
+        icon: CreditCard,
       },
+
+      { label: "Borrower Management", section: true },
       {
         path: `${orgPrefix}/users`,
         label: "Branch Borrowers",
@@ -291,18 +370,8 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         label: "Onboard Borrower",
         icon: UserPlus,
       },
-      { label: "Loan Operations", section: true },
-      {
-        path: `${orgPrefix}/loans`,
-        label: "Branch Loans",
-        icon: CreditCard,
-      },
-      {
-        path: `${orgPrefix}/reports`,
-        label: "Reports & Recovery",
-        icon: Receipt,
-      },
-      { label: "Branch Team", section: true },
+
+      { label: "Branch Administration", section: true },
       {
         path: `${orgPrefix}/staff`,
         label: "Field Staff & Collectors",
@@ -317,16 +386,53 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
     field_agent: [
       { label: "Field Operations", section: true },
       { path: "/staff/dashboard", label: "Route Staff Portal", icon: LayoutDashboard },
-      { label: "Daily Collections", section: true },
-      { path: "/admin/shopkeepers", label: "Shopkeeper Collections", icon: Store },
-      { path: "/admin/weekly-customers", label: "Weekly Collections", icon: Calendar },
-      { label: "Ledger & Reports", section: true },
-      { path: "/admin/reports", label: "Collection Reports", icon: Receipt },
+
+      { label: "Customer Collections", section: true },
+      ...(isDailyEnabled
+        ? [
+            {
+              path: "/admin/shopkeepers",
+              label: "Shopkeeper Collections",
+              icon: Store,
+            },
+          ]
+        : []),
+      ...(isWeeklyEnabled
+        ? [
+            {
+              path: "/admin/weekly-customers",
+              label: "Weekly Collections",
+              icon: Calendar,
+            },
+          ]
+        : []),
+
+      { label: "Collections & Recovery", section: true },
+      {
+        path: "/admin/calendar",
+        label: "Collection Calendar",
+        icon: CalendarDays,
+      },
+      {
+        path: "/admin/reports",
+        label: "Collection Reports",
+        icon: Receipt,
+      },
     ],
   };
 
-  const menuItems =
+  const rawMenuItems =
     roleMenus[effectiveRole?.toLowerCase()] || roleMenus.superadmin || [];
+
+  // Filter out any empty sections that have no child items
+  const menuItems = rawMenuItems.filter((item, idx, arr) => {
+    if (!item.section) return true;
+    for (let i = idx + 1; i < arr.length; i++) {
+      if (arr[i].section) return false;
+      return true;
+    }
+    return false;
+  });
 
   return (
     <div className="layout-root">

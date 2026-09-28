@@ -37,9 +37,10 @@ import { AdminReports } from './pages/Admin/Reports/Reports';
 import { AdminProfile } from './pages/Admin/Profile/Profile';
 import { LendingInterestRates } from './pages/Admin/InterestRates/LendingInterestRates';
 import { ManageBranches } from './pages/Admin/Branch/ManageBranches';
+import { CollectionCalendar } from './pages/Admin/Calendar/CollectionCalendar';
 
 // Dedicated Branch Officer / Branch Admin Portal Pages
-import { BranchAdminDashboard } from './pages/BranchAdmin/BranchAdminDashboard';
+import { BranchAdminDashboard } from './pages/Admin/Dashboard/BranchAdminDashboard';
 
 export default function App() {
   return (
@@ -104,6 +105,7 @@ export default function App() {
                     <Route path="staff" element={<ManageStaff />} />
                     <Route path="users/add" element={<AddUser />} />
                     <Route path="loans" element={<AdminLoans />} />
+                    <Route path="calendar" element={<CollectionCalendar />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="profile" element={<AdminProfile />} />
 
@@ -135,6 +137,7 @@ export default function App() {
                     <Route path="staff" element={<ManageStaff />} />
                     <Route path="users/add" element={<AddUser />} />
                     <Route path="loans" element={<AdminLoans />} />
+                    <Route path="calendar" element={<CollectionCalendar />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="profile" element={<AdminProfile />} />
 
@@ -165,6 +168,7 @@ export default function App() {
                   <Route path="/branches" element={<Navigate to="/admin/branches" replace />} />
                   <Route path="/users/add" element={<Navigate to="/admin/users/add" replace />} />
                   <Route path="/loans" element={<Navigate to="/admin/loans" replace />} />
+                  <Route path="/calendar" element={<Navigate to="/admin/calendar" replace />} />
                   <Route path="/interest-rates" element={<Navigate to="/admin/interest-rates" replace />} />
                   <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
                   <Route path="/profile" element={<Navigate to="/admin/profile" replace />} />

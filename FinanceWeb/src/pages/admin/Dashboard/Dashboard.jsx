@@ -26,11 +26,19 @@ import {
   FileText,
   X,
   RefreshCw,
+  Search,
+  Send,
+  RotateCcw,
+  Sparkles,
+  Phone,
+  ShieldCheck,
+  AlertCircle,
 } from 'lucide-react';
 
 import { useOrg } from '../../../context/OrgContext';
 import { useAuth } from '../../../context/AuthContext';
-import { BranchAdminDashboard } from '../../BranchAdmin/BranchAdminDashboard';
+import { BranchAdminDashboard } from './BranchAdminDashboard';
+export { BranchAdminDashboard };
 import './Dashboard.css';
 
 /**
@@ -402,6 +410,30 @@ export const AdminDashboard = () => {
 
   const [actionAlert, setActionAlert] = useState(null);
 
+  // Profit Distribution & Dispatch Modal States
+  const [distributionModalOpen, setDistributionModalOpen] = useState(false);
+  const [distributionType, setDistributionType] = useState('REALIZED_PROFIT'); // 'REALIZED_PROFIT' | 'CONTRACTED_PROFIT'
+  const [distSearch, setDistSearch] = useState('');
+  const [distSchemeFilter, setDistSchemeFilter] = useState('ALL'); // 'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY'
+
+  const handleOpenDispatch = (initialAmount) => {
+    setDistributionModalOpen(false);
+    setProfitActionMode('WITHDRAW');
+    const availablePool = fundSummary.availableProfitPool || profitSummary.realizedNetProfit || 0;
+    setProfitAmount(initialAmount ? String(initialAmount) : (availablePool > 0 ? String(availablePool) : ''));
+    setProfitDescription('Net profit payout distribution to admin/partner');
+    setProfitModalOpen(true);
+  };
+
+  const handleOpenRenew = (initialAmount) => {
+    setDistributionModalOpen(false);
+    setProfitActionMode('REINVEST');
+    const availablePool = fundSummary.availableProfitPool || profitSummary.realizedNetProfit || 0;
+    setProfitAmount(initialAmount ? String(initialAmount) : (availablePool > 0 ? String(availablePool) : ''));
+    setProfitDescription('Renew net profit into circulating working capital & vault');
+    setProfitModalOpen(true);
+  };
+
   const getOrgPath = (subpath) => {
     if (activeOrg?.id) {
       return `/org/${activeOrg.id}/${subpath}`;
@@ -565,7 +597,22 @@ export const AdminDashboard = () => {
     recoveryProgressPercent: 0,
     totalLoansCount: 0,
     activeBorrowersCount: 0,
+    userProfitDistributions: [],
   };
+
+  const userDistributions = profitSummary.userProfitDistributions || [];
+  const filteredUsers = userDistributions.filter((u) => {
+    const matchesSearch =
+      !distSearch ||
+      (u.customerName && u.customerName.toLowerCase().includes(distSearch.toLowerCase())) ||
+      (u.customerPhone && u.customerPhone.includes(distSearch)) ||
+      (u.customerCode && u.customerCode.toLowerCase().includes(distSearch.toLowerCase())) ||
+      (u.shopName && u.shopName.toLowerCase().includes(distSearch.toLowerCase())) ||
+      (u.loanNumber && u.loanNumber.toLowerCase().includes(distSearch.toLowerCase()));
+
+    const matchesScheme = distSchemeFilter === 'ALL' || u.scheme === distSchemeFilter;
+    return matchesSearch && matchesScheme;
+  });
 
   const schemeDist = metrics.schemeDistribution || {
     WEEKLY: { count: 0, principal: 0, collected: 0, repayable: 0 },
@@ -649,32 +696,35 @@ export const AdminDashboard = () => {
       {/* 0. BRANCH VAULT & REALIZED PROFIT POOL (CAPITAL FLOAT & ACTIONS)     */}
       {/* ==================================================================== */}
       <div style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        background: 'linear-gradient(135deg, #022c22 0%, #064e3b 45%, #047857 100%)',
         color: '#ffffff',
         borderRadius: '0.85rem',
         padding: '1.25rem 1.5rem',
         marginBottom: '1.5rem',
-        boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+        border: '1px solid rgba(16, 185, 129, 0.35)',
+        boxShadow: '0 8px 24px -4px rgba(5, 150, 105, 0.22), 0 4px 12px rgba(6, 78, 59, 0.18)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '42px',
+              height: '42px',
               borderRadius: '0.65rem',
-              background: 'rgba(59, 130, 246, 0.2)',
-              color: '#60a5fa',
+              background: 'rgba(255, 255, 255, 0.16)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              color: '#a7f3d0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             }}>
               <Wallet size={22} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#ffffff' }}>
                 Branch Central Vault & Profit Pool
               </h2>
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0, fontWeight: 500 }}>
+              <p style={{ fontSize: '0.8rem', color: '#a7f3d0', margin: 0, fontWeight: 500 }}>
                 Live cash float, active circulating capital, and realized lending profits
               </p>
             </div>
@@ -685,17 +735,18 @@ export const AdminDashboard = () => {
               type="button"
               onClick={() => setCapitalModalOpen(true)}
               style={{
-                background: '#2563eb',
-                color: '#ffffff',
+                background: '#ffffff',
+                color: '#047857',
                 border: 'none',
                 borderRadius: '0.5rem',
-                padding: '0.5rem 0.9rem',
-                fontWeight: 700,
+                padding: '0.55rem 0.95rem',
+                fontWeight: 800,
                 fontSize: '0.8rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.4rem',
                 cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
               }}
             >
               <PlusCircle size={15} />
@@ -710,11 +761,11 @@ export const AdminDashboard = () => {
                 setProfitModalOpen(true);
               }}
               style={{
-                background: '#059669',
+                background: 'rgba(255, 255, 255, 0.18)',
                 color: '#ffffff',
-                border: 'none',
+                border: '1px solid rgba(255, 255, 255, 0.35)',
                 borderRadius: '0.5rem',
-                padding: '0.5rem 0.9rem',
+                padding: '0.55rem 0.95rem',
                 fontWeight: 700,
                 fontSize: '0.8rem',
                 display: 'flex',
@@ -732,10 +783,10 @@ export const AdminDashboard = () => {
               onClick={() => setExpenseModalOpen(true)}
               style={{
                 background: 'rgba(255, 255, 255, 0.1)',
-                color: '#e2e8f0',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
                 borderRadius: '0.5rem',
-                padding: '0.5rem 0.9rem',
+                padding: '0.55rem 0.95rem',
                 fontWeight: 600,
                 fontSize: '0.8rem',
                 display: 'flex',
@@ -752,39 +803,59 @@ export const AdminDashboard = () => {
 
         {/* 3 Metric Summary Boxes */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          <div style={{ background: 'rgba(255, 255, 255, 0.06)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.1)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.18)' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 800, color: '#a7f3d0', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
               Available Vault Cash
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#60a5fa' }}>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#ffffff' }}>
               {formatCurrency(fundSummary.availableCash)}
             </div>
-            <div style={{ fontSize: '0.725rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '0.725rem', color: '#d1fae5', marginTop: '0.25rem', opacity: 0.9 }}>
               Ready for immediate loan disbursements
             </div>
           </div>
 
-          <div style={{ background: 'rgba(255, 255, 255, 0.06)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.1)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.18)' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 800, color: '#e9d5ff', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
               Total Net Capital Base
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#a78bfa' }}>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#ffffff' }}>
               {formatCurrency(fundSummary.totalCapital)}
             </div>
-            <div style={{ fontSize: '0.725rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '0.725rem', color: '#d1fae5', marginTop: '0.25rem', opacity: 0.9 }}>
               Injected admin equity + reinvested profits
             </div>
           </div>
 
-          <div style={{ background: 'rgba(255, 255, 255, 0.06)', borderRadius: '0.65rem', padding: '1rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#86efac', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
-              Realized Profit Pool (Available)
+          <div
+            style={{
+              background: 'rgba(255, 255, 255, 0.14)',
+              borderRadius: '0.65rem',
+              padding: '1rem',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            className="vault-profit-interactive"
+            onClick={() => {
+              setDistributionType('REALIZED_PROFIT');
+              setDistributionModalOpen(true);
+            }}
+            title="Click to view user profit distribution & dispatch/renew"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.725rem', fontWeight: 800, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Realized Profit Pool (Available)
+              </div>
+              <span style={{ fontSize: '0.68rem', color: '#047857', background: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                Dispatch / Renew <ArrowRight size={11} />
+              </span>
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#4ade80' }}>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#6ee7b7' }}>
               {formatCurrency(fundSummary.availableProfitPool)}
             </div>
-            <div style={{ fontSize: '0.725rem', color: '#94a3b8', marginTop: '0.25rem' }}>
-              Collected interest profit after expenses
+            <div style={{ fontSize: '0.725rem', color: '#d1fae5', marginTop: '0.25rem', opacity: 0.9 }}>
+              Collected interest profit after expenses (Click to view breakdown)
             </div>
           </div>
         </div>
@@ -825,15 +896,28 @@ export const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Card 2: Contracted Interest (Profit Amount) */}
-          <div className="cec-stat-box">
+          {/* Card 2: Contracted Interest (Profit Amount) - Interactive */}
+          <div
+            className="cec-stat-box cec-stat-box-interactive"
+            onClick={() => {
+              setDistributionType('CONTRACTED_PROFIT');
+              setDistributionModalOpen(true);
+            }}
+            title="Click to view user yield distribution & holding amounts"
+          >
             <div className="cec-sb-top">
               <span className="cec-sb-label">CONTRACTED INTEREST (PROFIT)</span>
               <Percent size={17} color="#7c3aed" />
             </div>
-            <div className="cec-sb-val">{formatCurrency(profitSummary.totalContractedIncome)}</div>
+            <div className="cec-sb-val" style={{ color: '#7c3aed' }}>
+              {formatCurrency(profitSummary.totalContractedIncome)}
+            </div>
             <div className="cec-sb-desc">
               Total interest scheduled to be earned ({profitSummary.projectedRoiPercent}% yield)
+            </div>
+            <div className="cec-click-hint">
+              <span>View User Distribution</span>
+              <ArrowRight size={13} />
             </div>
           </div>
 
@@ -849,15 +933,28 @@ export const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Card 4: Realized Net Profit */}
-          <div className="cec-stat-box">
+          {/* Card 4: Realized Net Profit - Interactive */}
+          <div
+            className="cec-stat-box cec-stat-box-interactive cec-box-profit"
+            onClick={() => {
+              setDistributionType('REALIZED_PROFIT');
+              setDistributionModalOpen(true);
+            }}
+            title="Click to view user profit distribution, holding amounts & dispatch/renew"
+          >
             <div className="cec-sb-top">
               <span className="cec-sb-label">REALIZED NET PROFIT (IN-HAND)</span>
               <CheckCircle2 size={17} color="#059669" />
             </div>
-            <div className="cec-sb-val">{formatCurrency(profitSummary.realizedNetProfit)}</div>
+            <div className="cec-sb-val" style={{ color: '#059669' }}>
+              {formatCurrency(profitSummary.realizedNetProfit)}
+            </div>
             <div className="cec-sb-desc">
               Pure interest earnings collected in hand (+{profitSummary.realizedRoiPercent}% ROI)
+            </div>
+            <div className="cec-click-hint cec-hint-profit">
+              <span>View Distribution & Dispatch</span>
+              <ArrowRight size={13} />
             </div>
           </div>
         </div>
@@ -1741,6 +1838,376 @@ export const AdminDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 4: USER PROFIT & YIELD DISTRIBUTION / DISPATCH / RENEW MODAL   */}
+      {/* ==================================================================== */}
+      {distributionModalOpen && (
+        <div
+          className="dist-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDistributionModalOpen(false);
+          }}
+        >
+          <div className="dist-modal-card">
+            {/* Modal Header */}
+            <div className="dist-modal-header">
+              <div className="dist-modal-header-left">
+                <div
+                  className="dist-modal-icon"
+                  style={{
+                    background: distributionType === 'REALIZED_PROFIT' ? '#ecfdf5' : '#f5f3ff',
+                    color: distributionType === 'REALIZED_PROFIT' ? '#059669' : '#7c3aed',
+                  }}
+                >
+                  {distributionType === 'REALIZED_PROFIT' ? (
+                    <CheckCircle2 size={24} />
+                  ) : (
+                    <Percent size={24} />
+                  )}
+                </div>
+                <div>
+                  <h3 className="dist-modal-title">
+                    {distributionType === 'REALIZED_PROFIT'
+                      ? 'Realized Net Profit Distribution & Dispatch Engine'
+                      : 'Contracted Interest Profit & User Yield Distribution'}
+                  </h3>
+                  <p className="dist-modal-subtitle">
+                    {distributionType === 'REALIZED_PROFIT'
+                      ? 'Breakdown of net interest profits collected per borrower, net capital held by users, and profit dispatch/renewal'
+                      : 'Scheduled contract profit yield per borrower, net principal lent, and total active balance held in market'}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDistributionType((prev) =>
+                      prev === 'REALIZED_PROFIT' ? 'CONTRACTED_PROFIT' : 'REALIZED_PROFIT'
+                    )
+                  }
+                  style={{
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: '#334155',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {distributionType === 'REALIZED_PROFIT'
+                    ? 'Switch to Contracted Yield →'
+                    : 'Switch to Realized Profit →'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDistributionModalOpen(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                  aria-label="Close modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="dist-modal-body">
+              {/* Summary KPIs */}
+              <div className="dist-summary-grid">
+                <div
+                  className={`dist-summary-card ${
+                    distributionType === 'REALIZED_PROFIT' ? 'accent-green' : 'accent-purple'
+                  }`}
+                >
+                  <div className="dist-sc-label">
+                    {distributionType === 'REALIZED_PROFIT'
+                      ? 'Total Realized Net Profit'
+                      : 'Total Contracted Profit'}
+                  </div>
+                  <div
+                    className="dist-sc-value"
+                    style={{
+                      color: distributionType === 'REALIZED_PROFIT' ? '#059669' : '#7c3aed',
+                    }}
+                  >
+                    {distributionType === 'REALIZED_PROFIT'
+                      ? formatCurrency(profitSummary.realizedNetProfit)
+                      : formatCurrency(profitSummary.totalContractedIncome)}
+                  </div>
+                  <div className="dist-sc-sub">
+                    {distributionType === 'REALIZED_PROFIT'
+                      ? `Available Pool: ${formatCurrency(fundSummary.availableProfitPool)}`
+                      : `Average Scheduled Yield: ${profitSummary.projectedRoiPercent}%`}
+                  </div>
+                </div>
+
+                <div className="dist-summary-card">
+                  <div className="dist-sc-label">Total Capital Held by Users</div>
+                  <div className="dist-sc-value" style={{ color: '#b45309' }}>
+                    {formatCurrency(profitSummary.totalOutstandingBalance)}
+                  </div>
+                  <div className="dist-sc-sub">
+                    Principal at Risk: {formatCurrency(profitSummary.outstandingPrincipalInMarket)}
+                  </div>
+                </div>
+
+                <div className="dist-summary-card">
+                  <div className="dist-sc-label">Total Net Principal Lent</div>
+                  <div className="dist-sc-value" style={{ color: '#2563eb' }}>
+                    {formatCurrency(profitSummary.totalCapitalInvested)}
+                  </div>
+                  <div className="dist-sc-sub">
+                    Principal Recovered: {formatCurrency(profitSummary.totalPrincipalRecovered)}
+                  </div>
+                </div>
+
+                <div className="dist-summary-card">
+                  <div className="dist-sc-label">Active Borrowers Holding</div>
+                  <div className="dist-sc-value">
+                    {profitSummary.activeBorrowersCount || filteredUsers.length} Users
+                  </div>
+                  <div className="dist-sc-sub">
+                    Across {profitSummary.totalLoansCount || filteredUsers.length} active lending contracts
+                  </div>
+                </div>
+              </div>
+
+              {/* Dispatch & Renewal Action Banner */}
+              <div
+                className={`dist-action-banner ${
+                  distributionType === 'CONTRACTED_PROFIT' ? 'banner-purple' : ''
+                }`}
+              >
+                <div className="dist-ab-left">
+                  <div className="dist-ab-title">
+                    <Sparkles size={18} />
+                    <span>
+                      {distributionType === 'REALIZED_PROFIT'
+                        ? 'Net Profit Dispatch & Central Vault Renewal Engine'
+                        : 'Contracted Profit Optimization & Vault Capital Renewal'}
+                    </span>
+                  </div>
+                  <p className="dist-ab-desc">
+                    {distributionType === 'REALIZED_PROFIT'
+                      ? `You have ${formatCurrency(fundSummary.availableProfitPool)} in unallocated realized profits. You can dispatch profits out as admin/partner payouts, or renew/reinvest them directly into the central vault float to fuel new borrower loans.`
+                      : `Total of ${formatCurrency(profitSummary.totalContractedIncome)} is scheduled across active borrowers with ${formatCurrency(profitSummary.realizedNetProfit)} collected in hand so far. You can dispatch collected profits or renew capital lines into vault float.`}
+                  </p>
+                </div>
+                <div className="dist-ab-buttons">
+                  <button
+                    type="button"
+                    className="btn-dist-action btn-dist-dispatch"
+                    onClick={() => handleOpenDispatch(fundSummary.availableProfitPool || profitSummary.realizedNetProfit)}
+                  >
+                    <Send size={15} />
+                    <span>Dispatch Profit (Payout)</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-dist-action btn-dist-renew"
+                    onClick={() => handleOpenRenew(fundSummary.availableProfitPool || profitSummary.realizedNetProfit)}
+                  >
+                    <RotateCcw size={15} />
+                    <span>Renew / Reinvest to Vault</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Search & Scheme Filter Bar */}
+              <div className="dist-filter-row">
+                <div className="dist-search-box">
+                  <Search size={16} color="#94a3b8" />
+                  <input
+                    type="text"
+                    value={distSearch}
+                    onChange={(e) => setDistSearch(e.target.value)}
+                    placeholder="Search borrower name, phone, code or shop..."
+                  />
+                  {distSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setDistSearch('')}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="dist-pill-group">
+                  {['ALL', 'DAILY', 'WEEKLY', 'MONTHLY'].map((scheme) => (
+                    <button
+                      key={scheme}
+                      type="button"
+                      className={`dist-filter-pill ${distSchemeFilter === scheme ? 'active' : ''}`}
+                      onClick={() => setDistSchemeFilter(scheme)}
+                    >
+                      {scheme === 'ALL' ? 'All Schemes' : scheme}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* User Distribution Table */}
+              <div className="dist-table-container">
+                <table className="dist-table">
+                  <thead>
+                    <tr>
+                      <th>User / Borrower</th>
+                      <th>Scheme & Loan</th>
+                      <th>Net Principal Given</th>
+                      <th>Contracted Profit</th>
+                      <th>Realized Profit (In-Hand)</th>
+                      <th>Net Amount User is Holding</th>
+                      <th>Collection Progress</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length > 0 ? (
+                      filteredUsers.map((u, idx) => (
+                        <tr key={u.loanId || idx}>
+                          <td>
+                            <div className="user-cell">
+                              <div className="user-avatar-circle">
+                                {(u.customerName || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="user-meta-name">{u.customerName}</div>
+                                <div className="user-meta-sub">
+                                  <span>{u.customerCode}</span>
+                                  <span>•</span>
+                                  <Phone size={11} />
+                                  <span>{u.customerPhone}</span>
+                                </div>
+                                {u.shopName && (
+                                  <span style={{ fontSize: '0.7rem', color: '#0369a1', background: '#e0f2fe', padding: '1px 5px', borderRadius: '4px', marginTop: '2px', display: 'inline-block' }}>
+                                    🏬 {u.shopName}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 800,
+                                  color: u.scheme === 'DAILY' ? '#059669' : u.scheme === 'WEEKLY' ? '#2563eb' : '#7c3aed',
+                                  background: u.scheme === 'DAILY' ? '#ecfdf5' : u.scheme === 'WEEKLY' ? '#eff6ff' : '#f5f3ff',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  display: 'inline-block',
+                                  width: 'fit-content',
+                                }}
+                              >
+                                {u.scheme}
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
+                                {u.loanNumber}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td style={{ fontWeight: 700 }}>
+                            {formatCurrency(u.principalDisbursed)}
+                          </td>
+
+                          <td style={{ fontWeight: 700, color: '#7c3aed' }}>
+                            {formatCurrency(u.contractedProfit)}
+                          </td>
+
+                          <td>
+                            {u.realizedProfit > 0 ? (
+                              <span className="profit-badge">
+                                <CheckCircle2 size={12} />
+                                {formatCurrency(u.realizedProfit)}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>₹0</span>
+                            )}
+                          </td>
+
+                          <td>
+                            <span className="holding-badge">
+                              {formatCurrency(u.netHoldingAmount)}
+                            </span>
+                          </td>
+
+                          <td style={{ minWidth: '130px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
+                                <span>Paid: {formatCurrency(u.totalPaid)}</span>
+                                <span>{u.progressPercent}%</span>
+                              </div>
+                              <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                                <div
+                                  style={{
+                                    width: `${u.progressPercent}%`,
+                                    height: '100%',
+                                    background: u.realizedProfit > 0 ? '#059669' : '#2563eb',
+                                    borderRadius: '9999px',
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDistributionModalOpen(false);
+                                  if (u.scheme === 'DAILY') {
+                                    navigate(getOrgPath('shopkeepers'));
+                                  } else if (u.scheme === 'WEEKLY') {
+                                    navigate(getOrgPath('weekly-customers'));
+                                  } else {
+                                    navigate(getOrgPath('users'));
+                                  }
+                                }}
+                                style={{
+                                  padding: '0.4rem 0.65rem',
+                                  borderRadius: '0.45rem',
+                                  border: '1px solid #cbd5e1',
+                                  background: '#ffffff',
+                                  color: '#0f172a',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                }}
+                                title="View Borrower Ledger & Collections"
+                              >
+                                <span>Ledger</span>
+                                <ArrowRight size={12} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                          No borrowers match the current search or scheme filter.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       )}

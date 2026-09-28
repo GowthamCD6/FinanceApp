@@ -81,6 +81,44 @@ export const OrgProvider = ({ children }) => {
     [branches, activeBranchId]
   );
 
+  // Dynamic Lending Configuration (Schemes enabled/disabled from backend)
+  const [lendingConfig, setLendingConfig] = useState({
+    daily_loan_enabled: true,
+    weekly_loan_enabled: true,
+    monthly_loan_enabled: true,
+  });
+
+  const fetchLendingConfig = useCallback(async (orgId = null) => {
+    const targetOrgId = orgId || activeOrgId;
+    if (!targetOrgId) {
+      setLendingConfig({
+        daily_loan_enabled: true,
+        weekly_loan_enabled: true,
+        monthly_loan_enabled: true,
+      });
+      return;
+    }
+    try {
+      const data = await api.getLendingConfig(targetOrgId);
+      if (data) {
+        setLendingConfig({
+          ...data,
+          daily_loan_enabled: data.daily_loan_enabled !== false && data.daily_loan_enabled !== 0 && data.daily_loan_enabled !== '0',
+          weekly_loan_enabled: data.weekly_loan_enabled !== false && data.weekly_loan_enabled !== 0 && data.weekly_loan_enabled !== '0',
+          monthly_loan_enabled: data.monthly_loan_enabled !== false && data.monthly_loan_enabled !== 0 && data.monthly_loan_enabled !== '0',
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to load lending config in OrgContext:', err);
+    }
+  }, [activeOrgId]);
+
+  useEffect(() => {
+    if (activeOrgId) {
+      fetchLendingConfig(activeOrgId);
+    }
+  }, [activeOrgId, fetchLendingConfig]);
+
   // Auto-sync active organization and branch based on logged-in user role
   useEffect(() => {
     try {
@@ -220,6 +258,9 @@ export const OrgProvider = ({ children }) => {
         setActiveBranchId: setActiveBranch,
         clearActiveOrg,
         fetchBranches,
+        lendingConfig,
+        refreshLendingConfig: () => fetchLendingConfig(activeOrgId),
+        fetchLendingConfig,
         addOrganization,
         updateOrganization,
         updateOrgStatus,

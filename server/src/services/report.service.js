@@ -222,6 +222,80 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
     };
   });
 
+  // 7. User-by-User Profit & Principal Distribution Breakdown
+  const userProfitRows = await query(
+    `SELECT 
+       l.id AS loan_id,
+       l.loan_number,
+       l.customer_id,
+       c.full_name AS customer_name,
+       c.phone AS customer_phone,
+       c.customer_code,
+       c.shop_name,
+       c.customer_type,
+       l.repayment_frequency,
+       l.principal_amount,
+       COALESCE(CASE WHEN l.contracted_income_amount > 0 THEN l.contracted_income_amount ELSE (l.total_repayment_amount - l.principal_amount) END, 0) AS contracted_profit,
+       l.total_repayment_amount,
+       l.status AS loan_status,
+       COALESCE(sub.total_paid, 0) AS total_paid,
+       COALESCE(sub.principal_recovered, 0) AS principal_recovered,
+       COALESCE(sub.interest_paid, 0) AS interest_paid,
+       sub.last_paid_at
+     FROM loans l
+     LEFT JOIN customers c ON l.customer_id = c.id
+     LEFT JOIN (
+       SELECT 
+         loan_id, 
+         SUM(paid_amount) AS total_paid,
+         SUM(CASE WHEN paid_amount >= principal_component THEN principal_component ELSE paid_amount END) AS principal_recovered,
+         SUM(CASE WHEN paid_amount > principal_component THEN (paid_amount - principal_component) ELSE 0 END) AS interest_paid,
+         MAX(paid_at) AS last_paid_at
+       FROM loan_installments 
+       GROUP BY loan_id
+     ) sub ON l.id = sub.loan_id
+     WHERE ${loanWhereSql} AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'COMPLETED', 'APPROVED')
+     ORDER BY l.id ASC`,
+    loanParams
+  );
+
+  const userProfitDistributions = userProfitRows.map((r) => {
+    const principal = parseFloat(r.principal_amount || 0);
+    const contractedProfit = parseFloat(r.contracted_profit || 0);
+    const totalRepayable = parseFloat(r.total_repayment_amount || (principal + contractedProfit));
+    const totalPaid = parseFloat(r.total_paid || 0);
+    const principalRecovered = parseFloat(r.principal_recovered || 0);
+    const interestPaid = parseFloat(r.interest_paid || 0);
+    const netHoldingAmount = Math.max(0, totalRepayable - totalPaid);
+    const outstandingPrincipal = Math.max(0, principal - principalRecovered);
+    const remainingProfitDue = Math.max(0, contractedProfit - interestPaid);
+    const progressPercent = totalRepayable > 0 ? Math.round((totalPaid / totalRepayable) * 100) : 0;
+
+    return {
+      loanId: r.loan_id,
+      loanNumber: r.loan_number,
+      customerId: r.customer_id,
+      customerName: r.customer_name || 'Borrower',
+      customerPhone: r.customer_phone || '-',
+      customerCode: r.customer_code || `CUST-${r.customer_id}`,
+      shopName: r.shop_name,
+      customerType: r.customer_type,
+      scheme: r.repayment_frequency || 'WEEKLY',
+      principalDisbursed: principal,
+      contractedProfit: contractedProfit,
+      totalRepayable: totalRepayable,
+      totalPaid: totalPaid,
+      principalRecovered: principalRecovered,
+      realizedProfit: interestPaid,
+      netHoldingAmount: netHoldingAmount,
+      outstandingPrincipal: outstandingPrincipal,
+      remainingProfitDue: remainingProfitDue,
+      progressPercent: progressPercent,
+      status: r.loan_status,
+      lastPaidAt: r.last_paid_at,
+    };
+  });
+
   return {
     totalCapital,
     availableCash,
@@ -252,6 +326,7 @@ async function getDashboardMetrics({ organizationId, branchId } = {}) {
       recoveryProgressPercent: recoveryProgressPercent,
       totalLoansCount: totalLoansCount,
       activeBorrowersCount: activeBorrowersCount,
+      userProfitDistributions: userProfitDistributions,
     },
     loanCounts: {
       activeLoans: activeLoansCount,
