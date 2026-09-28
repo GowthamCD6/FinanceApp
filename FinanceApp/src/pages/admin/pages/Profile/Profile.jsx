@@ -39,6 +39,11 @@ import SecurPermis from './Pages/SecurityLock/SecurityPermision';
 import LanguageSettings from './Pages/LanguageSettings/LanguageSettings';
 import NotificationSettings from './Pages/NotificationSettings/NotificationSettings';
 import HelpSupport from './Pages/HelpSupport/HelpSupport';
+import BlockUserScreen from './Pages/BlockUser/BlockUser';
+import UserL from './Pages/UserLocation/UserL';
+import MyLocation from './Pages/MyLocation/MyLocation';
+import OTPRequests from './Pages/OTPRequests/OTPRequests';
+import DataExport from './Pages/DataExport/DataExport';
 
 export const AdminProfile = () => {
   const { currentUser, logout, fundMetrics, customers, loans } = useApp();
@@ -201,8 +206,53 @@ export const AdminProfile = () => {
       ],
     },
     {
-      title: 'Preferences & Alerts',
+      title: 'Field & Collection Operations',
       items: [
+        {
+          icon: 'map-marker-radius-outline',
+          title: t('User Location Map'),
+          subtitle: 'Live collection route & borrower GPS directory',
+          iconColor: '#10B981',
+          bgColor: '#ECFDF5',
+          onPress: () => setActiveModal('USER_LOCATION'),
+        },
+        {
+          icon: 'crosshairs-gps',
+          title: 'Agent GPS Tracking',
+          subtitle: 'Field officer live location and route sharing',
+          iconColor: '#6366F1',
+          bgColor: '#EEF2FF',
+          onPress: () => setActiveModal('MY_LOCATION'),
+        },
+        {
+          icon: 'shield-key-outline',
+          title: 'Field OTP Verifications',
+          subtitle: 'Approve real-time field collection verification codes',
+          iconColor: '#3B82F6',
+          bgColor: '#EFF6FF',
+          onPress: () => setActiveModal('OTP_REQUESTS'),
+        },
+      ],
+    },
+    {
+      title: 'Data & System Preferences',
+      items: [
+        {
+          icon: 'file-download-outline',
+          title: t('Data Export'),
+          subtitle: 'Download CSV collection sheets, loan books & KYC',
+          iconColor: '#0D9488',
+          bgColor: '#F0FDFA',
+          onPress: () => setActiveModal('DATA_EXPORT'),
+        },
+        {
+          icon: 'account-cancel-outline',
+          title: t('Block User'),
+          subtitle: 'Manage blocked or defaulting accounts',
+          iconColor: '#EF4444',
+          bgColor: '#FEF2F2',
+          onPress: () => setActiveModal('BLOCK_USER'),
+        },
         {
           icon: 'bell-ring-outline',
           title: t('Notifications'),
@@ -328,6 +378,56 @@ export const AdminProfile = () => {
         onRequestClose={() => setActiveModal(null)}
       >
         <HelpSupport
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'BLOCK_USER'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <BlockUserScreen
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'USER_LOCATION'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <UserL
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'MY_LOCATION'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <MyLocation
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'OTP_REQUESTS'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <OTPRequests
+          onBack={() => setActiveModal(null)}
+        />
+      </Modal>
+
+      <Modal
+        visible={activeModal === 'DATA_EXPORT'}
+        animationType="slide"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <DataExport
           onBack={() => setActiveModal(null)}
         />
       </Modal>
