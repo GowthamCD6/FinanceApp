@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import logoImg from '../../../assets/logo-tight.png';
 import {
   Landmark,
   ArrowRight,
@@ -141,11 +142,11 @@ export const LoginPage = () => {
       <div className="login-card">
         {/* Brand Header */}
         <div className="login-brand">
-          <div className="brand-logo-large">
-            <Landmark size={28} color="#ffffff" />
+          <div className="login-logo-clean">
+            <img src={logoImg} alt="Finance Portal Logo" className="login-logo-img" />
           </div>
           <h1 className="login-title">
-            Finance<span className="brand-accent">Flow</span>
+            Finance<span className="brand-accent">  Portal</span>
           </h1>
           <p className="login-subtitle">
             Enterprise Multi-Tenant Lending & Governance Engine
@@ -304,16 +305,28 @@ export const LoginPage = () => {
           margin-bottom: 24px;
         }
 
-        .brand-logo-large {
-          width: 48px;
-          height: 48px;
-          background: #4f46e5;
-          border-radius: 12px;
+        .login-logo-clean {
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 12px;
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+          margin: 0 auto 16px;
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          padding: 0;
+        }
+
+        .login-logo-img {
+          width: 66px;
+          height: 66px;
+          object-fit: contain;
+          display: block;
+          filter: drop-shadow(0 4px 10px rgba(5, 150, 105, 0.16));
+          transition: transform 0.25s ease;
+        }
+
+        .login-logo-img:hover {
+          transform: scale(1.05);
         }
 
         .login-title {
@@ -325,7 +338,7 @@ export const LoginPage = () => {
         }
 
         .brand-accent {
-          color: #4f46e5;
+          color: #059669;
         }
 
         .login-subtitle {

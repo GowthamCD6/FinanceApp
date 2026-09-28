@@ -193,6 +193,31 @@ const Login = ({ navigation, onLoginSuccess, onBack }) => {
             bounces={false}
           >
             <View style={styles.contentContainer}>
+              {/* Brand Logo Header */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 18,
+                  backgroundColor: '#FFFFFF',
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  elevation: 4,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  padding: 8,
+                }}>
+                  <Image
+                    source={require('../../../assets/logo.png')}
+                    style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                  />
+                </View>
+              </View>
+
               {/* Header Title Section */}
               <View style={styles.headerContainer}>
                 <Text style={styles.hi}>Welcome Back!</Text>

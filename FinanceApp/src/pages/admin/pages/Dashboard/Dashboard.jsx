@@ -400,6 +400,10 @@ export const AdminDashboard = ({
         </View>
 
         <View style={styles.heroRight}>
+          <Image
+            source={require('../../../../assets/logo.png')}
+            style={{ width: 28, height: 28, resizeMode: 'contain', marginRight: 6 }}
+          />
           <View style={styles.orgPill}>
             <MaterialCommunityIcons name="shield-check" size={13} color="#6B46C1" />
             <Text style={styles.orgPillText} numberOfLines={1}>

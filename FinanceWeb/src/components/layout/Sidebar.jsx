@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useOrg } from "../../context/OrgContext";
+import logoImg from "../../assets/logo-tight.png";
 import "./Sidebar.css";
 
 export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogout: propOnLogout }) => {
@@ -353,7 +354,7 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
 
         <div className="mobile-brand">
           <div className="mobile-brand-icon">
-            <Landmark size={18} color="#ffffff" />
+            <img src={logoImg} alt="FinanceWeb" className="mobile-logo-image" />
           </div>
           <span className="mobile-brand-title">
             FinanceWeb
@@ -386,12 +387,10 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
             <div
               className="logo-section"
               onClick={handleBrandClick}
-              title="FinanceWeb Governance"
+              title="FinanceWeb Platform"
             >
               <div className="logo-icon">
-                <span className="logo-text">
-                  <Landmark size={20} />
-                </span>
+                <img src={logoImg} alt="FinanceWeb Logo" className="logo-image" />
               </div>
               <div className="company-name">
                 <div className="company-title">
