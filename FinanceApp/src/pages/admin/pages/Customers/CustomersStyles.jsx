@@ -309,6 +309,23 @@ export default StyleSheet.create({
     color: '#6B7280',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
   },
+  quickToolChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F5F3FF',
+    borderColor: '#DDD6FE',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  quickToolChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7C3AED',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
 
   // Borrower Card (Matching Reports Page Card Architecture)
   recordCard: {

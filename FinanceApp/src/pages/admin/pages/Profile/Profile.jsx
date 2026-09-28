@@ -12,6 +12,7 @@ import {
   Share,
   Linking,
   Modal,
+  TextInput,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,14 +37,8 @@ import EditProfile from './Pages/AccountDetails/EditProfile';
 import PasswordManagement from './Pages/PasswordManagement/PasswordManagement';
 import SecurPermis from './Pages/SecurityLock/SecurityPermision';
 import LanguageSettings from './Pages/LanguageSettings/LanguageSettings';
-import BlockUserScreen from './Pages/BlockUser/BlockUser';
-import UserL from './Pages/UserLocation/UserL';
-import MyLocation from './Pages/MyLocation/MyLocation';
 import NotificationSettings from './Pages/NotificationSettings/NotificationSettings';
-import OTPRequests from './Pages/OTPRequests/OTPRequests';
-import DataExport from './Pages/DataExport/DataExport';
 import HelpSupport from './Pages/HelpSupport/HelpSupport';
-import PrivacyPolicy from './Pages/PrivacyPolicy/PrivacyPolicy';
 
 export const AdminProfile = () => {
   const { currentUser, logout, fundMetrics, customers, loans } = useApp();
@@ -61,6 +56,17 @@ export const AdminProfile = () => {
 
   // Modal active states
   const [activeModal, setActiveModal] = useState(null);
+
+  // In-place Rate Us Modal State
+  const [rating, setRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [selectedRatingTags, setSelectedRatingTags] = useState([]);
+
+  // In-place Share App Modal State
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // In-place Privacy Policy Tab State
+  const [privacyTab, setPrivacyTab] = useState('SECURITY');
 
   useEffect(() => {
     loadUserData();
@@ -195,53 +201,8 @@ export const AdminProfile = () => {
       ],
     },
     {
-      title: 'Field & Collection Operations',
+      title: 'Preferences & Alerts',
       items: [
-        {
-          icon: 'map-marker-radius-outline',
-          title: t('User Location Map'),
-          subtitle: 'Live collection route & borrower GPS directory',
-          iconColor: '#10B981',
-          bgColor: '#ECFDF5',
-          onPress: () => setActiveModal('USER_LOCATION'),
-        },
-        {
-          icon: 'crosshairs-gps',
-          title: 'Agent GPS Tracking',
-          subtitle: 'Field officer live location and route sharing',
-          iconColor: '#6366F1',
-          bgColor: '#EEF2FF',
-          onPress: () => setActiveModal('MY_LOCATION'),
-        },
-        {
-          icon: 'shield-key-outline',
-          title: 'Field OTP Verifications',
-          subtitle: 'Approve real-time field collection verification codes',
-          iconColor: '#3B82F6',
-          bgColor: '#EFF6FF',
-          onPress: () => setActiveModal('OTP_REQUESTS'),
-        },
-      ],
-    },
-    {
-      title: 'Data & System Preferences',
-      items: [
-        {
-          icon: 'file-download-outline',
-          title: t('Data Export'),
-          subtitle: 'Download CSV collection sheets, loan books & KYC',
-          iconColor: '#0D9488',
-          bgColor: '#F0FDFA',
-          onPress: () => setActiveModal('DATA_EXPORT'),
-        },
-        {
-          icon: 'account-cancel-outline',
-          title: t('Block User'),
-          subtitle: 'Manage blocked or defaulting accounts',
-          iconColor: '#EF4444',
-          bgColor: '#FEF2F2',
-          onPress: () => setActiveModal('BLOCK_USER'),
-        },
         {
           icon: 'bell-ring-outline',
           title: t('Notifications'),
@@ -261,7 +222,7 @@ export const AdminProfile = () => {
       ],
     },
     {
-      title: t('Support'),
+      title: t('Support') + ' & Legal',
       items: [
         {
           icon: 'help-circle-outline',
@@ -285,15 +246,15 @@ export const AdminProfile = () => {
           subtitle: 'Recommend Apex Finance to partner institutions',
           iconColor: '#6B7280',
           bgColor: '#F3F4F6',
-          onPress: handleShareApp,
+          onPress: () => setActiveModal('SHARE_APP'),
         },
         {
           icon: 'star-outline',
           title: t('Rate App'),
-          subtitle: 'Leave your review on Play Store',
+          subtitle: 'Leave your review and feedback',
           iconColor: '#EAB308',
           bgColor: '#FEFCE8',
-          onPress: handleRateApp,
+          onPress: () => setActiveModal('RATE_APP'),
         },
       ],
     },
@@ -303,7 +264,7 @@ export const AdminProfile = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Dedicated Subpages (Modal Slides) */}
+      {/* Subpage Modals */}
       <Modal
         visible={activeModal === 'EDIT_PROFILE'}
         animationType="slide"
@@ -352,61 +313,11 @@ export const AdminProfile = () => {
       </Modal>
 
       <Modal
-        visible={activeModal === 'BLOCK_USER'}
-        animationType="slide"
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <BlockUserScreen
-          onBack={() => setActiveModal(null)}
-        />
-      </Modal>
-
-      <Modal
-        visible={activeModal === 'USER_LOCATION'}
-        animationType="slide"
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <UserL
-          onBack={() => setActiveModal(null)}
-        />
-      </Modal>
-
-      <Modal
-        visible={activeModal === 'MY_LOCATION'}
-        animationType="slide"
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <MyLocation
-          onBack={() => setActiveModal(null)}
-        />
-      </Modal>
-
-      <Modal
         visible={activeModal === 'NOTIFICATIONS'}
         animationType="slide"
         onRequestClose={() => setActiveModal(null)}
       >
         <NotificationSettings
-          onBack={() => setActiveModal(null)}
-        />
-      </Modal>
-
-      <Modal
-        visible={activeModal === 'OTP_REQUESTS'}
-        animationType="slide"
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <OTPRequests
-          onBack={() => setActiveModal(null)}
-        />
-      </Modal>
-
-      <Modal
-        visible={activeModal === 'DATA_EXPORT'}
-        animationType="slide"
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <DataExport
           onBack={() => setActiveModal(null)}
         />
       </Modal>
@@ -421,14 +332,355 @@ export const AdminProfile = () => {
         />
       </Modal>
 
+      {/* Interactive Rate Us Modal */}
+      <Modal
+        visible={activeModal === 'RATE_APP'}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.rateModalCard}>
+            <View style={styles.rateHeaderBadge}>
+              <MaterialCommunityIcons name="star-face" size={34} color="#D97706" />
+            </View>
+            <Text style={styles.rateModalTitle}>Rate Apex Finance</Text>
+            <Text style={styles.rateModalSubtitle}>
+              How has your micro-lending operations experience been so far?
+            </Text>
+
+            {/* Stars */}
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={styles.starTouch}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name={star <= rating ? 'star' : 'star-outline'}
+                    size={38}
+                    color="#F59E0B"
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.ratingLabelText}>
+              {rating === 5 && '🌟 Outstanding Experience!'}
+              {rating === 4 && '👍 Very Good & Reliable'}
+              {rating === 3 && '🙂 Satisfactory Operations'}
+              {rating === 2 && '😐 Needs Improvement'}
+              {rating === 1 && '👎 Poor Experience'}
+            </Text>
+
+            {/* Quick Feedback Tags */}
+            <View style={styles.tagsContainer}>
+              {['Easy Collection', 'Accurate Ledger', 'Fast & Reliable', 'Good Support'].map((tag) => {
+                const isSelected = selectedRatingTags.includes(tag);
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    style={[styles.tagChip, isSelected && styles.tagChipActive]}
+                    onPress={() => {
+                      if (isSelected) {
+                        setSelectedRatingTags(selectedRatingTags.filter((t) => t !== tag));
+                      } else {
+                        setSelectedRatingTags([...selectedRatingTags, tag]);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.tagChipText, isSelected && styles.tagChipTextActive]}>
+                      {tag}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Comment Box */}
+            <TextInput
+              style={styles.rateTextInput}
+              placeholder="Tell us any suggestions or feedback (optional)..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={3}
+              value={reviewText}
+              onChangeText={setReviewText}
+            />
+
+            {/* Action Buttons */}
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setActiveModal(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>Maybe Later</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rateSubmitBtn}
+                onPress={() => {
+                  Alert.alert(
+                    'Thank You!',
+                    `We appreciate your ${rating}-star feedback. Your review helps us continuously improve Apex Microfinance platform.`
+                  );
+                  setReviewText('');
+                  setSelectedRatingTags([]);
+                  setActiveModal(null);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.rateSubmitBtnText}>Submit Rating</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Interactive Share App Modal */}
+      <Modal
+        visible={activeModal === 'SHARE_APP'}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.shareModalCard}>
+            <View style={styles.shareHeaderBadge}>
+              <MaterialCommunityIcons name="share-variant" size={28} color="#7C3AED" />
+            </View>
+            <Text style={styles.shareModalTitle}>Share Apex Finance</Text>
+            <Text style={styles.shareModalSubtitle}>
+              Recommend this platform to partner lending branches, staff, or field collection officers.
+            </Text>
+
+            {/* Referral / Link Box */}
+            <View style={styles.linkCopyBox}>
+              <View style={styles.linkTextWrap}>
+                <Text style={styles.linkLabel}>INVITATION LINK & CODE</Text>
+                <Text style={styles.linkUrlText} numberOfLines={1}>
+                  https://apexfinance.app/join?code=APEX-ORG-2026
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.copyBtn, copiedLink && styles.copyBtnDone]}
+                onPress={async () => {
+                  setCopiedLink(true);
+                  setTimeout(() => setCopiedLink(false), 2500);
+                  try {
+                    await Share.share({
+                      title: 'Apex Microfinance Platform',
+                      message: 'Manage your micro-lending loans, daily collections, and portfolio records securely with Apex Finance App!\nJoin using code: APEX-ORG-2026\nDownload now: https://play.google.com/store/apps/details?id=com.apexfinance',
+                    });
+                  } catch (e) {}
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name={copiedLink ? 'check' : 'content-copy'}
+                  size={16}
+                  color={copiedLink ? '#059669' : '#7C3AED'}
+                />
+                <Text style={[styles.copyBtnText, copiedLink && { color: '#059669' }]}>
+                  {copiedLink ? 'Copied' : 'Share'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Social Sharing Quick Channels */}
+            <View style={styles.shareChannelsRow}>
+              <TouchableOpacity
+                style={[styles.shareChannelBtn, { backgroundColor: '#DCFCE7' }]}
+                onPress={() => {
+                  const msg = encodeURIComponent(
+                    'Hey! I am using Apex Microfinance Platform for managing daily collections, borrowers, and loan books. Check it out: https://play.google.com/store/apps/details?id=com.apexfinance (Code: APEX-ORG-2026)'
+                  );
+                  Linking.openURL(`whatsapp://send?text=${msg}`).catch(() => {
+                    handleShareApp();
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="whatsapp" size={24} color="#16A34A" />
+                <Text style={[styles.shareChannelLabel, { color: '#16A34A' }]}>WhatsApp</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.shareChannelBtn, { backgroundColor: '#E0E7FF' }]}
+                onPress={() => {
+                  const msg = encodeURIComponent(
+                    'Join Apex Finance micro-lending platform: https://play.google.com/store/apps/details?id=com.apexfinance (Invite: APEX-ORG-2026)'
+                  );
+                  Linking.openURL(`sms:?body=${msg}`).catch(() => {
+                    handleShareApp();
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="message-text-outline" size={24} color="#4F46E5" />
+                <Text style={[styles.shareChannelLabel, { color: '#4F46E5' }]}>SMS</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.shareChannelBtn, { backgroundColor: '#F3F4F6' }]}
+                onPress={handleShareApp}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="dots-horizontal-circle-outline" size={24} color="#374151" />
+                <Text style={[styles.shareChannelLabel, { color: '#374151' }]}>More</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalCloseOutBtn}
+              onPress={() => setActiveModal(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalCloseOutText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Interactive Privacy Policy Modal */}
       <Modal
         visible={activeModal === 'PRIVACY_POLICY'}
+        transparent={true}
         animationType="slide"
         onRequestClose={() => setActiveModal(null)}
       >
-        <PrivacyPolicy
-          onBack={() => setActiveModal(null)}
-        />
+        <View style={styles.modalOverlay}>
+          <View style={styles.privacyModalCard}>
+            <View style={styles.privacyHeader}>
+              <View style={styles.privacyShieldBox}>
+                <MaterialCommunityIcons name="shield-check" size={22} color="#059669" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.privacyTitle}>Privacy Policy & Compliance</Text>
+                <Text style={styles.privacySubtitle}>RBI Fair Lending & Data Security Norms</Text>
+              </View>
+              <TouchableOpacity onPress={() => setActiveModal(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Segmented Tabs */}
+            <View style={styles.privacyTabsRow}>
+              {[
+                { id: 'SECURITY', label: 'Data Security' },
+                { id: 'LENDING', label: 'Fair Lending' },
+                { id: 'RIGHTS', label: 'Your Rights' },
+              ].map((tab) => (
+                <TouchableOpacity
+                  key={tab.id}
+                  style={[styles.privacyTabBtn, privacyTab === tab.id && styles.privacyTabBtnActive]}
+                  onPress={() => setPrivacyTab(tab.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.privacyTabText, privacyTab === tab.id && styles.privacyTabTextActive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Tab Content */}
+            <ScrollView style={styles.privacyScroll} showsVerticalScrollIndicator={false}>
+              {privacyTab === 'SECURITY' && (
+                <View style={styles.privacyContentBox}>
+                  <View style={styles.policyPoint}>
+                    <MaterialCommunityIcons name="lock-check" size={20} color="#7C3AED" style={{ marginTop: 2, marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.policyPointTitle}>Bank-Grade 256-Bit Encryption</Text>
+                      <Text style={styles.policyPointDesc}>
+                        All customer KYC, loan balances, collections, and financial data are encrypted both in transit (TLS 1.3) and at rest (AES-256).
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.policyPoint}>
+                    <MaterialCommunityIcons name="database-eye-off" size={20} color="#7C3AED" style={{ marginTop: 2, marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.policyPointTitle}>No Third-Party Sharing</Text>
+                      <Text style={styles.policyPointDesc}>
+                        Apex Microfinance never sells or monetizes borrower personal contact details, location logs, or transaction histories.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.policyPoint}>
+                    <MaterialCommunityIcons name="fingerprint" size={20} color="#7C3AED" style={{ marginTop: 2, marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.policyPointTitle}>Biometric Isolation</Text>
+                      <Text style={styles.policyPointDesc}>
+                        Fingerprint and biometric keys remain protected inside Android KeyStore hardware security module and are never sent to remote servers.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {privacyTab === 'LENDING' && (
+                <View style={styles.privacyContentBox}>
+                  <View style={styles.policyPoint}>
+                    <MaterialCommunityIcons name="scale-balance" size={20} color="#059669" style={{ marginTop: 2, marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.policyPointTitle}>RBI Fair Practices Code</Text>
+                      <Text style={styles.policyPointDesc}>
+                        Interest rates, total repayable amount, repayment schedule, and EMI cycle terms are transparently presented before loan disbursement.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.policyPoint}>
+                    <MaterialCommunityIcons name="file-certificate-outline" size={20} color="#059669" style={{ marginTop: 2, marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.policyPointTitle}>No Hidden Penalties</Text>
+                      <Text style={styles.policyPointDesc}>
+                        All fees, payment receipts, and collection adjustments are logged with real-time digital ledger audit trails.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {privacyTab === 'RIGHTS' && (
+                <View style={styles.privacyContentBox}>
+                  <View style={styles.policyPoint}>
+                    <MaterialCommunityIcons name="account-check-outline" size={20} color="#2563EB" style={{ marginTop: 2, marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.policyPointTitle}>Right to Access & Rectify</Text>
+                      <Text style={styles.policyPointDesc}>
+                        Borrowers and admins can review personal contact info and request corrections anytime via the Profile management console.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.policyPoint}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={20} color="#2563EB" style={{ marginTop: 2, marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.policyPointTitle}>Account Deactivation</Text>
+                      <Text style={styles.policyPointDesc}>
+                        Upon complete closure of all loan dues, users can request account suspension or permanent record archiving.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.privacyAcknowledgeBtn}
+              onPress={() => setActiveModal(null)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.privacyAcknowledgeText}>I Acknowledge & Understand</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       <ScrollView
@@ -817,6 +1069,374 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 10,
     fontWeight: '600',
+  },
+
+  // Interactive Modals Styles (Rate, Share, Privacy)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  rateModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  rateHeaderBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  rateModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  rateModalSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  starTouch: {
+    padding: 4,
+  },
+  ratingLabelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#D97706',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  tagChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  tagChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  tagChipText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  tagChipTextActive: {
+    color: '#2563EB',
+    fontWeight: '700',
+  },
+  rateTextInput: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 13,
+    color: '#0F172A',
+    minHeight: 76,
+    textAlignVertical: 'top',
+    marginBottom: 18,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  rateSubmitBtn: {
+    flex: 1.3,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  rateSubmitBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Share Modal
+  shareModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  shareHeaderBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F5F3FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  shareModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  shareModalSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 18,
+    paddingHorizontal: 8,
+  },
+  linkCopyBox: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 18,
+  },
+  linkTextWrap: {
+    flex: 1,
+    marginRight: 8,
+  },
+  linkLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  linkUrlText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F5F3FF',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  copyBtnDone: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  copyBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  shareChannelsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 18,
+  },
+  shareChannelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  shareChannelLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  modalCloseOutBtn: {
+    width: '100%',
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseOutText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+
+  // Privacy Policy Modal
+  privacyModalCard: {
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '82%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  privacyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  privacyShieldBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  privacyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  privacySubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+    fontWeight: '500',
+  },
+  privacyTabsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  privacyTabBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderRadius: 9,
+  },
+  privacyTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  privacyTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  privacyTabTextActive: {
+    color: '#7C3AED',
+    fontWeight: '800',
+  },
+  privacyScroll: {
+    maxHeight: 280,
+    marginBottom: 16,
+  },
+  privacyContentBox: {
+    gap: 12,
+  },
+  policyPoint: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  policyPointTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  policyPointDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 17,
+  },
+  privacyAcknowledgeBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privacyAcknowledgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
 

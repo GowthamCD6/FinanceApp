@@ -21,6 +21,8 @@ import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
 import { useApp } from '../../../../context/AppContext';
 import { BorrowerLogModal } from './BorrowerLogModal';
+import DataExport from '../Profile/Pages/DataExport/DataExport';
+import MyLocation from '../Profile/Pages/MyLocation/MyLocation';
 
 let revenueAnimation;
 try {
@@ -448,6 +450,10 @@ export const AdminReports = () => {
   // Detail Modal State
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState(null);
+
+  // Operational Tool Modals State (Moved from Profile)
+  const [dataExportVisible, setDataExportVisible] = useState(false);
+  const [myLocationVisible, setMyLocationVisible] = useState(false);
 
   // Fetch Report Data from Backend API
   const fetchReport = useCallback(
@@ -899,9 +905,9 @@ export const AdminReports = () => {
           </ScrollView>
         </View>
 
-        {/* Search Bar */}
+        {/* Search Bar & Quick Operational Tools */}
         <View style={styles.searchSection}>
-          <View style={styles.searchBar}>
+          <View style={[styles.searchBar, { flex: 1 }]}>
             <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" />
             <TextInput
               style={styles.searchInput}
@@ -917,6 +923,24 @@ export const AdminReports = () => {
               </TouchableOpacity>
             )}
           </View>
+
+          <TouchableOpacity
+            style={styles.headerToolBtn}
+            onPress={() => setDataExportVisible(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="file-export-outline" size={18} color="#059669" />
+            <Text style={[styles.headerToolBtnText, { color: '#059669' }]}>Export</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.headerToolBtn, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}
+            onPress={() => setMyLocationVisible(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="crosshairs-gps" size={18} color="#7C3AED" />
+            <Text style={[styles.headerToolBtnText, { color: '#7C3AED' }]}>GPS</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Clean Count Header */}
@@ -1317,6 +1341,24 @@ export const AdminReports = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Data Export Modal */}
+      <Modal
+        visible={dataExportVisible}
+        animationType="slide"
+        onRequestClose={() => setDataExportVisible(false)}
+      >
+        <DataExport onBack={() => setDataExportVisible(false)} />
+      </Modal>
+
+      {/* Field Agent GPS Tracking Modal */}
+      <Modal
+        visible={myLocationVisible}
+        animationType="slide"
+        onRequestClose={() => setMyLocationVisible(false)}
+      >
+        <MyLocation onBack={() => setMyLocationVisible(false)} />
+      </Modal>
     </View>
   );
 };
@@ -1524,6 +1566,8 @@ const styles = StyleSheet.create({
 
   // Search Section (Matching Add User input container)
   searchSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     marginTop: 8,
   },
@@ -1543,6 +1587,23 @@ const styles = StyleSheet.create({
     color: '#212121',
     marginLeft: 6,
     paddingVertical: 0,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  headerToolBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 10,
+    height: 42,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  headerToolBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
 

@@ -23,6 +23,8 @@ import { formatINR } from '../../../../utils/helpers';
 import apiService from '../../../../services/apiService';
 import { BorrowerLogModal } from '../Reports/BorrowerLogModal';
 import { IssueLoanModal } from '../IssueLoan/IssueLoanModal';
+import BlockUserScreen from '../Profile/Pages/BlockUser/BlockUser';
+import UserL from '../Profile/Pages/UserLocation/UserL';
 import styles from './CustomersStyles';
 
 let emptyAnimation;
@@ -390,6 +392,10 @@ export const CustomersScreen = ({
   // Issue Loan Modal State
   const [selectedCustomerForIssueLoan, setSelectedCustomerForIssueLoan] = useState(null);
   const [issueLoanModalVisible, setIssueLoanModalVisible] = useState(false);
+
+  // Operational Tool Modals State (Moved from Profile)
+  const [locationMapVisible, setLocationMapVisible] = useState(false);
+  const [blockUserVisible, setBlockUserVisible] = useState(false);
 
   // Fetch Live Customers & Loans from Server
   const fetchLiveBorrowers = useCallback(async () => {
@@ -780,14 +786,36 @@ export const CustomersScreen = ({
           )}
         </View>
 
-        {/* 4. Clean Count Header */}
+        {/* 4. Clean Count Header with Location Map & Blocked Users Tools */}
         <View style={styles.recordsHeader}>
-          <Text style={styles.recordsHeaderText}>
-            Customers ({filteredCustomers.length})
-          </Text>
-          <Text style={styles.recordsHeaderSub}>
-            Allot & manage borrower loans
-          </Text>
+          <View>
+            <Text style={styles.recordsHeaderText}>
+              Customers ({filteredCustomers.length})
+            </Text>
+            <Text style={styles.recordsHeaderSub}>
+              Allot & manage borrower loans
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={styles.quickToolChip}
+              onPress={() => setLocationMapVisible(true)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="map-marker-radius-outline" size={14} color="#7C3AED" />
+              <Text style={styles.quickToolChipText}>Map</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickToolChip, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+              onPress={() => setBlockUserVisible(true)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="account-cancel-outline" size={14} color="#DC2626" />
+              <Text style={[styles.quickToolChipText, { color: '#DC2626' }]}>Blocked</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -897,6 +925,24 @@ export const CustomersScreen = ({
           setSelectedCustomerForIssueLoan(null);
         }}
       />
+
+      {/* Borrower Locations Map Modal */}
+      <Modal
+        visible={locationMapVisible}
+        animationType="slide"
+        onRequestClose={() => setLocationMapVisible(false)}
+      >
+        <UserL onBack={() => setLocationMapVisible(false)} />
+      </Modal>
+
+      {/* Blocked Accounts Management Modal */}
+      <Modal
+        visible={blockUserVisible}
+        animationType="slide"
+        onRequestClose={() => setBlockUserVisible(false)}
+      >
+        <BlockUserScreen onBack={() => setBlockUserVisible(false)} />
+      </Modal>
     </View>
   );
 };
