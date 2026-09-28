@@ -23,10 +23,14 @@ router.get('/preferences', userController.getNotificationPreferences);
 
 // GPS Location Management
 router.post('/locations', userController.saveLocation);
-router.get('/locations', userController.getLocation);
-
-// Admin View All Locations
 router.get('/locations/all', userController.getAdminUserLocations);
+router.get('/userLocations', userController.getAdminUserLocations);
+router.get('/locations', (req, res) => {
+  if (req.query.userId || req.params.id) {
+    return userController.getLocation(req, res);
+  }
+  return userController.getAdminUserLocations(req, res);
+});
 
 // Session Verification & Force Logout Controls
 router.get('/session/verify', userController.verifySession);

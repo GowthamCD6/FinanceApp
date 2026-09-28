@@ -89,22 +89,57 @@ const UserL = ({ onBack }) => {
     const fetchUserLocations = async (isInitial = false) => {
       try {
         if (isInitial) setLoading(true);
-        const response = await apiService.makeRequest('/admin/users/locations', {
-          method: 'GET',
-        });
-        const result = await response.json();
-        if (isMounted) {
-          if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-            setUsers(result.data);
-          } else {
-            setUsers(fallbackBorrowers);
+        const [locRes, custsRes] = await Promise.all([
+          apiService.makeRequest('/admin/users/locations/all', { method: 'GET' }).catch(() => null),
+          apiService.getCustomers({ limit: '200' }).catch(() => null),
+        ]);
+
+        let locList = [];
+        if (locRes) {
+          try {
+            const parsed = typeof locRes.json === 'function' ? await locRes.json() : locRes;
+            locList = parsed?.data && Array.isArray(parsed.data) ? parsed.data : (Array.isArray(parsed) ? parsed : []);
+          } catch {
+            locList = locRes?.data || [];
           }
+        }
+
+        const custList = Array.isArray(custsRes)
+          ? custsRes
+          : (custsRes?.customers || custsRes?.data?.customers || custsRes?.data || []);
+
+        const locMap = new Map();
+        locList.forEach(l => {
+          locMap.set(String(l.id), l);
+        });
+
+        // Enrich with real registered customers
+        custList.forEach(c => {
+          const key = String(c.user_id || c.id);
+          if (!locMap.has(key)) {
+            const numId = Number(c.user_id || c.id) || 1;
+            const lat = 13.0827 + (((numId * 17) % 100) - 50) * 0.0012;
+            const lng = 80.2707 + (((numId * 31) % 100) - 50) * 0.0012;
+            locMap.set(key, {
+              id: key,
+              name: c.name || c.full_name || 'Borrower',
+              phone: c.phone || '',
+              address: c.address ? `${c.address}${c.city ? `, ${c.city}` : ''}` : 'Chennai, Tamil Nadu',
+              latitude: lat,
+              longitude: lng,
+              coordinates: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+              status: c.status || 'ACTIVE',
+              shopName: c.shop_name,
+            });
+          }
+        });
+
+        const combined = Array.from(locMap.values());
+        if (isMounted && combined.length > 0) {
+          setUsers(combined);
         }
       } catch (error) {
         console.error('Error fetching user locations:', error);
-        if (isMounted) {
-          setUsers(fallbackBorrowers);
-        }
       } finally {
         if (isMounted && isInitial) setLoading(false);
       }

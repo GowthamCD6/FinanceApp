@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   BackHandler,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -41,13 +42,14 @@ const BlockUserScreen = ({ onBack }) => {
   };
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('blocked');
+  const [activeTab, setActiveTab] = useState('all');
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [blockReason, setBlockReason] = useState('');
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -72,30 +74,75 @@ const BlockUserScreen = ({ onBack }) => {
     fetchUsers();
   }, []);
 
-  const fallbackSampleUsers = [
-    { id: '1', name: 'Kumar Swaminathan', phone: '+91 98765 43210', role: 'BORROWER', status: 'ACTIVE', isActive: 1 },
-    { id: '2', name: 'Meena Ramesh', phone: '+91 98402 11223', role: 'BORROWER', status: 'BLOCKED', isActive: 0, blockReason: 'Multiple overdue missed payments' },
-    { id: '3', name: 'Senthil Nathan', phone: '+91 94441 55667', role: 'COLLECTION_AGENT', status: 'ACTIVE', isActive: 1 },
-    { id: '4', name: 'Karthik Raja', phone: '+91 97910 88990', role: 'BORROWER', status: 'ACTIVE', isActive: 1 },
-  ];
-
-  const fetchUsers = async () => {
+  const fetchUsers = async (isRefresh = false) => {
     try {
-      setLoading(true);
-      const response = await apiService.makeRequest('/admin/users/getAllUsers', {
-        method: 'GET',
-      });
-      const data = await response.json();
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        setUsers(data.data);
+      if (isRefresh) {
+        setRefreshing(true);
       } else {
-        setUsers(fallbackSampleUsers);
+        setLoading(true);
       }
+
+      const [usersRes, custsRes] = await Promise.all([
+        apiService.getUsers({ limit: '200' }).catch(() => null),
+        apiService.getCustomers({ limit: '200' }).catch(() => null),
+      ]);
+
+      const userList = Array.isArray(usersRes)
+        ? usersRes
+        : (usersRes?.users || usersRes?.data?.users || usersRes?.data || []);
+      const custList = Array.isArray(custsRes)
+        ? custsRes
+        : (custsRes?.customers || custsRes?.data?.customers || custsRes?.data || []);
+
+      const userMap = new Map();
+
+      // 1. Add registered users
+      userList.forEach(u => {
+        const key = String(u.id);
+        const isDeactivated = u.status === 'INACTIVE' || u.status === 'BLOCKED' || u.status === 'SUSPENDED';
+        userMap.set(key, {
+          id: u.id,
+          customerId: u.customerId || u.customer_id,
+          name: u.name || u.full_name || 'Borrower',
+          phone: u.phone || '',
+          role: u.role || u.role_type || 'BORROWER',
+          status: isDeactivated ? 'BLOCKED' : 'ACTIVE',
+          isActive: isDeactivated ? 0 : 1,
+          blockReason: u.blockReason || u.deactivated_reason || '',
+        });
+      });
+
+      // 2. Add or merge customer records
+      custList.forEach(c => {
+        const key = String(c.user_id || `cust_${c.id}`);
+        const isDeactivated = c.status === 'INACTIVE' || c.status === 'BLOCKED';
+        if (!userMap.has(key)) {
+          userMap.set(key, {
+            id: c.user_id || c.id,
+            customerId: c.id,
+            name: c.name || c.full_name || 'Borrower',
+            phone: c.phone || '',
+            role: c.customer_type === 'SHOPKEEPER' ? 'SHOPKEEPER' : 'BORROWER',
+            status: isDeactivated ? 'BLOCKED' : 'ACTIVE',
+            isActive: isDeactivated ? 0 : 1,
+            blockReason: isDeactivated ? 'Deactivated account' : '',
+          });
+        } else {
+          const existing = userMap.get(key);
+          if (isDeactivated) {
+            existing.status = 'BLOCKED';
+            existing.isActive = 0;
+          }
+        }
+      });
+
+      const combined = Array.from(userMap.values());
+      setUsers(combined);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      setUsers(fallbackSampleUsers);
+      console.error('Error fetching live users in BlockUser:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -194,107 +241,113 @@ const BlockUserScreen = ({ onBack }) => {
     }
   };
 
-  const renderBlockedUser = ({ item }) => (
-    <View style={styles.userCard}>
-      <View style={styles.cardContent}>
-        <View style={styles.userInfoWrapper}>
-          <View style={[styles.avatarContainer, styles.blockedAvatar]}>
-            <Text style={[styles.avatarText, styles.blockedAvatarText]}>{item.name.charAt(0)}</Text>
+  const renderBlockedUser = ({ item }) => {
+    const initial = (item.name || item.full_name || 'U').charAt(0).toUpperCase();
+    return (
+      <View style={styles.userCard}>
+        <View style={styles.cardContent}>
+          <View style={styles.userInfoWrapper}>
+            <View style={[styles.avatarContainer, styles.blockedAvatar]}>
+              <Text style={[styles.avatarText, styles.blockedAvatarText]}>{initial}</Text>
+            </View>
+            <View style={styles.userDetails}>
+              <Text style={styles.userName}>{item.name || item.full_name || 'Borrower'}</Text>
+              <Text style={styles.userPhone}>{item.phone || 'No phone'}</Text>
+              {item.blockReason ? (
+                <Text style={styles.blockReason} numberOfLines={2}>
+                  Reason: {item.blockReason}
+                </Text>
+              ) : null}
+            </View>
           </View>
-          <View style={styles.userDetails}>
-            <Text style={styles.userName}>{item.name}</Text>
-            <Text style={styles.userPhone}>{item.phone}</Text>
-            {item.blockReason ? (
-              <Text style={styles.blockReason} numberOfLines={2}>
-                Reason: {item.blockReason}
+          <View style={styles.rightSection}>
+            <View style={styles.statusContainer}>
+              <Text style={[styles.statusText, styles.blockedStatus]}>
+                Deactivated
               </Text>
-            ) : null}
+            </View>
+            <TouchableOpacity
+              style={styles.unblockButton}
+              onPress={() => handleUnblock(item.id)}
+              disabled={submitting}
+            >
+              <MaterialCommunityIcons
+                name="account-check"
+                size={16}
+                color="#FFF"
+              />
+              <Text style={styles.buttonTextSmall}>Reactivate</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-        <View style={styles.rightSection}>
-          <View style={styles.statusContainer}>
-            <Text style={[styles.statusText, styles.blockedStatus]}>
-              Deactivated
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.unblockButton}
-            onPress={() => handleUnblock(item.id)}
-            disabled={submitting}
-          >
-            <MaterialCommunityIcons
-              name="account-check"
-              size={16}
-              color="#FFF"
-            />
-            <Text style={styles.buttonTextSmall}>Reactivate</Text>
-          </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
-  const renderAllUser = ({ item }) => (
-    <View style={styles.userCard}>
-      <View style={styles.cardContent}>
-        <View style={styles.userInfoWrapper}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+  const renderAllUser = ({ item }) => {
+    const initial = (item.name || item.full_name || 'U').charAt(0).toUpperCase();
+    return (
+      <View style={styles.userCard}>
+        <View style={styles.cardContent}>
+          <View style={styles.userInfoWrapper}>
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </View>
+            <View style={styles.userDetails}>
+              <Text style={styles.userName}>{item.name || item.full_name || 'Borrower'}</Text>
+              <Text style={styles.userPhone}>{item.phone || 'No phone'}</Text>
+              <Text style={styles.userRoleText}>{item.role || 'BORROWER'}</Text>
+            </View>
           </View>
-          <View style={styles.userDetails}>
-            <Text style={styles.userName}>{item.name}</Text>
-            <Text style={styles.userPhone}>{item.phone}</Text>
-            <Text style={styles.userRoleText}>{item.role || 'BORROWER'}</Text>
+          <View style={styles.rightSectionActions}>
+            <TouchableOpacity
+              style={styles.forceLogoutButton}
+              onPress={() => handleForceLogout(item)}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name="logout-variant"
+                size={15}
+                color="#7C3AED"
+              />
+              <Text style={styles.forceLogoutButtonText}>Force Logout</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.blockButton}
+              onPress={() => handleBlockUser(item)}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name="account-cancel"
+                size={15}
+                color="#FFF"
+              />
+              <Text style={styles.buttonTextSmall}>Deactivate</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-        <View style={styles.rightSectionActions}>
-          <TouchableOpacity
-            style={styles.forceLogoutButton}
-            onPress={() => handleForceLogout(item)}
-            disabled={submitting}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons
-              name="logout-variant"
-              size={15}
-              color="#7C3AED"
-            />
-            <Text style={styles.forceLogoutButtonText}>Force Logout</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.blockButton}
-            onPress={() => handleBlockUser(item)}
-            disabled={submitting}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons
-              name="account-cancel"
-              size={15}
-              color="#FFF"
-            />
-            <Text style={styles.buttonTextSmall}>Deactivate</Text>
-          </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const blockedUsersList = users.filter(u => u.isActive === 0);
   const activeUsersList = users.filter(u => u.isActive === 1);
 
   const filteredBlockedUsers = blockedUsersList.filter(
     user =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery),
+      (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.phone || '').includes(searchQuery),
   );
 
   const filteredAllUsers = activeUsersList
     .filter(
       user =>
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.phone.includes(searchQuery),
+        (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.phone || '').includes(searchQuery),
     )
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -311,6 +364,19 @@ const BlockUserScreen = ({ onBack }) => {
       <View style={styles.tabOuterContainer}>
         <View style={styles.tabContainer}>
           <TouchableOpacity
+            style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+            onPress={() => setActiveTab('all')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'all' && styles.activeTabText,
+              ]}
+            >
+              {t('All Accounts')} ({activeUsersList.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'blocked' && styles.activeTab]}
             onPress={() => setActiveTab('blocked')}
           >
@@ -321,19 +387,6 @@ const BlockUserScreen = ({ onBack }) => {
               ]}
             >
               {t('Blocked Users')} ({blockedUsersList.length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'all' && styles.activeTab]}
-            onPress={() => setActiveTab('all')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'all' && styles.activeTabText,
-              ]}
-            >
-              {t('All Users')} ({activeUsersList.length})
             </Text>
           </TouchableOpacity>
         </View>
@@ -363,7 +416,7 @@ const BlockUserScreen = ({ onBack }) => {
       </View>
 
       {/* User List */}
-      {loading ? (
+      {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#7C3AED" />
           <Text style={styles.loadingText}>{t('Loading data...')}</Text>
@@ -372,9 +425,16 @@ const BlockUserScreen = ({ onBack }) => {
         <FlatList
           data={activeTab === 'blocked' ? filteredBlockedUsers : filteredAllUsers}
           renderItem={activeTab === 'blocked' ? renderBlockedUser : renderAllUser}
-          keyExtractor={item => item.id.toString()}
+          keyExtractor={item => String(item.id || item.customerId || Math.random())}
           contentContainerStyle={styles.listContentContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchUsers(true)}
+              colors={['#7C3AED']}
+            />
+          }
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
               <MaterialCommunityIcons
@@ -384,8 +444,8 @@ const BlockUserScreen = ({ onBack }) => {
               />
               <Text style={styles.emptyStateText}>
                 {activeTab === 'blocked'
-                  ? 'No blocked users found'
-                  : 'No users available'}
+                  ? 'No blocked accounts found'
+                  : 'No active accounts found'}
               </Text>
             </View>
           )}
