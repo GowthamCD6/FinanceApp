@@ -26,7 +26,6 @@ import {
   ArrowLeft,
   User,
   Percent,
-  ExternalLink,
   Server,
   MapPin,
 } from "lucide-react";
@@ -262,16 +261,6 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
         label: "Organization Profile",
         icon: User,
       },
-      ...(isSuperAdmin
-        ? [
-            {
-              path: "/dashboard",
-              label: "SuperAdmin Portal",
-              icon: ArrowLeft,
-              onClick: () => clearActiveOrg(),
-            },
-          ]
-        : []),
     ],
     branch_admin: [
       { label: "Branch Overview", section: true },
@@ -534,21 +523,7 @@ export const Sidebar = ({ userRole: propUserRole, userData: propUserData, onLogo
                   }}
                 >
                   <User size={15} />
-                  <span>Branch Profile</span>
-                </button>
-              )}
-
-              {isInsideOrg && activeOrg && (
-                <button
-                  type="button"
-                  className="dropdown-action-btn"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    handleBrandClick();
-                  }}
-                >
-                  <ExternalLink size={15} />
-                  <span>SuperAdmin Portal</span>
+                  <span>{isBranchAdmin ? "Branch Profile" : "Organization Profile"}</span>
                 </button>
               )}
 
