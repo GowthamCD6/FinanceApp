@@ -25,6 +25,7 @@ import {
   Pencil,
   Trash2,
   Plus,
+  Target,
 } from 'lucide-react';
 import { EditLoanModal, DeleteLoanModal, CreateLoanModal } from '../../../components/loans/LoanModals';
 
@@ -834,24 +835,92 @@ export const MonthlyCollect = () => {
           <span>Back to Monthly Borrowers</span>
         </button>
 
-        {/* Tab Selector: Collection Mode vs Month-wise Installment Schedule */}
-        <div style={{ display: 'flex', background: '#F1F5F9', padding: '0.25rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-          <button
-            type="button"
-            className={`btn btn-sm ${activeTab === 'COLLECT' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
-            onClick={() => setActiveTab('COLLECT')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {/* Repayment Collection Method Inline Toggle */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              background: '#F8FAFC',
+              padding: '0.2rem 0.35rem',
+              borderRadius: 10,
+              border: collectionMode === 'LUMP_SUM_END' ? '1.5px solid #818CF8' : '1.5px solid #E2E8F0',
+            }}
           >
-            <DollarSign size={14} /> Quick Collection Form
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${activeTab === 'SCHEDULE' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
-            onClick={() => setActiveTab('SCHEDULE')}
-          >
-            <Calendar size={14} /> Month-Wise Ledger & Schedule
-          </button>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', paddingLeft: '0.4rem', paddingRight: '0.2rem' }}>
+              Repayment Method:
+            </span>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <button
+                type="button"
+                disabled={updatingMode}
+                onClick={() => handleToggleCollectionMode('NORMAL')}
+                className={`btn btn-sm ${collectionMode === 'NORMAL' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '0.35rem 0.75rem',
+                  fontWeight: 800,
+                  borderRadius: 7,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: collectionMode === 'NORMAL' ? 'var(--primary)' : 'transparent',
+                  borderColor: collectionMode === 'NORMAL' ? 'var(--primary)' : 'transparent',
+                  color: collectionMode === 'NORMAL' ? '#FFFFFF' : 'var(--text-secondary)',
+                }}
+                title="Monthly EMI installment collections"
+              >
+                <Check size={13} /> Normal (Monthly)
+              </button>
+
+              <button
+                type="button"
+                disabled={updatingMode}
+                onClick={() => handleToggleCollectionMode('LUMP_SUM_END')}
+                className={`btn btn-sm ${collectionMode === 'LUMP_SUM_END' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '0.35rem 0.75rem',
+                  fontWeight: 800,
+                  borderRadius: 7,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: collectionMode === 'LUMP_SUM_END' ? 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)' : 'transparent',
+                  borderColor: collectionMode === 'LUMP_SUM_END' ? '#7C3AED' : 'transparent',
+                  color: collectionMode === 'LUMP_SUM_END' ? '#FFFFFF' : 'var(--text-secondary)',
+                  boxShadow: collectionMode === 'LUMP_SUM_END' ? '0 2px 6px rgba(124, 58, 237, 0.25)' : 'none',
+                }}
+                title="Full settlement at the end on final maturity month"
+              >
+                <Target size={13} /> At Maturity (End)
+              </button>
+            </div>
+            {updatingMode && (
+              <span style={{ fontSize: '0.68rem', color: '#6366F1', fontWeight: 700, paddingRight: '0.4rem' }}>Saving...</span>
+            )}
+          </div>
+
+          {/* Tab Selector: Collection Mode vs Month-wise Installment Schedule */}
+          <div style={{ display: 'flex', background: '#F1F5F9', padding: '0.25rem', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${activeTab === 'COLLECT' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
+              onClick={() => setActiveTab('COLLECT')}
+            >
+              <DollarSign size={14} /> Quick Collection Form
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${activeTab === 'SCHEDULE' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem', fontWeight: 700 }}
+              onClick={() => setActiveTab('SCHEDULE')}
+            >
+              <Calendar size={14} /> Month-Wise Ledger & Schedule
+            </button>
+          </div>
         </div>
       </div>
 
@@ -910,6 +979,24 @@ export const MonthlyCollect = () => {
                 >
                   <Layers size={11} /> {activeLoans.length} Active Scheme{activeLoans.length > 1 ? 's' : ''}
                 </span>
+                {collectionMode === 'LUMP_SUM_END' && (
+                  <span
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: 20,
+                      background: '#EDE9FE',
+                      color: '#6D28D9',
+                      border: '1px solid #C4B5FD',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <Target size={11} color="#6D28D9" /> Lump-Sum at End
+                  </span>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '0.85rem', marginTop: 4, fontSize: '0.82rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
@@ -935,97 +1022,6 @@ export const MonthlyCollect = () => {
               </strong>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Repayment Collection Method Switcher */}
-      <div
-        className="card"
-        style={{
-          padding: '1rem 1.25rem',
-          marginBottom: '1.25rem',
-          border: collectionMode === 'LUMP_SUM_END' ? '1.5px solid #818CF8' : '1.5px solid #E2E8F0',
-          borderRadius: 12,
-          background: collectionMode === 'LUMP_SUM_END' ? 'linear-gradient(135deg, #F5F3FF 0%, #FFFFFF 100%)' : '#FFFFFF',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 3 }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
-              Repayment Collection Method
-            </span>
-            <span
-              style={{
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                padding: '2px 8px',
-                borderRadius: 20,
-                background: collectionMode === 'LUMP_SUM_END' ? '#EDE9FE' : '#ECFDF5',
-                color: collectionMode === 'LUMP_SUM_END' ? '#6D28D9' : '#047857',
-                border: `1px solid ${collectionMode === 'LUMP_SUM_END' ? '#C4B5FD' : '#A7F3D0'}`,
-              }}
-            >
-              {collectionMode === 'LUMP_SUM_END' ? '🎯 Get Amount at End (Last Day)' : '✅ Normal Monthly EMI'}
-            </span>
-            {updatingMode && (
-              <span style={{ fontSize: '0.7rem', color: '#6366F1', fontWeight: 700 }}>Saving to database...</span>
-            )}
-          </div>
-          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-            {collectionMode === 'LUMP_SUM_END'
-              ? `Borrower pays full loan balance on the final maturity month/day (${loanDateBounds.maxDate || 'Last Day'}). Monthly EMI collections are deferred until the end.`
-              : 'Borrower pays standard monthly EMI installment amount on every scheduled repayment month.'}
-          </p>
-        </div>
-
-        {/* Action Toggle Buttons */}
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#F1F5F9', padding: '0.3rem', borderRadius: 10, border: '1px solid #CBD5E1' }}>
-          <button
-            type="button"
-            disabled={updatingMode}
-            onClick={() => handleToggleCollectionMode('NORMAL')}
-            className={`btn btn-sm ${collectionMode === 'NORMAL' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{
-              fontSize: '0.8rem',
-              padding: '0.45rem 1rem',
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: collectionMode === 'NORMAL' ? 'var(--primary)' : 'transparent',
-              borderColor: collectionMode === 'NORMAL' ? 'var(--primary)' : 'transparent',
-              color: collectionMode === 'NORMAL' ? '#FFFFFF' : 'var(--text-secondary)',
-            }}
-          >
-            <Check size={14} /> Normal (Monthly)
-          </button>
-
-          <button
-            type="button"
-            disabled={updatingMode}
-            onClick={() => handleToggleCollectionMode('LUMP_SUM_END')}
-            className={`btn btn-sm ${collectionMode === 'LUMP_SUM_END' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{
-              fontSize: '0.8rem',
-              padding: '0.45rem 1rem',
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: collectionMode === 'LUMP_SUM_END' ? 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)' : 'transparent',
-              borderColor: collectionMode === 'LUMP_SUM_END' ? '#7C3AED' : 'transparent',
-              color: collectionMode === 'LUMP_SUM_END' ? '#FFFFFF' : 'var(--text-secondary)',
-              boxShadow: collectionMode === 'LUMP_SUM_END' ? '0 2px 8px rgba(124, 58, 237, 0.35)' : 'none',
-            }}
-          >
-            🎯 Get Amount at the End
-          </button>
         </div>
       </div>
 
@@ -1085,7 +1081,7 @@ export const MonthlyCollect = () => {
                     border: `1.5px solid ${isPaidForToday ? '#A7F3D0' : isSelected ? 'var(--primary)' : '#E2E8F0'}`,
                     borderRadius: 12,
                     background: isPaidForToday ? '#F0FDF4' : isSelected ? '#FFFFFF' : '#F8FAFC',
-                    boxShadow: isSelected ? '0 4px 12px rgba(79, 70, 229, 0.08)' : '0 1px 3px rgba(0,0,0,0.02)',
+                    boxShadow: isSelected ? '0 4px 14px rgba(79, 70, 229, 0.08)' : '0 1px 3px rgba(0,0,0,0.02)',
                     transition: 'all 0.2s ease',
                     cursor: 'pointer',
                     position: 'relative',
@@ -1100,47 +1096,49 @@ export const MonthlyCollect = () => {
                   }}
                 >
                   {/* Card Header & Selection/Paid Status */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
-                      {isPaidForToday ? (
-                        <div
-                          style={{
-                            width: 22,
-                            height: 22,
-                            borderRadius: '50%',
-                            background: '#059669',
-                            color: '#FFFFFF',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.75rem',
-                            fontWeight: 900,
-                          }}
-                          title={`Already paid for ${collectionDate}`}
-                        >
-                          <Check size={14} strokeWidth={3} />
-                        </div>
-                      ) : (
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() => toggleLoanSelection(loan.id)}
-                          style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
-                          title="Toggle inclusion in collection"
-                        />
-                      )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.85rem', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flex: 1 }}>
+                      <div style={{ paddingTop: 3 }}>
+                        {isPaidForToday ? (
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#059669',
+                              color: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 900,
+                            }}
+                            title={`Already paid for ${collectionDate}`}
+                          >
+                            <Check size={13} strokeWidth={3} />
+                          </div>
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleLoanSelection(loan.id)}
+                            style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                            title="Toggle inclusion in collection"
+                          />
+                        )}
+                      </div>
 
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                          <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                             {loan.loan_code}
                           </h4>
                           <span
                             style={{
                               fontSize: '0.72rem',
                               fontWeight: 800,
-                              padding: '0.2rem 0.55rem',
+                              padding: '0.15rem 0.55rem',
                               borderRadius: 4,
                               background: '#EEF2FF',
                               border: '1px solid #C7D2FE',
@@ -1149,36 +1147,34 @@ export const MonthlyCollect = () => {
                           >
                             {loan.loan_name || `${totalMonths}-Month Scheme`}
                           </span>
+                          {isOverdue && (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: '0.7rem',
+                                fontWeight: 800,
+                                color: '#BE123C',
+                                background: '#FFF1F2',
+                                border: '1px solid #FECDD3',
+                                padding: '0.15rem 0.55rem',
+                                borderRadius: 4,
+                              }}
+                            >
+                              <AlertTriangle size={11} color="#BE123C" /> {overdueCount} OVERDUE
+                            </span>
+                          )}
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                           Issued: {loan.issue_date || '2026-09-15'} • Maturity: {loan.maturity_date || '2027-09-15'}
-                        </span>
-                        {isOverdue && (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              fontSize: '0.7rem',
-                              fontWeight: 800,
-                              color: '#991B1B',
-                              background: '#FEE2E2',
-                              border: '1px solid #FECACA',
-                              padding: '0.2rem 0.55rem',
-                              borderRadius: 5,
-                              marginTop: 2,
-                              animation: 'pulse 2s infinite',
-                            }}
-                          >
-                            <AlertTriangle size={12} /> {overdueCount} OVERDUE
-                          </span>
-                        )}
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Monthly EMI</span>
-                      <strong style={{ fontSize: '1.35rem', fontWeight: 900, color: isPaidForToday ? '#047857' : 'var(--primary)', letterSpacing: '-0.02em' }}>
+                      <strong style={{ fontSize: '1.3rem', fontWeight: 900, color: isPaidForToday ? '#047857' : 'var(--primary)', letterSpacing: '-0.02em', display: 'block', marginTop: 1 }}>
                         {formatCurrency(loan.installment_amount || customer?.monthly_emi || 5000)}
                       </strong>
                     </div>
@@ -1228,7 +1224,7 @@ export const MonthlyCollect = () => {
 
                   {/* Timeline Progress Strip */}
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', marginBottom: 4 }}>
                       <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
                         Installment Timeline:
                       </span>
@@ -1243,7 +1239,7 @@ export const MonthlyCollect = () => {
                           height: '100%',
                           background: isPaidForToday ? '#059669' : 'linear-gradient(90deg, #6366F1, #4F46E5)',
                           borderRadius: 3,
-                          transition: 'width 0.3s',
+                          transition: 'width 0.3s ease',
                         }}
                       />
                     </div>
@@ -1314,9 +1310,9 @@ export const MonthlyCollect = () => {
                           display: 'flex',
                           alignItems: 'center',
                           gap: 4,
-                          color: '#DC2626',
-                          borderColor: '#FECACA',
-                          background: '#FEF2F2',
+                          color: '#BE123C',
+                          borderColor: '#FECDD3',
+                          background: '#FFF1F2',
                         }}
                       >
                         <Trash2 size={12} /> Delete
@@ -1389,7 +1385,7 @@ export const MonthlyCollect = () => {
                                 gap: 4,
                               }}
                             >
-                              🎯 Full Settlement Due Today: {formatCurrency(loan.remaining_balance || customer.outstanding_balance)}
+                              <Target size={12} color="#7C3AED" /> Full Settlement Due Today: {formatCurrency(loan.remaining_balance || customer.outstanding_balance)}
                             </span>
                           );
                         }
@@ -1408,7 +1404,7 @@ export const MonthlyCollect = () => {
                               gap: 4,
                             }}
                           >
-                            🎯 Deferred — Full Payment on Last Day ({maturityDate || 'Maturity'})
+                            <Target size={12} color="#6D28D9" /> Deferred — Full Payment on Last Day ({maturityDate || 'Maturity'})
                           </span>
                         );
                       }
@@ -1419,9 +1415,9 @@ export const MonthlyCollect = () => {
                             style={{
                               fontSize: '0.74rem',
                               fontWeight: 800,
-                              color: '#991B1B',
-                              background: '#FEE2E2',
-                              border: '1px solid #FECACA',
+                              color: '#BE123C',
+                              background: '#FFF1F2',
+                              border: '1px solid #FECDD3',
                               padding: '0.25rem 0.65rem',
                               borderRadius: 6,
                               display: 'flex',
@@ -1429,7 +1425,7 @@ export const MonthlyCollect = () => {
                               gap: 4,
                             }}
                           >
-                            <AlertTriangle size={13} color="#DC2626" /> {overdueCount} Overdue — {formatCurrency(loan.installment_amount || customer?.monthly_emi || 5000)}/mo
+                            <AlertTriangle size={13} color="#BE123C" /> {overdueCount} Overdue — {formatCurrency(loan.installment_amount || customer?.monthly_emi || 5000)}/mo
                           </span>
                         );
                       }
@@ -1590,10 +1586,10 @@ export const MonthlyCollect = () => {
                 <div
                   style={{
                     marginTop: '0.75rem',
-                    background: '#FEF2F2',
-                    border: '1px solid #FECACA',
-                    borderRadius: 8,
-                    padding: '0.65rem 0.85rem',
+                    background: 'linear-gradient(135deg, #FFF1F2 0%, #FFF5F5 100%)',
+                    border: '1px solid #FECDD3',
+                    borderRadius: 10,
+                    padding: '0.75rem 1rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -1601,9 +1597,9 @@ export const MonthlyCollect = () => {
                     flexWrap: 'wrap',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                    <AlertTriangle size={15} color="#DC2626" />
-                    <span style={{ fontSize: '0.76rem', color: '#991B1B', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <AlertTriangle size={16} color="#BE123C" />
+                    <span style={{ fontSize: '0.78rem', color: '#9F1239', fontWeight: 700 }}>
                       {overdueSummary.overdueCount} missed month{overdueSummary.overdueCount > 1 ? 's' : ''} ({formatCurrency(overdueSummary.overdueTotalAmount)})
                     </span>
                   </div>
@@ -1612,14 +1608,15 @@ export const MonthlyCollect = () => {
                       type="button"
                       onClick={() => setCollectionDate(overdueSummary.earliestOverdueDate)}
                       style={{
-                        background: '#DC2626',
+                        background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
                         color: '#FFFFFF',
                         border: 'none',
-                        borderRadius: 5,
-                        padding: '3px 8px',
-                        fontSize: '0.7rem',
+                        borderRadius: 6,
+                        padding: '4px 10px',
+                        fontSize: '0.72rem',
                         fontWeight: 800,
                         cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(225, 29, 72, 0.25)',
                       }}
                     >
                       Collect Overdue ({overdueSummary.earliestOverdueDate})
@@ -1753,7 +1750,7 @@ export const MonthlyCollect = () => {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#6B21A8', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        🎯 Lump Sum Mode (Pay at End)
+                        <Target size={14} color="#6B21A8" /> Lump Sum Mode (Pay at End)
                       </span>
                       {loanDateBounds.maxDate && (
                         <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#7C3AED', background: '#EDE9FE', padding: '2px 8px', borderRadius: 4 }}>
@@ -1779,9 +1776,12 @@ export const MonthlyCollect = () => {
                           background: shouldCollectFullBalance ? '#7C3AED' : '#FFFFFF',
                           color: shouldCollectFullBalance ? '#FFFFFF' : '#6B21A8',
                           border: '1.5px solid #7C3AED',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
                         }}
                       >
-                        {shouldCollectFullBalance ? '✓ Collecting Full Loan Balance' : 'Settle Full Balance Now'}
+                        {shouldCollectFullBalance ? <><Check size={12} /> Collecting Full Loan Balance</> : 'Settle Full Balance Now'}
                       </button>
                       {loanDateBounds.maxDate && collectionDate !== loanDateBounds.maxDate && (
                         <button
@@ -2032,7 +2032,7 @@ export const MonthlyCollect = () => {
                                 gap: 4,
                               }}
                             >
-                              {isPaid ? 'PAID' : inst.status === 'DUE_AT_END' ? '🎯 DUE AT END' : isOverdueInst ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
+                              {isPaid ? 'PAID' : inst.status === 'DUE_AT_END' ? (<><Target size={11} color="#6D28D9" /> DUE AT END</>) : isOverdueInst ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                             </span>
                           </td>
                           <td>
@@ -2400,7 +2400,7 @@ export const MonthlyCollect = () => {
                                   gap: 4,
                                 }}
                               >
-                                {isPaid ? 'PAID' : inst.status === 'DUE_AT_END' ? '🎯 DUE AT END' : isOverdueModal ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
+                                {isPaid ? 'PAID' : inst.status === 'DUE_AT_END' ? (<><Target size={11} color="#6D28D9" /> DUE AT END</>) : isOverdueModal ? (<><AlertTriangle size={11} /> OVERDUE</>) : isTodayDue ? "TODAY'S DUE" : 'PENDING'}
                               </span>
                             </td>
                             <td>

@@ -20,6 +20,7 @@ import {
   Check,
   AlertTriangle,
   RotateCcw,
+  Target,
 } from 'lucide-react';
 import './MonthlyCustomers.css';
 
@@ -720,8 +721,8 @@ export const MonthlyCustomers = () => {
                             <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
                               <span className="mc-code-pill">{cust.customer_code}</span>
                               {cust.collection_mode === 'LUMP_SUM_END' && (
-                                <span className="mc-code-pill" style={{ background: '#F5F3FF', color: '#7C3AED', borderColor: '#DDD6FE', fontWeight: 800 }}>
-                                  🎯 Pay at End
+                                <span className="mc-code-pill" style={{ background: '#F5F3FF', color: '#7C3AED', borderColor: '#DDD6FE', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                  <Target size={11} color="#7C3AED" /> Pay at End
                                 </span>
                               )}
                             </div>
@@ -767,8 +768,12 @@ export const MonthlyCustomers = () => {
                       {/* Monthly EMI: Solid #0F172A (Centered) */}
                       <td style={{ textAlign: 'center' }}>
                         <div className="mc-amount-primary">{formatCurrency(monthlyEmi)}</div>
-                        <div className="mc-amount-secondary">
-                          {cust.collection_mode === 'LUMP_SUM_END' ? '🎯 Pay at End' : isPaid ? 'Cleared this month' : `${currentMonthInfo.monthName} EMI`}
+                        <div className="mc-amount-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          {cust.collection_mode === 'LUMP_SUM_END' ? (
+                            <>
+                              <Target size={11} color="#7C3AED" /> Pay at End
+                            </>
+                          ) : isPaid ? 'Cleared this month' : `${currentMonthInfo.monthName} EMI`}
                         </div>
                       </td>
 
