@@ -18,6 +18,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import Header from '../../../../components/HeaderComponent/Header';
 import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
+import { EditLoanModal, DeleteLoanModal } from '../../../../components/loans/LoanModals';
 
 // Helper for local date string
 const formatDateStr = (d) => {
@@ -169,6 +170,10 @@ export const BorrowerLogModal = ({
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('CASH');
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit and Delete Loan Modal States
+  const [editLoanVisible, setEditLoanVisible] = useState(false);
+  const [deleteLoanVisible, setDeleteLoanVisible] = useState(false);
 
   // Fetch full loan details & all installments from server
   const loadLoanLedger = useCallback(async () => {
@@ -451,30 +456,70 @@ export const BorrowerLogModal = ({
                 </View>
               </View>
 
-              {/* Allot / Issue New Loan to this existing borrower */}
-              {onOpenIssueLoan && (
+              {/* Loan Management Action Bar */}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                 <TouchableOpacity
                   style={{
+                    flex: 1,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 6,
-                    backgroundColor: '#F5F3FF',
-                    borderWidth: 1.5,
-                    borderColor: '#DDD6FE',
-                    borderRadius: 10,
-                    paddingVertical: 10,
-                    marginTop: 12,
+                    gap: 4,
+                    backgroundColor: '#F8FAFC',
+                    borderWidth: 1,
+                    borderColor: '#CBD5E1',
+                    borderRadius: 8,
+                    paddingVertical: 8,
                   }}
-                  onPress={() => onOpenIssueLoan(borrower)}
-                  activeOpacity={0.8}
+                  onPress={() => setEditLoanVisible(true)}
+                  activeOpacity={0.7}
                 >
-                  <MaterialCommunityIcons name="cash-plus" size={16} color="#6B46C1" />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B46C1' }}>
-                    + Allot New Loan to this Borrower
-                  </Text>
+                  <MaterialCommunityIcons name="pencil-outline" size={14} color="#475569" />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569' }}>Edit Terms</Text>
                 </TouchableOpacity>
-              )}
+
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    backgroundColor: '#FFF1F2',
+                    borderWidth: 1,
+                    borderColor: '#FECDD3',
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                  }}
+                  onPress={() => setDeleteLoanVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="trash-can-outline" size={14} color="#BE123C" />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#BE123C' }}>Delete</Text>
+                </TouchableOpacity>
+
+                {onOpenIssueLoan && (
+                  <TouchableOpacity
+                    style={{
+                      flex: 1.3,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      backgroundColor: '#EEF2FF',
+                      borderWidth: 1,
+                      borderColor: '#C7D2FE',
+                      borderRadius: 8,
+                      paddingVertical: 8,
+                    }}
+                    onPress={() => onOpenIssueLoan(borrower)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons name="cash-plus" size={14} color="#6B46C1" />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B46C1' }}>+ New Loan</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             {/* Filter Tabs: All, Overdue, Due, Paid */}
@@ -688,6 +733,40 @@ export const BorrowerLogModal = ({
             </View>
           </View>
         </Modal>
+
+        {/* Edit Loan Terms Modal */}
+        {loanData && (
+          <EditLoanModal
+            visible={editLoanVisible}
+            onClose={() => setEditLoanVisible(false)}
+            loan={loanData}
+            customer={{
+              name: borrower?.customerName || loanData?.customer_name,
+              phone: borrower?.customerPhone || loanData?.customer_phone,
+            }}
+            onSuccess={() => {
+              loadLoanLedger();
+              if (onPaymentSuccess) onPaymentSuccess();
+            }}
+          />
+        )}
+
+        {/* Delete Loan Modal */}
+        {loanData && (
+          <DeleteLoanModal
+            visible={deleteLoanVisible}
+            onClose={() => setDeleteLoanVisible(false)}
+            loan={loanData}
+            customer={{
+              name: borrower?.customerName || loanData?.customer_name,
+              phone: borrower?.customerPhone || loanData?.customer_phone,
+            }}
+            onSuccess={() => {
+              if (onPaymentSuccess) onPaymentSuccess();
+              onClose();
+            }}
+          />
+        )}
       </SafeAreaView>
     </Modal>
   );

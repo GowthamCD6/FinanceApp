@@ -23,6 +23,7 @@ import { formatINR } from '../../../../utils/helpers';
 import apiService from '../../../../services/apiService';
 import { BorrowerLogModal } from '../Reports/BorrowerLogModal';
 import { IssueLoanModal } from '../IssueLoan/IssueLoanModal';
+import { EditLoanModal, DeleteLoanModal } from '../../../../components/loans/LoanModals';
 import BlockUserScreen from '../Profile/Pages/BlockUser/BlockUser';
 import UserL from '../Profile/Pages/UserLocation/UserL';
 import styles from './CustomersStyles';
@@ -142,7 +143,7 @@ const BorrowerCardSkeleton = () => (
 );
 
 // Individual Borrower Card matching Loan Allotment & Portfolio Focus
-const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburse }) => {
+const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburse, onEditLoan, onDeleteLoan }) => {
   const hasActiveLoan = Boolean(item.activeLoan && item.activeLoan.status !== 'COMPLETED' && item.activeLoan.status !== 'SETTLED');
   const isOverdue = item.activeLoan?.status === 'OVERDUE';
   const hasCompletedLoans = Number(item.completedLoansCount || 0) > 0;
@@ -342,6 +343,30 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
           </>
         ) : null}
 
+        {hasActiveLoan && (
+          <>
+            <TouchableOpacity
+              style={[styles.actionIconBtn, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}
+              onPress={() => onEditLoan(item)}
+              activeOpacity={0.7}
+              title="Edit Loan"
+            >
+              <MaterialCommunityIcons name="pencil-outline" size={14} color="#4B5563" />
+              <Text style={styles.actionIconBtnText}>Edit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionIconBtn, { backgroundColor: '#FFF1F2', borderColor: '#FECDD3' }]}
+              onPress={() => onDeleteLoan(item)}
+              activeOpacity={0.7}
+              title="Delete Loan"
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={14} color="#BE123C" />
+              <Text style={[styles.actionIconBtnText, { color: '#BE123C' }]}>Del</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
         {/* Allot / Issue Loan Button (Primary Action) */}
         <TouchableOpacity
           style={styles.disburseBtn}
@@ -354,7 +379,7 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
             color="#FFFFFF"
           />
           <Text style={styles.disburseBtnText}>
-            {hasActiveLoan ? '+ Allot Another Loan' : 'Issue Loan'}
+            {hasActiveLoan ? '+ Allot' : 'Issue Loan'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -392,6 +417,12 @@ export const CustomersScreen = ({
   // Issue Loan Modal State
   const [selectedCustomerForIssueLoan, setSelectedCustomerForIssueLoan] = useState(null);
   const [issueLoanModalVisible, setIssueLoanModalVisible] = useState(false);
+
+  // Edit and Delete Loan Modal States
+  const [selectedCustomerForEditLoan, setSelectedCustomerForEditLoan] = useState(null);
+  const [editLoanModalVisible, setEditLoanModalVisible] = useState(false);
+  const [selectedCustomerForDeleteLoan, setSelectedCustomerForDeleteLoan] = useState(null);
+  const [deleteLoanModalVisible, setDeleteLoanModalVisible] = useState(false);
 
   // Operational Tool Modals State (Moved from Profile)
   const [locationMapVisible, setLocationMapVisible] = useState(false);
@@ -876,6 +907,18 @@ export const CustomersScreen = ({
             onCall={handleCall}
             onWhatsApp={handleWhatsApp}
             onDisburse={handleDisburse}
+            onEditLoan={(cust) => {
+              if (cust.activeLoan) {
+                setSelectedCustomerForEditLoan(cust);
+                setEditLoanModalVisible(true);
+              }
+            }}
+            onDeleteLoan={(cust) => {
+              if (cust.activeLoan) {
+                setSelectedCustomerForDeleteLoan(cust);
+                setDeleteLoanModalVisible(true);
+              }
+            }}
           />
         )}
         ListHeaderComponent={renderListHeader}
@@ -943,6 +986,38 @@ export const CustomersScreen = ({
       >
         <BlockUserScreen onBack={() => setBlockUserVisible(false)} />
       </Modal>
+
+      {/* Edit Loan Modal */}
+      {selectedCustomerForEditLoan?.activeLoan && (
+        <EditLoanModal
+          visible={editLoanModalVisible}
+          onClose={() => {
+            setEditLoanModalVisible(false);
+            setSelectedCustomerForEditLoan(null);
+          }}
+          loan={selectedCustomerForEditLoan.activeLoan}
+          customer={selectedCustomerForEditLoan}
+          onSuccess={() => {
+            fetchLiveBorrowers();
+          }}
+        />
+      )}
+
+      {/* Delete Loan Modal */}
+      {selectedCustomerForDeleteLoan?.activeLoan && (
+        <DeleteLoanModal
+          visible={deleteLoanModalVisible}
+          onClose={() => {
+            setDeleteLoanModalVisible(false);
+            setSelectedCustomerForDeleteLoan(null);
+          }}
+          loan={selectedCustomerForDeleteLoan.activeLoan}
+          customer={selectedCustomerForDeleteLoan}
+          onSuccess={() => {
+            fetchLiveBorrowers();
+          }}
+        />
+      )}
     </View>
   );
 };

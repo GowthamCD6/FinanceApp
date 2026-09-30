@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
 import RestructureLoanModal from './modal/RestructureLoanModal';
 import EarlySettlementModal from './modal/EarlySettlementModal';
+import { EditLoanModal, DeleteLoanModal } from '../../components/loans/LoanModals';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
@@ -44,6 +45,8 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
 
   const [showRestructureModal, setShowRestructureModal] = useState(false);
   const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [showEditLoanModal, setShowEditLoanModal] = useState(false);
+  const [showDeleteLoanModal, setShowDeleteLoanModal] = useState(false);
 
   const loan = loans.find((l) => l.id === loanId || l.loan_number === loanId || l.loanNumber === loanId) || loans[0];
   const customer = customers.find((c) => c.id === (loan?.customer_id || loan?.customerId)) || {
@@ -264,6 +267,36 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
             </View>
             <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => setShowEditLoanModal(true)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconBox, { backgroundColor: '#F8FAFC', borderColor: '#CBD5E1' }]}>
+              <MaterialCommunityIcons name="pencil" size={18} color="#475569" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionBtnTitle}>Edit Loan Terms</Text>
+              <Text style={styles.actionBtnDesc}>Modify principal, interest rate, tenure or repayment mode</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => setShowDeleteLoanModal(true)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconBox, { backgroundColor: '#FFF1F2', borderColor: '#FECDD3' }]}>
+              <MaterialCommunityIcons name="trash-can-outline" size={18} color="#BE123C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.actionBtnTitle, { color: '#BE123C' }]}>Delete Loan Record</Text>
+              <Text style={styles.actionBtnDesc}>Permanently remove loan and all ledger schedules</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -287,6 +320,30 @@ const SuperAdminLoanDetail = ({ loanId, onBack, onNavigateToCustomer, onOpenAudi
           });
         }}
       />
+
+      {loan && (
+        <EditLoanModal
+          visible={showEditLoanModal}
+          onClose={() => setShowEditLoanModal(false)}
+          loan={loan}
+          customer={customer}
+          onSuccess={() => {
+            if (onBack) onBack();
+          }}
+        />
+      )}
+
+      {loan && (
+        <DeleteLoanModal
+          visible={showDeleteLoanModal}
+          onClose={() => setShowDeleteLoanModal(false)}
+          loan={loan}
+          customer={customer}
+          onSuccess={() => {
+            if (onBack) onBack();
+          }}
+        />
+      )}
     </ScrollView>
   );
 };

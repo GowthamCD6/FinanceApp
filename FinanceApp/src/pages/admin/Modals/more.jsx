@@ -11,11 +11,13 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import AddUser from './page/AddUser/AddU.jsx';
 import ManageU from './page/ManageUser/ManageU.jsx';
 import InterestRatesModal from './page/InterestRates/InterestRatesModal.jsx';
+import { CollectionCalendarModal } from './page/Calendar/CollectionCalendarModal.jsx';
 
 const MoreModal = ({ visible, onClose, onAction }) => {
   const [showAddUser, setShowAddUser] = useState(false);
   const [showManageUser, setShowManageUser] = useState(false);
   const [showInterestRates, setShowInterestRates] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const handleAddUserPress = () => {
     if (onAction) {
@@ -41,6 +43,14 @@ const MoreModal = ({ visible, onClose, onAction }) => {
     }
   };
 
+  const handleCalendarPress = () => {
+    if (onAction) {
+      onAction('calendar');
+    } else {
+      setShowCalendar(true);
+    }
+  };
+
   const handleAddUserBack = () => {
     setShowAddUser(false);
   };
@@ -53,10 +63,15 @@ const MoreModal = ({ visible, onClose, onAction }) => {
     setShowInterestRates(false);
   };
 
+  const handleCalendarBack = () => {
+    setShowCalendar(false);
+  };
+
   const handleModalClose = () => {
     setShowAddUser(false);
     setShowManageUser(false);
     setShowInterestRates(false);
+    setShowCalendar(false);
     if (onClose) onClose();
   };
 
@@ -106,6 +121,19 @@ const MoreModal = ({ visible, onClose, onAction }) => {
     );
   }
 
+  if (showCalendar) {
+    return (
+      <CollectionCalendarModal
+        visible={visible}
+        onClose={handleCalendarBack}
+        onOpenAddUser={() => {
+          setShowCalendar(false);
+          setShowAddUser(true);
+        }}
+      />
+    );
+  }
+
   return (
     <Modal
       animationType="slide"
@@ -139,6 +167,12 @@ const MoreModal = ({ visible, onClose, onAction }) => {
               title="Manage User"
               description="View or manage existing borrowers & statuses"
               onPress={handleManageUserPress}
+            />
+            <MenuItem
+              icon={<MaterialCommunityIcons name="calendar-month-outline" size={24} color="#6B46C1" />}
+              title="Collection Calendar"
+              description="View day-wise collection schedules & ledger dues"
+              onPress={handleCalendarPress}
             />
             <MenuItem
               icon={<MaterialCommunityIcons name="percent" size={24} color="#6B46C1" />}

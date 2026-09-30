@@ -30,6 +30,7 @@ import MoreModal from '../../pages/Admin/Modals/more';
 import AddU from '../../pages/Admin/Modals/page/AddUser/AddU';
 import ManageU from '../../pages/Admin/Modals/page/ManageUser/ManageU';
 import InterestRatesModal from '../../pages/Admin/Modals/page/InterestRates/InterestRatesModal';
+import { CollectionCalendarModal } from '../../pages/Admin/Modals/page/Calendar/CollectionCalendarModal';
 import DisburseLoanModal from '../../pages/superadmin/modal/DisburseLoanModal';
 
 import AdminDashboard from '../../pages/Admin/pages/Dashboard/Dashboard';
@@ -455,6 +456,8 @@ export const Routes = () => {
               setTimeout(() => setActiveModal('MANAGE_USERS'), 200);
             } else if (actionId === 'interest_rates') {
               setTimeout(() => setActiveModal('INTEREST_RATES'), 200);
+            } else if (actionId === 'calendar') {
+              setTimeout(() => setActiveModal('CALENDAR'), 200);
             }
           }}
         />
@@ -490,6 +493,15 @@ export const Routes = () => {
       <InterestRatesModal
         visible={activeModal === 'INTEREST_RATES'}
         onClose={() => setActiveModal(null)}
+      />
+
+      <CollectionCalendarModal
+        visible={activeModal === 'CALENDAR'}
+        onClose={() => setActiveModal(null)}
+        onOpenAddUser={() => {
+          setActiveModal(null);
+          setTimeout(() => setActiveModal('ADD_USER'), 200);
+        }}
       />
 
       <DisburseLoanModal

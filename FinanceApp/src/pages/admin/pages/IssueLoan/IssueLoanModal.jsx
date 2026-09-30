@@ -76,6 +76,7 @@ export const IssueLoanModal = ({
     tenure: '10',
     frequency: 'WEEKLY',
     funding_source: 'VAULT', // 'VAULT' | 'HANDS_ON'
+    collection_mode: 'NORMAL', // 'NORMAL' | 'LUMP_SUM_END'
   });
 
   const [errors, setErrors] = useState({});
@@ -416,6 +417,8 @@ export const IssueLoanModal = ({
         installmentAmount: installmentAmountNum,
         contracted_income_amount: interestAmountNum,
         funding_source: formData.funding_source || 'VAULT',
+        collection_mode: formData.collection_mode || 'NORMAL',
+        collectionMode: formData.collection_mode || 'NORMAL',
       };
 
       const res = await apiService.createLoan(payload);
@@ -1058,6 +1061,67 @@ export const IssueLoanModal = ({
                         Hands-On
                       </Text>
                       <Text style={styles.divisionChipRate}>Inject Cash</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* 2b. Repayment Collection Mode Segment */}
+                <View style={styles.divisionContainer}>
+                  <View style={styles.sectionHeadingRow}>
+                    <MaterialCommunityIcons name="target" size={18} color="#6B46C1" />
+                    <Text style={styles.sectionHeadingTitle}>Repayment Collection Method</Text>
+                  </View>
+                  <View style={styles.divisionRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.divisionChip,
+                        formData.collection_mode === 'NORMAL' && styles.divisionChipSelected,
+                      ]}
+                      onPress={() =>
+                        setFormData((prev) => ({ ...prev, collection_mode: 'NORMAL' }))
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name="check-circle"
+                        size={22}
+                        color={formData.collection_mode === 'NORMAL' ? '#6B46C1' : '#64748B'}
+                      />
+                      <Text
+                        style={[
+                          styles.divisionChipTitle,
+                          formData.collection_mode === 'NORMAL' && styles.divisionChipTitleSelected,
+                        ]}
+                      >
+                        Normal Dues
+                      </Text>
+                      <Text style={styles.divisionChipRate}>Periodic EMIs</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.divisionChip,
+                        formData.collection_mode === 'LUMP_SUM_END' && styles.divisionChipSelected,
+                      ]}
+                      onPress={() =>
+                        setFormData((prev) => ({ ...prev, collection_mode: 'LUMP_SUM_END' }))
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name="target"
+                        size={22}
+                        color={formData.collection_mode === 'LUMP_SUM_END' ? '#7C3AED' : '#64748B'}
+                      />
+                      <Text
+                        style={[
+                          styles.divisionChipTitle,
+                          formData.collection_mode === 'LUMP_SUM_END' && styles.divisionChipTitleSelected,
+                        ]}
+                      >
+                        At Maturity
+                      </Text>
+                      <Text style={styles.divisionChipRate}>Lump-Sum End</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

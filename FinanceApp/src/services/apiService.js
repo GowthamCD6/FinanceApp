@@ -283,6 +283,21 @@ class ApiService {
     return res.data;
   }
 
+  async updateLoan(loanId, loanData) {
+    const res = await this.request(`/loans/${loanId}`, {
+      method: 'PUT',
+      body: JSON.stringify(loanData),
+    });
+    return res.data || res;
+  }
+
+  async deleteLoan(loanId) {
+    const res = await this.request(`/loans/${loanId}`, {
+      method: 'DELETE',
+    });
+    return res.data || res;
+  }
+
   // 4. COLLECTIONS & PAYMENTS (Splits into Principal & Lending Income)
   async collectPayment(loanId, amount, paymentMethod = 'CASH', fundAccountId = 1) {
     const res = await this.request('/payments/collect', {
