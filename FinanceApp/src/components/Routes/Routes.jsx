@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
@@ -42,8 +42,9 @@ import AdminProfile from '../../pages/Admin/pages/Profile/Profile';
 import UserMoreModal from '../../pages/User/Modals/More';
 import Home from '../../pages/User/pages/Home/Home';
 import Portfolio from '../../pages/User/pages/Portfolio/Portfolio';
-import Payments from '../../pages/User/pages/Payments/Payments';
 import UserProfile from '../../pages/User/pages/Profile/Profile';
+import SecurityLockScreen from '../../pages/Admin/pages/Profile/Pages/SecurityLock/SecurityLockScreen';
+import BiometricService from '../../services/BiometricService';
 
 export const Routes = () => {
   const {

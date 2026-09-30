@@ -463,6 +463,12 @@ export const AdminReports = () => {
       const freq = overrideFreq !== undefined ? overrideFreq : frequencyFilter;
       const stat = overrideStatus !== undefined ? overrideStatus : statusFilter;
 
+      if (!apiService.token) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       if (isRefresh) {
         setRefreshing(true);
       } else {
@@ -495,11 +501,7 @@ export const AdminReports = () => {
           });
         }
       } catch (err) {
-        console.error('Failed to fetch live payment report:', err);
-        Alert.alert(
-          'Network Error',
-          'Could not fetch latest reports from the server. Please pull to refresh or check your connection.'
-        );
+        console.warn('Payment report sync notice:', err?.message || err);
       } finally {
         setLoading(false);
         setRefreshing(false);

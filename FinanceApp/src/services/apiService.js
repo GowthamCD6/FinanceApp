@@ -173,6 +173,10 @@ class ApiService {
     };
   }
 
+  async updateUserPreferences(preferences) {
+    return this.saveUserPreferences(preferences);
+  }
+
 
 
   // 2. CUSTOMERS

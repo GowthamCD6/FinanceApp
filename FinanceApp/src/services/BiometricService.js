@@ -1,19 +1,7 @@
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSensorAvailable, simplePrompt } from '@sbaiahmed1/react-native-biometrics';
 import apiService from './apiService';
-
-let rnBiometrics;
-try {
-  const ReactNativeBiometrics = require('react-native-biometrics').default || require('react-native-biometrics');
-  rnBiometrics = new ReactNativeBiometrics({ allowDeviceCredentials: true });
-} catch (e) {
-  rnBiometrics = {
-    isSensorAvailable: async () => ({ available: true, biometryType: 'Biometrics' }),
-    simplePrompt: async () => ({ success: true }),
-    createKeys: async () => ({ publicKey: 'dev-key' }),
-    deleteKeys: async () => ({ success: true }),
-  };
-}
 
 class BiometricService {
   constructor() {
@@ -36,7 +24,6 @@ class BiometricService {
       this.notifyListeners(); // Notify listeners even if already initialized
       return;
     }
-
     try {
       console.log('BiometricService: Starting initialization...');
       
@@ -189,8 +176,8 @@ class BiometricService {
 
   async checkBiometricAvailability() {
     try {
-      const { available, biometryType } = await rnBiometrics.isSensorAvailable();
-      return { available, biometryType };
+      const result = await isSensorAvailable();
+      return { available: result.available, biometryType: result.biometryType };
     } catch (error) {
       console.error('Biometric check error:', error);
       return { available: false, biometryType: null };
@@ -210,42 +197,44 @@ class BiometricService {
         return { success: true };
       }
 
-      const { available, biometryType } = await this.checkBiometricAvailability();
+      const { available } = await this.checkBiometricAvailability();
       
       if (available) {
-        // Try biometric with device credentials (PIN/pattern) as fallback in same modal
-        const { success, error } = await rnBiometrics.simplePrompt({
-          promptMessage: reason,
-          fallbackPromptMessage: 'Use PIN',
-          cancelButtonText: 'Use PIN'
-        });
-
-        if (success) {
-          this.unlockApp();
-          this.isAuthenticated = true; // Mark as authenticated for this session
-          this.updateLastActiveTime();
-          console.log('BiometricService: Authentication successful');
-          return { success: true };
-        } else {
-          // User cancelled
-          return { success: false, error: error || 'Authentication cancelled' };
+        // Use simplePrompt with the new API: simplePrompt(promptMessage)
+        try {
+          const result = await simplePrompt(reason);
+          
+          if (result.success || result === true) {
+            this.unlockApp();
+            this.isAuthenticated = true;
+            this.updateLastActiveTime();
+            console.log('BiometricService: Authentication successful');
+            return { success: true };
+          } else {
+            return { success: false, error: 'Authentication cancelled' };
+          }
+        } catch (promptError) {
+          // User cancelled or authentication failed
+          console.log('BiometricService: Prompt error/cancel:', promptError.message);
+          return { success: false, error: promptError.message || 'Authentication cancelled' };
         }
       } else {
-        // No biometric available, try simplePrompt anyway - it will use device credentials
-        const { success, error } = await rnBiometrics.simplePrompt({
-          promptMessage: reason,
-          fallbackPromptMessage: 'Use PIN',
-          cancelButtonText: 'Cancel'
-        });
-
-        if (success) {
-          this.unlockApp();
-          this.isAuthenticated = true;
-          this.updateLastActiveTime();
-          console.log('BiometricService: Device credentials authentication successful');
-          return { success: true };
-        } else {
-          return { success: false, error: error || 'Authentication cancelled' };
+        // No biometric available, try simplePrompt anyway - it may use device credentials
+        try {
+          const result = await simplePrompt(reason);
+          
+          if (result.success || result === true) {
+            this.unlockApp();
+            this.isAuthenticated = true;
+            this.updateLastActiveTime();
+            console.log('BiometricService: Device credentials authentication successful');
+            return { success: true };
+          } else {
+            return { success: false, error: 'Authentication cancelled' };
+          }
+        } catch (promptError) {
+          console.log('BiometricService: Device credentials error:', promptError.message);
+          return { success: false, error: promptError.message || 'Authentication failed' };
         }
       }
     } catch (error) {
@@ -267,9 +256,11 @@ class BiometricService {
       this.notifyListeners();
 
       try {
-        await apiService.saveBiometricSetting({ isFingerprintEnabled: true });
+        if (apiService.token) {
+          await apiService.updateUserPreferences({ securityEnabled: true });
+        }
       } catch (backendErr) {
-        console.error('BiometricService: Failed to sync enabled security to backend:', backendErr);
+        console.log('BiometricService: Local security enabled (backend offline):', backendErr?.message);
       }
 
       return { success: true };
@@ -298,9 +289,11 @@ class BiometricService {
       this.notifyListeners();
 
       try {
-        await apiService.saveBiometricSetting({ isFingerprintEnabled: false });
+        if (apiService.token) {
+          await apiService.updateUserPreferences({ securityEnabled: false });
+        }
       } catch (backendErr) {
-        console.error('BiometricService: Failed to sync disabled security to backend:', backendErr);
+        console.log('BiometricService: Local security disabled (backend offline):', backendErr?.message);
       }
 
       return { success: true };

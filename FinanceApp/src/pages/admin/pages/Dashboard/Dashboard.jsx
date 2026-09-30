@@ -196,6 +196,11 @@ export const AdminDashboard = ({
 
   // Fetch Live Fund Summary from server
   const fetchLiveFund = useCallback(async () => {
+    if (!apiService.token) {
+      setLoadingFund(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const data = await apiService.getFundSummary();
       if (data) {
@@ -212,7 +217,7 @@ export const AdminDashboard = ({
         });
       }
     } catch (e) {
-      console.warn('Error fetching live fund summary:', e);
+      console.warn('Live fund summary sync notice:', e?.message || e);
     } finally {
       setLoadingFund(false);
       setRefreshing(false);

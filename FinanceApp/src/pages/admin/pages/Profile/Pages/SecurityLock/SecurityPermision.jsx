@@ -7,44 +7,21 @@ import {
   Switch,
   ScrollView,
   Platform,
-  StatusBar,
   Alert,
   BackHandler,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LottieView from 'lottie-react-native';
-import { useNavigation } from '@react-navigation/native';
 import BiometricService from '../../../../../../services/BiometricService';
-import apiService from '../../../../../../services/apiService';
 import LockInfo from './Lock-Info-Modal/LockInfo';
 import Header from '../../../../../../components/HeaderComponent/Header';
-import { useApp } from '../../../../../../context/AppContext';
-
-const lockAnimation = require('../../../../../../animation/Lock_Authentication.1.json');
+import { useLanguage } from '../../../../../../utils/LanguageContext';
 
 const SecurPermis = ({ onBack }) => {
-  let navigation;
-  try {
-    navigation = useNavigation();
-  } catch (e) {
-    navigation = { goBack: () => onBack && onBack() };
-  }
-
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else if (navigation && navigation.goBack) {
-      navigation.goBack();
-    }
-  };
-
+  const { t, language } = useLanguage ? useLanguage() : { t: (s) => s, language: 'en' };
   const [securityEnabled, setSecurityEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [helpModalVisible, setHelpModalVisible] = useState(false);
-  const [syncingToBackend, setSyncingToBackend] = useState(false);
-  const { currentUser } = useApp();
-  const authUser = currentUser;
 
   // Load security setting on component mount
   useEffect(() => {
@@ -58,45 +35,20 @@ const SecurPermis = ({ onBack }) => {
         setHelpModalVisible(false);
         return true;
       }
-      handleBack();
-      return true; 
+      if (onBack) {
+        onBack();
+        return true;
+      }
+      return false;
     };
-
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-
     return () => backHandler.remove();
   }, [onBack, helpModalVisible]);
 
   const loadSecuritySetting = async () => {
     try {
-      console.log('Loading security setting...');
       const state = BiometricService.getState();
-      console.log('Local security enabled:', state.isSecurityEnabled);
       setSecurityEnabled(state.isSecurityEnabled);
-
-      // Also try to sync from backend
-      const userId = authUser?.id || authUser?.userId;
-      if (userId) {
-        try {
-          const backendRes = await apiService.getBiometricSetting(userId);
-          if (backendRes?.data?.isFingerprintEnabled !== undefined) {
-            const backendEnabled = Boolean(backendRes.data.isFingerprintEnabled);
-            console.log('Backend biometric setting:', backendEnabled);
-            // If backend and local differ, prefer backend
-            if (backendEnabled !== state.isSecurityEnabled) {
-              console.log('Syncing backend state to local...');
-              if (backendEnabled) {
-                await BiometricService.enableSecurity();
-              } else {
-                await BiometricService.disableSecurity();
-              }
-              setSecurityEnabled(backendEnabled);
-            }
-          }
-        } catch (backendErr) {
-          console.log('Backend biometric fetch failed, using local:', backendErr.message);
-        }
-      }
     } catch (error) {
       console.error('Error loading security setting:', error);
     } finally {
@@ -108,14 +60,8 @@ const SecurPermis = ({ onBack }) => {
     return await BiometricService.checkBiometricAvailability();
   };
 
-  const performAuthentication = async (promptMessage) => {
-    return await BiometricService.authenticate(promptMessage);
-  };
-
   const handleSecurityToggle = async (value) => {
-    // Check if authentication is available
     const authCheck = await checkAuthenticationAvailability();
-    
     if (!authCheck.available) {
       Alert.alert(
         'Authentication Not Available',
@@ -127,46 +73,25 @@ const SecurPermis = ({ onBack }) => {
             style: 'default',
             onPress: () => {
               Alert.alert(
-                'Setup Instructions', 
+                'Setup Instructions',
                 'Go to your device Settings > Security & Privacy > Screen Lock to set up PIN, password, pattern, fingerprint, or face unlock.'
               );
-            }
-          }
+            },
+          },
         ]
       );
       return;
     }
 
     if (value) {
-      // User trying to ENABLE security -> Verify biometric / PIN identity first
       const auth = await BiometricService.authenticate('Verify identity to enable app security lock');
       if (!auth.success) {
         return;
       }
 
       const result = await BiometricService.enableSecurity();
-
       if (result.success) {
         setSecurityEnabled(true);
-
-        // Sync to backend database
-        const userId = authUser?.id || authUser?.userId;
-        if (userId) {
-          setSyncingToBackend(true);
-          try {
-            await apiService.saveBiometricSetting({
-              userId,
-              isFingerprintEnabled: true,
-              biometricType: 'FINGERPRINT',
-            });
-            console.log('Biometric setting synced to backend: ENABLED');
-          } catch (syncErr) {
-            console.warn('Failed to sync biometric to backend:', syncErr.message);
-          } finally {
-            setSyncingToBackend(false);
-          }
-        }
-
         Alert.alert(
           'Security Enabled',
           'App security has been successfully enabled. The app will now lock automatically when you switch to other apps or when the device is locked.',
@@ -176,7 +101,6 @@ const SecurPermis = ({ onBack }) => {
         Alert.alert('Failed to Enable Security', 'Unable to enable app security. Please try again.');
       }
     } else {
-      // User trying to DISABLE security -> Verify biometric / PIN identity first
       Alert.alert(
         'Disable Security',
         'Are you sure you want to disable app security?',
@@ -192,28 +116,8 @@ const SecurPermis = ({ onBack }) => {
               }
 
               const result = await BiometricService.disableSecurity();
-              
               if (result.success) {
                 setSecurityEnabled(false);
-
-                // Sync to backend database
-                const userId = authUser?.id || authUser?.userId;
-                if (userId) {
-                  setSyncingToBackend(true);
-                  try {
-                    await apiService.saveBiometricSetting({
-                      userId,
-                      isFingerprintEnabled: false,
-                      biometricType: 'FINGERPRINT',
-                    });
-                    console.log('Biometric setting synced to backend: DISABLED');
-                  } catch (syncErr) {
-                    console.warn('Failed to sync biometric to backend:', syncErr.message);
-                  } finally {
-                    setSyncingToBackend(false);
-                  }
-                }
-
                 Alert.alert(
                   'Security Disabled',
                   'App security has been disabled. The app will no longer require authentication.',
@@ -230,44 +134,49 @@ const SecurPermis = ({ onBack }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Header 
+    <View style={styles.container}>
+      <Header
         title="Security Settings"
-        onBack={handleBack}
+        onBack={onBack}
         showBackButton={true}
       />
 
       {/* Form Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.formContainer}>
-          
-          {/* Security Shield Lottie Animation */}
+          {/* Lottie Animation */}
           <View style={styles.animationContainer}>
             <LottieView
-              source={lockAnimation}
-              autoPlay
-              loop
-              style={{ width: 140, height: 140 }}
+              source={require('../../../../../../animation/Lock_Authentication.1.json')}
+              autoPlay={true}
+              loop={true}
+              speed={0.5}
+              resizeMode="contain"
+              style={styles.lottieAnimation}
             />
           </View>
-          
+
           {/* Security Enable Card */}
           <View style={styles.inputContainer}>
             <View style={styles.labelContainer}>
               <MaterialCommunityIcons name="shield-check" size={16} color="#6B7280" />
-              <Text style={styles.inputLabel}>App Security Lock</Text>
+              <Text style={[styles.inputLabel, language === 'ta' && { fontSize: 14 }]}>
+                {t ? t('Biometric Login') : 'Biometric Login'}
+              </Text>
             </View>
             <View style={styles.securityCard}>
               <View style={styles.securityContent}>
                 <View style={styles.securityInfo}>
                   <MaterialCommunityIcons
-                    name={securityEnabled ? "shield-check" : "shield-off"}
+                    name={securityEnabled ? 'shield-check' : 'shield-off'}
                     size={24}
                     color={securityEnabled ? '#22C55E' : '#EF4444'}
                   />
                   <View style={styles.securityText}>
-                    <Text style={styles.securityTitle}>
-                      {securityEnabled ? 'Security Enabled' : 'Security Disabled'}
+                    <Text style={[styles.securityTitle, language === 'ta' && { fontSize: 14 }]}>
+                      {securityEnabled
+                        ? t ? t('Security Enabled') : 'Security Enabled'
+                        : t ? t('Security Disabled') : 'Security Disabled'}
                     </Text>
                     <Text style={styles.securitySubtitle}>
                       {securityEnabled
@@ -288,23 +197,24 @@ const SecurPermis = ({ onBack }) => {
           </View>
 
           {/* Help Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.helpButton}
             onPress={() => setHelpModalVisible(true)}
           >
             <MaterialCommunityIcons name="help-circle-outline" size={20} color="#3B82F6" />
-            <Text style={styles.helpButtonText}>How this function works</Text>
+            <Text style={[styles.helpButtonText, language === 'ta' && { fontSize: 12 }]}>
+              {t ? t('How this function works') : 'How this function works'}
+            </Text>
           </TouchableOpacity>
-
         </View>
       </ScrollView>
 
       {/* Help Modal - LockInfo Component */}
-      <LockInfo 
+      <LockInfo
         visible={helpModalVisible}
         onClose={() => setHelpModalVisible(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -347,7 +257,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#212121',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   securityCard: {
     backgroundColor: '#F5F5F5',
@@ -376,35 +285,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#212121',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   securitySubtitle: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
-  },
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#4B5563',
-    marginLeft: 12,
-    fontFamily: Platform.OS === 'android' ? 'Roboto' : 'System',
   },
   helpButton: {
     flexDirection: 'row',
@@ -423,7 +307,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3B82F6',
     marginLeft: 12,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
 });
 

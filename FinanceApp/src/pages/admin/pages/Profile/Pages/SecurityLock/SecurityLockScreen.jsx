@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import BiometricService from '../../../../../../services/BiometricService';
 
@@ -17,20 +16,18 @@ const { width, height } = Dimensions.get('window');
 
 const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authError, setAuthError] = useState(null);
   const [biometricInfo, setBiometricInfo] = useState({ available: false, biometryType: null });
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     checkBiometricAvailability();
-    
-    // Update time every second for accurate time display
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
-    // Auto-trigger authentication when component mounts
+    // Auto-trigger the biometric prompt after a short delay
     const timer = setTimeout(() => {
-      console.log('Auto-triggering authentication...');
       handleAuthenticate();
     }, 800);
 
@@ -41,45 +38,55 @@ const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
   }, []);
 
   const checkBiometricAvailability = async () => {
-    const info = await BiometricService.checkBiometricAvailability();
-    setBiometricInfo(info);
+    try {
+      const info = await BiometricService.checkBiometricAvailability();
+      setBiometricInfo(info);
+    } catch (error) {
+      console.error('Error checking biometric availability:', error);
+    }
   };
 
   const handleAuthenticate = async () => {
     if (isAuthenticating) return;
-    
     setIsAuthenticating(true);
+    setAuthError(null);
     try {
-      console.log('Attempting authentication...');
       const result = await BiometricService.authenticate('Unlock GDK Chit Fund');
-      console.log('Authentication result:', result);
-      
+      console.log('SecurityLockScreen: Authentication result:', result);
       if (result.success) {
-        console.log('Authentication successful, calling success callback');
+        // Only call success callback when authentication truly succeeds
         if (onAuthenticationSuccess) {
           onAuthenticationSuccess();
         }
+      } else {
+        // Authentication failed or was cancelled - stay on lock screen
+        setAuthError(result.error || 'Authentication failed. Please try again.');
       }
     } catch (error) {
       console.error('Authentication error:', error);
+      setAuthError('An error occurred. Please try again.');
     } finally {
       setIsAuthenticating(false);
     }
   };
 
   const handlePinAuth = async () => {
+    if (isAuthenticating) return;
     setIsAuthenticating(true);
-    
+    setAuthError(null);
     try {
       const result = await BiometricService.authenticateWithDeviceCredentials('Unlock GDK Chit Fund with device credentials');
-      
+      console.log('SecurityLockScreen: PIN auth result:', result);
       if (result.success) {
         if (onAuthenticationSuccess) {
           onAuthenticationSuccess();
         }
+      } else {
+        setAuthError(result.error || 'Authentication failed. Please try again.');
       }
     } catch (error) {
       console.error('Device authentication error:', error);
+      setAuthError('An error occurred. Please try again.');
     } finally {
       setIsAuthenticating(false);
     }
@@ -99,50 +106,45 @@ const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
   };
 
   const formatTime = (date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: false,
     });
   };
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       weekday: 'long',
       day: 'numeric',
-      month: 'long'
+      month: 'long',
     });
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
-      
-      {/* Time and Date Header */}
       <View style={styles.timeContainer}>
         <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
         <Text style={styles.dateText}>{formatDate(currentTime)}</Text>
       </View>
 
-      {/* Main Content */}
       <View style={styles.content}>
-        {/* Biometric Icon */}
         <View style={styles.biometricContainer}>
-          <MaterialCommunityIcons 
-            name={getBiometricIcon()} 
-            size={140} 
-            color="#FFFFFF" 
+          <MaterialCommunityIcons
+            name={getBiometricIcon()}
+            size={140}
+            color="#FFFFFF"
             style={styles.biometricIcon}
           />
         </View>
-
-        {/* Instruction Text */}
         <Text style={styles.instructionText}>Verify to continue</Text>
+        {authError && (
+          <Text style={styles.errorText}>{authError}</Text>
+        )}
       </View>
 
-      {/* Bottom Actions */}
       <View style={styles.bottomContainer}>
-        {/* Primary Verify Button */}
         <TouchableOpacity
           style={[styles.verifyButton, isAuthenticating && styles.verifyButtonDisabled]}
           onPress={biometricInfo.available ? handleAuthenticate : handlePinAuth}
@@ -156,7 +158,6 @@ const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
           )}
         </TouchableOpacity>
 
-        {/* Alternative Authentication */}
         {biometricInfo.available && (
           <TouchableOpacity
             style={styles.alternativeButton}
@@ -168,7 +169,6 @@ const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
           </TouchableOpacity>
         )}
 
-        {/* Support Information */}
         <View style={styles.supportContainer}>
           <Text style={styles.supportText}>
             For help, contact support at{' '}
@@ -184,9 +184,8 @@ const SecurityLockScreen = ({ onAuthenticationSuccess }) => {
         </View>
       </View>
 
-      {/* Home Indicator */}
       <View style={styles.homeIndicator} />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -237,6 +236,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.5,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto-Regular',
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 20,
   },
   bottomContainer: {
     paddingHorizontal: 32,
