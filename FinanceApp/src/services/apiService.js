@@ -176,11 +176,6 @@ class ApiService {
 
 
   // 2. CUSTOMERS
-  async getCustomers() {
-    const res = await this.request('/customers');
-    return res.data?.customers || res.data || [];
-  }
-
   async getWeeklyCustomers() {
     const res = await this.request('/customers/weekly-customers');
     return res.data?.customers || res.data || [];
