@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
 import Colors from '../../../../theme/colors';
+import BiometricService from '../../../../services/BiometricService';
 
 export const UserProfile = () => {
   const { currentUser, logout, loans } = useApp();
@@ -38,8 +39,58 @@ export const UserProfile = () => {
 
   // Preference switches
   const [smsReceipts, setSmsReceipts] = useState(true);
-  const [biometricEnabled, setBiometricEnabled] = useState(true);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [paymentReminders, setPaymentReminders] = useState(true);
+
+  useEffect(() => {
+    const state = BiometricService.getState();
+    setBiometricEnabled(state.isSecurityEnabled);
+
+    const unsubscribe = BiometricService.addListener((s) => {
+      setBiometricEnabled(s.isSecurityEnabled);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  const handleBiometricToggle = async (value) => {
+    try {
+      if (value) {
+        const authCheck = await BiometricService.checkBiometricAvailability();
+        if (!authCheck.available && !authCheck.isDeviceSecure) {
+          Alert.alert(
+            'Authentication Not Available',
+            'Please ensure device security (PIN, pattern, password, or fingerprint) is configured in your device Settings.'
+          );
+          return;
+        }
+        setBiometricEnabled(true);
+        const result = await BiometricService.enableSecurity({ lockImmediately: true });
+        if (!result.success) {
+          setBiometricEnabled(false);
+          Alert.alert('Error', result.error || 'Failed to enable biometric access.');
+        }
+      } else {
+        const auth = await BiometricService.authenticate(
+          'Verify identity to disable biometric access',
+          { force: true }
+        );
+        if (auth.success) {
+          setBiometricEnabled(false);
+          await BiometricService.disableSecurity();
+        } else {
+          setBiometricEnabled(true);
+          if (!auth.isCancel) {
+            Alert.alert('Authentication Failed', auth.error || 'Biometric verification failed.');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling biometric:', err);
+    }
+  };
 
   const activeLoan = loans.find((l) => l.status === 'ACTIVE' || l.status === 'DISBURSED') || loans[0] || {
     loan_number: 'LN-2026-001',
@@ -159,7 +210,7 @@ export const UserProfile = () => {
           iconColor: '#2563EB',
           hasSwitch: true,
           switchValue: biometricEnabled,
-          onToggle: setBiometricEnabled,
+          onToggle: handleBiometricToggle,
         },
       ],
     },

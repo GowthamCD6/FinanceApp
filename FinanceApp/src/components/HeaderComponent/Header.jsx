@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LeftArrowIcon from '../../assets/Icon/left-arrow.svg';
+import { Colors, Fonts } from '../../theme';
 
 const Header = ({
   title,
@@ -15,7 +16,7 @@ const Header = ({
   showBackButton = true,
   backIconWidth = 20,
   backIconHeight = 20,
-  backIconFill = '#1F2937',
+  backIconFill = Colors.textPrimary,
   titleStyle = {},
   headerStyle = {},
   showDivider = true,
@@ -62,7 +63,7 @@ const Header = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
     width: '100%',
     alignSelf: 'stretch',
   },
@@ -78,11 +79,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: 22,
+    fontWeight: '600',
+    color: Colors.textPrimary,
     marginLeft: 12,
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Medium' : 'System',
+    fontFamily: Fonts.header,
     flex: 1,
   },
   rightComponent: {
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 1,
-    backgroundColor: '#d7dce4ff', // Darker gray color for better visibility
+    backgroundColor: Colors.separator, // #d7dce4ff
   },
 });
 

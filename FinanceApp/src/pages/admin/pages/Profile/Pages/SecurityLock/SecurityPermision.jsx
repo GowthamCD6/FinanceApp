@@ -21,11 +21,22 @@ const SecurPermis = ({ onBack }) => {
   const { t, language } = useLanguage ? useLanguage() : { t: (s) => s, language: 'en' };
   const [securityEnabled, setSecurityEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [helpModalVisible, setHelpModalVisible] = useState(false);
 
-  // Load security setting on component mount
+  // Load security setting on component mount and subscribe to state changes
   useEffect(() => {
     loadSecuritySetting();
+
+    const unsubscribe = BiometricService.addListener((state) => {
+      setSecurityEnabled(state.isSecurityEnabled);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Handle hardware back button to navigate back to profile page
@@ -61,75 +72,63 @@ const SecurPermis = ({ onBack }) => {
   };
 
   const handleSecurityToggle = async (value) => {
-    const authCheck = await checkAuthenticationAvailability();
-    if (!authCheck.available) {
-      Alert.alert(
-        'Authentication Not Available',
-        'Please ensure device security is enabled in your device settings.',
-        [
-          { text: 'OK', style: 'default' },
-          {
-            text: 'Help',
-            style: 'default',
-            onPress: () => {
-              Alert.alert(
-                'Setup Instructions',
-                'Go to your device Settings > Security & Privacy > Screen Lock to set up PIN, password, pattern, fingerprint, or face unlock.'
-              );
-            },
-          },
-        ]
-      );
-      return;
-    }
+    if (isProcessing) return;
+    setIsProcessing(true);
 
-    if (value) {
-      const auth = await BiometricService.authenticate('Verify identity to enable app security lock');
-      if (!auth.success) {
-        return;
-      }
+    try {
+      if (value) {
+        // 1. Check if device has biometrics or PIN/password configured
+        const authCheck = await checkAuthenticationAvailability();
+        if (!authCheck.available && !authCheck.isDeviceSecure) {
+          Alert.alert(
+            'Authentication Not Available',
+            'Please ensure device security (PIN, pattern, password, or fingerprint) is configured in your device Settings.',
+            [
+              { text: 'OK', style: 'default' },
+              {
+                text: 'Help',
+                style: 'default',
+                onPress: () => {
+                  Alert.alert(
+                    'Setup Instructions',
+                    'Go to your device Settings > Security > Screen Lock to set up PIN, password, pattern, fingerprint, or face unlock.'
+                  );
+                },
+              },
+            ]
+          );
+          return;
+        }
 
-      const result = await BiometricService.enableSecurity();
-      if (result.success) {
+        // 2. Turning ON: Smooth transition to lock screen, asks biometric, and opens app on success
         setSecurityEnabled(true);
-        Alert.alert(
-          'Security Enabled',
-          'App security has been successfully enabled. The app will now lock automatically when you switch to other apps or when the device is locked.',
-          [{ text: 'OK', style: 'default' }]
+        const result = await BiometricService.enableSecurity({ lockImmediately: true });
+        if (!result.success) {
+          setSecurityEnabled(false);
+          Alert.alert('Failed to Enable Security', result.error || 'Unable to enable app security. Please try again.');
+        }
+      } else {
+        // 3. Turning OFF: Prompt biometric in this page itself, and turn off on success
+        const auth = await BiometricService.authenticate(
+          'Verify identity to disable app security lock',
+          { force: true }
         );
-      } else if (result.error !== 'user_cancel') {
-        Alert.alert('Failed to Enable Security', 'Unable to enable app security. Please try again.');
-      }
-    } else {
-      Alert.alert(
-        'Disable Security',
-        'Are you sure you want to disable app security?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Disable',
-            style: 'destructive',
-            onPress: async () => {
-              const auth = await BiometricService.authenticate('Verify identity to disable app security lock');
-              if (!auth.success) {
-                return;
-              }
 
-              const result = await BiometricService.disableSecurity();
-              if (result.success) {
-                setSecurityEnabled(false);
-                Alert.alert(
-                  'Security Disabled',
-                  'App security has been disabled. The app will no longer require authentication.',
-                  [{ text: 'OK', style: 'default' }]
-                );
-              } else if (result.error !== 'user_cancel') {
-                Alert.alert('Failed to Disable Security', 'Unable to disable app security.');
-              }
-            },
-          },
-        ]
-      );
+        if (auth.success) {
+          setSecurityEnabled(false);
+          await BiometricService.disableSecurity();
+        } else {
+          // If cancelled or failed, preserve the enabled state
+          setSecurityEnabled(true);
+          if (!auth.isCancel) {
+            Alert.alert('Authentication Failed', auth.error || 'Biometric verification failed.');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling security:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -190,7 +189,7 @@ const SecurPermis = ({ onBack }) => {
                   onValueChange={handleSecurityToggle}
                   trackColor={{ false: '#E5E7EB', true: '#22C55E' }}
                   thumbColor={'#FFFFFF'}
-                  disabled={isLoading}
+                  disabled={isLoading || isProcessing}
                 />
               </View>
             </View>

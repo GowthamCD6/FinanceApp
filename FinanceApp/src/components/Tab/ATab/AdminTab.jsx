@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import Colors from '../../../theme/colors';
+import { Colors, Fonts } from '../../../theme';
 
 export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
   const tabs = [
@@ -35,8 +35,8 @@ export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
   const leftTabs = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2);
 
-  const activeColor = '#6B46C1';
-  const inactiveColor = '#6B7280';
+  const activeColor = Colors.primary;
+  const inactiveColor = Colors.textSecondary;
 
   const renderTabItem = (tab) => {
     const isActive = activeTab === tab.id;
@@ -88,7 +88,7 @@ export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
         accessibilityLabel="Admin Actions"
       >
         <View style={styles.customTabButtonInner}>
-          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+          <MaterialCommunityIcons name="plus" size={28} color={Colors.white} />
         </View>
       </TouchableOpacity>
 
@@ -102,13 +102,13 @@ export const AdminTab = ({ activeTab, onTabPress, onOpenMore }) => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     height: Platform.OS === 'ios' ? 84 : 70,
     borderTopWidth: 0,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     elevation: 10,
-    shadowColor: '#000000',
+    shadowColor: Colors.black,
     shadowOffset: {
       width: 0,
       height: -4,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 11,
     fontWeight: '500',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    fontFamily: Fonts.gilroy.medium,
     textAlign: 'center',
     includeFontPadding: false,
     lineHeight: 14,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     fontWeight: '700',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    fontFamily: Fonts.gilroy.bold,
   },
   customTabButton: {
     top: -18,
@@ -161,11 +161,11 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#6B46C1',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
-    shadowColor: '#6B46C1',
+    shadowColor: Colors.primary,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 6,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.white,
   },
 });
 
