@@ -5,7 +5,8 @@ import { OrgProvider } from './context/OrgContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
-// Auth Page
+// Auth & Landing Pages
+import { WelcomePage } from './pages/auth/Welcome/Welcome';
 import { LoginPage } from './pages/auth/Login/LoginPage';
 
 // SuperAdmin Tier Pages
@@ -47,13 +48,14 @@ export default function App() {
       <OrgProvider>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
-            {/* 1. Public Authentication Portal */}
+            {/* 1. Public Authentication & Welcome Landing Portal */}
+            <Route path="/" element={<WelcomePage />} />
+            <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/login" element={<LoginPage />} />
 
             {/* 2. Guarded Private App Routes (Session & Token Validated) */}
             <Route element={<ProtectedRoute />}>
               <Route element={<Sidebar />}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                 {/* SuperAdmin Tier: Governance, Multi-Tenant Hub, Analytics & Infra */}
                 <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
