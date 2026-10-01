@@ -1,6 +1,6 @@
 /* ==========================================================================
-   QONTO-INSPIRED ULTRA-PROFESSIONAL FINTECH THEME - EXPANDED MANIFEST
-   Palette: Matte Obsidian Black (#141414), Card Dark (#1E1E1E / #222222),
+   QONTO-INSPIRED ULTRA-PROFESSIONAL FINTECH THEME - ADVANCED 3D MANIFEST
+   Palette: Matte Obsidian Black (#141414), Card Dark (#1A1A1A / #202020),
    Crisp White (#FFFFFF), Muted Slate (#8E8E93), 
    Pastels: Mint (#C8F5E9), Lemon (#FBF6B6), Lavender (#DED4FC), Peach (#FCE0D2)
    ========================================================================== */
@@ -21,6 +21,7 @@
   --qonto-pastel-peach: #FCE0D2;
   --qonto-accent-green: #10B981;
   --qonto-accent-blue: #3B82F6;
+  --qonto-accent-purple: #8B5CF6;
   --qonto-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -96,7 +97,7 @@
 .qonto-nav-menu {
   display: flex;
   align-items: center;
-  gap: 2.25rem;
+  gap: 2rem;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -156,7 +157,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. HERO SECTION
+   2. HERO SECTION & 3D ISOMETRIC STAGE
    -------------------------------------------------------------------------- */
 .qonto-hero-section {
   max-width: 1240px;
@@ -273,16 +274,26 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. ISOMETRIC 3D FINTECH COMPOSITION
+   HERO RIGHT: ISOMETRIC 3D FINTECH COMPOSITION
    -------------------------------------------------------------------------- */
 .qonto-hero-right {
   position: relative;
   width: 100%;
-  height: 520px;
+  height: 540px;
   display: flex;
   align-items: center;
   justify-content: center;
   perspective: 1400px;
+}
+
+.hero-3d-bg-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .qonto-isometric-stage {
@@ -292,9 +303,57 @@
   transform-style: preserve-3d;
   transform: rotateX(50deg) rotateZ(-35deg);
   transition: transform 0.25s ease-out;
+  z-index: 2;
 }
 
-/* Base Tilted Tablet Dashboard Layer */
+/* 3D Floating Token Elements */
+.floating-3d-token {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+
+.token-coin-gold {
+  top: 15px;
+  left: -20px;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #FDE047 0%, #D97706 100%);
+  border: 2px solid #FEF08A;
+  color: #78350F;
+  font-size: 1.5rem;
+  font-weight: 900;
+  transform: translateZ(120px);
+  animation: floatCoin 3.5s ease-in-out infinite;
+}
+
+.token-shield-blue {
+  bottom: 30px;
+  right: -25px;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
+  border: 2px solid #BFDBFE;
+  color: #FFFFFF;
+  transform: translateZ(100px);
+  animation: floatShield 4s ease-in-out infinite;
+}
+
+@keyframes floatCoin {
+  0%, 100% { transform: translateZ(120px) translateY(0) rotateY(0deg); }
+  50% { transform: translateZ(140px) translateY(-14px) rotateY(20deg); }
+}
+
+@keyframes floatShield {
+  0%, 100% { transform: translateZ(100px) translateY(0) rotateX(0deg); }
+  50% { transform: translateZ(125px) translateY(-12px) rotateX(-20deg); }
+}
+
+/* Tilted Tablet Dashboard Layer */
 .qonto-mockup-tablet {
   position: absolute;
   top: 0;
@@ -515,7 +574,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   4. THE 4 SIGNATURE QONTO PASTEL FEATURE CARDS
+   3. THE 4 SIGNATURE QONTO PASTEL FEATURE CARDS WITH 3D TILT
    -------------------------------------------------------------------------- */
 .qonto-features-strip-section {
   max-width: 1240px;
@@ -548,6 +607,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
+  perspective: 1200px;
 }
 
 .qonto-feature-card {
@@ -558,12 +618,26 @@
   flex-direction: column;
   color: #111111;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+  position: relative;
 }
 
 .qonto-feature-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.65);
+}
+
+.card-specular-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.qonto-feature-card:hover .card-specular-shine {
+  opacity: 1;
 }
 
 .qonto-card-banner {
@@ -615,12 +689,1044 @@
 }
 
 /* --------------------------------------------------------------------------
-   5. INTERACTIVE PRODUCT EXPERIENCE TABS (Interactive Switcher)
+   4. INTERACTIVE 3D HOLOGRAPHIC CARD STUDIO
+   -------------------------------------------------------------------------- */
+.card-studio-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2rem 2rem 6rem 2rem;
+}
+
+.card-studio-container {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 24px;
+  padding: 3.5rem;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-studio-specs {
+  display: flex;
+  flex-direction: column;
+}
+
+.tier-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.tier-pill-btn {
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  color: #A1A1AA;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.2s ease;
+}
+
+.tier-pill-btn:hover, .tier-pill-btn.active {
+  background: var(--qonto-white);
+  color: #111111;
+  border-color: var(--qonto-white);
+}
+
+.card-tier-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--qonto-white);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.2;
+}
+
+.card-tier-desc {
+  font-size: 1.05rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.65;
+  margin: 0 0 2rem 0;
+}
+
+.card-specs-matrix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spec-lbl {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #71717A;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.spec-val {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--qonto-white);
+}
+
+.card-actions-interactive-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  color: var(--qonto-white);
+  padding: 0.7rem 1.15rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-card-action:hover, .btn-card-action.active {
+  background: var(--qonto-white);
+  color: #111111;
+  border-color: var(--qonto-white);
+}
+
+/* 3D Rotatable Stage */
+.card-studio-3d-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  perspective: 1200px;
+  position: relative;
+  min-height: 380px;
+}
+
+.holographic-3d-card {
+  width: 360px;
+  height: 226px;
+  border-radius: 16px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out, box-shadow 0.3s ease;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 25px rgba(255, 255, 255, 0.05);
+  cursor: grab;
+  user-select: none;
+}
+
+.holographic-3d-card:active {
+  cursor: grabbing;
+}
+
+.card-surface-specular {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.2s ease;
+  mix-blend-mode: overlay;
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-front {
+  transform: rotateY(0deg);
+}
+
+.card-front-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chip-gold-emv {
+  width: 44px;
+  height: 32px;
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 50%, #B45309 100%);
+  border-radius: 6px;
+  border: 1px solid #78350F;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+.chip-gold-emv::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #78350F;
+}
+
+.chip-gold-emv::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #78350F;
+}
+
+.nfc-contactless-icon {
+  opacity: 0.8;
+}
+
+.card-front-middle {
+  margin: 1.25rem 0;
+}
+
+.card-number-embossed {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.card-front-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.card-lbl-mini {
+  display: block;
+  font-size: 0.62rem;
+  color: #9CA3AF;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.card-val-name, .card-val-date {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.05em;
+}
+
+.card-brand-seal {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
+}
+
+/* Card Back */
+.card-back {
+  transform: rotateY(180deg);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.card-magstripe {
+  width: 100%;
+  height: 42px;
+  background: #09090B;
+  margin-top: 1.5rem;
+}
+
+.card-signature-box {
+  margin: 1.25rem 1.5rem 0.75rem 1.5rem;
+  background: #F4F4F5;
+  height: 38px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+}
+
+.signature-lines {
+  font-size: 0.65rem;
+  color: #71717A;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.cvv-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #111111;
+  font-style: italic;
+}
+
+.card-back-disclaimer {
+  padding: 0 1.5rem;
+  font-size: 0.68rem;
+  color: #71717A;
+  line-height: 1.4;
+  margin-top: 0.5rem;
+}
+
+.card-hint-text {
+  font-size: 0.78rem;
+  color: #71717A;
+  margin-top: 1.5rem;
+  letter-spacing: 0.02em;
+}
+
+.nfc-pulse-ring {
+  position: absolute;
+  width: 380px;
+  height: 240px;
+  border-radius: 20px;
+  border: 2px solid var(--qonto-accent-green);
+  animation: nfcPing 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes nfcPing {
+  0% { transform: scale(0.95); opacity: 0.9; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   5. INTERACTIVE 3D FIELD ROUTE & TELEMETRY
+   -------------------------------------------------------------------------- */
+.route-telemetry-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2rem 2rem 6rem 2rem;
+}
+
+.route-telemetry-box {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 24px;
+  padding: 3.5rem;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.route-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background: radial-gradient(circle at center, rgba(30, 30, 35, 0.9) 0%, rgba(18, 18, 20, 1) 100%);
+  border-radius: 18px;
+  border: 1px solid var(--qonto-border-dark);
+  overflow: hidden;
+}
+
+.route-canvas-el {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.telemetry-badge-overlay {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--qonto-accent-green);
+  z-index: 10;
+}
+
+.route-telemetry-sidebar h3 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--qonto-white);
+  margin: 0 0 1rem 0;
+  line-height: 1.2;
+}
+
+.route-telemetry-sidebar p {
+  font-size: 1.05rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.65;
+  margin: 0 0 1.75rem 0;
+}
+
+.telemetry-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.telemetry-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.telemetry-stat .stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #71717A;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.telemetry-stat .stat-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+}
+
+.telemetry-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-telemetry-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  color: var(--qonto-white);
+  padding: 0.7rem 1.15rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-telemetry-action:hover, .btn-telemetry-action.active {
+  background: var(--qonto-white);
+  color: #111111;
+  border-color: var(--qonto-white);
+}
+
+/* --------------------------------------------------------------------------
+   6. DEDICATED 3D INTERACTIVE VAULT CHAMBER SECTION
+   -------------------------------------------------------------------------- */
+.vault-3d-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2rem 2rem 6rem 2rem;
+}
+
+.vault-chamber-card {
+  background: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 24px;
+  padding: 3.5rem;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.vault-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  background: radial-gradient(circle at center, rgba(35, 35, 35, 0.8) 0%, rgba(20, 20, 20, 1) 100%);
+  border-radius: 18px;
+  border: 1px solid var(--qonto-border-dark);
+  overflow: hidden;
+}
+
+.vault-canvas-el {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.vault-canvas-overlay {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--qonto-accent-green);
+  z-index: 10;
+}
+
+.vault-chamber-info h3 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--qonto-white);
+  margin: 0 0 1rem 0;
+  line-height: 1.2;
+}
+
+.vault-chamber-info p {
+  font-size: 1.05rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.65;
+  margin: 0 0 2rem 0;
+}
+
+.vault-interactive-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vault-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  color: var(--qonto-white);
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vault-btn-action:hover, .vault-btn-action.active {
+  background: var(--qonto-white);
+  color: #111111;
+  border-color: var(--qonto-white);
+}
+
+/* --------------------------------------------------------------------------
+   7. 3D ISOMETRIC LIQUIDITY & TREASURY BAR RADAR
+   -------------------------------------------------------------------------- */
+.liquidity-3d-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2rem 2rem 6rem 2rem;
+}
+
+.liquidity-card-box {
+  background: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 24px;
+  padding: 3.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.liquidity-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.liquidity-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--qonto-white);
+  margin: 0 0 0.5rem 0;
+}
+
+.liquidity-sub {
+  font-size: 1rem;
+  color: var(--qonto-text-dim);
+  margin: 0;
+}
+
+.liquidity-time-toggles {
+  display: flex;
+  gap: 8px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.time-toggle-btn {
+  background: transparent;
+  border: none;
+  color: #A1A1AA;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-toggle-btn.active {
+  background: var(--qonto-white);
+  color: #111111;
+  font-weight: 700;
+}
+
+.liquidity-canvas-wrap {
+  width: 100%;
+  height: 320px;
+  background: radial-gradient(circle at center, rgba(30, 30, 30, 0.6) 0%, rgba(20, 20, 20, 0.95) 100%);
+  border-radius: 16px;
+  border: 1px solid var(--qonto-border-dark);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.liquidity-canvas-el {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.liquidity-footer-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+}
+
+.footer-metric-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  padding: 0.6rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  color: #D1D5DB;
+}
+
+.dot-green { width: 8px; height: 8px; border-radius: 50%; background: #10B981; }
+.dot-blue { width: 8px; height: 8px; border-radius: 50%; background: #3B82F6; }
+.dot-purple { width: 8px; height: 8px; border-radius: 50%; background: #8B5CF6; }
+
+/* --------------------------------------------------------------------------
+   8. INTERACTIVE 3D ISOMETRIC WORKFLOW PIPELINE
+   -------------------------------------------------------------------------- */
+.pipeline-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 3rem;
+  perspective: 1200px;
+}
+
+.pipeline-card {
+  background: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.pipeline-card:hover {
+  transform: translateY(-8px) translateZ(20px);
+  border-color: #555555;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+}
+
+.pipeline-icon-cube {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  color: var(--qonto-white);
+}
+
+.pipeline-step-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #A1A1AA;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.pipeline-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.02em;
+}
+
+.pipeline-desc {
+  font-size: 0.92rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   9. PLATFORM COMPARISON TAB
+   -------------------------------------------------------------------------- */
+.platform-comparison-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.platform-toggle-container {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.platform-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  color: #A1A1AA;
+  padding: 0.85rem 1.6rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.platform-toggle-btn.active {
+  background: var(--qonto-white);
+  color: #111111;
+  font-weight: 700;
+  border-color: var(--qonto-white);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.platform-features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.platform-feature-card {
+  background: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 16px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease;
+}
+
+.platform-feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.platform-feature-card h4 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+  margin: 1.25rem 0 0.75rem 0;
+  line-height: 1.3;
+}
+
+.platform-feature-card p {
+  font-size: 0.9rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   10. BORROWER LIFECYCLE ROADMAP
+   -------------------------------------------------------------------------- */
+.lifecycle-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.lifecycle-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.lifecycle-card {
+  background: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 16px;
+  padding: 2.25rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.lifecycle-card:hover, .lifecycle-card.active {
+  border-color: var(--qonto-white);
+  transform: translateY(-6px);
+  background: #1C1C1E;
+}
+
+.lifecycle-num {
+  font-size: 2rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.15);
+  margin-bottom: 0.5rem;
+  font-family: monospace;
+}
+
+.lifecycle-badge {
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  align-self: flex-start;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.lifecycle-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--qonto-white);
+  margin: 0 0 0.35rem 0;
+}
+
+.lifecycle-sub {
+  font-size: 0.85rem;
+  color: #A1A1AA;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.lifecycle-desc {
+  font-size: 0.9rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.6;
+  margin: 0 0 1.25rem 0;
+  flex: 1;
+}
+
+.lifecycle-metric-footer {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #60A5FA;
+  border-top: 1px solid var(--qonto-border-dark);
+  padding-top: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   11. REAL-TIME CRYPTOGRAPHIC AUDIT STREAM
+   -------------------------------------------------------------------------- */
+.audit-feed-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.audit-feed-container {
+  background: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.audit-feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  background: #1A1A1C;
+  border-bottom: 1px solid var(--qonto-border-dark);
+}
+
+.feed-status-dot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--qonto-accent-green);
+  letter-spacing: 0.04em;
+}
+
+.btn-feed-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  color: #A1A1AA;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-feed-control:hover {
+  color: var(--qonto-white);
+  border-color: var(--qonto-white);
+}
+
+.audit-items-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.audit-feed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--qonto-border-dark);
+  transition: background 0.15s ease;
+}
+
+.audit-feed-item:last-child {
+  border-bottom: none;
+}
+
+.audit-feed-item:hover {
+  background: #18181A;
+}
+
+.item-left-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-branch {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.item-desc {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--qonto-white);
+  margin: 0;
+}
+
+.item-hash {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #6B7280;
+}
+
+.item-right-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.item-amount {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+}
+
+.item-status-pill {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.item-time {
+  font-size: 0.72rem;
+  color: #6B7280;
+}
+
+/* --------------------------------------------------------------------------
+   12. INTERACTIVE PRODUCT EXPERIENCE TABS
    -------------------------------------------------------------------------- */
 .product-showcase-section {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 3rem 2rem 6rem 2rem;
+  padding: 0 2rem 6rem 2rem;
 }
 
 .showcase-tab-bar {
@@ -661,7 +1767,7 @@
   background-color: var(--qonto-dark);
   border: 1px solid var(--qonto-border-dark);
   border-radius: 20px;
-  padding: 3rem;
+  padding: 3.5rem;
   display: grid;
   grid-template-columns: 1.1fr 1fr;
   gap: 3.5rem;
@@ -722,7 +1828,7 @@
 .showcase-right-visual {
   background-color: #FFFFFF;
   border-radius: 16px;
-  padding: 1.75rem;
+  padding: 2rem;
   color: #111111;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
@@ -736,7 +1842,7 @@
 }
 
 .visual-metric-amount {
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 900;
   color: #111111;
   margin: 0.75rem 0 0.25rem 0;
@@ -765,7 +1871,7 @@
 .visual-detail-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: #4B5563;
   padding: 4px 0;
 }
@@ -776,67 +1882,106 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. 3-STEP OPERATIONAL LIFECYCLE ("How It Works")
+   7. INTERACTIVE ROI & TIME-SAVINGS CALCULATOR
    -------------------------------------------------------------------------- */
-.how-it-works-section {
+.roi-section {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 2rem 2rem 6rem 2rem;
+  padding: 0 2rem 6rem 2rem;
 }
 
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2rem;
-  margin-top: 3rem;
-}
-
-.step-card {
-  background-color: var(--qonto-dark);
+.roi-card {
+  background: var(--qonto-dark);
   border: 1px solid var(--qonto-border-dark);
-  border-radius: 16px;
-  padding: 2.25rem 1.75rem;
+  border-radius: 20px;
+  padding: 3rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+
+.roi-controls {
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  gap: 1.75rem;
 }
 
-.step-card:hover {
-  transform: translateY(-4px);
-  border-color: #444444;
+.roi-stats-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
 }
 
-.step-num-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background-color: var(--qonto-white);
-  color: #111111;
-  font-weight: 800;
+.roi-stat-box {
+  background: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 14px;
+  padding: 1.5rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  font-size: 1rem;
+  flex-direction: column;
 }
 
-.step-title {
-  font-size: 1.35rem;
-  font-weight: 800;
+.roi-stat-number {
+  font-size: 2.2rem;
+  font-weight: 900;
   color: var(--qonto-white);
-  margin: 0 0 0.75rem 0;
   letter-spacing: -0.02em;
 }
 
-.step-desc {
-  font-size: 0.95rem;
+.roi-stat-label {
+  font-size: 0.85rem;
   color: var(--qonto-text-dim);
-  line-height: 1.6;
-  margin: 0;
+  margin-top: 4px;
 }
 
 /* --------------------------------------------------------------------------
-   7. INTERACTIVE LOAN CALCULATOR (Fintech Simulator)
+   8. SCHEMES DEEP-DIVE COMPARISON MATRIX
+   -------------------------------------------------------------------------- */
+.comparison-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.comparison-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 16px;
+  margin-top: 2.5rem;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--qonto-border-dark);
+  font-size: 0.95rem;
+}
+
+.comparison-table th {
+  background: var(--qonto-card-dark);
+  color: var(--qonto-white);
+  font-weight: 700;
+}
+
+.comparison-table td {
+  color: var(--qonto-text-light);
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* --------------------------------------------------------------------------
+   9. INTERACTIVE LOAN CALCULATOR
    -------------------------------------------------------------------------- */
 .qonto-calc-section {
   max-width: 1240px;
@@ -941,7 +2086,6 @@
   border-color: var(--qonto-white);
 }
 
-/* Calculator Breakdown Box (Crisp White Card) */
 .calc-breakdown-card {
   background-color: #FFFFFF;
   border-radius: 16px;
@@ -1008,7 +2152,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   8. ENTERPRISE SECURITY & COMPLIANCE BENTO GRID
+   10. SECURITY BENTO GRID
    -------------------------------------------------------------------------- */
 .security-bento-section {
   max-width: 1240px;
@@ -1065,7 +2209,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   9. CLIENT TESTIMONIALS & TRUST
+   11. TESTIMONIALS & CASE STUDIES
    -------------------------------------------------------------------------- */
 .testimonials-section {
   max-width: 1240px;
@@ -1095,7 +2239,6 @@
   line-height: 1.65;
   color: var(--qonto-text-light);
   margin: 0 0 1.75rem 0;
-  font-style: normal;
 }
 
 .testimonial-author-box {
@@ -1129,7 +2272,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   10. INTERACTIVE FAQ ACCORDION
+   12. FAQ ACCORDION
    -------------------------------------------------------------------------- */
 .faq-section {
   max-width: 900px;
@@ -1179,7 +2322,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   11. INSTITUTIONAL METRICS SECTION
+   13. INSTITUTIONAL METRICS
    -------------------------------------------------------------------------- */
 .qonto-metrics-section {
   border-top: 1px solid var(--qonto-border-dark);
@@ -1219,7 +2362,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   12. BOTTOM CONVERSION ACTION
+   14. BOTTOM CALL TO ACTION
    -------------------------------------------------------------------------- */
 .qonto-bottom-cta {
   max-width: 1240px;
@@ -1250,7 +2393,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   13. FOOTER
+   15. FOOTER
    -------------------------------------------------------------------------- */
 .qonto-footer {
   border-top: 1px solid var(--qonto-border-dark);
@@ -1348,8 +2491,10 @@
    -------------------------------------------------------------------------- */
 @media (max-width: 1100px) {
   .qonto-cards-grid,
-  .steps-grid,
-  .testimonials-grid {
+  .pipeline-grid,
+  .testimonials-grid,
+  .platform-features-grid,
+  .lifecycle-cards-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -1361,7 +2506,12 @@
     grid-column: span 1;
   }
 
+  .card-studio-container,
+  .route-telemetry-box,
+  .liquidity-card-box,
+  .vault-chamber-card,
   .showcase-content-box,
+  .roi-card,
   .qonto-calc-box {
     grid-template-columns: 1fr;
     gap: 2.5rem;
@@ -1392,7 +2542,7 @@
   }
 
   .qonto-hero-right {
-    height: 420px;
+    height: 440px;
   }
 
   .qonto-isometric-stage {
@@ -1410,21 +2560,52 @@
   }
 
   .qonto-cards-grid,
-  .steps-grid,
+  .pipeline-grid,
   .testimonials-grid,
   .bento-grid,
+  .platform-features-grid,
+  .lifecycle-cards-grid,
+  .card-specs-matrix,
+  .telemetry-metrics-grid,
   .qonto-metrics-inner,
+  .roi-stats-display,
   .qonto-footer-grid {
     grid-template-columns: 1fr;
   }
 
-  .showcase-tab-bar {
+  .showcase-tab-bar,
+  .platform-toggle-container {
     flex-direction: column;
   }
 
+  .card-studio-container,
+  .route-telemetry-box,
+  .liquidity-card-box,
+  .vault-chamber-card,
   .showcase-content-box,
+  .roi-card,
   .qonto-calc-box {
     padding: 2rem 1.25rem;
+  }
+
+  .holographic-3d-card {
+    width: 295px;
+    height: 185px;
+  }
+
+  .card-number-embossed {
+    font-size: 1.1rem;
+    letter-spacing: 0.12em;
+  }
+
+  .audit-feed-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .item-right-block {
+    align-items: flex-start;
   }
 
   .qonto-isometric-stage {
@@ -1435,3 +2616,4 @@
     font-size: 2.2rem;
   }
 }
+
