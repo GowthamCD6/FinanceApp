@@ -19,7 +19,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import Header from '../../../../components/HeaderComponent/Header';
 import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
-import { EditLoanModal, DeleteLoanModal } from '../../../../components/loans/LoanModals';
+import { DeleteLoanModal } from '../../../../components/loans/LoanModals';
 
 // Helper for local date string
 const formatDateStr = (d) => {
@@ -126,7 +126,8 @@ export const BorrowerLogModal = ({
   onOpenIssueLoan,
 }) => {
   const [loanData, setLoanData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [animReady, setAnimReady] = useState(false);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'UNPAID' | 'PAID'
   const [modeUpdating, setModeUpdating] = useState(false);
 
@@ -141,111 +142,96 @@ export const BorrowerLogModal = ({
   // Edit and Delete Loan Modal States
   const [editLoanVisible, setEditLoanVisible] = useState(false);
   const [deleteLoanVisible, setDeleteLoanVisible] = useState(false);
+  const [editForm, setEditForm] = useState({
+    principal: '',
+    interest_rate: '12.5',
+    total_installments: '10',
+    repayment_frequency: 'WEEKLY',
+    collection_mode: 'NORMAL',
+    disbursement_date: '',
+    notes: '',
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Fast & Protected Loan Ledger Loader with Stale-While-Revalidate
   const loadLoanLedger = useCallback(async (skipCache = false) => {
-    if (!borrower?.loanId) return;
+    const targetLoanId = borrower?.loanId || borrower?.id;
+    if (!targetLoanId) return;
 
     // 1. Check in-memory cache first for instant response
-    if (!skipCache && loanLedgerCache.has(borrower.loanId)) {
-      setLoanData(loanLedgerCache.get(borrower.loanId));
-      setLoading(false);
-    } else if (!loanData && Array.isArray(borrower.records) && borrower.records.length > 0) {
-      // 2. Preloaded data from parent report page available immediately
-      setLoanData({
-        id: borrower.loanId,
-        loan_number: borrower.loanNumber,
-        customer_name: borrower.customerName,
-        customer_phone: borrower.customerPhone,
-        shop_name: borrower.shopName,
-        repayment_frequency: borrower.frequency,
-        collection_mode: borrower.collection_mode || 'NORMAL',
-        principal_amount: borrower.expectedAmount,
-        total_repayment_amount: borrower.expectedAmount,
-        installments: borrower.records || [],
-      });
+    if (!skipCache && loanLedgerCache.has(targetLoanId)) {
+      setLoanData(loanLedgerCache.get(targetLoanId));
       setLoading(false);
     } else if (!loanData) {
       setLoading(true);
     }
 
-    // 3. Fast protected background revalidation
+    // 2. Fast background revalidation
     try {
-      const data = await apiService.getLoanById(borrower.loanId);
+      const data = await apiService.getLoanById(targetLoanId);
       if (data) {
-        loanLedgerCache.set(borrower.loanId, data);
+        loanLedgerCache.set(targetLoanId, data);
         setLoanData(data);
       }
     } catch (err) {
       console.warn('Background ledger revalidation:', err.message);
-      // Fallback securely to borrower data if loanData not yet set
-      setLoanData((prev) => prev || {
-        id: borrower.loanId,
-        loan_number: borrower.loanNumber,
-        customer_name: borrower.customerName,
-        customer_phone: borrower.customerPhone,
-        shop_name: borrower.shopName,
-        repayment_frequency: borrower.frequency,
-        collection_mode: borrower.collection_mode || 'NORMAL',
-        principal_amount: borrower.expectedAmount,
-        total_repayment_amount: borrower.expectedAmount,
-        installments: borrower.records || [],
-      });
     } finally {
       setLoading(false);
     }
-  }, [borrower, loanData]);
+  }, [borrower?.loanId, borrower?.id, loanData]);
 
+  // Clean Native Page Opening Animation & Stale-While-Revalidate Pipeline
   useEffect(() => {
     let isCurrent = true;
 
     if (visible && borrower) {
       setActiveFilter('ALL');
+      setLoading(true);
+      setAnimReady(false);
 
-      // Immediate render from cache or preloaded data (0ms delay)
-      const cached = loanLedgerCache.get(borrower.loanId);
-      if (cached) {
-        setLoanData(cached);
+      const targetLoanId = borrower?.loanId || borrower?.id;
+
+      // Check cache immediately (0ms) so data is ready in memory
+      if (targetLoanId && loanLedgerCache.has(targetLoanId)) {
+        setLoanData(loanLedgerCache.get(targetLoanId));
         setLoading(false);
-      } else if (Array.isArray(borrower.records) && borrower.records.length > 0) {
-        setLoanData({
-          id: borrower.loanId,
-          loan_number: borrower.loanNumber,
-          customer_name: borrower.customerName,
-          customer_phone: borrower.customerPhone,
-          shop_name: borrower.shopName,
-          repayment_frequency: borrower.frequency,
-          collection_mode: borrower.collection_mode || 'NORMAL',
-          principal_amount: borrower.expectedAmount,
-          total_repayment_amount: borrower.expectedAmount,
-          installments: borrower.records,
-        });
-        setLoading(false);
-      } else {
-        setLoading(true);
       }
 
-      // Revalidate in background securely
-      (async () => {
-        try {
-          const freshData = await apiService.getLoanById(borrower.loanId);
-          if (isCurrent && freshData) {
-            loanLedgerCache.set(borrower.loanId, freshData);
-            setLoanData(freshData);
-          }
-        } catch (err) {
-          if (isCurrent) console.warn('Background revalidation note:', err.message);
-        } finally {
-          if (isCurrent) setLoading(false);
-        }
-      })();
-    } else {
-      setLoanData(null);
-    }
+      // Smooth 60 FPS page slide opening transition:
+      // Allow the native slide animation (~180ms on Android) to glide in cleanly
+      const timer = setTimeout(() => {
+        if (isCurrent) setAnimReady(true);
+      }, 180);
 
-    return () => {
-      isCurrent = false;
-    };
+      // Background revalidation
+      if (targetLoanId) {
+        (async () => {
+          try {
+            const freshData = await apiService.getLoanById(targetLoanId);
+            if (isCurrent && freshData) {
+              loanLedgerCache.set(targetLoanId, freshData);
+              setLoanData(freshData);
+            }
+          } catch (err) {
+            if (isCurrent) console.warn('Background ledger sync:', err.message);
+          } finally {
+            if (isCurrent) setLoading(false);
+          }
+        })();
+      } else {
+        setLoading(false);
+      }
+
+      return () => {
+        isCurrent = false;
+        clearTimeout(timer);
+      };
+    } else {
+      setAnimReady(false);
+      setLoanData(null);
+      setLoading(true);
+    }
   }, [visible, borrower]);
 
   // Determine Collection Mode
@@ -288,10 +274,116 @@ export const BorrowerLogModal = ({
       );
       await loadLoanLedger(true);
       if (onPaymentSuccess) onPaymentSuccess();
-    } catch (err) {
       Alert.alert('Update Failed', err.message || 'Could not update collection mode.');
     } finally {
       setModeUpdating(false);
+    }
+  };
+
+  // Open Edit Loan Terms Modal
+  const handleOpenEditLoan = () => {
+    const p = loanData?.principal_amount || borrower?.expectedAmount || 10000;
+    const r = loanData?.interest_rate != null ? loanData.interest_rate : 12.5;
+    const t = loanData?.total_installments || rawInstallments.length || 10;
+    const freq = loanData?.repayment_frequency || borrower?.frequency || 'WEEKLY';
+    const mode = loanData?.collection_mode || (isLumpSum ? 'LUMP_SUM_END' : 'NORMAL');
+    const dDate = loanData?.disbursement_date
+      ? String(loanData.disbursement_date).slice(0, 10)
+      : rawInstallments[0]?.due_date
+      ? String(rawInstallments[0].due_date).slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+    const notes = loanData?.notes || '';
+
+    setEditForm({
+      principal: String(p),
+      interest_rate: String(r),
+      total_installments: String(t),
+      repayment_frequency: freq,
+      collection_mode: mode,
+      disbursement_date: dDate,
+      notes,
+    });
+    setEditError('');
+    setEditLoanVisible(true);
+  };
+
+  // Real-time Calculations for Edit Modal
+  const editCalculations = useMemo(() => {
+    const p = parseFloat(editForm.principal) || 0;
+    const r = parseFloat(editForm.interest_rate) || 0;
+    const t = parseInt(editForm.total_installments, 10) || 1;
+    const contractedIncome = Math.round(((p * r) / 100) * 100) / 100;
+    const totalRep = p + contractedIncome;
+    const emi = t > 0 ? Math.round(totalRep / t) : 0;
+
+    let matDate = '';
+    if (editForm.disbursement_date) {
+      try {
+        const d = new Date(editForm.disbursement_date);
+        const daysInterval =
+          editForm.repayment_frequency === 'DAILY'
+            ? 1
+            : editForm.repayment_frequency === 'MONTHLY'
+            ? 30
+            : 7;
+        d.setDate(d.getDate() + t * daysInterval);
+        matDate = d.toISOString().slice(0, 10);
+      } catch (e) {
+        matDate = '';
+      }
+    }
+
+    return {
+      principal: p,
+      interestRate: r,
+      tenure: t,
+      contractedIncome,
+      totalRepayable: totalRep,
+      emi,
+      maturityDate: matDate,
+    };
+  }, [editForm]);
+
+  // Save Loan Terms & Repayment Method
+  const handleSaveLoanTerms = async () => {
+    const loanId = loanData?.id || borrower?.loanId;
+    if (!loanId) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const p = parseFloat(editForm.principal);
+      const t = parseInt(editForm.total_installments, 10);
+      if (isNaN(p) || p <= 0) {
+        setEditError('Please enter a valid principal amount.');
+        setEditSaving(false);
+        return;
+      }
+      if (isNaN(t) || t <= 0) {
+        setEditError('Please enter a valid tenure/installments count.');
+        setEditSaving(false);
+        return;
+      }
+
+      const payload = {
+        principalAmount: p,
+        interestRate: parseFloat(editForm.interest_rate) || 0,
+        totalInstallments: t,
+        repayment_frequency: editForm.repayment_frequency,
+        collection_mode: editForm.collection_mode,
+        disbursement_date: editForm.disbursement_date,
+        notes: editForm.notes,
+      };
+
+      await apiService.updateLoan(loanId, payload);
+      loanLedgerCache.delete(loanId);
+      Alert.alert('Loan Terms Updated', 'The loan terms and repayment method have been updated.');
+      setEditLoanVisible(false);
+      await loadLoanLedger(true);
+      if (onPaymentSuccess) onPaymentSuccess();
+    } catch (err) {
+      setEditError(err.message || 'Failed to update loan terms.');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -388,6 +480,18 @@ export const BorrowerLogModal = ({
   const allInstCount = rawInstallments.length;
   const pendingInstCount = Math.max(0, allInstCount - paidInstCount);
 
+  // Indexed payments map for ultra-fast O(1) installment lookup
+  const paymentsByScheduleId = useMemo(() => {
+    const map = new Map();
+    if (Array.isArray(loanData?.payments)) {
+      loanData.payments.forEach((p) => {
+        if (p.schedule_id) map.set(p.schedule_id, p);
+        if (p.scheduleId) map.set(p.scheduleId, p);
+      });
+    }
+    return map;
+  }, [loanData?.payments]);
+
   const installments = useMemo(() => {
     if (activeFilter === 'ALL') return rawInstallments;
 
@@ -446,7 +550,7 @@ export const BorrowerLogModal = ({
           }
         />
 
-        {loading ? (
+        {loading || !animReady ? (
           <ScrollView
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
@@ -526,71 +630,21 @@ export const BorrowerLogModal = ({
                 </View>
               </View>
 
-              {/* Repayment Collection Mode Switcher Bar */}
-              <View style={styles.modeBarContainer}>
-                <View style={styles.modeBarHeader}>
-                  <Text style={styles.modeBarLabel}>REPAYMENT METHOD</Text>
-                  <Text style={styles.modeBarMaturity}>
-                    Maturity: {maturityDateStr}
+              {/* If Lump Sum mode is active, display a clean indicator tag */}
+              {isLumpSum && (
+                <View style={styles.lumpSumIndicator}>
+                  <MaterialCommunityIcons name="target" size={13} color="#6B46C1" />
+                  <Text style={styles.lumpSumIndicatorText}>
+                    Lump Sum at Last Date • Maturity: {maturityDateStr}
                   </Text>
                 </View>
-
-                <View style={styles.modeSwitchRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.modeSwitchBtn,
-                      !isLumpSum && styles.modeSwitchBtnActive,
-                    ]}
-                    onPress={() => handleToggleCollectionMode('NORMAL')}
-                    disabled={modeUpdating}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons
-                      name={!isLumpSum ? 'check-circle' : 'calendar-clock'}
-                      size={14}
-                      color={!isLumpSum ? '#6B46C1' : '#64748B'}
-                    />
-                    <Text
-                      style={[
-                        styles.modeSwitchText,
-                        !isLumpSum && styles.modeSwitchTextActive,
-                      ]}
-                    >
-                      Normal Dues
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.modeSwitchBtn,
-                      isLumpSum && styles.modeSwitchBtnActive,
-                    ]}
-                    onPress={() => handleToggleCollectionMode('LUMP_SUM_END')}
-                    disabled={modeUpdating}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons
-                      name={isLumpSum ? 'check-circle' : 'target'}
-                      size={14}
-                      color={isLumpSum ? '#6B46C1' : '#64748B'}
-                    />
-                    <Text
-                      style={[
-                        styles.modeSwitchText,
-                        isLumpSum && styles.modeSwitchTextActive,
-                      ]}
-                    >
-                      Get Amount at Last Date
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              )}
 
               {/* Loan Management Action Bar */}
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
                 <TouchableOpacity
                   style={styles.actionBtnOutline}
-                  onPress={() => setEditLoanVisible(true)}
+                  onPress={handleOpenEditLoan}
                   activeOpacity={0.7}
                 >
                   <MaterialCommunityIcons name="pencil-outline" size={14} color="#475569" />
@@ -705,8 +759,9 @@ export const BorrowerLogModal = ({
                   ? `Month ${inst.installment_number || idx + 1}`
                   : `Week ${inst.installment_number || idx + 1}`;
 
-                const paymentMethod = inst.payment_method || (loanData?.payments?.find((p) => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_method) || 'CASH';
-                const rawPaidDate = inst.effective_paid_date || inst.paid_at || (loanData?.payments?.find((p) => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_date) || inst.due_date;
+                const matchedPayment = paymentsByScheduleId.get(inst.id) || paymentsByScheduleId.get(inst.scheduleId);
+                const paymentMethod = inst.payment_method || matchedPayment?.payment_method || 'CASH';
+                const rawPaidDate = inst.effective_paid_date || inst.paid_at || matchedPayment?.payment_date || inst.due_date;
                 const paidDateStr = rawPaidDate ? formatDate(rawPaidDate) : 'Completed';
                 const dueDateStr = inst.due_date ? String(inst.due_date).slice(0, 10) : '';
                 const isOverdue = !isPaid && !isLumpSumDeferred && (inst.status === 'OVERDUE' || (dueDateStr && dueDateStr < todayStr));
@@ -846,120 +901,351 @@ export const BorrowerLogModal = ({
         )}
 
         {/* Easy Payment Confirmation Modal (Styled with Add User Clean Palette) */}
-        <Modal
-          visible={payModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setPayModalVisible(false)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={styles.modalIconCircle}>
-                    <MaterialCommunityIcons
-                      name={isLastDatePayment ? 'target' : 'cash-multiple'}
-                      size={20}
-                      color="#6B46C1"
-                    />
+        {payModalVisible && (
+          <Modal
+            visible={payModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setPayModalVisible(false)}
+          >
+            <View style={styles.modalBackdrop}>
+              <View style={styles.modalCard}>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
+                    <View style={styles.modalIconCircle}>
+                      <MaterialCommunityIcons
+                        name={isLastDatePayment ? 'target' : 'cash-multiple'}
+                        size={20}
+                        color="#6B46C1"
+                      />
+                    </View>
+                    <Text style={styles.modalTitle} numberOfLines={1}>
+                      {isLastDatePayment ? 'Get Amount at Last Date' : 'Collect Payment'}
+                    </Text>
                   </View>
-                  <Text style={styles.modalTitle}>
-                    {isLastDatePayment ? 'Get Amount at Last Date' : 'Collect Payment'}
+                  <TouchableOpacity
+                    style={styles.modalCloseBtn}
+                    onPress={() => setPayModalVisible(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.modalCustomerName}>
+                  Borrower:{' '}
+                  <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#111827' }}>
+                    {loanData?.customer_name || borrower?.customerName}
                   </Text>
+                </Text>
+
+                {/* Last Date Settlement Notice */}
+                {isLastDatePayment && (
+                  <View style={styles.modalNoticeBox}>
+                    <MaterialCommunityIcons name="information-outline" size={16} color="#6B46C1" />
+                    <Text style={styles.modalNoticeText}>
+                      Collecting full final settlement amount on maturity date ({maturityDateStr}).
+                    </Text>
+                  </View>
+                )}
+
+                {/* Amount Input */}
+                <Text style={styles.inputLabel}>Amount (₹)</Text>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.rupeeSymbol}>₹</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={payAmount}
+                    onChangeText={setPayAmount}
+                    placeholder="Enter amount"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                {/* Payment Method Selector */}
+                <Text style={styles.inputLabel}>Paid By</Text>
+                <View style={styles.methodRow}>
+                  {[
+                    { key: 'CASH', label: 'Cash', icon: 'cash' },
+                    { key: 'UPI', label: 'GPay / UPI', icon: 'qrcode-scan' },
+                    { key: 'BANK_TRANSFER', label: 'Bank', icon: 'bank' },
+                  ].map((m) => {
+                    const active = payMethod === m.key;
+                    return (
+                      <TouchableOpacity
+                        key={m.key}
+                        style={[styles.methodBtn, active && styles.methodBtnActive]}
+                        onPress={() => setPayMethod(m.key)}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialCommunityIcons
+                          name={m.icon}
+                          size={16}
+                          color={active ? '#6B46C1' : '#6B7280'}
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text style={[styles.methodBtnText, active && styles.methodBtnTextActive]}>
+                          {m.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Actions */}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setPayModalVisible(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalSubmitBtn, submitting && { opacity: 0.7 }]}
+                    onPress={handleConfirmPay}
+                    disabled={submitting}
+                    activeOpacity={0.85}
+                  >
+                    {submitting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <MaterialCommunityIcons name="check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.modalSubmitText}>
+                          {isLastDatePayment ? 'Settle at Last Date' : 'Confirm Payment'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {/* Edit Loan Terms Modal (Matching Payment Modal UI Exactly) */}
+        {editLoanVisible && (
+          <Modal
+            visible={editLoanVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setEditLoanVisible(false)}
+          >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, { maxHeight: '92%', paddingBottom: 16 }]}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+                  <View style={styles.modalIconCircle}>
+                    <MaterialCommunityIcons name="pencil-outline" size={18} color="#6B46C1" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalTitle} numberOfLines={1}>Edit Loan Terms</Text>
+                    <Text style={styles.modalSubtitleText} numberOfLines={1}>
+                      {borrower?.customerName || loanData?.customer_name} • #{loanData?.loan_number || borrower?.loanNumber || 'Loan'}
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
-                  onPress={() => setPayModalVisible(false)}
+                  style={styles.modalCloseBtn}
+                  onPress={() => setEditLoanVisible(false)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
+                  <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.modalCustomerName}>
-                Borrower:{' '}
-                <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#111827' }}>
-                  {loanData?.customer_name || borrower?.customerName}
-                </Text>
-              </Text>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                {editError ? (
+                  <View style={styles.editErrorBox}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#DC2626" />
+                    <Text style={styles.editErrorText}>{editError}</Text>
+                  </View>
+                ) : null}
 
-              {/* Last Date Settlement Notice */}
-              {isLastDatePayment && (
-                <View style={styles.modalNoticeBox}>
-                  <MaterialCommunityIcons name="information-outline" size={16} color="#6B46C1" />
-                  <Text style={styles.modalNoticeText}>
-                    Collecting full final settlement amount on maturity date ({maturityDateStr}).
-                  </Text>
-                </View>
-              )}
-
-              {/* Amount Input */}
-              <Text style={styles.inputLabel}>Amount (₹)</Text>
-              <View style={styles.inputContainer}>
-                <Text style={styles.rupeeSymbol}>₹</Text>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="numeric"
-                  value={payAmount}
-                  onChangeText={setPayAmount}
-                  placeholder="Enter amount"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              {/* Payment Method Selector */}
-              <Text style={styles.inputLabel}>Paid By</Text>
-              <View style={styles.methodRow}>
-                {[
-                  { key: 'CASH', label: 'Cash', icon: 'cash' },
-                  { key: 'UPI', label: 'GPay / UPI', icon: 'qrcode-scan' },
-                  { key: 'BANK_TRANSFER', label: 'Bank', icon: 'bank' },
-                ].map((m) => {
-                  const active = payMethod === m.key;
-                  return (
-                    <TouchableOpacity
-                      key={m.key}
-                      style={[styles.methodBtn, active && styles.methodBtnActive]}
-                      onPress={() => setPayMethod(m.key)}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialCommunityIcons
-                        name={m.icon}
-                        size={16}
-                        color={active ? '#6B46C1' : '#6B7280'}
-                        style={{ marginRight: 4 }}
-                      />
-                      <Text style={[styles.methodBtnText, active && styles.methodBtnTextActive]}>
-                        {m.label}
+                {/* Repayment Method Switcher Chips */}
+                <Text style={styles.inputLabel}>Repayment Method</Text>
+                <View style={styles.editModeSwitchRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.editModeBtn,
+                      editForm.collection_mode === 'NORMAL' && styles.editModeBtnActive,
+                    ]}
+                    onPress={() => setEditForm((prev) => ({ ...prev, collection_mode: 'NORMAL' }))}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons
+                      name={editForm.collection_mode === 'NORMAL' ? 'check-circle' : 'calendar-clock'}
+                      size={18}
+                      color={editForm.collection_mode === 'NORMAL' ? '#6B46C1' : '#64748B'}
+                    />
+                    <View style={{ marginLeft: 8, flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.editModeBtnTitle,
+                          editForm.collection_mode === 'NORMAL' && styles.editModeBtnTitleActive,
+                        ]}
+                      >
+                        Normal Dues
                       </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                      <Text style={styles.editModeBtnSub}>Regular scheduled installments</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.editModeBtn,
+                      editForm.collection_mode === 'LUMP_SUM_END' && styles.editModeBtnActive,
+                    ]}
+                    onPress={() => setEditForm((prev) => ({ ...prev, collection_mode: 'LUMP_SUM_END' }))}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons
+                      name={editForm.collection_mode === 'LUMP_SUM_END' ? 'check-circle' : 'target'}
+                      size={18}
+                      color={editForm.collection_mode === 'LUMP_SUM_END' ? '#6B46C1' : '#64748B'}
+                    />
+                    <View style={{ marginLeft: 8, flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.editModeBtnTitle,
+                          editForm.collection_mode === 'LUMP_SUM_END' && styles.editModeBtnTitleActive,
+                        ]}
+                      >
+                        Get Amount at Last Date
+                      </Text>
+                      <Text style={styles.editModeBtnSub}>Collect full balance on final maturity date</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Row 1: Principal & Interest Rate */}
+                <View style={styles.editRowTwoInputs}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Principal (₹)</Text>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.rupeeSymbol}>₹</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        keyboardType="numeric"
+                        value={editForm.principal}
+                        onChangeText={(val) => setEditForm((prev) => ({ ...prev, principal: val }))}
+                        placeholder="10000"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Interest Rate (%)</Text>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.rupeeSymbol}>%</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        keyboardType="numeric"
+                        value={editForm.interest_rate}
+                        onChangeText={(val) => setEditForm((prev) => ({ ...prev, interest_rate: val }))}
+                        placeholder="12.5"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Row 2: Tenure & Start Date */}
+                <View style={styles.editRowTwoInputs}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>
+                      Tenure ({editForm.repayment_frequency === 'DAILY' ? 'Days' : editForm.repayment_frequency === 'MONTHLY' ? 'Months' : 'Weeks'})
+                    </Text>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={styles.textInput}
+                        keyboardType="numeric"
+                        value={editForm.total_installments}
+                        onChangeText={(val) => setEditForm((prev) => ({ ...prev, total_installments: val }))}
+                        placeholder="10"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Start Date</Text>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={styles.textInput}
+                        value={editForm.disbursement_date}
+                        onChangeText={(val) => setEditForm((prev) => ({ ...prev, disbursement_date: val }))}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Loan Notes */}
+                <Text style={styles.inputLabel}>Notes (Optional)</Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editForm.notes}
+                    onChangeText={(val) => setEditForm((prev) => ({ ...prev, notes: val }))}
+                    placeholder="Loan notes or purpose"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                {/* Calculations Summary Card */}
+                <View style={styles.editCalcCard}>
+                  <View style={styles.editCalcRow}>
+                    <Text style={styles.editCalcLabel}>Total Repayable</Text>
+                    <Text style={[styles.editCalcVal, { color: '#6B46C1' }]}>
+                      {formatINR(editCalculations.totalRepayable)}
+                    </Text>
+                  </View>
+                  <View style={styles.editCalcRow}>
+                    <Text style={styles.editCalcLabel}>Cycle EMI</Text>
+                    <Text style={styles.editCalcVal}>
+                      {formatINR(editCalculations.emi)}
+                    </Text>
+                  </View>
+                  {editCalculations.maturityDate ? (
+                    <View style={styles.editCalcRow}>
+                      <Text style={styles.editCalcLabel}>Maturity Date</Text>
+                      <Text style={styles.editCalcVal}>
+                        {editCalculations.maturityDate}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </ScrollView>
 
               {/* Actions */}
-              <View style={styles.modalActions}>
+              <View style={[styles.modalActions, { marginTop: 10 }]}>
                 <TouchableOpacity
                   style={styles.modalCancelBtn}
-                  onPress={() => setPayModalVisible(false)}
+                  onPress={() => setEditLoanVisible(false)}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.modalCancelText}>Cancel</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalSubmitBtn, submitting && { opacity: 0.7 }]}
-                  onPress={handleConfirmPay}
-                  disabled={submitting}
+                  style={[styles.modalSubmitBtn, editSaving && { opacity: 0.7 }]}
+                  onPress={handleSaveLoanTerms}
+                  disabled={editSaving}
                   activeOpacity={0.85}
                 >
-                  {submitting ? (
+                  {editSaving ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
                       <MaterialCommunityIcons name="check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                      <Text style={styles.modalSubmitText}>
-                        {isLastDatePayment ? 'Settle at Last Date' : 'Confirm Payment'}
-                      </Text>
+                      <Text style={styles.modalSubmitText}>Save Changes</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -967,22 +1253,6 @@ export const BorrowerLogModal = ({
             </View>
           </View>
         </Modal>
-
-        {/* Edit Loan Terms Modal (Add User Matching Style) */}
-        {loanData && (
-          <EditLoanModal
-            visible={editLoanVisible}
-            onClose={() => setEditLoanVisible(false)}
-            loan={loanData}
-            customer={{
-              name: borrower?.customerName || loanData?.customer_name,
-              phone: borrower?.customerPhone || loanData?.customer_phone,
-            }}
-            onSuccess={() => {
-              loadLoanLedger();
-              if (onPaymentSuccess) onPaymentSuccess();
-            }}
-          />
         )}
 
         {/* Delete Loan Modal */}
@@ -1540,12 +1810,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 6,
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
+  },
+  modalSubtitleText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   modalIconCircle: {
     width: 36,
@@ -1680,6 +1966,105 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
+  // Lump Sum Indicator Chip
+  lumpSumIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  lumpSumIndicatorText: {
+    fontSize: 12,
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
+  // Edit Loan Terms Modal Styles
+  editModeSwitchRow: {
+    flexDirection: 'column',
+    gap: 8,
+    marginBottom: 14,
+  },
+  editModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  editModeBtnActive: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#6B46C1',
+  },
+  editModeBtnTitle: {
+    fontSize: 13,
+    color: '#1E1B4B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  editModeBtnTitleActive: {
+    color: '#6B46C1',
+  },
+  editModeBtnSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
+  },
+  editRowTwoInputs: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  editCalcCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  editCalcRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 3,
+  },
+  editCalcLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+  editCalcVal: {
+    fontSize: 12,
+    color: '#1E1B4B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  editErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 10,
+  },
+  editErrorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
 });
 

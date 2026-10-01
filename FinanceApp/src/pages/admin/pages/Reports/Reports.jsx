@@ -54,6 +54,9 @@ const getMonthRange = (refDate = new Date()) => {
   };
 };
 
+// High-speed in-memory cache for instant 0ms reports navigation and tab switching
+const reportsDataCache = new Map();
+
 // Check if two dates are same calendar day
 const isSameDay = (d1, d2) => {
   return (
@@ -259,7 +262,11 @@ const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
   const isSettled = balance <= 0;
 
   return (
-    <View style={styles.recordCard}>
+    <TouchableOpacity
+      style={styles.recordCard}
+      onPress={() => onOpenLedger(item)}
+      activeOpacity={0.88}
+    >
       {/* Top Row: Customer Avatar, Info & Status */}
       <View style={styles.cardHeader}>
         <View style={styles.avatar}>
@@ -391,7 +398,10 @@ const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
         {item.customerPhone ? (
           <TouchableOpacity
             style={styles.actionIconBtn}
-            onPress={() => onCall(item.customerPhone)}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              onCall(item.customerPhone);
+            }}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons name="phone" size={15} color="#6B46C1" />
@@ -402,7 +412,10 @@ const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
         {isSettled ? (
           <TouchableOpacity
             style={styles.settledBadge}
-            onPress={() => onOpenLedger(item)}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              onOpenLedger(item);
+            }}
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="check-circle" size={14} color="#059669" />
@@ -411,7 +424,10 @@ const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
         ) : (
           <TouchableOpacity
             style={styles.collectBtn}
-            onPress={() => onOpenLedger(item)}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              onOpenLedger(item);
+            }}
             activeOpacity={0.85}
           >
             <MaterialCommunityIcons
@@ -426,7 +442,7 @@ const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -472,11 +488,13 @@ export const AdminReports = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState(null);
 
+
+
   // Full-Screen Borrower Ledger Modal State
   const [borrowerLedgerVisible, setBorrowerLedgerVisible] = useState(false);
   const [selectedBorrower, setSelectedBorrower] = useState(null);
 
-  // Fetch Report Data from Backend API
+  // Fetch Report Data from Backend API with Stale-While-Revalidate
   const fetchReport = useCallback(
     async (overrideStart, overrideEnd, overrideFreq, overrideStatus, isRefresh = false) => {
       const sDate = overrideStart !== undefined ? overrideStart : startDate;
@@ -490,10 +508,18 @@ export const AdminReports = () => {
         return;
       }
 
+      const cacheKey = `${sDate || ''}_${eDate || ''}_${freq || 'ALL'}_${stat || 'ALL'}`;
+
+      // Instant 0ms render from cache
+      if (!isRefresh && reportsDataCache.has(cacheKey)) {
+        setReport(reportsDataCache.get(cacheKey));
+        setLoading(false);
+      } else if (!reportsDataCache.has(cacheKey) && !isRefresh) {
+        setLoading(true);
+      }
+
       if (isRefresh) {
         setRefreshing(true);
-      } else {
-        setLoading(true);
       }
 
       try {
@@ -505,7 +531,7 @@ export const AdminReports = () => {
         });
 
         if (data) {
-          setReport({
+          const reportPayload = {
             period: data.period || { start: '', end: '' },
             summary: data.summary || {
               expected: 0,
@@ -519,7 +545,9 @@ export const AdminReports = () => {
               recovery_rate: 0,
             },
             records: Array.isArray(data.records) ? data.records : [],
-          });
+          };
+          reportsDataCache.set(cacheKey, reportPayload);
+          setReport(reportPayload);
         }
       } catch (err) {
         console.warn('Payment report sync notice:', err?.message || err);
@@ -816,6 +844,7 @@ export const AdminReports = () => {
         'Payment Recorded',
         `Successfully collected ${formatINR(parsedAmt)} for ${selectedRecord.customerName}.`
       );
+      reportsDataCache.clear();
       fetchReport(startDate, endDate, frequencyFilter, statusFilter, true);
     } catch (err) {
       console.error('Error recording payment:', err);
@@ -1157,6 +1186,7 @@ export const AdminReports = () => {
         onClose={() => setBorrowerLedgerVisible(false)}
         borrower={selectedBorrower}
         onPaymentSuccess={() => {
+          reportsDataCache.clear();
           fetchReport(startDate, endDate, frequencyFilter, statusFilter, true);
         }}
       />

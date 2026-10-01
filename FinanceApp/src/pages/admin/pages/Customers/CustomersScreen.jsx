@@ -17,23 +17,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LottieView from 'lottie-react-native';
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
 import apiService from '../../../../services/apiService';
-import { BorrowerLogModal } from '../Reports/BorrowerLogModal';
+import { CustomerLoansModal } from './CustomerLoansModal';
 import { IssueLoanModal } from '../IssueLoan/IssueLoanModal';
 import { EditLoanModal, DeleteLoanModal } from '../../../../components/loans/LoanModals';
-import BlockUserScreen from '../Profile/Pages/BlockUser/BlockUser';
-import UserL from '../Profile/Pages/UserLocation/UserL';
 import styles from './CustomersStyles';
-
-let emptyAnimation;
-try {
-  emptyAnimation = require('../../../../animation/Customer_care.json');
-} catch (e) {
-  emptyAnimation = null;
-}
 
 // Category Tabs Definition
 const CATEGORY_TABS = [
@@ -43,12 +33,12 @@ const CATEGORY_TABS = [
   { id: 'MONTHLY', label: 'Business (EMI)', icon: 'chart-line' },
 ];
 
-// Status Filters Definition
+// Status Filters Definition (Current Loans & Completed Loans Focus)
 const STATUS_FILTERS = [
   { id: 'ALL', label: 'All', color: '#6B46C1' },
-  { id: 'ACTIVE', label: 'Active Loans', color: '#059669' },
+  { id: 'ACTIVE', label: 'Current Loans', color: '#059669' },
+  { id: 'COMPLETED', label: 'Completed Loans', color: '#2563EB' },
   { id: 'OVERDUE', label: 'Overdue', color: '#DC2626' },
-  { id: 'DUE_TODAY', label: 'Due Today', color: '#D97706' },
   { id: 'NO_LOAN', label: 'No Active Loan', color: '#6B7280' },
 ];
 
@@ -91,17 +81,7 @@ const SkeletonBox = ({ width, height, borderRadius = 6, style }) => {
   );
 };
 
-// Skeleton for 3 Top Metric Cards
-const MetricCardSkeleton = () => (
-  <View style={styles.metricCardProper}>
-    <View style={styles.metricTopProper}>
-      <SkeletonBox width={45} height={10} borderRadius={3} />
-      <SkeletonBox width={20} height={20} borderRadius={10} />
-    </View>
-    <SkeletonBox width="80%" height={16} borderRadius={4} style={{ marginTop: 6 }} />
-    <SkeletonBox width="50%" height={10} borderRadius={3} style={{ marginTop: 6 }} />
-  </View>
-);
+
 
 // Skeleton for Borrower Card
 const BorrowerCardSkeleton = () => (
@@ -151,6 +131,8 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
 
   // Cycle Frequency String
   const cycleUnit = item.isShop ? 'Day' : item.isMonthly ? 'Mo' : 'Wk';
+  const freqLabel = item.isShop ? 'Daily Merchant' : item.isMonthly ? 'Monthly Business' : 'Weekly Loan';
+  const freqIcon = item.isShop ? 'storefront-outline' : item.isMonthly ? 'chart-line' : 'calendar-week';
 
   // Status Styling
   let statusBadgeBg = '#F3F4F6';
@@ -163,13 +145,13 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
     statusBadgeBg = '#FEF2F2';
     statusBorder = '#FECACA';
     statusTextColor = '#DC2626';
-    statusLabel = 'OVERDUE LOAN';
+    statusLabel = 'OVERDUE';
     statusIcon = 'alert-circle-outline';
   } else if (hasActiveLoan) {
     statusBadgeBg = '#ECFDF5';
     statusBorder = '#A7F3D0';
     statusTextColor = '#059669';
-    statusLabel = 'ACTIVE LOAN';
+    statusLabel = 'ACTIVE';
     statusIcon = 'check-decagram';
   } else if (hasCompletedLoans) {
     statusBadgeBg = '#EFF6FF';
@@ -180,8 +162,12 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
   }
 
   return (
-    <View style={styles.recordCard}>
-      {/* Header: Avatar, Name, Phone & Status */}
+    <TouchableOpacity
+      style={styles.recordCard}
+      onPress={() => onSelect(item)}
+      activeOpacity={0.88}
+    >
+      {/* 1. Header: Avatar, Name, Phone/Address & Status Badge */}
       <View style={styles.cardHeader}>
         <View
           style={[
@@ -191,9 +177,9 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
           ]}
         >
           {item.isShop ? (
-            <MaterialCommunityIcons name="storefront" size={20} color="#059669" />
+            <MaterialCommunityIcons name="storefront" size={20} color="#FFFFFF" />
           ) : item.isMonthly ? (
-            <MaterialCommunityIcons name="chart-line" size={20} color="#7C3AED" />
+            <MaterialCommunityIcons name="chart-line" size={20} color="#FFFFFF" />
           ) : (
             <Text style={styles.avatarInitial}>{initial}</Text>
           )}
@@ -247,9 +233,28 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
         </View>
       </View>
 
-      {/* Loan Overview: Current Active Loan Amounts vs No Active Loan */}
+      {/* 2. Middle Loan Overview */}
       {hasActiveLoan ? (
         <>
+          {/* Scheme & Code Info Bar */}
+          <View style={styles.schemeStrip}>
+            <View style={styles.schemeTag}>
+              <MaterialCommunityIcons name={freqIcon} size={13} color="#6B46C1" />
+              <Text style={styles.schemeTagText}>{freqLabel}</Text>
+              {(item.activeLoan?.loan_number || item.activeLoan?.loan_code) && (
+                <Text style={styles.loanCodeBadge}>
+                  #{item.activeLoan.loan_number || item.activeLoan.loan_code}
+                </Text>
+              )}
+            </View>
+
+            {item.totalInstallments > 0 && (
+              <Text style={styles.installmentProgressText}>
+                Inst. {item.paidInstallments || 0}/{item.totalInstallments}
+              </Text>
+            )}
+          </View>
+
           {/* 3-Column Amount Box: Principal, Cycle EMI, Outstanding Balance */}
           <View style={styles.amountContainer}>
             <View style={styles.amountCol}>
@@ -288,7 +293,7 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
             <View style={styles.completedLoansPill}>
               <MaterialCommunityIcons name="check-circle" size={12} color="#15803D" />
               <Text style={styles.completedLoansPillText}>
-                {item.completedLoansCount} Past Loan{item.completedLoansCount > 1 ? 's' : ''} Completed
+                {item.completedLoansCount} Past Loan{item.completedLoansCount > 1 ? 's' : ''} Completed & Settled
               </Text>
             </View>
           )}
@@ -302,6 +307,7 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
                 Credit Limit: <Text style={{ fontWeight: '800', color: '#111827' }}>{formatINR(item.credit_limit || 25000)}</Text>
               </Text>
             </View>
+            <Text style={styles.noLoanSchemeTag}>{freqLabel}</Text>
           </View>
 
           {hasCompletedLoans ? (
@@ -319,71 +325,94 @@ const BorrowerCard = React.memo(({ item, onSelect, onCall, onWhatsApp, onDisburs
         </View>
       )}
 
-      {/* Action Buttons Footer */}
+      {/* 3. Action Buttons Footer: Neatly Aligned Tools & Primary Action */}
       <View style={styles.cardFooter}>
-        {item.phone ? (
-          <>
+        {/* Left Side: Compact Circular Actions */}
+        <View style={styles.footerLeftActions}>
+          {item.phone ? (
             <TouchableOpacity
-              style={styles.actionIconBtn}
-              onPress={() => onCall(item.phone)}
+              style={styles.circleActionBtn}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onCall(item.phone);
+              }}
               activeOpacity={0.7}
+              accessibilityLabel="Call"
             >
-              <MaterialCommunityIcons name="phone" size={14} color="#4B5563" />
-              <Text style={styles.actionIconBtnText}>Call</Text>
+              <MaterialCommunityIcons name="phone" size={15} color="#6B46C1" />
             </TouchableOpacity>
+          ) : null}
 
+          {item.phone ? (
             <TouchableOpacity
-              style={styles.actionWhatsAppBtn}
-              onPress={() => onWhatsApp(item)}
+              style={[styles.circleActionBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onWhatsApp(item);
+              }}
               activeOpacity={0.7}
+              accessibilityLabel="WhatsApp"
             >
-              <MaterialCommunityIcons name="whatsapp" size={14} color="#059669" />
-              <Text style={styles.actionWhatsAppBtnText}>Chat</Text>
+              <MaterialCommunityIcons name="whatsapp" size={16} color="#059669" />
             </TouchableOpacity>
-          </>
-        ) : null}
+          ) : null}
 
-        {hasActiveLoan && (
-          <>
+          {hasActiveLoan && (
             <TouchableOpacity
-              style={[styles.actionIconBtn, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}
-              onPress={() => onEditLoan(item)}
+              style={[styles.circleActionBtn, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onEditLoan(item);
+              }}
               activeOpacity={0.7}
-              title="Edit Loan"
+              accessibilityLabel="Edit Loan"
             >
-              <MaterialCommunityIcons name="pencil-outline" size={14} color="#4B5563" />
-              <Text style={styles.actionIconBtnText}>Edit</Text>
+              <MaterialCommunityIcons name="pencil-outline" size={15} color="#475569" />
             </TouchableOpacity>
+          )}
 
+          {hasActiveLoan && (
             <TouchableOpacity
-              style={[styles.actionIconBtn, { backgroundColor: '#FFF1F2', borderColor: '#FECDD3' }]}
-              onPress={() => onDeleteLoan(item)}
+              style={[styles.circleActionBtn, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onDeleteLoan(item);
+              }}
               activeOpacity={0.7}
-              title="Delete Loan"
+              accessibilityLabel="Delete Loan"
             >
-              <MaterialCommunityIcons name="trash-can-outline" size={14} color="#BE123C" />
-              <Text style={[styles.actionIconBtnText, { color: '#BE123C' }]}>Del</Text>
+              <MaterialCommunityIcons name="trash-can-outline" size={15} color="#DC2626" />
             </TouchableOpacity>
-          </>
-        )}
+          )}
+        </View>
 
-        {/* Allot / Issue Loan Button (Primary Action) */}
-        <TouchableOpacity
-          style={styles.disburseBtn}
-          onPress={() => onDisburse(item)}
-          activeOpacity={0.85}
-        >
-          <MaterialCommunityIcons
-            name="cash-plus"
-            size={16}
-            color="#FFFFFF"
-          />
-          <Text style={styles.disburseBtnText}>
-            {hasActiveLoan ? '+ Allot' : 'Issue Loan'}
-          </Text>
-        </TouchableOpacity>
+        {/* Right Side: Primary CTA */}
+        <View style={styles.footerRightActions}>
+          {hasActiveLoan ? (
+            <TouchableOpacity
+              style={styles.primaryActionBtn}
+              onPress={() => onSelect(item)}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="card-account-details-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.primaryActionBtnText}>View Loans</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.primaryActionBtn, { backgroundColor: '#059669' }]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onDisburse(item);
+              }}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="cash-plus" size={15} color="#FFFFFF" />
+              <Text style={styles.primaryActionBtnText}>Issue Loan</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -410,9 +439,9 @@ export const CustomersScreen = ({
   const [selectedTab, setSelectedTab] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
 
-  // Ledger Detail Modal State
-  const [selectedBorrower, setSelectedBorrower] = useState(null);
-  const [borrowerLedgerVisible, setBorrowerLedgerVisible] = useState(false);
+  // Customer Loans Modal State (Current Loan & Completed Loans)
+  const [selectedCustomerForLoans, setSelectedCustomerForLoans] = useState(null);
+  const [customerLoansVisible, setCustomerLoansVisible] = useState(false);
 
   // Issue Loan Modal State
   const [selectedCustomerForIssueLoan, setSelectedCustomerForIssueLoan] = useState(null);
@@ -424,9 +453,6 @@ export const CustomersScreen = ({
   const [selectedCustomerForDeleteLoan, setSelectedCustomerForDeleteLoan] = useState(null);
   const [deleteLoanModalVisible, setDeleteLoanModalVisible] = useState(false);
 
-  // Operational Tool Modals State (Moved from Profile)
-  const [locationMapVisible, setLocationMapVisible] = useState(false);
-  const [blockUserVisible, setBlockUserVisible] = useState(false);
 
   // Fetch Live Customers & Loans from Server
   const fetchLiveBorrowers = useCallback(async () => {
@@ -560,10 +586,11 @@ export const CustomersScreen = ({
       // 2. Status Filter
       const hasActive = Boolean(c.activeLoan && c.activeLoan.status !== 'COMPLETED');
       const isOverdue = c.activeLoan?.status === 'OVERDUE';
+      const hasCompleted = Number(c.completedLoansCount || 0) > 0;
       if (selectedStatus === 'ACTIVE' && !hasActive) return false;
+      if (selectedStatus === 'COMPLETED' && !hasCompleted) return false;
       if (selectedStatus === 'OVERDUE' && !isOverdue) return false;
       if (selectedStatus === 'NO_LOAN' && hasActive) return false;
-      if (selectedStatus === 'DUE_TODAY' && (!hasActive || c.remainingBalance <= 0)) return false;
 
       // 3. Search Filter
       if (search.trim()) {
@@ -581,23 +608,7 @@ export const CustomersScreen = ({
     });
   }, [enrichedCustomers, selectedTab, selectedStatus, search]);
 
-  // Dynamic Metrics for Top 3 Cards
-  const summaryMetrics = useMemo(() => {
-    const totalCount = enrichedCustomers.length;
-    const activeList = enrichedCustomers.filter((c) => c.activeLoan && c.activeLoan.status !== 'COMPLETED');
-    const overdueList = enrichedCustomers.filter((c) => c.activeLoan?.status === 'OVERDUE');
 
-    const totalActiveBalance = activeList.reduce((acc, c) => acc + (c.remainingBalance || 0), 0);
-    const totalOverdueBalance = overdueList.reduce((acc, c) => acc + (c.remainingBalance || 0), 0);
-
-    return {
-      activeAmount: totalActiveBalance,
-      activeCount: activeList.length,
-      overdueAmount: totalOverdueBalance,
-      overdueCount: overdueList.length,
-      totalCount,
-    };
-  }, [enrichedCustomers]);
 
   // Tab Counts for category badges
   const tabCounts = useMemo(() => {
@@ -614,32 +625,16 @@ export const CustomersScreen = ({
     return {
       ALL: enrichedCustomers.length,
       ACTIVE: enrichedCustomers.filter((c) => c.activeLoan && c.activeLoan.status !== 'COMPLETED').length,
+      COMPLETED: enrichedCustomers.filter((c) => (c.completedLoansCount || 0) > 0).length,
       OVERDUE: enrichedCustomers.filter((c) => c.activeLoan?.status === 'OVERDUE').length,
-      DUE_TODAY: enrichedCustomers.filter((c) => c.activeLoan && c.remainingBalance > 0).length,
       NO_LOAN: enrichedCustomers.filter((c) => !c.activeLoan || c.activeLoan.status === 'COMPLETED').length,
     };
   }, [enrichedCustomers]);
 
   // Handlers
-  const handleSelectBorrower = useCallback((borrower) => {
-    // Map borrower into standard record object for BorrowerLogModal
-    const record = {
-      customerId: borrower.id,
-      userId: borrower.user_id || borrower.id,
-      customerName: borrower.name || borrower.full_name,
-      customerPhone: borrower.phone,
-      customerAddress: [borrower.address, borrower.city].filter(Boolean).join(', '),
-      shopName: borrower.shop_name,
-      loanId: borrower.activeLoan?.id,
-      loanNumber: borrower.activeLoan?.loan_number || borrower.activeLoan?.loan_code || 'LOAN',
-      frequency: borrower.activeLoan?.repayment_frequency || borrower.inferredCategory,
-      balance: borrower.remainingBalance,
-      expectedAmount: borrower.totalRepayable,
-      paidAmount: borrower.totalPaid,
-      status: borrower.activeLoan?.status || (borrower.remainingBalance > 0 ? 'ACTIVE' : 'PAID'),
-    };
-    setSelectedBorrower(record);
-    setBorrowerLedgerVisible(true);
+  const handleSelectBorrower = useCallback((customer) => {
+    setSelectedCustomerForLoans(customer);
+    setCustomerLoansVisible(true);
   }, []);
 
   const handleCall = useCallback((phone) => {
@@ -674,72 +669,58 @@ export const CustomersScreen = ({
     setIssueLoanModalVisible(true);
   }, []);
 
-  // List Header Component matching Reports
+  // List Header Component focused purely on Loan Card Creation and Existing Loan Cards
   const renderListHeader = () => {
     return (
       <View>
-        {/* 1. Summary Metric Dashboard (3 White Cards matching Reports) */}
-        <View style={styles.metricsThreeRow}>
-          {loading && !refreshing ? (
-            <>
-              <MetricCardSkeleton />
-              <MetricCardSkeleton />
-              <MetricCardSkeleton />
-            </>
-          ) : (
-            <>
-              {/* Card 1: Active Loans */}
-              <View style={styles.metricCardProper}>
-                <View style={styles.metricTopProper}>
-                  <Text style={styles.metricLabelProper}>ACTIVE LOANS</Text>
-                  <View style={[styles.metricIconBox, { backgroundColor: '#DCFCE7' }]}>
-                    <MaterialCommunityIcons name="check-decagram" size={13} color="#059669" />
-                  </View>
-                </View>
-                <Text style={[styles.metricValueProper, { color: '#059669' }]} numberOfLines={1}>
-                  {formatINR(summaryMetrics.activeAmount)}
-                </Text>
-                <Text style={styles.metricSubtextProper}>
-                  {summaryMetrics.activeCount} Active
-                </Text>
-              </View>
+        {/* 1. Search Bar with Prominent Loan Card Creation Actions */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchBar}>
+            <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search borrower, mobile, shop..."
+              placeholderTextColor="#9CA3AF"
+              value={search}
+              onChangeText={setSearch}
+              clearButtonMode="while-editing"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearch('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialCommunityIcons name="close-circle" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
 
-              {/* Card 2: Overdue / At Risk */}
-              <View style={styles.metricCardProper}>
-                <View style={styles.metricTopProper}>
-                  <Text style={styles.metricLabelProper}>OVERDUE</Text>
-                  <View style={[styles.metricIconBox, { backgroundColor: '#FEE2E2' }]}>
-                    <MaterialCommunityIcons name="alert-circle-outline" size={13} color="#DC2626" />
-                  </View>
-                </View>
-                <Text style={[styles.metricValueProper, { color: '#DC2626' }]} numberOfLines={1}>
-                  {formatINR(summaryMetrics.overdueAmount)}
-                </Text>
-                <Text style={styles.metricSubtextProper}>
-                  {summaryMetrics.overdueCount} Overdue
-                </Text>
-              </View>
+          {/* Create Loan Card Action Button */}
+          <TouchableOpacity
+            style={styles.headerIssueLoanBtn}
+            onPress={() => {
+              setSelectedCustomerForIssueLoan(null);
+              setIssueLoanModalVisible(true);
+            }}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="cash-plus" size={16} color="#FFFFFF" />
+            <Text style={styles.headerIssueLoanBtnText}>Issue Loan</Text>
+          </TouchableOpacity>
 
-              {/* Card 3: Total Registered */}
-              <View style={styles.metricCardProper}>
-                <View style={styles.metricTopProper}>
-                  <Text style={styles.metricLabelProper}>TOTAL</Text>
-                  <View style={[styles.metricIconBox, { backgroundColor: '#F3E8FF' }]}>
-                    <MaterialCommunityIcons name="calendar-clock" size={13} color="#6B46C1" />
-                  </View>
-                </View>
-                <Text style={[styles.metricValueProper, { color: '#111827' }]} numberOfLines={1}>
-                  {summaryMetrics.totalCount}
-                </Text>
-                <Text style={styles.metricSubtextProper}>
-                  Registered Total
-                </Text>
-              </View>
-            </>
+          {onOpenAddUser && (
+            <TouchableOpacity
+              style={styles.headerAddBtn}
+              onPress={onOpenAddUser}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="account-plus" size={16} color="#FFFFFF" />
+              <Text style={styles.headerAddBtnText}>+ User</Text>
+            </TouchableOpacity>
           )}
         </View>
 
-        {/* 2. Status Filter Horizontal Pills */}
+        {/* 2. Loan Status Filter Horizontal Pills */}
         <View style={styles.statusSection}>
           <ScrollView
             horizontal
@@ -773,80 +754,16 @@ export const CustomersScreen = ({
           </ScrollView>
         </View>
 
-        {/* 3. Search Bar with Quick Add Action */}
-        <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { flex: 1 }]}>
-            <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search customer name, phone, shop, city..."
-              placeholderTextColor="#9CA3AF"
-              value={search}
-              onChangeText={setSearch}
-              clearButtonMode="while-editing"
-            />
-            {search.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearch('')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <MaterialCommunityIcons name="close-circle" size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.headerIssueLoanBtn, { marginLeft: 8 }]}
-            onPress={() => {
-              setSelectedCustomerForIssueLoan(null);
-              setIssueLoanModalVisible(true);
-            }}
-            activeOpacity={0.85}
-          >
-            <MaterialCommunityIcons name="cash-plus" size={16} color="#FFFFFF" />
-            <Text style={styles.headerIssueLoanBtnText}>Issue Loan</Text>
-          </TouchableOpacity>
-          {onOpenAddUser && (
-            <TouchableOpacity
-              style={[styles.headerAddBtn, { marginLeft: 6 }]}
-              onPress={onOpenAddUser}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons name="account-plus" size={16} color="#FFFFFF" />
-              <Text style={styles.headerAddBtnText}>+ User</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* 4. Clean Count Header with Location Map & Blocked Users Tools */}
+        {/* 3. Existing Loan Cards Count Header */}
         <View style={styles.recordsHeader}>
-          <View>
-            <Text style={styles.recordsHeaderText}>
-              Customers ({filteredCustomers.length})
-            </Text>
-            <Text style={styles.recordsHeaderSub}>
-              Allot & manage borrower loans
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              style={styles.quickToolChip}
-              onPress={() => setLocationMapVisible(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="map-marker-radius-outline" size={14} color="#7C3AED" />
-              <Text style={styles.quickToolChipText}>Map</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.quickToolChip, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
-              onPress={() => setBlockUserVisible(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="account-cancel-outline" size={14} color="#DC2626" />
-              <Text style={[styles.quickToolChipText, { color: '#DC2626' }]}>Blocked</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.recordsHeaderText}>
+            Loan Cards ({filteredCustomers.length})
+          </Text>
+          <Text style={styles.recordsHeaderSub}>
+            {selectedTab === 'ALL'
+              ? 'All existing loan cards'
+              : `${selectedTab === 'WEEKLY' ? 'Weekly' : selectedTab === 'SHOP' ? 'Merchant Daily' : 'Business EMI'} loan cards`}
+          </Text>
         </View>
       </View>
     );
@@ -866,26 +783,22 @@ export const CustomersScreen = ({
 
     return (
       <View style={styles.emptyContainer}>
-        {emptyAnimation ? (
-          <LottieView
-            source={emptyAnimation}
-            autoPlay
-            loop
-            style={styles.emptyAnimation}
-          />
-        ) : (
-          <MaterialCommunityIcons
-            name="account-search-outline"
-            size={70}
-            color="#9CA3AF"
-          />
-        )}
+        <View style={styles.emptyIconContainer}>
+          <View style={styles.emptyIconCircle}>
+            <MaterialCommunityIcons
+              name={search.trim() ? "account-search-outline" : "folder-open-outline"}
+              size={36}
+              color="#6B46C1"
+            />
+          </View>
+        </View>
+
         <Text style={styles.emptyTitle}>
-          {search.trim() ? 'No Matching Borrowers' : 'No Borrowers in this Category'}
+          {search.trim() ? 'No Matching Borrowers' : 'No Borrowers Found'}
         </Text>
         <Text style={styles.emptySubtitle}>
           {search.trim()
-            ? `No matching borrowers found for "${search}".`
+            ? `No matching borrowers found for "${search}". Try a different keyword or filter.`
             : 'No borrowers found in the selected category or status filter.'}
         </Text>
       </View>
@@ -895,6 +808,40 @@ export const CustomersScreen = ({
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* Top Attached Category Tab Bar for loan cards viewing */}
+      <View style={styles.headerAttachedTabBar}>
+        {CATEGORY_TABS.map((tab) => {
+          const active = selectedTab === tab.id;
+          const count = tabCounts[tab.id] || 0;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={styles.headerAttachedTab}
+              onPress={() => setSelectedTab(tab.id)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.tabContentRow}>
+                <MaterialCommunityIcons
+                  name={tab.icon}
+                  size={14}
+                  color={active ? '#6B46C1' : '#6B7280'}
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={[
+                    styles.headerAttachedTabText,
+                    active && styles.headerAttachedTabTextActive,
+                  ]}
+                >
+                  {tab.label} ({count})
+                </Text>
+              </View>
+              {active && <View style={styles.tabActiveBottomLine} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       {/* Main FlatList of Borrowers */}
       <FlatList
@@ -935,22 +882,28 @@ export const CustomersScreen = ({
         }
       />
 
-      {/* Full-Screen Borrower Ledger Modal (matching Reports) */}
-      <BorrowerLogModal
-        visible={borrowerLedgerVisible}
-        borrower={selectedBorrower}
+      {/* Customer Loans Modal (Current Loan & Completed Loans History) */}
+      <CustomerLoansModal
+        visible={customerLoansVisible}
+        customer={selectedCustomerForLoans}
         onClose={() => {
-          setBorrowerLedgerVisible(false);
-          setSelectedBorrower(null);
+          setCustomerLoansVisible(false);
+          setSelectedCustomerForLoans(null);
         }}
-        onPaymentRecorded={() => {
-          fetchLiveBorrowers();
-        }}
-        onOpenIssueLoan={(b) => {
-          const target = b || selectedBorrower;
-          setBorrowerLedgerVisible(false);
-          setSelectedCustomerForIssueLoan(target);
+        onIssueLoan={(cust) => {
+          setCustomerLoansVisible(false);
+          setSelectedCustomerForIssueLoan(cust);
           setIssueLoanModalVisible(true);
+        }}
+        onEditLoan={(cust) => {
+          setCustomerLoansVisible(false);
+          setSelectedCustomerForEditLoan(cust);
+          setEditLoanModalVisible(true);
+        }}
+        onDeleteLoan={(cust) => {
+          setCustomerLoansVisible(false);
+          setSelectedCustomerForDeleteLoan(cust);
+          setDeleteLoanModalVisible(true);
         }}
       />
 
@@ -969,23 +922,6 @@ export const CustomersScreen = ({
         }}
       />
 
-      {/* Borrower Locations Map Modal */}
-      <Modal
-        visible={locationMapVisible}
-        animationType="slide"
-        onRequestClose={() => setLocationMapVisible(false)}
-      >
-        <UserL onBack={() => setLocationMapVisible(false)} />
-      </Modal>
-
-      {/* Blocked Accounts Management Modal */}
-      <Modal
-        visible={blockUserVisible}
-        animationType="slide"
-        onRequestClose={() => setBlockUserVisible(false)}
-      >
-        <BlockUserScreen onBack={() => setBlockUserVisible(false)} />
-      </Modal>
 
       {/* Edit Loan Modal */}
       {selectedCustomerForEditLoan?.activeLoan && (
