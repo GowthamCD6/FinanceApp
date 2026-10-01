@@ -21,8 +21,6 @@ import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
 import { useApp } from '../../../../context/AppContext';
 import { BorrowerLogModal } from './BorrowerLogModal';
-import DataExport from '../Profile/Pages/DataExport/DataExport';
-import MyLocation from '../Profile/Pages/MyLocation/MyLocation';
 
 let revenueAnimation;
 try {
@@ -451,10 +449,6 @@ export const AdminReports = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState(null);
 
-  // Operational Tool Modals State (Moved from Profile)
-  const [dataExportVisible, setDataExportVisible] = useState(false);
-  const [myLocationVisible, setMyLocationVisible] = useState(false);
-
   // Fetch Report Data from Backend API
   const fetchReport = useCallback(
     async (overrideStart, overrideEnd, overrideFreq, overrideStatus, isRefresh = false) => {
@@ -826,7 +820,7 @@ export const AdminReports = () => {
                     <MaterialCommunityIcons name="alert-circle-outline" size={13} color="#DC2626" />
                   </View>
                 </View>
-                <Text style={[styles.metricValueProper, { color: '#DC2626' }]} numberOfLines={1}>
+                <Text style={styles.metricValueProper} numberOfLines={1}>
                   {formatINR(report.summary.outstanding)}
                 </Text>
                 <Text style={styles.metricSubtextProper}>
@@ -842,7 +836,7 @@ export const AdminReports = () => {
                     <MaterialCommunityIcons name="check-decagram" size={13} color="#059669" />
                   </View>
                 </View>
-                <Text style={[styles.metricValueProper, { color: '#059669' }]} numberOfLines={1}>
+                <Text style={styles.metricValueProper} numberOfLines={1}>
                   {formatINR(report.summary.collected)}
                 </Text>
                 <Text style={styles.metricSubtextProper}>
@@ -858,7 +852,7 @@ export const AdminReports = () => {
                     <MaterialCommunityIcons name="calendar-clock" size={13} color="#6B46C1" />
                   </View>
                 </View>
-                <Text style={[styles.metricValueProper, { color: '#111827' }]} numberOfLines={1}>
+                <Text style={styles.metricValueProper} numberOfLines={1}>
                   {formatINR(report.summary.expected)}
                 </Text>
                 <Text style={styles.metricSubtextProper}>
@@ -907,7 +901,7 @@ export const AdminReports = () => {
           </ScrollView>
         </View>
 
-        {/* Search Bar & Quick Operational Tools */}
+        {/* Search Bar */}
         <View style={styles.searchSection}>
           <View style={[styles.searchBar, { flex: 1 }]}>
             <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" />
@@ -925,24 +919,6 @@ export const AdminReports = () => {
               </TouchableOpacity>
             )}
           </View>
-
-          <TouchableOpacity
-            style={styles.headerToolBtn}
-            onPress={() => setDataExportVisible(true)}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="file-export-outline" size={18} color="#059669" />
-            <Text style={[styles.headerToolBtnText, { color: '#059669' }]}>Export</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.headerToolBtn, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}
-            onPress={() => setMyLocationVisible(true)}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="crosshairs-gps" size={18} color="#7C3AED" />
-            <Text style={[styles.headerToolBtnText, { color: '#7C3AED' }]}>GPS</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Clean Count Header */}
@@ -1343,24 +1319,6 @@ export const AdminReports = () => {
           </View>
         </View>
       </Modal>
-
-      {/* Data Export Modal */}
-      <Modal
-        visible={dataExportVisible}
-        animationType="slide"
-        onRequestClose={() => setDataExportVisible(false)}
-      >
-        <DataExport onBack={() => setDataExportVisible(false)} />
-      </Modal>
-
-      {/* Field Agent GPS Tracking Modal */}
-      <Modal
-        visible={myLocationVisible}
-        animationType="slide"
-        onRequestClose={() => setMyLocationVisible(false)}
-      >
-        <MyLocation onBack={() => setMyLocationVisible(false)} />
-      </Modal>
     </View>
   );
 };
@@ -1484,44 +1442,45 @@ const styles = StyleSheet.create({
   },
   metricCardProper: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Clean White card
-    borderRadius: 14,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
     padding: 12,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0', // Box side line width and darkness from reference
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
     justifyContent: 'space-between',
   },
   metricTopProper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 2,
+    marginBottom: 6,
   },
   metricLabelProper: {
-    fontSize: 9,
-    color: '#64748B',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    fontSize: 11,
+    color: '#000000',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'System',
+    fontWeight: '400',
+    letterSpacing: 0.3,
   },
   metricIconBox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   metricValueProper: {
-    fontSize: 15,
-    color: '#1E1B4B', // Sleek deep title color from reference
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
-    marginTop: 2,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#000000',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-SemiBold' : 'System',
   },
   metricSubtextProper: {
-    fontSize: 10,
-    color: '#64748B',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
-    marginTop: 2,
+    fontSize: 11,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'System',
+    fontWeight: '400',
+    marginTop: 4,
   },
 
   // Due info row
@@ -1587,23 +1546,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
-  headerToolBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    paddingHorizontal: 10,
-    height: 42,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  headerToolBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
-  },
+
 
   // Records Header
   recordsHeader: {
