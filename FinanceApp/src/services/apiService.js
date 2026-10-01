@@ -307,10 +307,23 @@ class ApiService {
     return res.data;
   }
 
+  async getLoanById(loanId) {
+    const res = await this.request(`/loans/${loanId}`);
+    return res.data || res;
+  }
+
   async updateLoan(loanId, loanData) {
     const res = await this.request(`/loans/${loanId}`, {
       method: 'PUT',
       body: JSON.stringify(loanData),
+    });
+    return res.data || res;
+  }
+
+  async updateLoanCollectionMode(loanId, collectionMode) {
+    const res = await this.request(`/loans/${loanId}/collection-mode`, {
+      method: 'PATCH',
+      body: JSON.stringify({ collectionMode }),
     });
     return res.data || res;
   }

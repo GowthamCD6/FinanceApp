@@ -10,14 +10,18 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  StatusBar,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Header from '../HeaderComponent/Header';
 import { apiService } from '../../services/apiService';
 import { formatINR } from '../../utils/helpers';
 
 /**
  * --------------------------------------------------------------------------
- * 1. EDIT LOAN MODAL (REACT NATIVE)
+ * 1. EDIT LOAN MODAL (MATCHING ADD USER PAGE UI & LAST DATE COLLECTION)
  * --------------------------------------------------------------------------
  */
 export const EditLoanModal = ({
@@ -138,226 +142,304 @@ export const EditLoanModal = ({
 
   if (!visible || !loan) return null;
 
+  const borrowerName = customer?.name || customer?.full_name || customer?.owner_name || loan.customer_name || 'Borrower';
+  const loanNumber = loan.loan_number || loan.loan_code || `Loan #${loan.id}`;
+
   return (
     <Modal
       animationType="slide"
-      transparent={true}
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <View style={styles.headerLeft}>
-              <View style={styles.iconCircle}>
-                <MaterialCommunityIcons name="pencil" size={20} color="#6B46C1" />
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+
+        {/* Clean Standard Header as in Add User */}
+        <Header
+          title="Edit Loan Details"
+          onBack={onClose}
+          showBackButton={true}
+          rightComponent={
+            <View style={styles.loanBadge}>
+              <Text style={styles.loanBadgeText}>{loanNumber}</Text>
+            </View>
+          }
+        />
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.container}
+        >
+          <ScrollView
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Borrower Profile Overview Banner */}
+            <View style={styles.borrowerCard}>
+              <View style={styles.borrowerAvatar}>
+                <Text style={styles.borrowerAvatarText}>
+                  {borrowerName.charAt(0).toUpperCase()}
+                </Text>
               </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.modalTitle}>Edit Loan</Text>
-                  <View style={styles.loanBadge}>
-                    <Text style={styles.loanBadgeText}>
-                      {loan.loan_number || `ID #${loan.id}`}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.modalSubtitle} numberOfLines={1}>
-                  Borrower: {customer?.name || customer?.full_name || customer?.owner_name || 'Borrower'}
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.borrowerName} numberOfLines={1}>{borrowerName}</Text>
+                <Text style={styles.borrowerPhone}>
+                  {customer?.phone || loan.customer_phone || 'Borrower Account'}
+                </Text>
+              </View>
+              <View style={styles.frequencyPill}>
+                <Text style={styles.frequencyPillText}>
+                  {formData.repayment_frequency}
                 </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
 
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
             {error ? (
               <View style={styles.errorBanner}>
-                <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#BE123C" />
+                <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#DC2626" />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
 
-            {/* Repayment Collection Mode Segment */}
-            <Text style={styles.fieldLabel}>Repayment Collection Mode</Text>
-            <View style={styles.modeContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.modeCard,
-                  formData.collection_mode === 'NORMAL' && styles.modeCardSelected,
-                ]}
-                onPress={() => setFormData((prev) => ({ ...prev, collection_mode: 'NORMAL' }))}
-                activeOpacity={0.8}
-              >
-                <View style={styles.modeCardHeader}>
+            {/* Repayment Collection Mode Division Chips (Add User Style) */}
+            <View style={styles.formSection}>
+              <View style={styles.sectionHeadingRow}>
+                <MaterialCommunityIcons name="swap-horizontal-circle-outline" size={18} color="#6B46C1" />
+                <Text style={styles.sectionHeading}>Repayment Collection Mode</Text>
+              </View>
+
+              <View style={styles.divisionRow}>
+                {/* Mode 1: Normal Installments */}
+                <TouchableOpacity
+                  style={[
+                    styles.divisionChip,
+                    formData.collection_mode === 'NORMAL' && styles.divisionChipSelected,
+                  ]}
+                  onPress={() => setFormData((prev) => ({ ...prev, collection_mode: 'NORMAL' }))}
+                  activeOpacity={0.8}
+                >
                   <MaterialCommunityIcons
-                    name={formData.collection_mode === 'NORMAL' ? 'check-circle' : 'circle-outline'}
-                    size={16}
-                    color={formData.collection_mode === 'NORMAL' ? '#6B46C1' : '#9CA3AF'}
+                    name={formData.collection_mode === 'NORMAL' ? 'check-circle' : 'calendar-clock'}
+                    size={22}
+                    color={formData.collection_mode === 'NORMAL' ? '#6B46C1' : '#64748B'}
                   />
-                  <Text style={[styles.modeCardTitle, formData.collection_mode === 'NORMAL' && { color: '#6B46C1' }]}>
-                    Normal Dues
+                  <Text
+                    style={[
+                      styles.divisionChipTitle,
+                      formData.collection_mode === 'NORMAL' && styles.divisionChipTitleSelected,
+                    ]}
+                  >
+                    Normal Installments
                   </Text>
-                </View>
-                <Text style={styles.modeCardDesc}>
-                  Regular daily/weekly/monthly installments.
-                </Text>
-              </TouchableOpacity>
+                  <Text style={styles.divisionChipSubtitle}>
+                    Regular scheduled dues throughout tenure
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.modeCard,
-                  formData.collection_mode === 'LUMP_SUM_END' && styles.modeCardPurpleSelected,
-                ]}
-                onPress={() => setFormData((prev) => ({ ...prev, collection_mode: 'LUMP_SUM_END' }))}
-                activeOpacity={0.8}
-              >
-                <View style={styles.modeCardHeader}>
+                {/* Mode 2: Get Amount at Last Date */}
+                <TouchableOpacity
+                  style={[
+                    styles.divisionChip,
+                    formData.collection_mode === 'LUMP_SUM_END' && styles.divisionChipSelected,
+                  ]}
+                  onPress={() => setFormData((prev) => ({ ...prev, collection_mode: 'LUMP_SUM_END' }))}
+                  activeOpacity={0.8}
+                >
                   <MaterialCommunityIcons
-                    name={formData.collection_mode === 'LUMP_SUM_END' ? 'target' : 'circle-outline'}
-                    size={16}
-                    color={formData.collection_mode === 'LUMP_SUM_END' ? '#7C3AED' : '#9CA3AF'}
+                    name={formData.collection_mode === 'LUMP_SUM_END' ? 'check-circle' : 'target'}
+                    size={22}
+                    color={formData.collection_mode === 'LUMP_SUM_END' ? '#6B46C1' : '#64748B'}
                   />
-                  <Text style={[styles.modeCardTitle, formData.collection_mode === 'LUMP_SUM_END' && { color: '#7C3AED' }]}>
-                    At Maturity
+                  <Text
+                    style={[
+                      styles.divisionChipTitle,
+                      formData.collection_mode === 'LUMP_SUM_END' && styles.divisionChipTitleSelected,
+                    ]}
+                  >
+                    Get Amount at Last Date
                   </Text>
-                </View>
-                <Text style={styles.modeCardDesc}>
-                  Zero periodic dues; full balance paid at end.
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Row: Principal Amount & Interest Rate */}
-            <View style={styles.inputRow}>
-              <View style={styles.inputCol}>
-                <Text style={styles.fieldLabel}>Principal Amount (₹)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="numeric"
-                  value={formData.principal}
-                  onChangeText={(val) => setFormData((prev) => ({ ...prev, principal: val }))}
-                  placeholder="10000"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.inputCol}>
-                <Text style={styles.fieldLabel}>Interest Rate (%)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="numeric"
-                  value={formData.interest_rate}
-                  onChangeText={(val) => setFormData((prev) => ({ ...prev, interest_rate: val }))}
-                  placeholder="12.5"
-                  placeholderTextColor="#9CA3AF"
-                />
+                  <Text style={styles.divisionChipSubtitle}>
+                    Total balance collected on final maturity date
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Row: Tenure & Disbursement Date */}
-            <View style={styles.inputRow}>
-              <View style={styles.inputCol}>
-                <Text style={styles.fieldLabel}>
-                  Tenure ({formData.repayment_frequency === 'DAILY' ? 'Days' : formData.repayment_frequency === 'MONTHLY' ? 'Months' : 'Weeks'})
-                </Text>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="numeric"
-                  value={formData.total_installments}
-                  onChangeText={(val) => setFormData((prev) => ({ ...prev, total_installments: val }))}
-                  placeholder="10"
-                  placeholderTextColor="#9CA3AF"
-                />
+            {/* Loan Specifications Form (Add User Input Style) */}
+            <View style={styles.formSection}>
+              <View style={styles.sectionHeadingRow}>
+                <MaterialCommunityIcons name="clipboard-edit-outline" size={18} color="#6B46C1" />
+                <Text style={styles.sectionHeading}>Loan Specifications</Text>
               </View>
 
-              <View style={styles.inputCol}>
-                <Text style={styles.fieldLabel}>Disbursement Date</Text>
+              {/* Row 1: Principal Amount & Interest Rate */}
+              <View style={styles.rowTwoInputs}>
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <View style={styles.labelContainer}>
+                    <Text style={styles.inputLabel}>
+                      Principal Amount (₹) <Text style={styles.requiredStar}>*</Text>
+                    </Text>
+                  </View>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={formData.principal}
+                    onChangeText={(val) => setFormData((prev) => ({ ...prev, principal: val }))}
+                    placeholder="10000"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <View style={styles.labelContainer}>
+                    <Text style={styles.inputLabel}>
+                      Interest Rate (%) <Text style={styles.requiredStar}>*</Text>
+                    </Text>
+                  </View>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={formData.interest_rate}
+                    onChangeText={(val) => setFormData((prev) => ({ ...prev, interest_rate: val }))}
+                    placeholder="12.5"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+
+              {/* Row 2: Tenure & Disbursement Date */}
+              <View style={styles.rowTwoInputs}>
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <View style={styles.labelContainer}>
+                    <Text style={styles.inputLabel}>
+                      Tenure ({formData.repayment_frequency === 'DAILY' ? 'Days' : formData.repayment_frequency === 'MONTHLY' ? 'Months' : 'Weeks'}) <Text style={styles.requiredStar}>*</Text>
+                    </Text>
+                  </View>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={formData.total_installments}
+                    onChangeText={(val) => setFormData((prev) => ({ ...prev, total_installments: val }))}
+                    placeholder="10"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <View style={styles.labelContainer}>
+                    <Text style={styles.inputLabel}>
+                      Start / Disb. Date <Text style={styles.requiredStar}>*</Text>
+                    </Text>
+                  </View>
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.disbursement_date}
+                    onChangeText={(val) => setFormData((prev) => ({ ...prev, disbursement_date: val }))}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+
+              {/* Purpose / Notes */}
+              <View style={styles.inputContainer}>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.inputLabel}>Loan Purpose / Notes (Optional)</Text>
+                </View>
                 <TextInput
                   style={styles.textInput}
-                  value={formData.disbursement_date}
-                  onChangeText={(val) => setFormData((prev) => ({ ...prev, disbursement_date: val }))}
-                  placeholder="YYYY-MM-DD"
+                  value={formData.notes}
+                  onChangeText={(val) => setFormData((prev) => ({ ...prev, notes: val }))}
+                  placeholder="e.g. Business expansion credit line"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
             </View>
 
-            {/* Notes */}
-            <Text style={styles.fieldLabel}>Notes / Purpose (Optional)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={formData.notes}
-              onChangeText={(val) => setFormData((prev) => ({ ...prev, notes: val }))}
-              placeholder="e.g. Loan term extension"
-              placeholderTextColor="#9CA3AF"
-            />
-
-            {/* Financial Projection Card */}
-            <View style={styles.projectionCard}>
-              <View style={styles.projectionHeader}>
-                <Text style={styles.projectionTitle}>REPAYMENT PROJECTION</Text>
-                <Text style={styles.projectionMaturity}>
-                  Matures: {calculations.maturityDate || 'N/A'}
-                </Text>
-              </View>
-
-              <View style={styles.projectionGrid}>
-                <View style={styles.projectionBox}>
-                  <Text style={styles.projectionBoxLabel}>Interest Income</Text>
-                  <Text style={styles.projectionBoxVal}>
-                    {formatINR(calculations.contractedIncome)}
-                  </Text>
-                </View>
-                <View style={styles.projectionBox}>
-                  <Text style={styles.projectionBoxLabel}>Total Repayable</Text>
-                  <Text style={styles.projectionBoxVal}>
-                    {formatINR(calculations.totalRepayable)}
-                  </Text>
-                </View>
-                <View style={styles.projectionBox}>
-                  <Text style={styles.projectionBoxLabel}>
-                    {formData.collection_mode === 'LUMP_SUM_END' ? 'Due at End' : 'Installment Due'}
-                  </Text>
-                  <Text style={[styles.projectionBoxVal, { color: formData.collection_mode === 'LUMP_SUM_END' ? '#7C3AED' : '#059669' }]}>
-                    {formData.collection_mode === 'LUMP_SUM_END' ? formatINR(calculations.totalRepayable) : formatINR(calculations.emi)}
+            {/* Repayment Calculation Preview Box (Add User PreviewBox Style) */}
+            <View style={styles.previewBox}>
+              <View style={styles.previewHeader}>
+                <MaterialCommunityIcons name="calculator-variant-outline" size={16} color="#6B46C1" />
+                <Text style={styles.previewTitle}>LOAN CALCULATION SUMMARY</Text>
+                <View style={styles.maturityBadge}>
+                  <Text style={styles.maturityBadgeText}>
+                    Matures: {calculations.maturityDate || 'N/A'}
                   </Text>
                 </View>
               </View>
-            </View>
-          </ScrollView>
 
-          {/* Action Footer */}
-          <View style={styles.modalFooter}>
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={onClose}
-              disabled={saving}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
+              <View style={styles.previewGrid}>
+                <View style={styles.previewItem}>
+                  <Text style={styles.previewLabel}>INTEREST INCOME</Text>
+                  <Text style={styles.previewValue}>{formatINR(calculations.contractedIncome)}</Text>
+                </View>
 
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleSubmit}
-              disabled={saving}
-              activeOpacity={0.85}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
-                  <Text style={styles.saveBtnText}>Save Changes</Text>
-                </>
+                <View style={styles.previewItem}>
+                  <Text style={styles.previewLabel}>TOTAL REPAYABLE</Text>
+                  <Text style={styles.previewValue}>{formatINR(calculations.totalRepayable)}</Text>
+                </View>
+
+                <View style={[styles.previewItem, formData.collection_mode === 'LUMP_SUM_END' && styles.previewHighlight]}>
+                  <Text style={[styles.previewLabel, formData.collection_mode === 'LUMP_SUM_END' && { color: '#6B46C1' }]}>
+                    {formData.collection_mode === 'LUMP_SUM_END' ? 'DUE AT LAST DATE' : 'INSTALLMENT DUE'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.previewValue,
+                      formData.collection_mode === 'LUMP_SUM_END' ? styles.previewValueHighlight : { color: '#059669' },
+                    ]}
+                  >
+                    {formData.collection_mode === 'LUMP_SUM_END'
+                      ? formatINR(calculations.totalRepayable)
+                      : formatINR(calculations.emi)}
+                  </Text>
+                </View>
+              </View>
+
+              {formData.collection_mode === 'LUMP_SUM_END' && (
+                <View style={styles.lumpSumNotice}>
+                  <MaterialCommunityIcons name="target" size={15} color="#6B46C1" />
+                  <Text style={styles.lumpSumNoticeText}>
+                    Zero periodic dues during the tenure. The full loan amount of{' '}
+                    <Text style={{ fontWeight: '800' }}>{formatINR(calculations.totalRepayable)}</Text> will be collected on the last maturity date ({calculations.maturityDate}).
+                  </Text>
+                </View>
               )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+            </View>
+
+            {/* Primary Submit Button as in Add User */}
+            <View style={styles.actionWrap}>
+              <TouchableOpacity
+                style={[styles.createButton, saving && styles.createButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={saving}
+                activeOpacity={0.85}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
+                    <Text style={styles.createButtonText}>Save Changes</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelLink}
+                onPress={onClose}
+                disabled={saving}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelLinkText}>Cancel and return</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -410,35 +492,33 @@ export const DeleteLoanModal = ({
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { borderColor: '#FECDD3' }]}>
+      <View style={styles.deleteOverlay}>
+        <View style={styles.deleteCard}>
           {/* Header */}
-          <View style={[styles.modalHeader, { backgroundColor: '#FFF1F2', borderBottomColor: '#FECDD3' }]}>
-            <View style={styles.headerLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: '#FFE4E6', borderColor: '#FECDD3' }]}>
-                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#BE123C" />
-              </View>
-              <View style={{ marginLeft: 10 }}>
-                <Text style={[styles.modalTitle, { color: '#9F1239' }]}>Delete Loan</Text>
-                <Text style={[styles.modalSubtitle, { color: '#BE123C' }]}>Permanent deletion confirmation</Text>
-              </View>
+          <View style={styles.deleteHeader}>
+            <View style={styles.deleteIconCircle}>
+              <MaterialCommunityIcons name="trash-can-outline" size={22} color="#DC2626" />
             </View>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="close" size={18} color="#9F1239" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.deleteTitle}>Delete Loan</Text>
+              <Text style={styles.deleteSubtitle}>Permanent deletion confirmation</Text>
+            </View>
+            <TouchableOpacity style={styles.deleteCloseBtn} onPress={onClose} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.modalBody}>
+          <View style={styles.deleteBody}>
             {error ? (
               <View style={styles.errorBanner}>
-                <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#BE123C" />
+                <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#DC2626" />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
 
-            <Text style={styles.deleteConfirmText}>
-              Are you sure you want to delete <Text style={{ fontWeight: '800', color: '#BE123C' }}>{loanNumber}</Text> for{' '}
-              <Text style={{ fontWeight: '800', color: '#111827' }}>{borrowerName}</Text>?
+            <Text style={styles.deletePromptText}>
+              Are you sure you want to delete <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#DC2626' }}>{loanNumber}</Text> for{' '}
+              <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#111827' }}>{borrowerName}</Text>?
             </Text>
 
             {/* Loan Details Box */}
@@ -453,48 +533,48 @@ export const DeleteLoanModal = ({
               </View>
               <View style={styles.deleteRow}>
                 <Text style={styles.deleteLabel}>Repayment Mode:</Text>
-                <Text style={[styles.deleteVal, { color: loan.collection_mode === 'LUMP_SUM_END' ? '#7C3AED' : '#6B46C1' }]}>
-                  {loan.collection_mode === 'LUMP_SUM_END' ? 'Target: At Maturity' : 'Normal Installments'}
+                <Text style={[styles.deleteVal, { color: loan.collection_mode === 'LUMP_SUM_END' ? '#6B46C1' : '#334155' }]}>
+                  {loan.collection_mode === 'LUMP_SUM_END' ? '🎯 Get Amount at Last Date' : 'Normal Installments'}
                 </Text>
               </View>
             </View>
 
             {/* Warning Note */}
-            <View style={styles.warningBox}>
+            <View style={styles.deleteWarningBox}>
               <MaterialCommunityIcons name="alert-outline" size={16} color="#D97706" style={{ marginTop: 2 }} />
-              <Text style={styles.warningText}>
-                <Text style={{ fontWeight: '800' }}>Warning: </Text>
+              <Text style={styles.deleteWarningText}>
+                <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold' }}>Warning: </Text>
                 This will delete all installment schedules, collection history, and ledger records for this loan.
               </Text>
             </View>
-          </View>
 
-          {/* Action Footer */}
-          <View style={styles.modalFooter}>
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={onClose}
-              disabled={deleting}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
+            {/* Actions */}
+            <View style={styles.deleteActions}>
+              <TouchableOpacity
+                style={styles.deleteCancelBtn}
+                onPress={onClose}
+                disabled={deleting}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.deleteCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: '#BE123C' }]}
-              onPress={handleDelete}
-              disabled={deleting}
-              activeOpacity={0.85}
-            >
-              {deleting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="trash-can-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.saveBtnText}>Yes, Delete Loan</Text>
-                </>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteSubmitBtn}
+                onPress={handleDelete}
+                disabled={deleting}
+                activeOpacity={0.85}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="trash-can-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.deleteSubmitBtnText}>Yes, Delete</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
@@ -503,264 +583,395 @@ export const DeleteLoanModal = ({
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: {
+  // Full-screen Modal Container matching Add User
+  safeArea: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 480,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
-    maxHeight: '90%',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 44 : 32,
+  },
+
+  // Borrower Profile Card
+  borrowerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginBottom: 20,
+  },
+  borrowerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#6B46C1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  borrowerAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  borrowerName: {
+    fontSize: 16,
+    color: '#212121',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  borrowerPhone: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+  frequencyPill: {
     backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#C7D2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+  frequencyPillText: {
+    fontSize: 11,
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   loanBadge: {
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#C7D2FE',
   },
   loanBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 11,
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
+  // Form Sections
+  formSection: {
+    marginBottom: 20,
+  },
+  sectionHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionHeading: {
+    fontSize: 15,
+    color: '#212121',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
+  // Mode Selection Chips (Exact Add User divisionChip Pattern)
+  divisionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  divisionChip: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  divisionChipSelected: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#6B46C1',
+  },
+  divisionChipTitle: {
+    fontSize: 12,
+    color: '#334155',
+    marginTop: 8,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  divisionChipTitleSelected: {
     color: '#6B46C1',
   },
-  modalSubtitle: {
-    fontSize: 12,
+  divisionChipSubtitle: {
+    fontSize: 10,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 4,
+    textAlign: 'center',
+    lineHeight: 13,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
+
+  // Inputs matching Add User
+  rowTwoInputs: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  modalBody: {
-    padding: 18,
+  inputLabel: {
+    fontSize: 14,
+    color: '#212121',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
+  requiredStar: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  textInput: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    backgroundColor: '#F5F5F5',
+    color: '#212121',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+
+  // Preview Box matching Add User
+  previewBox: {
+    backgroundColor: '#F5F3FF',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  previewTitle: {
+    fontSize: 12,
+    color: '#6B46C1',
+    marginLeft: 6,
+    flex: 1,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  maturityBadge: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  maturityBadgeText: {
+    fontSize: 10,
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  previewGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  previewItem: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  previewHighlight: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#6B46C1',
+  },
+  previewLabel: {
+    fontSize: 9,
+    color: '#64748B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  previewValue: {
+    fontSize: 13,
+    color: '#212121',
+    marginTop: 4,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  previewValueHighlight: {
+    fontSize: 13,
+    color: '#6B46C1',
+    marginTop: 4,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  lumpSumNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  lumpSumNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#6B46C1',
+    lineHeight: 16,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+
+  // Action Buttons matching Add User
+  actionWrap: {
+    marginTop: 6,
+    marginBottom: Platform.OS === 'ios' ? 28 : 20,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6B46C1',
+    borderRadius: 14,
+    paddingVertical: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  createButtonDisabled: {
+    opacity: 0.6,
+  },
+  createButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  cancelLink: {
+    alignItems: 'center',
+    marginTop: 14,
+    paddingVertical: 6,
+  },
+  cancelLinkText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+  bottomSpacing: {
+    height: 24,
+  },
+
+  // Error Banner
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF1F2',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FECDD3',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 14,
+    borderColor: '#FECACA',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
     gap: 8,
   },
   errorText: {
     flex: 1,
     fontSize: 12,
-    fontWeight: '600',
+    color: '#DC2626',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+
+  // Delete Modal Styles
+  deleteOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  deleteCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#FECDD3',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  deleteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#FFF1F2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FECDD3',
+  },
+  deleteIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFE4E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+  },
+  deleteTitle: {
+    fontSize: 17,
+    color: '#9F1239',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  deleteSubtitle: {
+    fontSize: 12,
     color: '#BE123C',
+    marginTop: 2,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+  deleteCloseBtn: {
+    padding: 4,
   },
-  modeContainer: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
+  deleteBody: {
+    padding: 18,
   },
-  modeCard: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 10,
-  },
-  modeCardSelected: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#6B46C1',
-    borderWidth: 1.5,
-  },
-  modeCardPurpleSelected: {
-    backgroundColor: '#FAF5FF',
-    borderColor: '#7C3AED',
-    borderWidth: 1.5,
-  },
-  modeCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  modeCardTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  modeCardDesc: {
-    fontSize: 10,
-    color: '#64748B',
-    lineHeight: 14,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  inputCol: {
-    flex: 1,
-  },
-  textInput: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    fontSize: 14,
-    color: '#0F172A',
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  projectionCard: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  projectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  projectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
-  },
-  projectionMaturity: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6B46C1',
-  },
-  projectionGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  projectionBox: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    padding: 8,
-    alignItems: 'center',
-  },
-  projectionBoxLabel: {
-    fontSize: 9,
-    color: '#64748B',
-    fontWeight: '700',
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  projectionBoxVal: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-  },
-  cancelBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#6B46C1',
-    justifyContent: 'center',
-  },
-  saveBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  deleteConfirmText: {
+  deletePromptText: {
     fontSize: 14,
     color: '#334155',
     lineHeight: 20,
     marginBottom: 14,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   deleteSummaryBox: {
     backgroundColor: '#F8FAFC',
@@ -779,14 +990,14 @@ const styles = StyleSheet.create({
   deleteLabel: {
     fontSize: 12,
     color: '#64748B',
-    fontWeight: '600',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   deleteVal: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
-  warningBox: {
+  deleteWarningBox: {
     flexDirection: 'row',
     backgroundColor: '#FFFBEB',
     borderWidth: 1,
@@ -794,12 +1005,52 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 18,
   },
-  warningText: {
+  deleteWarningText: {
     flex: 1,
     fontSize: 11,
     color: '#92400E',
     lineHeight: 16,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
+  },
+  deleteActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  deleteCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteCancelBtnText: {
+    fontSize: 14,
+    color: '#475569',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  deleteSubmitBtn: {
+    flex: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  deleteSubmitBtnText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
 });
+
+export default EditLoanModal;

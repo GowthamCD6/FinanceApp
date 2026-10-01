@@ -509,8 +509,8 @@ async function getLoanById(loanId) {
        lp.product_name,
        lp.product_code
      FROM loans l
-     JOIN customers c ON l.customer_id = c.id
-     JOIN loan_products lp ON l.product_id = lp.id
+     LEFT JOIN customers c ON l.customer_id = c.id
+     LEFT JOIN loan_products lp ON l.product_id = lp.id
      WHERE l.id = ? LIMIT 1`,
     [loanId]
   );

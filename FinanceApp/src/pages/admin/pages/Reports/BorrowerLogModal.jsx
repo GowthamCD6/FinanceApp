@@ -12,6 +12,7 @@ import {
   Platform,
   StatusBar,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -114,44 +115,8 @@ const InstallmentCardSkeleton = () => (
   </View>
 );
 
-// Friendly Status Helper
-const getStatusStyle = (status) => {
-  switch (status) {
-    case 'PAID':
-      return {
-        badgeBg: '#ECFDF5',
-        textColor: '#059669',
-        borderColor: '#A7F3D0',
-        stripeColor: '#10B981',
-        label: 'Paid',
-      };
-    case 'OVERDUE':
-      return {
-        badgeBg: '#FEF2F2',
-        textColor: '#DC2626',
-        borderColor: '#FECACA',
-        stripeColor: '#EF4444',
-        label: 'Late',
-      };
-    case 'PARTIAL':
-      return {
-        badgeBg: '#EFF6FF',
-        textColor: '#2563EB',
-        borderColor: '#BFDBFE',
-        stripeColor: '#3B82F6',
-        label: 'Partial',
-      };
-    case 'UNPAID':
-    default:
-      return {
-        badgeBg: '#FFFBEB',
-        textColor: '#D97706',
-        borderColor: '#FDE68A',
-        stripeColor: '#F59E0B',
-        label: 'Due',
-      };
-  }
-};
+// In-memory ledger cache for instant 0ms access
+const loanLedgerCache = new Map();
 
 export const BorrowerLogModal = ({
   visible,
@@ -161,43 +126,32 @@ export const BorrowerLogModal = ({
   onOpenIssueLoan,
 }) => {
   const [loanData, setLoanData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'UNPAID' | 'PAID'
+  const [modeUpdating, setModeUpdating] = useState(false);
 
   // Payment Recording Modal State
   const [payModalVisible, setPayModalVisible] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('CASH');
+  const [isLastDatePayment, setIsLastDatePayment] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Edit and Delete Loan Modal States
   const [editLoanVisible, setEditLoanVisible] = useState(false);
   const [deleteLoanVisible, setDeleteLoanVisible] = useState(false);
 
-  // Fetch full loan details & all installments from server
-  const loadLoanLedger = useCallback(async () => {
+  // Fast & Protected Loan Ledger Loader with Stale-While-Revalidate
+  const loadLoanLedger = useCallback(async (skipCache = false) => {
     if (!borrower?.loanId) return;
-    setLoading(true);
-    try {
-      const data = await apiService.getLoanById(borrower.loanId);
-      if (data) {
-        setLoanData(data);
-      } else {
-        setLoanData({
-          id: borrower.loanId,
-          loan_number: borrower.loanNumber,
-          customer_name: borrower.customerName,
-          customer_phone: borrower.customerPhone,
-          shop_name: borrower.shopName,
-          repayment_frequency: borrower.frequency,
-          principal_amount: borrower.expectedAmount,
-          total_repayment_amount: borrower.expectedAmount,
-          installments: borrower.records || [],
-        });
-      }
-    } catch (err) {
-      console.warn('Failed to load loan ledger from server:', err.message);
+
+    // 1. Check in-memory cache first for instant response
+    if (!skipCache && loanLedgerCache.has(borrower.loanId)) {
+      setLoanData(loanLedgerCache.get(borrower.loanId));
+      setLoading(false);
+    } else if (!loanData && Array.isArray(borrower.records) && borrower.records.length > 0) {
+      // 2. Preloaded data from parent report page available immediately
       setLoanData({
         id: borrower.loanId,
         loan_number: borrower.loanNumber,
@@ -205,6 +159,34 @@ export const BorrowerLogModal = ({
         customer_phone: borrower.customerPhone,
         shop_name: borrower.shopName,
         repayment_frequency: borrower.frequency,
+        collection_mode: borrower.collection_mode || 'NORMAL',
+        principal_amount: borrower.expectedAmount,
+        total_repayment_amount: borrower.expectedAmount,
+        installments: borrower.records || [],
+      });
+      setLoading(false);
+    } else if (!loanData) {
+      setLoading(true);
+    }
+
+    // 3. Fast protected background revalidation
+    try {
+      const data = await apiService.getLoanById(borrower.loanId);
+      if (data) {
+        loanLedgerCache.set(borrower.loanId, data);
+        setLoanData(data);
+      }
+    } catch (err) {
+      console.warn('Background ledger revalidation:', err.message);
+      // Fallback securely to borrower data if loanData not yet set
+      setLoanData((prev) => prev || {
+        id: borrower.loanId,
+        loan_number: borrower.loanNumber,
+        customer_name: borrower.customerName,
+        customer_phone: borrower.customerPhone,
+        shop_name: borrower.shopName,
+        repayment_frequency: borrower.frequency,
+        collection_mode: borrower.collection_mode || 'NORMAL',
         principal_amount: borrower.expectedAmount,
         total_repayment_amount: borrower.expectedAmount,
         installments: borrower.records || [],
@@ -212,26 +194,122 @@ export const BorrowerLogModal = ({
     } finally {
       setLoading(false);
     }
-  }, [borrower]);
+  }, [borrower, loanData]);
 
   useEffect(() => {
+    let isCurrent = true;
+
     if (visible && borrower) {
       setActiveFilter('ALL');
-      loadLoanLedger();
+
+      // Immediate render from cache or preloaded data (0ms delay)
+      const cached = loanLedgerCache.get(borrower.loanId);
+      if (cached) {
+        setLoanData(cached);
+        setLoading(false);
+      } else if (Array.isArray(borrower.records) && borrower.records.length > 0) {
+        setLoanData({
+          id: borrower.loanId,
+          loan_number: borrower.loanNumber,
+          customer_name: borrower.customerName,
+          customer_phone: borrower.customerPhone,
+          shop_name: borrower.shopName,
+          repayment_frequency: borrower.frequency,
+          collection_mode: borrower.collection_mode || 'NORMAL',
+          principal_amount: borrower.expectedAmount,
+          total_repayment_amount: borrower.expectedAmount,
+          installments: borrower.records,
+        });
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      // Revalidate in background securely
+      (async () => {
+        try {
+          const freshData = await apiService.getLoanById(borrower.loanId);
+          if (isCurrent && freshData) {
+            loanLedgerCache.set(borrower.loanId, freshData);
+            setLoanData(freshData);
+          }
+        } catch (err) {
+          if (isCurrent) console.warn('Background revalidation note:', err.message);
+        } finally {
+          if (isCurrent) setLoading(false);
+        }
+      })();
     } else {
       setLoanData(null);
     }
-  }, [visible, borrower, loadLoanLedger]);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [visible, borrower]);
+
+  // Determine Collection Mode
+  const isLumpSum = (loanData?.collection_mode || borrower?.collection_mode) === 'LUMP_SUM_END';
+  const rawInstallments = Array.isArray(loanData?.installments) ? loanData.installments : [];
+
+  // Derived financial metrics
+  const totalRepayable = parseFloat(loanData?.total_repayment_amount || borrower?.expectedAmount || 0);
+  const totalPaid = rawInstallments.reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0);
+  const totalOutstanding = rawInstallments.reduce((sum, i) => {
+    const bal = i.outstanding_amount !== undefined
+      ? parseFloat(i.outstanding_amount || 0)
+      : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
+    return sum + bal;
+  }, 0);
+
+  // Compute Maturity / Last Date
+  const maturityDateStr = useMemo(() => {
+    if (loanData?.maturity_date) return formatDate(loanData.maturity_date);
+    if (rawInstallments.length > 0) {
+      const lastInst = rawInstallments[rawInstallments.length - 1];
+      if (lastInst?.due_date) return formatDate(lastInst.due_date);
+    }
+    return 'Final Maturity Date';
+  }, [loanData, rawInstallments]);
+
+  // Toggle Repayment Mode Handler (Normal vs Get Amount at Last Date)
+  const handleToggleCollectionMode = async (newMode) => {
+    if (!loanData?.id || modeUpdating) return;
+    setModeUpdating(true);
+    try {
+      await apiService.updateLoanCollectionMode(loanData.id, newMode);
+      loanLedgerCache.delete(loanData.id);
+      setLoanData((prev) => ({ ...prev, collection_mode: newMode }));
+      Alert.alert(
+        'Collection Mode Updated',
+        newMode === 'LUMP_SUM_END'
+          ? `Loan set to "Get Amount at Last Date". Full settlement will be collected on the final date (${maturityDateStr}).`
+          : 'Loan set to "Normal Installments". Standard regular periodic dues are active.'
+      );
+      await loadLoanLedger(true);
+      if (onPaymentSuccess) onPaymentSuccess();
+    } catch (err) {
+      Alert.alert('Update Failed', err.message || 'Could not update collection mode.');
+    } finally {
+      setModeUpdating(false);
+    }
+  };
 
   // Open Installment Pay Modal
-  const openPayModal = (inst) => {
+  const openPayModal = (inst, isLastDateFull = false) => {
     setSelectedInstallment(inst);
-    const bal = Number(
-      inst.outstanding_amount !== undefined
-        ? inst.outstanding_amount
-        : (inst.balance || inst.scheduled_amount || 0)
-    );
-    setPayAmount(String(bal > 0 ? bal : (inst.scheduled_amount || '')));
+    setIsLastDatePayment(isLastDateFull);
+
+    if (isLastDateFull && totalOutstanding > 0) {
+      setPayAmount(String(totalOutstanding));
+    } else {
+      const bal = Number(
+        inst?.outstanding_amount !== undefined
+          ? inst.outstanding_amount
+          : (inst?.balance || inst?.scheduled_amount || 0)
+      );
+      setPayAmount(String(bal > 0 ? bal : (inst?.scheduled_amount || '')));
+    }
     setPayMethod('CASH');
     setPayModalVisible(true);
   };
@@ -257,17 +335,22 @@ export const BorrowerLogModal = ({
         paymentDate: formatDateStr(new Date()),
         paymentMethod: payMethod,
         referenceNumber: `REC-${Math.floor(10000 + Math.random() * 90000)}`,
-        notes: `Collected from ${loanData?.customer_name || borrower?.customerName}`,
+        notes: isLastDatePayment
+          ? `Last Date settlement collected from ${loanData?.customer_name || borrower?.customerName}`
+          : `Collected from ${loanData?.customer_name || borrower?.customerName}`,
       });
 
       setPayModalVisible(false);
       Alert.alert(
         'Payment Recorded! 🎉',
-        `Collected ${formatINR(parsedAmt)} successfully.`
+        isLastDatePayment
+          ? `Final settlement of ${formatINR(parsedAmt)} successfully collected at the last date.`
+          : `Collected ${formatINR(parsedAmt)} successfully.`
       );
 
       // Reload loan details in-place
-      await loadLoanLedger();
+      loanLedgerCache.delete(loanData.id);
+      await loadLoanLedger(true);
 
       // Notify parent to refresh report dashboard
       if (onPaymentSuccess) {
@@ -282,9 +365,6 @@ export const BorrowerLogModal = ({
   };
 
   const todayStr = formatDateStr(new Date());
-
-  // Filtered installments list
-  const rawInstallments = Array.isArray(loanData?.installments) ? loanData.installments : [];
 
   const overdueInstCount = useMemo(() => {
     return rawInstallments.filter((i) => {
@@ -342,16 +422,6 @@ export const BorrowerLogModal = ({
     return rawInstallments;
   }, [rawInstallments, activeFilter, todayStr]);
 
-  // Derived financial metrics
-  const totalRepayable = parseFloat(loanData?.total_repayment_amount || borrower?.expectedAmount || 0);
-  const totalPaid = rawInstallments.reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0);
-  const totalOutstanding = rawInstallments.reduce((sum, i) => {
-    const bal = i.outstanding_amount !== undefined
-      ? parseFloat(i.outstanding_amount || 0)
-      : Math.max(0, parseFloat(i.scheduled_amount || 0) - parseFloat(i.paid_amount || 0));
-    return sum + bal;
-  }, 0);
-
   const initial = borrower?.customerName ? borrower.customerName.charAt(0).toUpperCase() : 'B';
   const frequencyLabel = borrower?.frequency || loanData?.repayment_frequency || 'DAILY';
 
@@ -364,7 +434,7 @@ export const BorrowerLogModal = ({
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
         <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
-        {/* Standard App Header Component */}
+        {/* Standard App Header Component with Pure White Theme */}
         <Header
           title={borrower?.customerName || 'Customer History'}
           onBack={onClose}
@@ -396,7 +466,7 @@ export const BorrowerLogModal = ({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Simple Borrower Overview Card */}
+            {/* Borrower Overview Card */}
             <View style={styles.profileCard}>
               <View style={styles.profileTop}>
                 <View style={styles.avatar}>
@@ -430,7 +500,7 @@ export const BorrowerLogModal = ({
                 ) : null}
               </View>
 
-              {/* Simple 3-Metric Summary: Total, Paid, Balance */}
+              {/* 3-Metric Summary: Total, Paid, Balance */}
               <View style={styles.metricsContainer}>
                 <View style={styles.metricItem}>
                   <Text style={styles.metricLabel}>TOTAL</Text>
@@ -456,71 +526,130 @@ export const BorrowerLogModal = ({
                 </View>
               </View>
 
+              {/* Repayment Collection Mode Switcher Bar */}
+              <View style={styles.modeBarContainer}>
+                <View style={styles.modeBarHeader}>
+                  <Text style={styles.modeBarLabel}>REPAYMENT METHOD</Text>
+                  <Text style={styles.modeBarMaturity}>
+                    Maturity: {maturityDateStr}
+                  </Text>
+                </View>
+
+                <View style={styles.modeSwitchRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.modeSwitchBtn,
+                      !isLumpSum && styles.modeSwitchBtnActive,
+                    ]}
+                    onPress={() => handleToggleCollectionMode('NORMAL')}
+                    disabled={modeUpdating}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons
+                      name={!isLumpSum ? 'check-circle' : 'calendar-clock'}
+                      size={14}
+                      color={!isLumpSum ? '#6B46C1' : '#64748B'}
+                    />
+                    <Text
+                      style={[
+                        styles.modeSwitchText,
+                        !isLumpSum && styles.modeSwitchTextActive,
+                      ]}
+                    >
+                      Normal Dues
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.modeSwitchBtn,
+                      isLumpSum && styles.modeSwitchBtnActive,
+                    ]}
+                    onPress={() => handleToggleCollectionMode('LUMP_SUM_END')}
+                    disabled={modeUpdating}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons
+                      name={isLumpSum ? 'check-circle' : 'target'}
+                      size={14}
+                      color={isLumpSum ? '#6B46C1' : '#64748B'}
+                    />
+                    <Text
+                      style={[
+                        styles.modeSwitchText,
+                        isLumpSum && styles.modeSwitchTextActive,
+                      ]}
+                    >
+                      Get Amount at Last Date
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {/* Loan Management Action Bar */}
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
                 <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    backgroundColor: '#F8FAFC',
-                    borderWidth: 1,
-                    borderColor: '#CBD5E1',
-                    borderRadius: 8,
-                    paddingVertical: 8,
-                  }}
+                  style={styles.actionBtnOutline}
                   onPress={() => setEditLoanVisible(true)}
                   activeOpacity={0.7}
                 >
                   <MaterialCommunityIcons name="pencil-outline" size={14} color="#475569" />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569' }}>Edit Terms</Text>
+                  <Text style={styles.actionBtnOutlineText}>Edit Terms</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    backgroundColor: '#FFF1F2',
-                    borderWidth: 1,
-                    borderColor: '#FECDD3',
-                    borderRadius: 8,
-                    paddingVertical: 8,
-                  }}
+                  style={styles.actionBtnDanger}
                   onPress={() => setDeleteLoanVisible(true)}
                   activeOpacity={0.7}
                 >
                   <MaterialCommunityIcons name="trash-can-outline" size={14} color="#BE123C" />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#BE123C' }}>Delete</Text>
+                  <Text style={styles.actionBtnDangerText}>Delete</Text>
                 </TouchableOpacity>
 
                 {onOpenIssueLoan && (
                   <TouchableOpacity
-                    style={{
-                      flex: 1.3,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                      backgroundColor: '#EEF2FF',
-                      borderWidth: 1,
-                      borderColor: '#C7D2FE',
-                      borderRadius: 8,
-                      paddingVertical: 8,
-                    }}
+                    style={styles.actionBtnPrimary}
                     onPress={() => onOpenIssueLoan(borrower)}
                     activeOpacity={0.8}
                   >
                     <MaterialCommunityIcons name="cash-plus" size={14} color="#6B46C1" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B46C1' }}>+ New Loan</Text>
+                    <Text style={styles.actionBtnPrimaryText}>+ New Loan</Text>
                   </TouchableOpacity>
                 )}
               </View>
             </View>
+
+            {/* "Get Amount at Last Date" Quick-Collect Card (When in Lump-Sum Mode) */}
+            {isLumpSum && totalOutstanding > 0 && (
+              <View style={styles.lumpSumHeroCard}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <MaterialCommunityIcons name="target" size={18} color="#6B46C1" />
+                    <Text style={styles.lumpSumHeroTitle}>Get Amount at Last Date</Text>
+                  </View>
+                  <Text style={styles.lumpSumHeroSubtitle}>
+                    Full loan settlement due on {maturityDateStr}
+                  </Text>
+                  <Text style={styles.lumpSumHeroAmount}>
+                    Total Balance: <Text style={{ color: '#6B46C1', fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold' }}>{formatINR(totalOutstanding)}</Text>
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.lumpSumHeroBtn}
+                  onPress={() => {
+                    const lastInst = rawInstallments.length > 0
+                      ? rawInstallments[rawInstallments.length - 1]
+                      : { scheduled_amount: totalOutstanding };
+                    openPayModal(lastInst, true);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <MaterialCommunityIcons name="cash-check" size={18} color="#FFFFFF" />
+                  <Text style={styles.lumpSumHeroBtnText}>Collect Full</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Filter Tabs: All, Overdue, Due, Paid */}
             <View style={styles.filterTabs}>
@@ -566,24 +695,38 @@ export const BorrowerLogModal = ({
                 const schedAmt = parseFloat(inst.scheduled_amount || 0);
                 const isPaid = inst.status === 'PAID' || bal <= 0;
 
+                const isLastInstallment = idx === installments.length - 1;
+                const isLumpSumDeferred = isLumpSum && !isLastInstallment && !isPaid;
+                const isLumpSumTarget = isLumpSum && isLastInstallment && !isPaid;
+
                 const cycleName = frequencyLabel === 'DAILY'
                   ? `Day ${inst.installment_number || idx + 1}`
                   : frequencyLabel === 'MONTHLY'
                   ? `Month ${inst.installment_number || idx + 1}`
                   : `Week ${inst.installment_number || idx + 1}`;
 
-                const paymentMethod = inst.payment_method || (loanData?.payments?.find(p => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_method) || 'CASH';
-                const rawPaidDate = inst.effective_paid_date || inst.paid_at || (loanData?.payments?.find(p => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_date) || inst.due_date;
+                const paymentMethod = inst.payment_method || (loanData?.payments?.find((p) => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_method) || 'CASH';
+                const rawPaidDate = inst.effective_paid_date || inst.paid_at || (loanData?.payments?.find((p) => Math.abs(parseFloat(p.amount) - parseFloat(inst.paid_amount || schedAmt)) < 0.01)?.payment_date) || inst.due_date;
                 const paidDateStr = rawPaidDate ? formatDate(rawPaidDate) : 'Completed';
                 const dueDateStr = inst.due_date ? String(inst.due_date).slice(0, 10) : '';
-                const isOverdue = !isPaid && (inst.status === 'OVERDUE' || (dueDateStr && dueDateStr < todayStr));
+                const isOverdue = !isPaid && !isLumpSumDeferred && (inst.status === 'OVERDUE' || (dueDateStr && dueDateStr < todayStr));
 
                 return (
-                  <View key={inst.id || idx} style={[styles.simpleInstCard, isOverdue && styles.simpleInstCardOverdue]}>
-                    {/* Left Info: Day/Week & Method/Overdue, Due/Paid Date, Amount */}
+                  <View
+                    key={inst.id || idx}
+                    style={[
+                      styles.simpleInstCard,
+                      isOverdue && styles.simpleInstCardOverdue,
+                      isLumpSumTarget && styles.simpleInstCardLumpSumTarget,
+                    ]}
+                  >
+                    {/* Left Info: Day/Week & Method/Overdue/LumpSum, Due/Paid Date, Amount */}
                     <View style={styles.instLeftCol}>
                       <View style={styles.instHeaderRow}>
-                        <Text style={[styles.instCycleTitle, isOverdue && { color: '#DC2626' }]}>{cycleName}</Text>
+                        <Text style={[styles.instCycleTitle, isOverdue && { color: '#DC2626' }]}>
+                          {cycleName}
+                        </Text>
+
                         {isPaid && (
                           <View style={styles.methodTag}>
                             <MaterialCommunityIcons
@@ -594,6 +737,21 @@ export const BorrowerLogModal = ({
                             <Text style={styles.methodTagText}>{paymentMethod}</Text>
                           </View>
                         )}
+
+                        {isLumpSumTarget && (
+                          <View style={styles.targetTag}>
+                            <MaterialCommunityIcons name="target" size={11} color="#6B46C1" />
+                            <Text style={styles.targetTagText}>LAST DATE</Text>
+                          </View>
+                        )}
+
+                        {isLumpSumDeferred && (
+                          <View style={styles.deferredTag}>
+                            <MaterialCommunityIcons name="clock-outline" size={11} color="#64748B" />
+                            <Text style={styles.deferredTagText}>DUE AT END</Text>
+                          </View>
+                        )}
+
                         {isOverdue && (
                           <View style={styles.overdueTag}>
                             <MaterialCommunityIcons name="alert-circle" size={11} color="#DC2626" />
@@ -601,15 +759,46 @@ export const BorrowerLogModal = ({
                           </View>
                         )}
                       </View>
-                      <Text style={[styles.instDueDateText, isOverdue && { color: '#DC2626', fontWeight: '700' }]} numberOfLines={1}>
+
+                      <Text
+                        style={[
+                          styles.instDueDateText,
+                          isOverdue && { color: '#DC2626', fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold' },
+                        ]}
+                        numberOfLines={1}
+                      >
                         {isPaid
                           ? `Paid: ${paidDateStr}`
+                          : isLumpSumDeferred
+                          ? `Deferred to maturity (${maturityDateStr})`
                           : isOverdue
                           ? `Due: ${inst.due_date ? formatDate(inst.due_date) : 'N/A'} (Late)`
                           : `Due: ${inst.due_date ? formatDate(inst.due_date) : 'N/A'}`}
                       </Text>
+
                       <Text style={styles.instAmountText}>
-                        Amount: <Text style={{ fontWeight: '800', color: '#111827' }}>{formatINR(schedAmt)}</Text>
+                        {isLumpSumTarget ? (
+                          <>
+                            Final Amount Due:{' '}
+                            <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#6B46C1' }}>
+                              {formatINR(totalOutstanding > 0 ? totalOutstanding : schedAmt)}
+                            </Text>
+                          </>
+                        ) : isLumpSumDeferred ? (
+                          <>
+                            Scheduled (Deferred):{' '}
+                            <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#64748B' }}>
+                              {formatINR(schedAmt)}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            Amount:{' '}
+                            <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#111827' }}>
+                              {formatINR(schedAmt)}
+                            </Text>
+                          </>
+                        )}
                       </Text>
                     </View>
 
@@ -620,15 +809,31 @@ export const BorrowerLogModal = ({
                           <MaterialCommunityIcons name="check-circle" size={14} color="#059669" style={{ marginRight: 3 }} />
                           <Text style={styles.paidPillText}>Paid</Text>
                         </View>
+                      ) : isLumpSumDeferred ? (
+                        <View style={styles.deferredPill}>
+                          <MaterialCommunityIcons name="calendar-check" size={13} color="#6B46C1" style={{ marginRight: 3 }} />
+                          <Text style={styles.deferredPillText}>Deferred</Text>
+                        </View>
                       ) : (
                         <TouchableOpacity
-                          style={[styles.collectActionBtn, isOverdue && styles.collectActionBtnOverdue]}
-                          onPress={() => openPayModal(inst)}
+                          style={[
+                            styles.collectActionBtn,
+                            isOverdue && styles.collectActionBtnOverdue,
+                            isLumpSumTarget && { backgroundColor: '#6B46C1' },
+                          ]}
+                          onPress={() => openPayModal(inst, isLumpSumTarget)}
                           activeOpacity={0.85}
                         >
-                          <MaterialCommunityIcons name={isOverdue ? "alert-circle-outline" : "cash"} size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
+                          <MaterialCommunityIcons
+                            name={isLumpSumTarget ? 'target' : isOverdue ? 'alert-circle-outline' : 'cash'}
+                            size={15}
+                            color="#FFFFFF"
+                            style={{ marginRight: 4 }}
+                          />
                           <Text style={styles.collectActionBtnText}>
-                            Collect {formatINR(bal > 0 ? bal : schedAmt)}
+                            {isLumpSumTarget
+                              ? `Collect ${formatINR(totalOutstanding > 0 ? totalOutstanding : schedAmt)}`
+                              : `Collect ${formatINR(bal > 0 ? bal : schedAmt)}`}
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -640,7 +845,7 @@ export const BorrowerLogModal = ({
           </ScrollView>
         )}
 
-        {/* Easy Payment Confirmation Modal */}
+        {/* Easy Payment Confirmation Modal (Styled with Add User Clean Palette) */}
         <Modal
           visible={payModalVisible}
           transparent
@@ -650,15 +855,42 @@ export const BorrowerLogModal = ({
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Collect Payment</Text>
-                <TouchableOpacity onPress={() => setPayModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={styles.modalIconCircle}>
+                    <MaterialCommunityIcons
+                      name={isLastDatePayment ? 'target' : 'cash-multiple'}
+                      size={20}
+                      color="#6B46C1"
+                    />
+                  </View>
+                  <Text style={styles.modalTitle}>
+                    {isLastDatePayment ? 'Get Amount at Last Date' : 'Collect Payment'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setPayModalVisible(false)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.modalCustomerName}>
-                Customer: <Text style={{ fontWeight: '800', color: '#111827' }}>{loanData?.customer_name || borrower?.customerName}</Text>
+                Borrower:{' '}
+                <Text style={{ fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold', color: '#111827' }}>
+                  {loanData?.customer_name || borrower?.customerName}
+                </Text>
               </Text>
+
+              {/* Last Date Settlement Notice */}
+              {isLastDatePayment && (
+                <View style={styles.modalNoticeBox}>
+                  <MaterialCommunityIcons name="information-outline" size={16} color="#6B46C1" />
+                  <Text style={styles.modalNoticeText}>
+                    Collecting full final settlement amount on maturity date ({maturityDateStr}).
+                  </Text>
+                </View>
+              )}
 
               {/* Amount Input */}
               <Text style={styles.inputLabel}>Amount (₹)</Text>
@@ -725,7 +957,9 @@ export const BorrowerLogModal = ({
                   ) : (
                     <>
                       <MaterialCommunityIcons name="check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                      <Text style={styles.modalSubmitText}>Confirm</Text>
+                      <Text style={styles.modalSubmitText}>
+                        {isLastDatePayment ? 'Settle at Last Date' : 'Confirm Payment'}
+                      </Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -734,7 +968,7 @@ export const BorrowerLogModal = ({
           </View>
         </Modal>
 
-        {/* Edit Loan Terms Modal */}
+        {/* Edit Loan Terms Modal (Add User Matching Style) */}
         {loanData && (
           <EditLoanModal
             visible={editLoanVisible}
@@ -773,62 +1007,10 @@ export const BorrowerLogModal = ({
 };
 
 const styles = StyleSheet.create({
+  // Root Theme Matching Outside Single Color Pure White
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  backBtn: {
-    paddingRight: 10,
-  },
-  backIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitleBox: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  frequencyBadge: {
-    backgroundColor: '#F3E8FF',
-    borderColor: '#D8B4FE',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-  },
-  frequencyBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6B46C1',
-  },
-  loadingBox: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '600',
   },
   scroll: {
     flex: 1,
@@ -839,6 +1021,21 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 44 : 32,
   },
+  frequencyBadge: {
+    backgroundColor: '#F3E8FF',
+    borderColor: '#D8B4FE',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  frequencyBadgeText: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: '#6B46C1',
+  },
+
+  // Borrower Profile Card (Gray Card Pattern)
   profileCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -909,6 +1106,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDD6FE',
   },
+
+  // 3 Metrics Container
   metricsContainer: {
     flexDirection: 'row',
     backgroundColor: '#F8FAFC',
@@ -942,6 +1141,164 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
 
+  // Mode Bar Switcher
+  modeBarContainer: {
+    marginTop: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modeBarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modeBarLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    letterSpacing: 0.3,
+  },
+  modeBarMaturity: {
+    fontSize: 10,
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  modeSwitchRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modeSwitchBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+    gap: 5,
+  },
+  modeSwitchBtnActive: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#6B46C1',
+  },
+  modeSwitchText: {
+    fontSize: 11,
+    color: '#475569',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-SemiBold' : 'Poppins-SemiBold',
+  },
+  modeSwitchTextActive: {
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
+  // Overview Action Buttons
+  actionBtnOutline: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingVertical: 8,
+  },
+  actionBtnOutlineText: {
+    fontSize: 12,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: '#475569',
+  },
+  actionBtnDanger: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+    borderRadius: 8,
+    paddingVertical: 8,
+  },
+  actionBtnDangerText: {
+    fontSize: 12,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: '#BE123C',
+  },
+  actionBtnPrimary: {
+    flex: 1.3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    borderRadius: 8,
+    paddingVertical: 8,
+  },
+  actionBtnPrimaryText: {
+    fontSize: 12,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: '#6B46C1',
+  },
+
+  // Lump Sum Hero Card (Quick-Collect Amount at Last Date)
+  lumpSumHeroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#DDD6FE',
+    marginBottom: 16,
+  },
+  lumpSumHeroTitle: {
+    fontSize: 14,
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  lumpSumHeroSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+  lumpSumHeroAmount: {
+    fontSize: 12,
+    color: '#334155',
+    marginTop: 4,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+  lumpSumHeroBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#6B46C1',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  lumpSumHeroBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+
   // Filters
   filterTabs: {
     flexDirection: 'row',
@@ -960,14 +1317,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
   },
-  tabButtonActive: {
-    backgroundColor: '#6B46C1',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   tabButtonText: {
     fontSize: 12,
     color: '#4B5563',
@@ -978,7 +1327,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
 
-  // Simple Installment Card
+  // Installment Card
   simpleInstCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -994,6 +1343,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
+  },
+  simpleInstCardOverdue: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FFFBFB',
+  },
+  simpleInstCardLumpSumTarget: {
+    borderColor: '#818CF8',
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1.5,
   },
   instLeftCol: {
     flex: 1,
@@ -1022,6 +1380,55 @@ const styles = StyleSheet.create({
   methodTagText: {
     fontSize: 10,
     color: '#059669',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  targetTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C4B5FD',
+    gap: 3,
+  },
+  targetTagText: {
+    fontSize: 9,
+    color: '#6D28D9',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  deferredTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    gap: 3,
+  },
+  deferredTagText: {
+    fontSize: 9,
+    color: '#475569',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+  },
+  overdueTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 3,
+  },
+  overdueTagText: {
+    fontSize: 9,
+    color: '#DC2626',
+    letterSpacing: 0.3,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   instDueDateText: {
@@ -1054,25 +1461,19 @@ const styles = StyleSheet.create({
     color: '#059669',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
-  simpleInstCardOverdue: {
-    borderColor: '#FECACA',
-    backgroundColor: '#FFFBFB',
-  },
-  overdueTag: {
+  deferredPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    backgroundColor: '#F5F3FF',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    gap: 3,
+    borderColor: '#DDD6FE',
   },
-  overdueTagText: {
-    fontSize: 9,
-    color: '#DC2626',
-    letterSpacing: 0.3,
+  deferredPillText: {
+    fontSize: 11,
+    color: '#6B46C1',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   collectActionBtn: {
@@ -1121,7 +1522,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
   },
 
-  // Modal Styles
+  // Payment Modal Styles
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1146,15 +1547,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  modalIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 17,
     color: '#212121',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   modalCustomerName: {
     fontSize: 13,
     color: '#6B7280',
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+  },
+  modalNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F5F3FF',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
     marginBottom: 14,
+  },
+  modalNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#6B46C1',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   inputLabel: {
