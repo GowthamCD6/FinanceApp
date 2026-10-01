@@ -407,9 +407,6 @@ const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
   );
 });
 
-// High-Performance In-Memory Cache for Instant Screen Renders across mounts
-const reportCache = new Map();
-
 export const AdminReports = () => {
   const { currentUser } = useApp();
 
@@ -458,10 +455,11 @@ export const AdminReports = () => {
 
   // Fetch Report Data from Backend API
   const fetchReport = useCallback(
-    async (overrideStart, overrideEnd, overrideFreq, isRefresh = false) => {
+    async (overrideStart, overrideEnd, overrideFreq, overrideStatus, isRefresh = false) => {
       const sDate = overrideStart !== undefined ? overrideStart : startDate;
       const eDate = overrideEnd !== undefined ? overrideEnd : endDate;
       const freq = overrideFreq !== undefined ? overrideFreq : frequencyFilter;
+      const stat = overrideStatus !== undefined ? overrideStatus : statusFilter;
 
       if (!apiService.token) {
         setLoading(false);
@@ -469,30 +467,21 @@ export const AdminReports = () => {
         return;
       }
 
-      const cacheKey = `${freq}_${sDate || 'ALL'}_${eDate || 'ALL'}`;
-
-      // Instant UI: Serve from in-memory cache immediately if present
-      if (!isRefresh && reportCache.has(cacheKey)) {
-        const cached = reportCache.get(cacheKey);
-        setReport(cached);
-        setLoading(false);
-      } else if (!isRefresh) {
-        setLoading(true);
-      }
-
       if (isRefresh) {
         setRefreshing(true);
+      } else {
+        setLoading(true);
       }
 
       try {
         const data = await apiService.getPaymentReport({
           startDate: sDate || undefined,
           endDate: eDate || undefined,
-          status: 'ALL',
+          status: stat,
         });
 
         if (data) {
-          const formatted = {
+          setReport({
             period: data.period || { start: '', end: '' },
             summary: data.summary || {
               expected: 0,
@@ -506,9 +495,7 @@ export const AdminReports = () => {
               recovery_rate: 0,
             },
             records: Array.isArray(data.records) ? data.records : [],
-          };
-          reportCache.set(cacheKey, formatted);
-          setReport(formatted);
+          });
         }
       } catch (err) {
         console.warn('Payment report sync notice:', err?.message || err);
@@ -517,12 +504,12 @@ export const AdminReports = () => {
         setRefreshing(false);
       }
     },
-    [startDate, endDate, frequencyFilter]
+    [startDate, endDate, frequencyFilter, statusFilter]
   );
 
   // Calculate and apply date range for a given anchor date and frequency
   const applyDateRange = useCallback(
-    (refDate, freq) => {
+    (refDate, freq, stat = statusFilter) => {
       let s = '';
       let e = '';
       if (freq === 'DAILY') {
@@ -544,29 +531,33 @@ export const AdminReports = () => {
 
       setStartDate(s);
       setEndDate(e);
-      fetchReport(s, e, freq, false);
+      fetchReport(s, e, freq, stat, false);
     },
-    [fetchReport]
+    [fetchReport, statusFilter]
   );
 
   // Initial Fetch on mount
   useEffect(() => {
-    applyDateRange(anchorDate, frequencyFilter);
+    applyDateRange(anchorDate, frequencyFilter, statusFilter);
   }, []);
 
-  // Frequency Filter Tab Selection Handler
+  // Frequency Filter Tab Selection Handler (Triggers loading of loan cards for selected frequency)
   const handleFrequencySelect = useCallback(
     (freq) => {
       setFrequencyFilter(freq);
-      applyDateRange(anchorDate, freq);
+      applyDateRange(anchorDate, freq, statusFilter);
     },
-    [anchorDate, applyDateRange]
+    [anchorDate, applyDateRange, statusFilter]
   );
 
-  // Status Filter Selection Handler (Instant 0ms in-memory filtering)
-  const handleStatusSelect = useCallback((stat) => {
-    setStatusFilter(stat);
-  }, []);
+  // Status Filter Selection Handler (Triggers loading of loan cards for selected status)
+  const handleStatusSelect = useCallback(
+    (stat) => {
+      setStatusFilter(stat);
+      fetchReport(startDate, endDate, frequencyFilter, stat, false);
+    },
+    [fetchReport, startDate, endDate, frequencyFilter]
+  );
 
   // Date Shift Navigator Handlers (Previous / Next / Reset)
   const handlePrevDate = useCallback(() => {
@@ -579,8 +570,8 @@ export const AdminReports = () => {
       next.setMonth(next.getMonth() - 1);
     }
     setAnchorDate(next);
-    applyDateRange(next, frequencyFilter);
-  }, [anchorDate, frequencyFilter, applyDateRange]);
+    applyDateRange(next, frequencyFilter, statusFilter);
+  }, [anchorDate, frequencyFilter, statusFilter, applyDateRange]);
 
   const handleNextDate = useCallback(() => {
     const next = new Date(anchorDate);
@@ -592,14 +583,14 @@ export const AdminReports = () => {
       next.setMonth(next.getMonth() + 1);
     }
     setAnchorDate(next);
-    applyDateRange(next, frequencyFilter);
-  }, [anchorDate, frequencyFilter, applyDateRange]);
+    applyDateRange(next, frequencyFilter, statusFilter);
+  }, [anchorDate, frequencyFilter, statusFilter, applyDateRange]);
 
   const handleResetToCurrent = useCallback(() => {
     const now = new Date();
     setAnchorDate(now);
-    applyDateRange(now, frequencyFilter);
-  }, [frequencyFilter, applyDateRange]);
+    applyDateRange(now, frequencyFilter, statusFilter);
+  }, [frequencyFilter, statusFilter, applyDateRange]);
 
   // Check if current anchor is active period (e.g. today / this week / this month)
   const isAnchorCurrent = useMemo(() => {
@@ -720,29 +711,18 @@ export const AdminReports = () => {
     return list;
   }, [report.records]);
 
-  // High-Performance In-Memory Filtering (Instant 0ms UI update for Status & Search)
+  // Search Filtering over Borrower Cards
   const filteredBorrowers = useMemo(() => {
-    let list = borrowerCards;
-
-    // Fast in-memory status filter
-    if (statusFilter === 'OVERDUE') {
-      list = list.filter((b) => b.status === 'OVERDUE' || b.overdueCount > 0);
-    } else if (statusFilter === 'UNPAID') {
-      list = list.filter((b) => b.status === 'UNPAID' || b.status === 'OVERDUE' || b.unpaidCount > 0 || b.balance > 0);
-    } else if (statusFilter === 'PAID') {
-      list = list.filter((b) => b.status === 'PAID' || b.paidCount > 0);
-    }
-
-    if (!searchQuery.trim()) return list;
+    if (!searchQuery.trim()) return borrowerCards;
     const q = searchQuery.toLowerCase().trim();
-    return list.filter(
+    return borrowerCards.filter(
       (b) =>
         b.customerName?.toLowerCase().includes(q) ||
         b.customerPhone?.toLowerCase().includes(q) ||
         b.loanNumber?.toLowerCase().includes(q) ||
         b.shopName?.toLowerCase().includes(q)
     );
-  }, [borrowerCards, searchQuery, statusFilter]);
+  }, [borrowerCards, searchQuery]);
 
   // Open Full-Screen Borrower Ledger Modal
   const handleOpenBorrowerLedger = useCallback((borrower) => {
@@ -803,8 +783,7 @@ export const AdminReports = () => {
         'Payment Recorded',
         `Successfully collected ${formatINR(parsedAmt)} for ${selectedRecord.customerName}.`
       );
-      reportCache.clear();
-      fetchReport(startDate, endDate, frequencyFilter, true);
+      fetchReport(startDate, endDate, frequencyFilter, statusFilter, true);
     } catch (err) {
       console.error('Error recording payment:', err);
       Alert.alert('Collection Failed', err.message || 'Failed to record payment on server.');
@@ -944,7 +923,7 @@ export const AdminReports = () => {
         {/* Clean Count Header */}
         <View style={styles.recordsHeader}>
           <Text style={styles.recordsHeaderText}>
-            Customers ({filteredBorrowers.length})
+            Customers ({loading && !refreshing ? '...' : filteredBorrowers.length})
           </Text>
         </View>
       </View>
@@ -1107,7 +1086,7 @@ export const AdminReports = () => {
 
       {/* High-Performance Virtualized FlatList */}
       <FlatList
-        data={filteredBorrowers}
+        data={loading && !refreshing ? [] : filteredBorrowers}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         ListHeaderComponent={renderListHeader}
@@ -1123,8 +1102,7 @@ export const AdminReports = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => {
-              reportCache.clear();
-              fetchReport(startDate, endDate, frequencyFilter, true);
+              fetchReport(startDate, endDate, frequencyFilter, statusFilter, true);
             }}
             colors={['#6B46C1']}
             tintColor="#6B46C1"
@@ -1138,8 +1116,7 @@ export const AdminReports = () => {
         onClose={() => setBorrowerLedgerVisible(false)}
         borrower={selectedBorrower}
         onPaymentSuccess={() => {
-          reportCache.clear();
-          fetchReport(startDate, endDate, frequencyFilter, true);
+          fetchReport(startDate, endDate, frequencyFilter, statusFilter, true);
         }}
       />
 
