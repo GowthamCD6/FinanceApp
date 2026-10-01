@@ -26,6 +26,41 @@ export const WelcomePage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
+  // --------------------------------------------------------------------------
+  // SCROLL-AWARE DYNAMIC HEADER STATE
+  // --------------------------------------------------------------------------
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [activeSection, setActiveSection] = useState('hero');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      setIsScrolled(scrollY > 20);
+
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (docHeight > 0) {
+        setScrollProgress(Math.min(100, Math.max(0, (scrollY / docHeight) * 100)));
+      }
+
+      const sections = ['hero', 'card-studio', 'route-telemetry', 'vault-chamber', 'calculator', 'security', 'faq'];
+      for (const sectionId of sections) {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= 160 && rect.bottom >= 160) {
+            setActiveSection(sectionId);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Smooth scroll helper for top navigation
   const scrollToSection = (e, id) => {
     e.preventDefault();
@@ -244,35 +279,39 @@ export const WelcomePage = () => {
       {/* --------------------------------------------------------------------
           1. TOP NAVBAR: EXECUTIVE FINTECH NAVIGATION
           -------------------------------------------------------------------- */}
-      <header className="qonto-navbar">
+      <header className={`qonto-navbar ${isScrolled ? 'is-scrolled' : ''}`}>
+        <div className="navbar-scroll-progress" style={{ width: `${scrollProgress}%` }} />
         <div className="qonto-navbar-inner">
           <Link to="/" className="qonto-brand">
-            <img src={logoImg} alt="Finance Portal" className="qonto-brand-logo" />
-            <span className="qonto-brand-name">Finance</span>
+            <div className="brand-logo-glow-wrapper">
+              <img src={logoImg} alt="Finance Portal" className="qonto-brand-logo" />
+            </div>
+            <div className="brand-title-wrap">
+              <span className="qonto-brand-name">Finance</span>
+              <span className="brand-badge-pill">ENTERPRISE</span>
+            </div>
           </Link>
 
           <nav className="qonto-nav-links">
-            <a href="#hero" onClick={(e) => scrollToSection(e, 'hero')}>
-              Features
-            </a>
-            <a href="#card-studio" onClick={(e) => scrollToSection(e, 'card-studio')}>
-              Smart Cards
-            </a>
-            <a href="#route-telemetry" onClick={(e) => scrollToSection(e, 'route-telemetry')}>
-              Route Telemetry
-            </a>
-            <a href="#vault-chamber" onClick={(e) => scrollToSection(e, 'vault-chamber')}>
-              Sovereign Vault
-            </a>
-            <a href="#calculator" onClick={(e) => scrollToSection(e, 'calculator')}>
-              Loan Simulator
-            </a>
-            <a href="#security" onClick={(e) => scrollToSection(e, 'security')}>
-              Security
-            </a>
-            <a href="#faq" onClick={(e) => scrollToSection(e, 'faq')}>
-              FAQ
-            </a>
+            {[
+              { id: 'hero', label: 'Features' },
+              { id: 'card-studio', label: 'Smart Cards' },
+              { id: 'route-telemetry', label: 'Route Telemetry' },
+              { id: 'vault-chamber', label: 'Sovereign Vault' },
+              { id: 'calculator', label: 'Loan Simulator' },
+              { id: 'security', label: 'Security' },
+              { id: 'faq', label: 'FAQ' },
+            ].map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className={`nav-link-item ${activeSection === item.id ? 'is-active' : ''}`}
+                onClick={(e) => scrollToSection(e, item.id)}
+              >
+                <span>{item.label}</span>
+                {activeSection === item.id && <span className="nav-active-pip" />}
+              </a>
+            ))}
           </nav>
 
           <div className="qonto-nav-actions">
@@ -284,7 +323,8 @@ export const WelcomePage = () => {
               className="qonto-btn-nav-primary"
               onClick={() => navigate('/login')}
             >
-              Open an account
+              <span>Open an account</span>
+              <ArrowRight size={14} className="nav-btn-arrow" />
             </button>
           </div>
         </div>

@@ -40,104 +40,219 @@
 }
 
 /* ==========================================================================
-   1. TOP NAVBAR
+   1. TOP NAVBAR: SCROLL-AWARE DYNAMIC FINTECH NAVIGATION
    ========================================================================== */
 .qonto-navbar {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.84);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--qonto-border-hairline);
-  transition: all 0.3s ease;
+  transition: background 0.3s cubic-bezier(0.2, 0, 0, 1),
+              padding 0.3s cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1),
+              border-color 0.3s ease;
+}
+
+.qonto-navbar.is-scrolled {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom-color: rgba(226, 232, 240, 0.95);
+  box-shadow: 
+    0 12px 32px -8px rgba(15, 23, 42, 0.08),
+    0 2px 4px 0 rgba(15, 23, 42, 0.02);
+}
+
+.navbar-scroll-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, #10B981 0%, #0284C7 50%, #34D399 100%);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+  transition: width 0.08s ease-out;
+  z-index: 1001;
 }
 
 .qonto-navbar-inner {
   max-width: var(--qonto-max-wrap);
   margin: 0 auto;
-  padding: 1.1rem 2.5rem;
+  padding: 1.15rem 2.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: padding 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
+.qonto-navbar.is-scrolled .qonto-navbar-inner {
+  padding: 0.65rem 2.5rem;
+}
+
+/* Brand Identity */
 .qonto-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.85rem;
   text-decoration: none;
   color: var(--qonto-text-primary);
+}
+
+.brand-logo-glow-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .qonto-brand-logo {
-  height: 32px;
+  height: 34px;
   width: auto;
   object-fit: contain;
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.qonto-brand:hover .qonto-brand-logo {
+  transform: scale(1.06) rotate(-2deg);
+}
+
+.brand-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 .qonto-brand-name {
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   color: var(--qonto-text-primary);
+  line-height: 1;
 }
 
+.brand-badge-pill {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--qonto-accent-emerald-dark);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+/* Nav Links: Capsule Dock Style with Active Section Indicator */
 .qonto-nav-links {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 0.35rem;
+  background: rgba(15, 23, 42, 0.025);
+  padding: 0.3rem 0.45rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
 }
 
-.qonto-nav-links a {
+.qonto-navbar.is-scrolled .qonto-nav-links {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.nav-link-item {
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: var(--qonto-text-secondary);
-  font-size: 0.92rem;
-  font-weight: 500;
+  font-size: 0.885rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-decoration: none;
-  transition: color 0.2s ease;
+  padding: 0.42rem 0.95rem;
+  border-radius: 9999px;
   position: relative;
-  padding: 0.35rem 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.qonto-nav-links a:hover {
+.nav-link-item:hover {
   color: var(--qonto-text-primary);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
+.nav-link-item.is-active {
+  color: #0F172A;
+  font-weight: 700;
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.nav-active-pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 8px #10B981;
+  animation: dotPulse 2s infinite;
+}
+
+/* Nav Actions */
 .qonto-nav-actions {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .qonto-btn-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: #334155;
   text-decoration: none;
-  font-size: 0.92rem;
+  font-size: 0.885rem;
   font-weight: 600;
-  transition: color 0.2s ease;
+  padding: 0.5rem 0.95rem;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
 }
 
 .qonto-btn-text:hover {
   color: var(--qonto-accent-emerald-dark);
+  background: rgba(16, 185, 129, 0.06);
 }
 
 .qonto-btn-nav-primary {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   background: #0F172A;
   color: #FFFFFF;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 0.65rem 1.4rem;
+  font-size: 0.885rem;
+  font-weight: 700;
+  padding: 0.62rem 1.45rem;
   border-radius: 9999px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16);
 }
 
 .qonto-btn-nav-primary:hover {
   background: #1E293B;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.22);
+  transform: translateY(-1.5px);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.26);
+}
+
+.nav-btn-arrow {
+  transition: transform 0.2s ease;
+}
+
+.qonto-btn-nav-primary:hover .nav-btn-arrow {
+  transform: translateX(3px);
 }
 
 /* ==========================================================================
