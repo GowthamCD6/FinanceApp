@@ -102,10 +102,10 @@ export default StyleSheet.create({
   },
   metricCardProper: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 14,
     padding: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -329,12 +329,12 @@ export default StyleSheet.create({
 
   // Borrower Card (Matching Reports Page Card Architecture)
   recordCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,

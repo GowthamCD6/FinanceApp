@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
-import Colors from '../../../../theme/colors';
+import { Colors, Fonts } from '../../../../theme';
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.offWhite,
+    backgroundColor: Colors.background,
   },
   content: {
     padding: 16,
@@ -17,12 +17,14 @@ export default StyleSheet.create({
     fontSize: 12,
     color: Colors.gray200,
     fontWeight: '600',
+    fontFamily: Fonts.gilroy.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   userName: {
     fontSize: 22,
     fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.gray800,
     marginTop: 2,
   },
@@ -36,15 +38,15 @@ export default StyleSheet.create({
     width: '48.5%',
   },
   card: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.lightGray400,
+    borderColor: Colors.lightGray400, // #E5E7EB
     marginBottom: 16,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -57,23 +59,25 @@ export default StyleSheet.create({
   cardTitle: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.gray800,
   },
   progressPercentage: {
     fontSize: 15,
     fontWeight: '800',
-    color: Colors.success,
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.primary,
   },
   barBackground: {
     height: 10,
-    backgroundColor: Colors.lightGray200,
+    backgroundColor: Colors.lightGray400,
     borderRadius: 5,
     overflow: 'hidden',
     marginBottom: 8,
   },
   barFill: {
     height: '100%',
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.primary,
     borderRadius: 5,
   },
   progressLabels: {
@@ -84,15 +88,18 @@ export default StyleSheet.create({
   progressLabelLeft: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.success,
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.primary,
   },
   progressLabelRight: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.medium,
     color: Colors.gray200,
   },
   progressNote: {
     fontSize: 11,
+    fontFamily: Fonts.gilroy.regular,
     color: Colors.gray200,
     lineHeight: 16,
   },
@@ -105,12 +112,14 @@ export default StyleSheet.create({
   activeLoanTag: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.gray200,
     letterSpacing: 0.8,
   },
   activeLoanNumber: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.gray800,
     marginTop: 2,
   },
@@ -125,10 +134,11 @@ export default StyleSheet.create({
   statusBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.primary,
   },
   activeLoanDetails: {
-    backgroundColor: Colors.lightGray50,
+    backgroundColor: Colors.white,
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
@@ -142,11 +152,13 @@ export default StyleSheet.create({
   },
   detailKey: {
     fontSize: 12,
+    fontFamily: Fonts.gilroy.medium,
     color: Colors.gray200,
   },
   detailVal: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: Fonts.gilroy.semiBold,
     color: Colors.gray800,
   },
   scheduleActionBtn: {
@@ -159,7 +171,8 @@ export default StyleSheet.create({
   scheduleActionBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.secondaryBlue,
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.primary,
   },
   quickGrid: {
     flexDirection: 'row',
@@ -167,7 +180,7 @@ export default StyleSheet.create({
   },
   quickBtn: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
@@ -182,7 +195,7 @@ export default StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: Colors.lightGray50,
+    backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.lightGray400,
     alignItems: 'center',
@@ -192,11 +205,13 @@ export default StyleSheet.create({
   quickBtnTitle: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.gray800,
     marginBottom: 4,
   },
   quickBtnSub: {
     fontSize: 11,
+    fontFamily: Fonts.gilroy.regular,
     color: Colors.gray200,
   },
 });

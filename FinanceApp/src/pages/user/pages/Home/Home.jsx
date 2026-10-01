@@ -5,9 +5,9 @@ import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
 import DigitalReceiptModal from '../../Modals/Pages/DigitalReceiptModal';
 import styles from './Homesty';
-import Colors from '../../../../theme/colors';
+import { Colors, Fonts } from '../../../../theme';
 
-const MetricCard = ({ title, value, change, isPositive, color = Colors.secondaryBlue, iconName }) => {
+const MetricCard = ({ title, value, change, isPositive, color = Colors.primary, iconName }) => {
   const iconMap = {
     loans: 'file-document-outline',
     check: 'check-circle-outline',
@@ -18,7 +18,7 @@ const MetricCard = ({ title, value, change, isPositive, color = Colors.secondary
   return (
     <View style={styles.card}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.gray200, textTransform: 'uppercase' }} numberOfLines={1}>
+        <Text style={{ fontSize: 11, fontWeight: '700', fontFamily: Fonts.gilroy.bold, color: Colors.gray200, textTransform: 'uppercase' }} numberOfLines={1}>
           {title}
         </Text>
         {iconName ? (
@@ -27,9 +27,9 @@ const MetricCard = ({ title, value, change, isPositive, color = Colors.secondary
           </View>
         ) : null}
       </View>
-      <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.gray800 }}>{value}</Text>
+      <Text style={{ fontSize: 18, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.gray800 }}>{value}</Text>
       {change ? (
-        <Text style={{ fontSize: 10, fontWeight: '700', marginTop: 2, color: isPositive ? Colors.success : Colors.error }}>
+        <Text style={{ fontSize: 10, fontWeight: '700', fontFamily: Fonts.gilroy.bold, marginTop: 2, color: isPositive ? Colors.success : Colors.error }}>
           {change}
         </Text>
       ) : null}
@@ -73,7 +73,7 @@ export const Home = ({ onNavigate }) => {
           <MetricCard
             title="Outstanding"
             value={formatINR(outstandingBalance)}
-            color={Colors.secondaryBlue}
+            color={Colors.primary}
             iconName="calendar"
           />
         </View>
@@ -89,7 +89,7 @@ export const Home = ({ onNavigate }) => {
           <MetricCard
             title="Active Loans"
             value={String(activeLoans.length)}
-            color={Colors.purpleBorderLight}
+            color={Colors.primary}
             iconName="receipt"
           />
         </View>

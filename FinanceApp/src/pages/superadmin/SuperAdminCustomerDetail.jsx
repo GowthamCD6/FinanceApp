@@ -3,17 +3,18 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
+import { Colors, Fonts } from '../../theme';
 import AdjustCreditLimitModal from './modal/AdjustCreditLimitModal';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
   const variantStyles = {
-    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    primary: { bg: Colors.purpleTintLightest, border: Colors.purpleBorderLight, text: Colors.primary },
     secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
-    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
-    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
-    neutral: { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' },
-    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+    success: { bg: Colors.successBg, border: '#A7F3D0', text: Colors.success },
+    warning: { bg: Colors.amberBg, border: '#FDE68A', text: Colors.amberDark },
+    neutral: { bg: Colors.backgroundContainer, border: Colors.lightGray400, text: Colors.gray200 },
+    danger: { bg: Colors.errorBg, border: '#FECACA', text: Colors.errorDanger },
   };
   const current = variantStyles[variant] || variantStyles.primary;
 
@@ -35,6 +36,7 @@ const badgeStyles = StyleSheet.create({
   text: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
 });
 
@@ -263,7 +265,7 @@ const SuperAdminCustomerDetail = ({ customerId, onBack, onNavigateToLoan }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.background,
   },
   content: {
     padding: 16,
@@ -280,15 +282,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 7,
     paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: Colors.lightGray400,
   },
   backBtnText: {
-    color: '#2563EB',
+    color: Colors.primary,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
   statusToggleBtn: {
     paddingVertical: 6,
@@ -298,20 +300,20 @@ const styles = StyleSheet.create({
   },
   statusToggleText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
   },
   heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400, // #E5E7EB
     marginBottom: 16,
-    shadowColor: '#0F172A',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
   heroRow: {
     flexDirection: 'row',
@@ -322,10 +324,11 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
+    backgroundColor: Colors.purpleTintLightest,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: Colors.purpleBorderLight,
   },
   nameRow: {
     flexDirection: 'row',
@@ -334,17 +337,19 @@ const styles = StyleSheet.create({
   },
   customerName: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
   },
   customerType: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     marginTop: 2,
   },
   contactText: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     marginTop: 2,
   },
   shopBox: {
@@ -354,40 +359,41 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Colors.lightGray400,
   },
   shopLabel: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
   },
   shopVal: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
   },
   sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400, // #E5E7EB
     marginBottom: 16,
-    shadowColor: '#0F172A',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
   sectionEyebrow: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.primary,
     letterSpacing: 1.1,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
     marginTop: 2,
     marginBottom: 14,
   },
@@ -398,27 +404,28 @@ const styles = StyleSheet.create({
   },
   metricBox: {
     width: '48%',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.white,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   mLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textSecondary,
     textTransform: 'uppercase',
   },
   mVal: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
     marginVertical: 4,
   },
   mSub: {
     fontSize: 10,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
   },
   limitHeaderRow: {
     flexDirection: 'row',
@@ -428,44 +435,44 @@ const styles = StyleSheet.create({
   editBtn: {
     paddingVertical: 5,
     paddingHorizontal: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: Colors.purpleTintLightest,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: Colors.purpleBorderLight,
   },
   editBtnText: {
     fontSize: 11,
-    color: '#2563EB',
-    fontWeight: '700',
+    color: Colors.primary,
+    fontFamily: Fonts.gilroy.bold,
   },
   limitDisplayBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.white,
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     marginTop: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
+    borderLeftColor: Colors.primary,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   limitDisplayText: {
     fontSize: 22,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
   },
   limitDisplaySub: {
     fontSize: 12,
     color: '#059669',
     marginTop: 4,
-    fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
   loanCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   loanCardOverdue: {
     borderLeftWidth: 4,
@@ -483,25 +490,26 @@ const styles = StyleSheet.create({
   },
   loanCardNum: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.primary,
   },
   repeatBadge: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: Colors.purpleTintLightest,
     paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#DDD6FE',
+    borderColor: Colors.purpleBorderLight,
   },
   repeatBadgeText: {
     fontSize: 10,
-    color: '#7C3AED',
-    fontWeight: '700',
+    color: Colors.primary,
+    fontFamily: Fonts.gilroy.bold,
   },
   loanCardType: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     marginTop: 2,
   },
   loanCardDetails: {
@@ -511,17 +519,18 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   detailLabel: {
     fontSize: 9,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     textTransform: 'uppercase',
   },
   detailVal: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
     marginTop: 2,
   },
   loanCardFooter: {
@@ -532,7 +541,8 @@ const styles = StyleSheet.create({
   },
   dateMeta: {
     fontSize: 10,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
   },
   inspectRow: {
     flexDirection: 'row',
@@ -541,12 +551,13 @@ const styles = StyleSheet.create({
   },
   tapToViewText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.primary,
   },
   emptyText: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     textAlign: 'center',
     paddingVertical: 14,
   },

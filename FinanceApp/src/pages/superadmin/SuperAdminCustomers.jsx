@@ -4,11 +4,12 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
 import AddCustomerModal from './modal/AddCustomerModal';
+import { Colors, Fonts } from '../../theme';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
   const variantStyles = {
-    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    primary: { bg: Colors.purpleTintLightest, border: Colors.purpleBorderLight, text: Colors.primary },
     secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
     success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
     warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
@@ -193,35 +194,35 @@ export const SuperAdminCustomers = ({ onSelectCustomer }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  topBar: { backgroundColor: '#FFFFFF', padding: 14, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, paddingHorizontal: 10, height: 38, marginBottom: 8, borderWidth: 1, borderColor: '#CBD5E1' },
-  searchInput: { flex: 1, fontSize: 13, color: '#0F172A', paddingVertical: 0 },
+  container: { flex: 1, backgroundColor: Colors.background }, // Single uniform background
+  topBar: { backgroundColor: Colors.background, padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.lightGray400 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.backgroundContainer, borderRadius: 8, paddingHorizontal: 10, height: 38, marginBottom: 8, borderWidth: 1, borderColor: Colors.lightGray400 },
+  searchInput: { flex: 1, fontSize: 13, fontFamily: Fonts.gilroy.medium, color: '#0F172A', paddingVertical: 0 },
   filterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chipsScroll: { flexDirection: 'row' },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F1F5F9', marginRight: 6, borderWidth: 1, borderColor: '#E2E8F0' },
-  chipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-  chipText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: Colors.backgroundContainer, marginRight: 6, borderWidth: 1, borderColor: Colors.lightGray400 },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { fontSize: 11, fontWeight: '700', fontFamily: Fonts.gilroy.bold, color: '#64748B' },
   chipTextActive: { color: '#FFFFFF' },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
   },
-  addBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
+  addBtnText: { color: '#FFFFFF', fontWeight: '800', fontFamily: Fonts.gilroy.bold, fontSize: 12 },
   listContent: { padding: 14, paddingBottom: 70 },
-  countText: { fontSize: 11, color: '#64748B', fontWeight: '700', marginBottom: 10 },
+  countText: { fontSize: 11, color: '#64748B', fontWeight: '700', fontFamily: Fonts.gilroy.bold, marginBottom: 10 },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
+    borderRadius: 14,
     padding: 14,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: Colors.lightGray400,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -229,18 +230,18 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   custLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  custName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
-  custCode: { fontSize: 10, color: '#64748B', marginTop: 2 },
-  shopName: { fontSize: 12, fontWeight: '700', color: '#2563EB', marginTop: 4 },
-  custPhone: { fontSize: 11, color: '#64748B', marginTop: 4 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8, paddingVertical: 6, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F1F5F9' },
-  statLabel: { fontSize: 9, color: '#64748B', textTransform: 'uppercase' },
-  statVal: { fontSize: 13, fontWeight: '800', color: '#0F172A', marginTop: 2 },
+  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.purpleTintLightest },
+  custName: { fontSize: 15, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: '#0F172A' },
+  custCode: { fontSize: 10, color: '#64748B', fontFamily: Fonts.gilroy.regular, marginTop: 2 },
+  shopName: { fontSize: 12, fontWeight: '700', fontFamily: Fonts.gilroy.bold, color: Colors.primary, marginTop: 4 },
+  custPhone: { fontSize: 11, color: '#64748B', fontFamily: Fonts.gilroy.regular, marginTop: 4 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8, paddingVertical: 6, borderTopWidth: 1, borderBottomWidth: 1, borderColor: Colors.lightGray400 },
+  statLabel: { fontSize: 9, color: '#64748B', textTransform: 'uppercase', fontFamily: Fonts.gilroy.medium },
+  statVal: { fontSize: 13, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: '#0F172A', marginTop: 2 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  loanBadge: { fontSize: 10, color: '#64748B', fontWeight: '600' },
+  loanBadge: { fontSize: 10, color: '#64748B', fontWeight: '600', fontFamily: Fonts.gilroy.medium },
   viewRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  viewDetails: { fontSize: 11, color: '#2563EB', fontWeight: '800' },
+  viewDetails: { fontSize: 11, color: Colors.primary, fontWeight: '800', fontFamily: Fonts.gilroy.bold },
 });
 
 export default SuperAdminCustomers;

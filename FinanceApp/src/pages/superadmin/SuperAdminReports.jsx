@@ -3,14 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from '
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
+import { Colors, Fonts } from '../../theme';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
   const variantStyles = {
-    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
-    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
-    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
-    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+    primary: { bg: Colors.purpleTintLightest, border: Colors.purpleBorderLight, text: Colors.primary },
+    success: { bg: Colors.successBg, border: '#A7F3D0', text: Colors.success },
+    warning: { bg: Colors.amberBg, border: '#FDE68A', text: Colors.amberDark },
+    danger: { bg: Colors.errorBg, border: '#FECACA', text: Colors.errorDanger },
   };
   const current = variantStyles[variant] || variantStyles.primary;
 
@@ -32,6 +33,7 @@ const badgeStyles = StyleSheet.create({
   text: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
 });
 
@@ -88,7 +90,7 @@ export const SuperAdminReports = () => {
 
               <View style={styles.flowStep}>
                 <Text style={styles.stepTitle}>2. Borrower Loans Disbursed</Text>
-                <Text style={[styles.stepAmount, { color: '#2563EB' }]}>−₹7,60,000 Active Principal</Text>
+                <Text style={[styles.stepAmount, { color: Colors.primary }]}>−₹7,60,000 Active Principal</Text>
                 <Text style={styles.stepDesc}>Earning 10% (Weekly) & 12.5% (Daily)</Text>
               </View>
 
@@ -174,7 +176,7 @@ export const SuperAdminReports = () => {
             <View style={styles.summaryTable}>
               <View style={styles.tableRow}>
                 <Text style={styles.tLabel}>Active Running Loans</Text>
-                <Text style={[styles.tVal, { color: '#2563EB' }]}>{fundMetrics.activeLoans}</Text>
+                <Text style={[styles.tVal, { color: Colors.primary }]}>{fundMetrics.activeLoans}</Text>
               </View>
               <View style={styles.tableRow}>
                 <Text style={styles.tLabel}>Completed / Settled Loans</Text>
@@ -257,28 +259,28 @@ export const SuperAdminReports = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  topBar: { backgroundColor: '#FFFFFF', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  container: { flex: 1, backgroundColor: Colors.background },
+  topBar: { backgroundColor: Colors.background, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray400 },
   chipsScroll: { paddingHorizontal: 16, gap: 8 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    backgroundColor: Colors.backgroundContainer,
+    borderWidth: 1,
+    borderColor: Colors.lightGray400,
   },
   chipActive: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#6B46C1',
+    backgroundColor: Colors.purpleTintLightest,
+    borderColor: Colors.primary,
   },
   chipText: {
     fontSize: 12,
-    color: '#334155',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: Colors.gray200,
+    fontFamily: Fonts.gilroy.bold,
   },
   chipTextActive: {
-    color: '#6B46C1',
+    color: Colors.primary,
   },
   content: {
     paddingHorizontal: 20,
@@ -286,60 +288,60 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 44 : 32,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
+    borderRadius: 16,
     padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: Colors.lightGray400, // #E5E7EB
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
-    elevation: 2,
+    elevation: 1,
   },
   reportEyebrow: {
     fontSize: 10,
-    color: '#6B46C1',
+    color: Colors.primary,
     letterSpacing: 1.1,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    fontFamily: Fonts.gilroy.bold,
   },
   reportTitle: {
     fontSize: 18,
-    color: '#212121',
+    color: Colors.textPrimary,
     marginTop: 2,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    fontFamily: Fonts.gilroy.bold,
   },
   reportSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginBottom: 16,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    fontFamily: Fonts.gilroy.medium,
   },
   flowChain: { gap: 10, alignItems: 'center' },
   flowStep: {
     width: '100%',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   stepTitle: {
     fontSize: 13,
-    color: '#212121',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: Colors.textPrimary,
+    fontFamily: Fonts.gilroy.bold,
   },
   stepAmount: {
     fontSize: 16,
-    color: '#6B46C1',
+    color: Colors.primary,
     marginTop: 2,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    fontFamily: Fonts.gilroy.bold,
   },
   stepDesc: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 2,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    fontFamily: Fonts.gilroy.medium,
   },
   summaryTable: { gap: 6 },
   tableRow: {
@@ -347,33 +349,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: Colors.lightGray400,
   },
   tLabel: {
     fontSize: 13,
-    color: '#64748B',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
   },
   tVal: {
     fontSize: 13,
-    color: '#212121',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: Colors.textPrimary,
+    fontFamily: Fonts.gilroy.bold,
   },
   subtotal: {
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: Colors.lightGray400,
     paddingTop: 10,
     marginTop: 4,
   },
   subLabel: {
     fontSize: 13,
-    color: '#212121',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: Colors.textPrimary,
+    fontFamily: Fonts.gilroy.bold,
   },
   subVal: {
     fontSize: 15,
-    color: '#6B46C1',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: Colors.primary,
+    fontFamily: Fonts.gilroy.bold,
   },
   profitHighlight: {
     backgroundColor: '#ECFDF5',
@@ -388,20 +390,20 @@ const styles = StyleSheet.create({
   profitHighlightLabel: {
     fontSize: 13,
     color: '#059669',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    fontFamily: Fonts.gilroy.bold,
   },
   profitHighlightVal: {
     fontSize: 16,
     color: '#059669',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    fontFamily: Fonts.gilroy.bold,
   },
   outItem: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   outHeader: {
     flexDirection: 'row',
@@ -411,8 +413,8 @@ const styles = StyleSheet.create({
   },
   outCust: {
     fontSize: 14,
-    color: '#212121',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    color: Colors.textPrimary,
+    fontFamily: Fonts.gilroy.bold,
   },
   outNums: {
     flexDirection: 'row',
@@ -421,8 +423,8 @@ const styles = StyleSheet.create({
   },
   outNumText: {
     fontSize: 12,
-    color: '#64748B',
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
   },
 });
 

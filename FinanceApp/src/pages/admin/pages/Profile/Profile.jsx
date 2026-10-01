@@ -946,7 +946,7 @@ export const AdminProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF', // Single uniform background
   },
   scrollContent: {
     paddingBottom: 90,
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#E5E7EB',
   },
   avatarWrap: {
     position: 'relative',
@@ -969,11 +969,11 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#6B46C1',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    shadowColor: '#7C3AED',
+    shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     marginBottom: 4,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Bold' : 'System',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   contactRow: {
     flexDirection: 'row',
@@ -1020,11 +1020,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     fontWeight: '500',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   userEmail: {
     fontSize: 13,
     color: '#64748B',
     fontWeight: '500',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   roleTag: {
     flexDirection: 'row',
@@ -1039,8 +1041,9 @@ const styles = StyleSheet.create({
   },
   roleTagText: {
     fontSize: 12,
-    color: '#7C3AED',
+    color: '#6B46C1',
     fontWeight: '700',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   orgTag: {
     flexDirection: 'row',
@@ -1057,6 +1060,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#1D4ED8',
     fontWeight: '700',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   quickEditBtn: {
     flexDirection: 'row',
@@ -1073,7 +1077,8 @@ const styles = StyleSheet.create({
   quickEditBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#6B46C1',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   settingsContainer: {
     paddingHorizontal: 16,
@@ -1086,18 +1091,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   menuCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#0F172A',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
   },
   menuItem: {
     flexDirection: 'row',

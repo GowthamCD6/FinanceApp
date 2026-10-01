@@ -17,7 +17,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
-import Colors from '../../../../theme/colors';
+import { Colors, Fonts } from '../../../../theme';
 import BiometricService from '../../../../services/BiometricService';
 
 export const UserProfile = () => {
@@ -464,30 +464,30 @@ export const UserProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.background, // Single color #FFFFFF
   },
   scrollContent: {
     paddingBottom: 90,
   },
   profileSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 12,
     paddingBottom: 20,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.lightGray400,
   },
   avatar: {
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: Colors.secondaryBlue,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
-    shadowColor: Colors.secondaryBlue,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -496,29 +496,32 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.white,
   },
   userName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: Colors.textDark,
     marginBottom: 2,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Bold' : 'System',
+    fontFamily: Fonts.gilroy.bold,
   },
   userPhone: {
     fontSize: 14,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginBottom: 6,
     fontWeight: '500',
     textAlign: 'center',
+    fontFamily: Fonts.gilroy.medium,
   },
   userStatus: {
     fontSize: 11,
-    color: Colors.secondaryBlue,
+    color: Colors.primary,
     fontWeight: '800',
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    fontFamily: Fonts.gilroy.bold,
+    backgroundColor: Colors.purpleTintLightest,
+    borderColor: Colors.purpleBorderLight,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -531,12 +534,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   loanCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderColor: Colors.lightGray400,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -551,15 +554,17 @@ const styles = StyleSheet.create({
   loanNum: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textDark,
   },
   loanType: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.regular,
     marginTop: 2,
   },
   statusBadge: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: Colors.successBg,
     borderColor: '#A7F3D0',
     borderWidth: 1,
     paddingHorizontal: 8,
@@ -569,24 +574,27 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#059669',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.success,
   },
   loanMetricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Colors.lightGray400,
     paddingTop: 12,
   },
   loanMetricLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
+    fontFamily: Fonts.gilroy.medium,
+    color: Colors.textSecondary,
   },
   loanMetricVal: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textDark,
     marginTop: 2,
   },
   settingsContainer: {
@@ -596,18 +604,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#475569',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.gray600,
     marginBottom: 8,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   menuCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
     overflow: 'hidden',
-    shadowColor: '#0F172A',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -639,16 +648,18 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textDark,
   },
   menuItemSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    fontFamily: Fonts.gilroy.regular,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.lightGray400,
     marginLeft: 62,
   },
   followSection: {

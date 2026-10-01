@@ -4,11 +4,12 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
 import DisburseLoanModal from './modal/DisburseLoanModal';
+import { Colors, Fonts } from '../../theme';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
   const variantStyles = {
-    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    primary: { bg: Colors.purpleTintLightest, border: Colors.purpleBorderLight, text: Colors.primary },
     secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
     success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
     warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
@@ -225,16 +226,16 @@ export const SuperAdminLoans = ({ onSelectLoan }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  topBar: { backgroundColor: '#FFFFFF', padding: 14, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  container: { flex: 1, backgroundColor: Colors.background }, // Single uniform background
+  topBar: { backgroundColor: Colors.background, padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.lightGray400 },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.backgroundContainer,
     borderRadius: 8,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: Colors.lightGray400,
     marginBottom: 10,
   },
   searchInput: {
@@ -242,18 +243,19 @@ const styles = StyleSheet.create({
     height: 38,
     color: '#0F172A',
     fontSize: 13,
+    fontFamily: Fonts.gilroy.medium,
   },
   chipsScroll: { flexDirection: 'row', marginBottom: 10 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F1F5F9', marginRight: 8, borderWidth: 1, borderColor: '#E2E8F0' },
-  chipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-  chipText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: Colors.backgroundContainer, marginRight: 8, borderWidth: 1, borderColor: Colors.lightGray400 },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { fontSize: 11, fontWeight: '700', fontFamily: Fonts.gilroy.bold, color: '#64748B' },
   chipTextActive: { color: '#FFFFFF' },
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  countText: { fontSize: 11, color: '#64748B', fontWeight: '700' },
+  countText: { fontSize: 11, color: '#64748B', fontWeight: '700', fontFamily: Fonts.gilroy.bold },
   disburseBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
@@ -262,16 +264,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
   },
   listContent: { padding: 14, paddingBottom: 70 },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
+    borderRadius: 14,
     padding: 14,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: Colors.lightGray400,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -280,29 +283,29 @@ const styles = StyleSheet.create({
   cardOverdue: { borderLeftWidth: 4, borderLeftColor: '#DC2626' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   loanNumRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  loanNum: { fontSize: 14, fontWeight: '800', color: '#2563EB' },
+  loanNum: { fontSize: 14, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.primary },
   repeatBadge: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: Colors.purpleTintLightest,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#DDD6FE',
+    borderColor: Colors.purpleBorderLight,
   },
-  repeatBadgeText: { fontSize: 10, color: '#7C3AED', fontWeight: '700' },
-  custName: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginTop: 2 },
-  shopName: { fontSize: 11, color: '#64748B' },
-  amountRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8, paddingVertical: 6, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F1F5F9' },
-  subLabel: { fontSize: 9, color: '#64748B', textTransform: 'uppercase' },
-  amountVal: { fontSize: 13, fontWeight: '800', color: '#0F172A', marginTop: 2 },
-  progressTrack: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden', marginTop: 4 },
+  repeatBadgeText: { fontSize: 10, color: Colors.primary, fontWeight: '700', fontFamily: Fonts.gilroy.bold },
+  custName: { fontSize: 15, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: '#0F172A', marginTop: 2 },
+  shopName: { fontSize: 11, color: '#64748B', fontFamily: Fonts.gilroy.regular },
+  amountRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8, paddingVertical: 6, borderTopWidth: 1, borderBottomWidth: 1, borderColor: Colors.lightGray400 },
+  subLabel: { fontSize: 9, color: '#64748B', textTransform: 'uppercase', fontFamily: Fonts.gilroy.medium },
+  amountVal: { fontSize: 13, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: '#0F172A', marginTop: 2 },
+  progressTrack: { height: 6, backgroundColor: Colors.white, borderRadius: 3, overflow: 'hidden', marginTop: 4 },
   progressFill: { height: '100%' },
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
-  progressText: { fontSize: 10, color: '#64748B' },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
-  scheduleMeta: { fontSize: 10, color: '#64748B' },
+  progressText: { fontSize: 10, color: '#64748B', fontFamily: Fonts.gilroy.regular },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.lightGray400 },
+  scheduleMeta: { fontSize: 10, color: '#64748B', fontFamily: Fonts.gilroy.regular },
   viewLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  viewLink: { fontSize: 11, color: '#2563EB', fontWeight: '800' },
+  viewLink: { fontSize: 11, color: Colors.primary, fontWeight: '800', fontFamily: Fonts.gilroy.bold },
 });
 
 export default SuperAdminLoans;

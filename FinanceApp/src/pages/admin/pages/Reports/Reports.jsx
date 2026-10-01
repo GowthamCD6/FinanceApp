@@ -1484,11 +1484,11 @@ const styles = StyleSheet.create({
   },
   metricCardProper: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 12,
     padding: 10,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -1692,13 +1692,13 @@ const styles = StyleSheet.create({
 
   // Borrower Record Card
   recordCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,

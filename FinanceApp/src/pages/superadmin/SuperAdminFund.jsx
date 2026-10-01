@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR, formatDate } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
+import { Colors, Fonts } from '../../theme';
 import AddCapitalModal from './modal/AddCapitalModal';
 
 export const SuperAdminFund = ({ onOpenAudit }) => {
@@ -54,7 +55,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
         <View style={styles.accountSplits}>
           <View style={styles.accPill}>
             <View style={styles.accIconBox}>
-              <MaterialCommunityIcons name="wallet-outline" size={16} color="#2563EB" />
+              <MaterialCommunityIcons name="wallet-outline" size={16} color={Colors.primary} />
             </View>
             <View>
               <Text style={styles.accName}>Cash Drawer</Text>
@@ -72,7 +73,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
           </View>
           <View style={styles.accPill}>
             <View style={styles.accIconBox}>
-              <MaterialCommunityIcons name="cellphone" size={16} color="#7C3AED" />
+              <MaterialCommunityIcons name="cellphone" size={16} color={Colors.primary} />
             </View>
             <View>
               <Text style={styles.accName}>UPI QR Pool</Text>
@@ -90,14 +91,14 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
       >
         <View style={styles.auditLeft}>
           <View style={styles.auditIconBox}>
-            <MaterialCommunityIcons name="history" size={20} color="#2563EB" />
+            <MaterialCommunityIcons name="history" size={20} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.auditTitle}>Inspect Central Audit Ledger</Text>
             <Text style={styles.auditSub}>View timeline of all {fundTransactions.length} inflows, disbursements & expenses</Text>
           </View>
         </View>
-        <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
+        <MaterialCommunityIcons name="arrow-right" size={16} color={Colors.primary} />
       </TouchableOpacity>
 
       {/* Fund Overview Ledger */}
@@ -123,7 +124,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
 
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Capital Currently Lent Out</Text>
-            <Text style={[styles.rowVal, { color: '#2563EB' }]}>{formatINR(currentlyLent)}</Text>
+            <Text style={[styles.rowVal, { color: Colors.primary }]}>{formatINR(currentlyLent)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Principal Recovered</Text>
@@ -131,7 +132,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Lending Fee Income</Text>
-            <Text style={[styles.rowVal, { color: '#7C3AED' }]}>+{formatINR(lendingIncome)}</Text>
+            <Text style={[styles.rowVal, { color: Colors.primary }]}>+{formatINR(lendingIncome)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Operating Expenses Paid</Text>
@@ -148,7 +149,7 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
       {/* Circulation Flow Rule */}
       <View style={styles.circCard}>
         <View style={styles.circHeader}>
-          <MaterialCommunityIcons name="sync" size={18} color="#2563EB" />
+          <MaterialCommunityIcons name="sync" size={18} color={Colors.primary} />
           <Text style={styles.circTitle}>Continuous Circulation Principle</Text>
         </View>
         <Text style={styles.circDesc}>
@@ -195,67 +196,67 @@ export const SuperAdminFund = ({ onOpenAudit }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: 16, paddingBottom: 70 },
   topHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  eyebrow: { fontSize: 10, fontWeight: '800', color: '#2563EB', letterSpacing: 1.1 },
-  pageTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginTop: 2 },
+  eyebrow: { fontSize: 10, fontFamily: Fonts.gilroy.bold, color: Colors.primary, letterSpacing: 1.1 },
+  pageTitle: { fontSize: 22, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary, marginTop: 2 },
   addCapBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
   },
-  addCapBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
+  addCapBtnText: { color: Colors.white, fontFamily: Fonts.gilroy.bold, fontSize: 12 },
   poolCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
+    borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400, // #E5E7EB
     marginBottom: 14,
-    shadowColor: '#0F172A',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-  poolLabel: { fontSize: 11, fontWeight: '800', color: '#2563EB', letterSpacing: 1 },
-  poolVal: { fontSize: 32, fontWeight: '900', color: '#0F172A', marginVertical: 4 },
-  poolSub: { fontSize: 12, color: '#64748B', marginBottom: 16 },
+  poolLabel: { fontSize: 11, fontFamily: Fonts.gilroy.bold, color: Colors.primary, letterSpacing: 1 },
+  poolVal: { fontSize: 32, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary, marginVertical: 4 },
+  poolSub: { fontSize: 12, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium, marginBottom: 16 },
   accountSplits: { flexDirection: 'row', gap: 8 },
   accPill: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.white,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   accIconBox: {
     width: 28,
     height: 28,
     borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
-  accName: { fontSize: 9, fontWeight: '700', color: '#64748B' },
-  accAmt: { fontSize: 11, fontWeight: '800', color: '#0F172A', marginTop: 1 },
+  accName: { fontSize: 9, fontFamily: Fonts.gilroy.bold, color: Colors.textSecondary },
+  accAmt: { fontSize: 11, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary, marginTop: 1 },
   auditBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: Colors.purpleTintLightest,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: Colors.purpleBorderLight,
     borderRadius: 12,
     padding: 14,
     marginBottom: 14,
@@ -265,70 +266,70 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: Colors.purpleBorderLight,
   },
-  auditTitle: { fontSize: 13, fontWeight: '800', color: '#1E40AF' },
-  auditSub: { fontSize: 10, color: '#64748B', marginTop: 2 },
+  auditTitle: { fontSize: 13, fontFamily: Fonts.gilroy.bold, color: Colors.primary },
+  auditSub: { fontSize: 10, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium, marginTop: 2 },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400, // #E5E7EB
     marginBottom: 14,
-    shadowColor: '#0F172A',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-  cardEyebrow: { fontSize: 10, fontWeight: '800', color: '#2563EB', letterSpacing: 1.1 },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginTop: 2, marginBottom: 12 },
+  cardEyebrow: { fontSize: 10, fontFamily: Fonts.gilroy.bold, color: Colors.primary, letterSpacing: 1.1 },
+  cardTitle: { fontSize: 16, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary, marginTop: 2, marginBottom: 12 },
   statsTable: { gap: 8 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  rowLabel: { fontSize: 12, color: '#64748B' },
-  rowVal: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  totalRow: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8 },
-  totalLabel: { fontSize: 12, fontWeight: '800', color: '#0F172A' },
-  totalVal: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
-  divider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 4 },
+  rowLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium },
+  rowVal: { fontSize: 13, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary },
+  totalRow: { backgroundColor: Colors.white, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: Colors.lightGray400 },
+  totalLabel: { fontSize: 12, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary },
+  totalVal: { fontSize: 15, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary },
+  divider: { height: 1, backgroundColor: Colors.lightGray400, marginVertical: 4 },
   profitRow: { backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0' },
-  profitLabel: { fontSize: 12, fontWeight: '800', color: '#059669' },
-  profitVal: { fontSize: 15, fontWeight: '900', color: '#059669' },
+  profitLabel: { fontSize: 12, fontFamily: Fonts.gilroy.bold, color: '#059669' },
+  profitVal: { fontSize: 15, fontFamily: Fonts.gilroy.bold, color: '#059669' },
   circCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.backgroundContainer,
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
     marginBottom: 14,
   },
   circHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  circTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
-  circDesc: { fontSize: 11, color: '#64748B', lineHeight: 17 },
+  circTitle: { fontSize: 13, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary },
+  circDesc: { fontSize: 11, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium, lineHeight: 17 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, marginBottom: 10 },
-  sectionHeader: { fontSize: 12, fontWeight: '800', color: '#0F172A', textTransform: 'uppercase', letterSpacing: 0.5 },
-  viewAllText: { fontSize: 11, fontWeight: '700', color: '#2563EB' },
+  sectionHeader: { fontSize: 12, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  viewAllText: { fontSize: 11, fontFamily: Fonts.gilroy.bold, color: Colors.primary },
   txList: { gap: 8 },
   txItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
+    backgroundColor: Colors.backgroundContainer,
+    borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   txLeft: { flex: 1, marginRight: 10 },
-  txDate: { fontSize: 9, color: '#94A3B8', fontWeight: '600' },
-  txItemTitle: { fontSize: 12, fontWeight: '800', color: '#0F172A', marginTop: 2 },
-  txItemDesc: { fontSize: 10, color: '#64748B', marginTop: 1 },
-  txItemAmount: { fontSize: 14, fontWeight: '900' },
+  txDate: { fontSize: 9, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium },
+  txItemTitle: { fontSize: 12, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary, marginTop: 2 },
+  txItemDesc: { fontSize: 10, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium, marginTop: 1 },
+  txItemAmount: { fontSize: 14, fontFamily: Fonts.gilroy.bold },
 });
 
 export default SuperAdminFund;

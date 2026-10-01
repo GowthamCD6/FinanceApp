@@ -3,16 +3,17 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useApp } from '../../context/AppContext';
 import { formatINR, formatDate } from '../../utils/helpers';
+import { Colors, Fonts } from '../../theme';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
   const variantStyles = {
-    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
+    primary: { bg: Colors.purpleTintLightest, border: Colors.purpleBorderLight, text: Colors.primary },
     secondary: { bg: '#F5F3FF', border: '#DDD6FE', text: '#7C3AED' },
-    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
-    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
-    neutral: { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' },
-    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+    success: { bg: Colors.successBg, border: '#A7F3D0', text: Colors.success },
+    warning: { bg: Colors.amberBg, border: '#FDE68A', text: Colors.amberDark },
+    neutral: { bg: Colors.backgroundContainer, border: Colors.lightGray400, text: Colors.gray200 },
+    danger: { bg: Colors.errorBg, border: '#FECACA', text: Colors.errorDanger },
   };
   const current = variantStyles[variant] || variantStyles.primary;
 
@@ -203,7 +204,7 @@ const SuperAdminAudit = ({ onBack, initialFilterQuery = '' }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.background,
   },
   topHeader: {
     flexDirection: 'row',
@@ -212,29 +213,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.lightGray400,
   },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: Colors.lightGray400,
   },
   backBtnText: {
-    color: '#2563EB',
+    color: Colors.primary,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
   headerTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
   },
   liveBadge: {
     flexDirection: 'row',
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
   },
   liveText: {
     fontSize: 9,
-    fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     color: '#065F46',
     letterSpacing: 0.8,
   },
@@ -267,42 +268,46 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     flex: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     borderWidth: 1,
+    backgroundColor: Colors.backgroundContainer,
+    borderColor: Colors.lightGray400,
   },
   kpiLabel: {
     fontSize: 10,
-    color: '#475569',
-    fontWeight: '700',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.bold,
     textTransform: 'uppercase',
   },
   kpiValue: {
     fontSize: 16,
-    fontWeight: '900',
+    fontFamily: Fonts.gilroy.bold,
     marginTop: 2,
   },
   kpiSub: {
     fontSize: 9,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     marginTop: 2,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer,
     marginHorizontal: 16,
     marginVertical: 4,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: Colors.lightGray400,
   },
   searchInput: {
     flex: 1,
     height: 38,
-    color: '#0F172A',
+    color: Colors.textPrimary,
     fontSize: 13,
+    fontFamily: Fonts.gilroy.medium,
   },
   chipsContainer: {
     marginVertical: 6,
@@ -315,21 +320,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.backgroundContainer,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.lightGray400,
   },
   chipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   chipText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textSecondary,
   },
   chipTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   feedContent: {
     padding: 16,
@@ -337,22 +342,22 @@ const styles = StyleSheet.create({
   },
   resultCountText: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginBottom: 10,
-    fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
   txCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
+    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
+    borderRadius: 12,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderColor: Colors.lightGray400, // #E5E7EB
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
   txCardIn: {
     borderLeftWidth: 3,
@@ -382,26 +387,28 @@ const styles = StyleSheet.create({
   },
   txTitle: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.textPrimary,
   },
   txDate: {
     fontSize: 10,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     marginTop: 2,
   },
   txAmount: {
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     marginBottom: 2,
   },
   txDesc: {
     fontSize: 11,
-    color: '#475569',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Colors.lightGray400,
   },
   splitRow: {
     flexDirection: 'row',
@@ -411,7 +418,8 @@ const styles = StyleSheet.create({
   },
   splitText: {
     fontSize: 10,
-    color: '#64748B',
+    color: Colors.textSecondary,
+    fontFamily: Fonts.gilroy.medium,
   },
 });
 

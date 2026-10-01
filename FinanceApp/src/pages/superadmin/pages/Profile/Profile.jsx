@@ -434,7 +434,7 @@ export const SuperAdminProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF', // Single uniform background
   },
   scrollContent: {
     paddingBottom: 90,
@@ -447,19 +447,19 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#E5E7EB',
   },
   avatar: {
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: '#1E1B4B',
+    backgroundColor: '#6B46C1',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: '#FDE047',
-    shadowColor: '#1E1B4B',
+    borderColor: '#FFD54F',
+    shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -468,6 +468,7 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 32,
     fontWeight: '800',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
     color: '#FFFFFF',
   },
   userName: {
@@ -476,7 +477,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     marginBottom: 2,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'android' ? 'Roboto-Bold' : 'System',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   userPhone: {
     fontSize: 14,
@@ -484,11 +485,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontWeight: '500',
     textAlign: 'center',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   userStatus: {
     fontSize: 11,
-    color: '#7C3AED',
+    color: '#6B46C1',
     fontWeight: '800',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
     backgroundColor: '#F5F3FF',
     borderColor: '#E9D5FF',
     borderWidth: 1,
@@ -508,12 +511,12 @@ const styles = StyleSheet.create({
   },
   scorecardBox: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -522,15 +525,18 @@ const styles = StyleSheet.create({
   scorecardLabel: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
     color: '#64748B',
   },
   scorecardValue: {
     fontSize: 17,
     fontWeight: '900',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
     marginTop: 4,
   },
   scorecardSub: {
     fontSize: 11,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
     color: '#94A3B8',
     marginTop: 2,
   },
@@ -541,18 +547,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
     color: '#475569',
     marginBottom: 8,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   menuCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#F3F4F6', // Gray card
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
     overflow: 'hidden',
-    shadowColor: '#0F172A',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,

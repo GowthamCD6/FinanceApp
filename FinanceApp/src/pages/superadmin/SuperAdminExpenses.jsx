@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR, formatDate } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
+import { Colors, Fonts } from '../../theme';
 import AddExpenseModal from './modal/AddExpenseModal';
 
 export const SuperAdminExpenses = () => {
@@ -22,7 +23,7 @@ export const SuperAdminExpenses = () => {
           onPress={() => setShowAddModal(true)}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <MaterialCommunityIcons name="plus" size={16} color={Colors.white} style={{ marginRight: 4 }} />
           <Text style={styles.addBtnText}>Log Expense</Text>
         </TouchableOpacity>
       </View>
@@ -62,59 +63,59 @@ export const SuperAdminExpenses = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: Colors.background },
   topBar: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: Colors.background, 
     padding: 16, 
     borderBottomWidth: 1, 
-    borderBottomColor: '#E2E8F0' 
+    borderBottomColor: Colors.lightGray400,
   },
-  totalLabel: { fontSize: 10, fontWeight: '800', color: '#DC2626', letterSpacing: 1.1 },
-  totalVal: { fontSize: 24, fontWeight: '900', color: '#0F172A', marginTop: 2 },
+  totalLabel: { fontSize: 10, fontFamily: Fonts.gilroy.bold, color: '#DC2626', letterSpacing: 1.1 },
+  totalVal: { fontSize: 24, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary, marginTop: 2 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
   },
-  addBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
+  addBtnText: { color: Colors.white, fontFamily: Fonts.gilroy.bold, fontSize: 12 },
   noticeBox: { 
     backgroundColor: '#FEF2F2', 
     padding: 12, 
     marginHorizontal: 14, 
     marginTop: 12, 
-    borderRadius: 8, 
+    borderRadius: 10, 
     borderWidth: 1, 
-    borderColor: '#FECACA' 
+    borderColor: '#FECACA',
   },
-  noticeText: { fontSize: 11, color: '#B91C1C', lineHeight: 16 },
+  noticeText: { fontSize: 11, color: '#B91C1C', lineHeight: 16, fontFamily: Fonts.gilroy.medium },
   listContent: { padding: 14, paddingBottom: 70 },
-  countText: { fontSize: 11, color: '#64748B', fontWeight: '700', marginBottom: 10 },
+  countText: { fontSize: 11, color: Colors.textSecondary, fontFamily: Fonts.gilroy.bold, marginBottom: 10 },
   expenseCard: { 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
     borderRadius: 12, 
     padding: 14, 
     marginBottom: 10, 
     borderWidth: 1, 
-    borderColor: '#E2E8F0', 
+    borderColor: Colors.lightGray400, // #E5E7EB
     borderLeftWidth: 4, 
     borderLeftColor: '#DC2626',
-    shadowColor: '#0F172A',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  expCategory: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
-  expDate: { fontSize: 10, color: '#64748B', marginTop: 2 },
-  expAmount: { fontSize: 15, fontWeight: '900', color: '#DC2626' },
-  expDesc: { fontSize: 12, color: '#475569', marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  expCategory: { fontSize: 14, fontFamily: Fonts.gilroy.bold, color: Colors.textPrimary },
+  expDate: { fontSize: 10, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium, marginTop: 2 },
+  expAmount: { fontSize: 15, fontFamily: Fonts.gilroy.bold, color: '#DC2626' },
+  expDesc: { fontSize: 12, color: Colors.textSecondary, fontFamily: Fonts.gilroy.medium, marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.lightGray400 },
 });
 
 export default SuperAdminExpenses;

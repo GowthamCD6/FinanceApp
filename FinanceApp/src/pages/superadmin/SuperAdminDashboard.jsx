@@ -3,14 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatINR } from '../../utils/helpers';
 import { useApp } from '../../context/AppContext';
+import { Colors, Fonts } from '../../theme';
 
 // Inline Badge component
 const Badge = ({ label, variant = 'primary' }) => {
   const variantStyles = {
-    primary: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
-    success: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
-    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706' },
-    danger: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' },
+    primary: { bg: Colors.purpleTintLightest, border: Colors.purpleBorderLight, text: Colors.primary },
+    success: { bg: Colors.successBg, border: '#A7F3D0', text: Colors.success },
+    warning: { bg: Colors.amberBg, border: '#FDE68A', text: Colors.amberDark },
+    danger: { bg: Colors.errorBg, border: '#FECACA', text: Colors.errorDanger },
   };
   const current = variantStyles[variant] || variantStyles.primary;
 
@@ -32,11 +33,12 @@ const badgeStyles = StyleSheet.create({
   text: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
 });
 
 // Inline MetricCard
-const MetricCard = ({ title, amount, subtitle, accentColor = '#2563EB', iconName, trend, trendType, onPress }) => {
+const MetricCard = ({ title, amount, subtitle, accentColor = Colors.primary, iconName, trend, trendType, onPress }) => {
   const iconMap = {
     fund: 'bank-outline',
     collections: 'wallet-outline',
@@ -80,15 +82,15 @@ const MetricCard = ({ title, amount, subtitle, accentColor = '#2563EB', iconName
 
 const metricStyles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
+    borderRadius: 14,
     padding: 14,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: Colors.lightGray400, // #E5E7EB
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.03,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -104,11 +106,13 @@ const metricStyles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Fonts.gilroy.bold,
+    color: Colors.gray800,
   },
   subtitle: {
     fontSize: 11,
-    color: '#64748B',
+    fontFamily: Fonts.gilroy.regular,
+    color: Colors.gray200,
     marginTop: 2,
   },
   iconBox: {
@@ -296,25 +300,25 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
         <Text style={styles.sectionTitle}>Operational Hubs</Text>
         <View style={styles.controlsGrid}>
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('customers')} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="account-group-outline" size={22} color="#2563EB" />
+            <MaterialCommunityIcons name="account-group-outline" size={22} color={Colors.primary} />
             <Text style={styles.controlTitle}>Borrowers</Text>
             <Text style={styles.controlSub}>Profiles & Repeat Cycles</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('loans')} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="file-document-outline" size={22} color="#2563EB" />
+            <MaterialCommunityIcons name="file-document-outline" size={22} color={Colors.primary} />
             <Text style={styles.controlTitle}>Master Loans</Text>
             <Text style={styles.controlSub}>Weekly & Daily Portfolio</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('fund')} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="safe" size={22} color="#2563EB" />
+            <MaterialCommunityIcons name="safe" size={22} color={Colors.primary} />
             <Text style={styles.controlTitle}>Central Vault</Text>
             <Text style={styles.controlSub}>Cash, Bank & Audit Log</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.controlBtn} onPress={() => onNavigate && onNavigate('reports')} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="chart-bar" size={22} color="#2563EB" />
+            <MaterialCommunityIcons name="chart-bar" size={22} color={Colors.primary} />
             <Text style={styles.controlTitle}>Executive Reports</Text>
             <Text style={styles.controlSub}>P&L, Cash Velocity & PAR</Text>
           </TouchableOpacity>
@@ -325,34 +329,34 @@ export const SuperAdminDashboard = ({ onNavigate }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: Colors.background }, // Single color #FFFFFF
   content: { padding: 16, paddingBottom: 70 },
   roleBanner: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
     borderRadius: 14,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: Colors.lightGray400,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-  roleEyebrow: { fontSize: 10, fontWeight: '800', color: '#2563EB', letterSpacing: 0.8 },
-  roleTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginTop: 3 },
+  roleEyebrow: { fontSize: 10, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.primary, letterSpacing: 0.8 },
+  roleTitle: { fontSize: 16, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.gray800, marginTop: 3 },
   circCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
     borderRadius: 14,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: Colors.lightGray400,
     marginBottom: 16,
-    shadowColor: '#0F172A',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -364,48 +368,48 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
-  circHeading: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  circHeading: { fontSize: 13, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.gray800 },
   circRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   circCol: { alignItems: 'center', flex: 1 },
-  circLabel: { fontSize: 10, color: '#64748B', fontWeight: '600' },
-  circVal: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginTop: 2 },
-  circSub: { fontSize: 11, color: '#64748B', marginTop: 10, textAlign: 'center', lineHeight: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A', marginTop: 14, marginBottom: 8, letterSpacing: 0.3, textTransform: 'uppercase' },
+  circLabel: { fontSize: 10, color: Colors.gray200, fontFamily: Fonts.gilroy.medium, fontWeight: '600' },
+  circVal: { fontSize: 15, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.gray800, marginTop: 2 },
+  circSub: { fontSize: 11, color: Colors.gray200, fontFamily: Fonts.gilroy.regular, marginTop: 10, textAlign: 'center', lineHeight: 16 },
+  sectionTitle: { fontSize: 13, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.gray800, marginTop: 14, marginBottom: 8, letterSpacing: 0.3, textTransform: 'uppercase' },
   metricsList: { gap: 6 },
   healthRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   healthCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
     borderTopWidth: 4,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: Colors.lightGray400,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
-  healthNum: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
-  healthLabel: { fontSize: 10, color: '#64748B', marginTop: 2, textAlign: 'center', fontWeight: '600' },
+  healthNum: { fontSize: 22, fontWeight: '800', fontFamily: Fonts.gilroy.bold, color: Colors.gray800 },
+  healthLabel: { fontSize: 10, color: Colors.gray200, fontFamily: Fonts.gilroy.medium, marginTop: 2, textAlign: 'center', fontWeight: '600' },
   controlsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   controlBtn: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: Colors.lightGray400,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
-  controlTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginTop: 6 },
-  controlSub: { fontSize: 10, color: '#64748B', marginTop: 2 },
+  controlTitle: { fontSize: 13, fontWeight: '700', fontFamily: Fonts.gilroy.bold, color: Colors.gray800, marginTop: 6 },
+  controlSub: { fontSize: 10, fontFamily: Fonts.gilroy.regular, color: Colors.gray200, marginTop: 2 },
 });
 
 export default SuperAdminDashboard;

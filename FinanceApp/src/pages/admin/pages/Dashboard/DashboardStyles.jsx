@@ -101,14 +101,14 @@ export default StyleSheet.create({
 
   // ===== 1. BRANCH CASH VAULT CARD =====
   vaultCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     padding: 16,
     marginTop: 6,
     marginBottom: 14,
-    shadowColor: '#6B46C1',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -188,9 +188,9 @@ export default StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
@@ -216,10 +216,10 @@ export default StyleSheet.create({
 
   // ===== 2. REALIZED PROFIT POOL CARD =====
   profitPoolCard: {
-    backgroundColor: '#FAF5FF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#DDD6FE',
+    borderColor: '#E5E7EB',
     padding: 16,
     marginBottom: 14,
   },
@@ -322,9 +322,9 @@ export default StyleSheet.create({
   },
   actionCard: {
     width: '48.5%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -340,6 +340,7 @@ export default StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -386,11 +387,11 @@ export default StyleSheet.create({
   },
   metricCard: {
     width: '48.5%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 14,
     padding: 12,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
@@ -432,10 +433,10 @@ export default StyleSheet.create({
 
   // ===== 6. TODAY RECOVERY TARGET =====
   todayCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     padding: 14,
     marginBottom: 14,
     shadowColor: '#000',
@@ -528,9 +529,9 @@ export default StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6', // Gray card
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     borderRadius: 14,
     padding: 12,
     shadowColor: '#000',
@@ -549,7 +550,7 @@ export default StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -614,10 +615,10 @@ export default StyleSheet.create({
     gap: 12,
   },
   skeletonCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     padding: 16,
     gap: 12,
   },
@@ -628,10 +629,10 @@ export default StyleSheet.create({
   },
   skeletonGridItem: {
     width: '48.5%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     padding: 14,
     gap: 8,
   },

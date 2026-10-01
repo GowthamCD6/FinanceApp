@@ -4,7 +4,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useApp } from '../../../../context/AppContext';
 import { formatINR } from '../../../../utils/helpers';
 import DigitalReceiptModal from '../../Modals/Pages/DigitalReceiptModal';
-import Colors from '../../../../theme/colors';
+import { Colors, Fonts } from '../../../../theme';
 
 const Badge = ({ label, variant = 'primary' }) => {
   const variantStyles = {
@@ -124,7 +124,7 @@ export const Payments = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.offWhite,
+    backgroundColor: Colors.background, // Single color #FFFFFF
   },
   header: {
     paddingHorizontal: 16,
@@ -134,11 +134,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.gray800,
   },
   subtitle: {
     fontSize: 13,
     color: Colors.gray200,
+    fontFamily: Fonts.gilroy.regular,
     marginTop: 2,
   },
   list: {
@@ -147,14 +149,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   paymentCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.lightGray400,
+    borderColor: Colors.lightGray400, // #E5E7EB
     padding: 16,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -167,18 +169,22 @@ const styles = StyleSheet.create({
   receiptNo: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.gray800,
   },
   paymentDate: {
     fontSize: 11,
     color: Colors.gray200,
+    fontFamily: Fonts.gilroy.regular,
     marginTop: 2,
   },
   cardBody: {
-    backgroundColor: Colors.lightGray50,
+    backgroundColor: Colors.white,
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.lightGray400,
   },
   amountBox: {
     flexDirection: 'row',
@@ -187,11 +193,13 @@ const styles = StyleSheet.create({
   },
   amountLabel: {
     fontSize: 12,
+    fontFamily: Fonts.gilroy.medium,
     color: Colors.gray200,
   },
   amountValue: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.success,
   },
   metaRow: {
@@ -204,6 +212,7 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 11,
+    fontFamily: Fonts.gilroy.medium,
     color: Colors.gray200,
   },
   cardFooter: {
@@ -214,6 +223,7 @@ const styles = StyleSheet.create({
   viewReceiptText: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
     color: Colors.primary,
   },
   badge: {
@@ -226,6 +236,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: Fonts.gilroy.bold,
   },
 });
 
