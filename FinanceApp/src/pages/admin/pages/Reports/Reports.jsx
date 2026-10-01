@@ -488,7 +488,6 @@ export const AdminReports = () => {
         const data = await apiService.getPaymentReport({
           startDate: sDate || undefined,
           endDate: eDate || undefined,
-          frequency: freq,
           status: 'ALL',
         });
 
@@ -1483,10 +1482,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   metricLabelProper: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#000000',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'System',
-    fontWeight: '500',
+    fontWeight: '600',
     letterSpacing: 0.3,
   },
   metricIconBox: {
@@ -1495,7 +1494,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 3,
+    marginLeft: 5,
   },
   metricValueProper: {
     fontSize: 17,
