@@ -16,18 +16,10 @@ import {
   StatusBar,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import LottieView from 'lottie-react-native';
 import { apiService } from '../../../../services/apiService';
 import { formatINR, formatDate } from '../../../../utils/helpers';
 import { useApp } from '../../../../context/AppContext';
 import { BorrowerLogModal } from './BorrowerLogModal';
-
-let revenueAnimation;
-try {
-  revenueAnimation = require('../../../../animation/Revenue.json');
-} catch (e) {
-  revenueAnimation = null;
-}
 
 // Date helpers
 const formatDateStr = (d) => {
@@ -986,24 +978,32 @@ export const AdminReports = () => {
 
     return (
       <View style={styles.emptyContainer}>
-        {revenueAnimation ? (
-          <LottieView
-            source={revenueAnimation}
-            autoPlay
-            loop
-            style={styles.emptyLottie}
-          />
-        ) : (
+        <View style={styles.emptyIconContainer}>
           <View style={styles.emptyIconCircle}>
-            <MaterialCommunityIcons name="file-document-outline" size={40} color="#6B46C1" />
+            <MaterialCommunityIcons
+              name={searchQuery ? "account-search-outline" : "folder-open-outline"}
+              size={36}
+              color="#6B46C1"
+            />
           </View>
-        )}
-        <Text style={styles.emptyTitle}>No Payment Records Found</Text>
+        </View>
+
+        <Text style={styles.emptyTitle}>
+          {searchQuery
+            ? 'No Matching Records'
+            : frequencyFilter !== 'ALL'
+            ? `No ${frequencyFilter.charAt(0) + frequencyFilter.slice(1).toLowerCase()} Records Found`
+            : 'No Payment Records Found'}
+        </Text>
+
         <Text style={styles.emptySubtitle}>
           {searchQuery
-            ? `No records matching "${searchQuery}".`
+            ? `No borrower accounts match "${searchQuery}". Try a different keyword or clear filters.`
+            : frequencyFilter !== 'ALL'
+            ? `There are no ${frequencyFilter.toLowerCase()} customer dues or payment records for the selected period.`
             : 'No payment dues found for the selected period or filters.'}
         </Text>
+
         {(frequencyFilter !== 'ALL' || statusFilter !== 'ALL' || searchQuery) && (
           <TouchableOpacity
             style={styles.resetFilterBtn}
@@ -1015,7 +1015,7 @@ export const AdminReports = () => {
             }}
             activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="filter-remove" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <MaterialCommunityIcons name="filter-remove-outline" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={styles.resetFilterText}>Clear Filters</Text>
           </TouchableOpacity>
         )}
@@ -1633,55 +1633,59 @@ const styles = StyleSheet.create({
   emptyContainer: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    marginTop: 10,
-    borderRadius: 14,
-    padding: 20,
+    marginTop: 12,
+    borderRadius: 16,
+    paddingVertical: 36,
+    paddingHorizontal: 24,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
   },
-  emptyLottie: {
-    width: 130,
-    height: 130,
+  emptyIconContainer: {
+    marginBottom: 14,
   },
   emptyIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#F5F3FF',
+    borderWidth: 1.5,
+    borderColor: '#DDD6FE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
   },
   emptyTitle: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#212121',
-    marginTop: 6,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    textAlign: 'center',
+    marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'android' ? 'Gilroy-Regular' : 'Poppins-Regular',
+    lineHeight: 19,
+    maxWidth: 290,
+    marginBottom: 16,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   resetFilterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#6B46C1',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 3,
     elevation: 3,
   },
   resetFilterText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
