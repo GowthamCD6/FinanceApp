@@ -313,22 +313,53 @@ const BorrowerCard = React.memo(({ item, onOpenLedger, onCall }) => {
         </View>
       </View>
 
-      {/* Due Info Strip */}
+      {/* Due Info Strip with Explicit Frequency Mapping Badge */}
       {item.dueDate ? (
         <View style={styles.dueInfoRow}>
-          <MaterialCommunityIcons
-            name="calendar-clock"
-            size={13}
-            color={item.status === 'OVERDUE' ? '#DC2626' : '#6B7280'}
-          />
-          <Text
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <MaterialCommunityIcons
+              name="calendar-clock"
+              size={13}
+              color={item.status === 'OVERDUE' ? '#DC2626' : '#6B7280'}
+            />
+            <Text
+              style={[
+                styles.dueInfoText,
+                item.status === 'OVERDUE' && { color: '#DC2626', fontWeight: '700' },
+              ]}
+            >
+              Due: {formatDate(item.dueDate)} {item.installmentNumber ? `• Inst. #${item.installmentNumber}` : ''}
+            </Text>
+          </View>
+          <View
             style={[
-              styles.dueInfoText,
-              item.status === 'OVERDUE' && { color: '#DC2626', fontWeight: '700' },
+              styles.freqBadge,
+              {
+                backgroundColor:
+                  item.frequency === 'DAILY'
+                    ? '#FEF3C7'
+                    : item.frequency === 'MONTHLY'
+                    ? '#E0E7FF'
+                    : '#F3E8FF',
+              },
             ]}
           >
-            Due: {formatDate(item.dueDate)} {item.installmentNumber ? `• Inst. #${item.installmentNumber}` : ''}
-          </Text>
+            <Text
+              style={[
+                styles.freqBadgeText,
+                {
+                  color:
+                    item.frequency === 'DAILY'
+                      ? '#D97706'
+                      : item.frequency === 'MONTHLY'
+                      ? '#4338CA'
+                      : '#6B46C1',
+                },
+              ]}
+            >
+              {item.frequency || 'WEEKLY'}
+            </Text>
+          </View>
         </View>
       ) : null}
 
@@ -477,6 +508,7 @@ export const AdminReports = () => {
         const data = await apiService.getPaymentReport({
           startDate: sDate || undefined,
           endDate: eDate || undefined,
+          frequency: freq !== 'ALL' ? freq : undefined,
           status: stat,
         });
 
@@ -628,6 +660,15 @@ export const AdminReports = () => {
     const map = new Map();
 
     report.records.forEach((rec) => {
+      // Strictly map only the respective loan frequency to that tab (Weekly -> Weekly only, etc.)
+      if (
+        frequencyFilter !== 'ALL' &&
+        rec.frequency &&
+        rec.frequency.toUpperCase() !== frequencyFilter.toUpperCase()
+      ) {
+        return;
+      }
+
       const key = rec.loanId || rec.loanNumber || rec.customerId;
       if (!map.has(key)) {
         map.set(key, {
@@ -709,7 +750,7 @@ export const AdminReports = () => {
     });
 
     return list;
-  }, [report.records]);
+  }, [report.records, frequencyFilter]);
 
   // Search Filtering over Borrower Cards
   const filteredBorrowers = useMemo(() => {
@@ -1491,6 +1532,7 @@ const styles = StyleSheet.create({
   dueInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
@@ -1501,6 +1543,17 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
     marginLeft: 6,
+  },
+  freqBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  freqBadgeText: {
+    fontSize: 9,
+    fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 
   // Status Filter Pills (Matching Selector Chips)
