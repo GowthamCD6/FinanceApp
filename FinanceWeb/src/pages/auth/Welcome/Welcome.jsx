@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import logoImg from '../../../assets/logo-tight.png';
@@ -39,6 +39,7 @@ import {
   Play,
   Pause,
   Award,
+  Compass,
 } from 'lucide-react';
 import './Welcome.css';
 
@@ -46,99 +47,34 @@ export const WelcomePage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  // Mouse coordinate state for 3D isometric parallax
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  // Smooth scroll helper for professional top navigation
+  const scrollToSection = (e, id) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
-  const handleMouseMove = (e) => {
+  // --------------------------------------------------------------------------
+  // 1. HERO 3D ISOMETRIC PARALLAX TILT
+  // --------------------------------------------------------------------------
+  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 });
+
+  const handleHeroMouseMove = (e) => {
     const { clientX, clientY } = e;
     const { innerWidth, innerHeight } = window;
-    const xOffset = (clientX / innerWidth - 0.5) * 8; // Subtle professional tilt
-    const yOffset = (clientY / innerHeight - 0.5) * 8;
-    setTilt({ x: xOffset, y: yOffset });
+    const xOffset = (clientX / innerWidth - 0.5) * 10;
+    const yOffset = (clientY / innerHeight - 0.5) * 10;
+    setHeroTilt({ x: xOffset, y: yOffset });
   };
 
-  const handleMouseLeave = () => {
-    setTilt({ x: 0, y: 0 });
+  const handleHeroMouseLeave = () => {
+    setHeroTilt({ x: 0, y: 0 });
   };
 
   // --------------------------------------------------------------------------
-  // 1. HERO 3D GYRO-PARTICLE CANVAS
-  // --------------------------------------------------------------------------
-  const heroCanvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = heroCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-
-    let w = (canvas.width = canvas.parentElement.offsetWidth);
-    let h = (canvas.height = canvas.parentElement.offsetHeight);
-
-    const handleResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      w = canvas.width = canvas.parentElement.offsetWidth;
-      h = canvas.height = canvas.parentElement.offsetHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
-    const particles = [];
-    const count = 42;
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: (Math.random() - 0.5) * 0.45,
-        r: Math.random() * 2 + 1,
-      });
-    }
-
-    const render = () => {
-      ctx.clearRect(0, 0, w, h);
-
-      for (let i = 0; i < count; i++) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < 0) p.x = w;
-        if (p.x > w) p.x = 0;
-        if (p.y < 0) p.y = h;
-        if (p.y > h) p.y = 0;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-        ctx.fill();
-
-        for (let j = i + 1; j < count; j++) {
-          const p2 = particles[j];
-          const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
-          if (dist < 90) {
-            ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - dist / 90) * 0.09})`;
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  // --------------------------------------------------------------------------
-  // 2. 3D INTERACTIVE CARD STUDIO STATE & INTERACTION
+  // 2. 3D CARD STUDIO: BESPOKE HARDWARE CARDS
   // --------------------------------------------------------------------------
   const [activeCardTier, setActiveCardTier] = useState('obsidian'); // obsidian | emerald | gold | cobalt
   const [cardRotation, setCardRotation] = useState({ x: 0, y: 0 });
@@ -150,10 +86,10 @@ export const WelcomePage = () => {
     obsidian: {
       name: 'Matte Obsidian Titanium',
       badge: 'ENTERPRISE SOVEREIGN',
-      tagline: 'Heavy grade titanium with cold-engraved tenant keys',
+      tagline: 'Heavy aerospace titanium with cold-engraved cryptographic tenant keys',
       accentColor: '#10B981',
       gradient: 'linear-gradient(135deg, #1C1C1E 0%, #121212 50%, #0A0A0A 100%)',
-      border: 'rgba(255, 255, 255, 0.15)',
+      border: 'rgba(255, 255, 255, 0.16)',
       cardNum: '•••• 9842',
       holder: 'KUMAR FINANCIALS',
       limit: '₹50,00,000 / day',
@@ -164,7 +100,7 @@ export const WelcomePage = () => {
       tagline: 'High-resilience polycarbonate for daily market collectors',
       accentColor: '#34D399',
       gradient: 'linear-gradient(135deg, #064E3B 0%, #022C22 60%, #011B14 100%)',
-      border: 'rgba(52, 211, 153, 0.3)',
+      border: 'rgba(52, 211, 153, 0.35)',
       cardNum: '•••• 5120',
       holder: 'BAZAAR AGENT #08',
       limit: '₹5,00,000 / day',
@@ -175,7 +111,7 @@ export const WelcomePage = () => {
       tagline: 'Electrum alloy with dual-custody cryptographic approval',
       accentColor: '#F59E0B',
       gradient: 'linear-gradient(135deg, #451A03 0%, #2E1065 60%, #1C1917 100%)',
-      border: 'rgba(245, 158, 11, 0.35)',
+      border: 'rgba(245, 158, 11, 0.4)',
       cardNum: '•••• 8801',
       holder: 'CENTRAL TREASURY',
       limit: '₹1,50,00,000 / day',
@@ -186,7 +122,7 @@ export const WelcomePage = () => {
       tagline: 'Luminescent core with instant field-freeze protocol',
       accentColor: '#60A5FA',
       gradient: 'linear-gradient(135deg, #1E3A8A 0%, #0F172A 60%, #020617 100%)',
-      border: 'rgba(96, 165, 250, 0.35)',
+      border: 'rgba(96, 165, 250, 0.4)',
       cardNum: '•••• 3390',
       holder: 'BRANCH SOUTH #03',
       limit: '₹25,00,000 / day',
@@ -199,8 +135,8 @@ export const WelcomePage = () => {
     const y = e.clientY - rect.top;
     const xPercent = (x / rect.width) * 100;
     const yPercent = (y / rect.height) * 100;
-    const rotX = -((y / rect.height - 0.5) * 24);
-    const rotY = (x / rect.width - 0.5) * 24;
+    const rotX = -((y / rect.height - 0.5) * 22);
+    const rotY = (x / rect.width - 0.5) * 22;
 
     setCardRotation({ x: rotX, y: rotY });
     setCardShine({ x: xPercent, y: yPercent, opacity: 0.65 });
@@ -217,388 +153,98 @@ export const WelcomePage = () => {
   };
 
   // --------------------------------------------------------------------------
-  // 3. 3D ISOMETRIC ROUTE & FIELD COLLECTION TELEMETRY CANVAS
+  // 3. 3D ISOMETRIC ROUTE & BAZAAR TELEMETRY STATION
   // --------------------------------------------------------------------------
-  const routeCanvasRef = useRef(null);
-  const [routeMode, setRouteMode] = useState('AUTO'); // 'AUTO' | 'FAST' | 'RADAR'
-  const [routeStats, setRouteStats] = useState({
-    shopsCleared: 14,
-    totalShops: 16,
-    collectedToday: 18750,
-    activeAgent: 'Agent V. Ram',
-    currentStop: 'Mylapore Vegetable Mandi #04',
+  const [routeSpeed, setRouteSpeed] = useState('STANDARD'); // 'STANDARD' | 'ACCELERATED'
+  const [currentWaypointIdx, setCurrentWaypointIdx] = useState(2);
+  const [lastPaymentToast, setLastPaymentToast] = useState('Selvi Groceries · Installment +₹125.00 matched');
+
+  const waypoints = [
+    { id: 1, name: 'Saidapet Bazaar #01', type: 'Vegetable Mandi', amount: '₹125', status: 'CLEARED', x: 18, y: 28 },
+    { id: 2, name: 'Mylapore Tank #04', type: 'Provision Store', amount: '₹250', status: 'CLEARED', x: 42, y: 22 },
+    { id: 3, name: 'T. Nagar Hub #07', type: 'Textile Mart', amount: '₹500', status: 'IN_TRANSIT', x: 68, y: 35 },
+    { id: 4, name: 'Purasawalkam #09', type: 'Stationery Works', amount: '₹125', status: 'PENDING', x: 82, y: 62 },
+    { id: 5, name: 'George Town #12', type: 'Wholesale Dryfruits', amount: '₹375', status: 'PENDING', x: 55, y: 78 },
+    { id: 6, name: 'Triplicane High #15', type: 'Tea Stall', amount: '₹125', status: 'PENDING', x: 26, y: 68 },
+  ];
+
+  useEffect(() => {
+    const intervalTime = routeSpeed === 'ACCELERATED' ? 2200 : 4200;
+    const timer = setInterval(() => {
+      setCurrentWaypointIdx((prev) => {
+        const next = (prev + 1) % waypoints.length;
+        const wp = waypoints[next];
+        setLastPaymentToast(`${wp.name} · ${wp.type} (+${wp.amount}) Verified`);
+        return next;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [routeSpeed]);
+
+  // --------------------------------------------------------------------------
+  // 4. 3D SOVEREIGN VAULT GYRO-GIMBAL STATE
+  // --------------------------------------------------------------------------
+  const [vaultPulseMode, setVaultPulseMode] = useState('NORMAL'); // 'COLLECT' | 'DISBURSE' | 'NORMAL'
+  const [vaultStats, setVaultStats] = useState({
+    activeBalance: '₹48,20,500.00',
+    dayInflow: '+ ₹3,84,250',
+    dayOutflow: '- ₹2,15,000',
+    reconciledRate: '100.0%',
+    blockHash: '0x8f2d...91c4',
   });
 
-  useEffect(() => {
-    const canvas = routeCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
+  const triggerCollectionSimulation = () => {
+    setVaultPulseMode('COLLECT');
+    setVaultStats((prev) => ({
+      ...prev,
+      activeBalance: '₹48,21,750.00',
+      dayInflow: '+ ₹3,85,500',
+      blockHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
+    }));
+    setTimeout(() => setVaultPulseMode('NORMAL'), 2500);
+  };
 
-    let w = (canvas.width = canvas.parentElement.offsetWidth);
-    let h = (canvas.height = canvas.parentElement.offsetHeight);
-
-    const handleResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      w = canvas.width = canvas.parentElement.offsetWidth;
-      h = canvas.height = canvas.parentElement.offsetHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Isometric coordinates helper
-    const toIso = (gx, gy, gz = 0) => {
-      const cx = w * 0.5;
-      const cy = h * 0.52;
-      const isoX = cx + (gx - gy) * 36;
-      const isoY = cy + (gx + gy) * 19 - gz;
-      return { x: isoX, y: isoY };
-    };
-
-    // 8 Route Waypoints
-    const waypoints = [
-      { gx: -3, gy: -2, name: 'Saidapet Bazaar #01', amount: '₹125', collected: true },
-      { gx: -1, gy: -2, name: 'Provision Mart #02', amount: '₹250', collected: true },
-      { gx: 1, gy: -2, name: 'Textile Stall #03', amount: '₹500', collected: true },
-      { gx: 2, gy: -0.5, name: 'Mylapore Mandi #04', amount: '₹125', collected: true },
-      { gx: 1.5, gy: 1.5, name: 'Stationery Hub #05', amount: '₹375', collected: true },
-      { gx: -0.5, gy: 1.8, name: 'Tea Stall #06', amount: '₹125', collected: false },
-      { gx: -2.5, gy: 1.5, name: 'Flower Mart #07', amount: '₹250', collected: false },
-      { gx: -3, gy: -0.2, name: 'Cycle Works #08', amount: '₹500', collected: false },
-    ];
-
-    let progress = 3.4; // along waypoints index
-    let rippleRadius = 0;
-
-    const renderRoute = () => {
-      ctx.clearRect(0, 0, w, h);
-
-      // Speed configuration
-      const speed = routeMode === 'FAST' ? 0.024 : 0.009;
-      progress = (progress + speed) % waypoints.length;
-
-      // Draw isometric grid lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
-      for (let i = -4; i <= 4; i++) {
-        const p1 = toIso(i, -4);
-        const p2 = toIso(i, 4);
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-
-        const q1 = toIso(-4, i);
-        const q2 = toIso(4, i);
-        ctx.beginPath();
-        ctx.moveTo(q1.x, q1.y);
-        ctx.lineTo(q2.x, q2.y);
-        ctx.stroke();
-      }
-
-      // Draw Route Path Lines between waypoints
-      ctx.beginPath();
-      const first = toIso(waypoints[0].gx, waypoints[0].gy);
-      ctx.moveTo(first.x, first.y);
-      for (let i = 1; i < waypoints.length; i++) {
-        const pt = toIso(waypoints[i].gx, waypoints[i].gy);
-        ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([6, 6]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Draw Waypoints (Merchant Stalls)
-      waypoints.forEach((wp, idx) => {
-        const pos = toIso(wp.gx, wp.gy);
-
-        // Pedestal base
-        ctx.beginPath();
-        ctx.ellipse(pos.x, pos.y, 16, 8, 0, 0, Math.PI * 2);
-        ctx.fillStyle = wp.collected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)';
-        ctx.fill();
-        ctx.strokeStyle = wp.collected ? '#10B981' : '#F59E0B';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        // 3D Pillar column
-        const topPos = toIso(wp.gx, wp.gy, 18);
-        ctx.beginPath();
-        ctx.moveTo(pos.x - 8, pos.y);
-        ctx.lineTo(pos.x - 8, topPos.y);
-        ctx.lineTo(pos.x + 8, topPos.y);
-        ctx.lineTo(pos.x + 8, pos.y);
-        ctx.fillStyle = wp.collected ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)';
-        ctx.fill();
-
-        // Top bead
-        ctx.beginPath();
-        ctx.arc(topPos.x, topPos.y, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = wp.collected ? '#34D399' : '#FBBF24';
-        ctx.fill();
-
-        // Label
-        ctx.font = '10px -apple-system, sans-serif';
-        ctx.fillStyle = '#A1A1AA';
-        ctx.textAlign = 'center';
-        ctx.fillText(wp.amount, topPos.x, topPos.y - 10);
-      });
-
-      // Compute Agent interpolated position
-      const currIdx = Math.floor(progress);
-      const nextIdx = (currIdx + 1) % waypoints.length;
-      const t = progress - currIdx;
-      const curWp = waypoints[currIdx];
-      const nextWp = waypoints[nextIdx];
-      const agentGx = curWp.gx + (nextWp.gx - curWp.gx) * t;
-      const agentGy = curWp.gy + (nextWp.gy - curWp.gy) * t;
-      const agentPos = toIso(agentGx, agentGy, 22 + Math.sin(progress * 6) * 3);
-
-      // Agent 3D Radar Wave
-      rippleRadius = (rippleRadius + 0.6) % 35;
-      ctx.beginPath();
-      ctx.ellipse(agentPos.x, agentPos.y + 22, rippleRadius, rippleRadius * 0.5, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(99, 102, 241, ${1 - rippleRadius / 35})`;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Agent Glowing Beacon
-      ctx.beginPath();
-      ctx.arc(agentPos.x, agentPos.y, 7.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#6366F1';
-      ctx.fill();
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Agent Tag
-      ctx.font = 'bold 11px -apple-system, sans-serif';
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText('Agent Live', agentPos.x, agentPos.y - 12);
-
-      animId = requestAnimationFrame(renderRoute);
-    };
-
-    renderRoute();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [routeMode]);
+  const triggerDisbursalSimulation = () => {
+    setVaultPulseMode('DISBURSE');
+    setVaultStats((prev) => ({
+      ...prev,
+      activeBalance: '₹48,06,750.00',
+      dayOutflow: '- ₹2,30,000',
+      blockHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
+    }));
+    setTimeout(() => setVaultPulseMode('NORMAL'), 2500);
+  };
 
   // --------------------------------------------------------------------------
-  // 4. DEDICATED 3D INTERACTIVE SOVEREIGN VAULT CHAMBER CANVAS
+  // 5. 3D ISOMETRIC LIQUIDITY & TREASURY RADAR
   // --------------------------------------------------------------------------
-  const vaultCanvasRef = useRef(null);
-  const [vaultPulseMode, setVaultPulseMode] = useState('NORMAL'); // 'COLLECT' | 'DISBURSE' | 'NORMAL'
+  const [liquidityTimeframe, setLiquidityTimeframe] = useState('daily');
+  const [activeHoverBar, setActiveHoverBar] = useState(null);
 
-  useEffect(() => {
-    const canvas = vaultCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-
-    let w = (canvas.width = canvas.parentElement.offsetWidth);
-    let h = (canvas.height = canvas.parentElement.offsetHeight);
-
-    let angle = 0;
-    const renderVault = () => {
-      ctx.clearRect(0, 0, w, h);
-      angle += 0.014;
-
-      const cx = w / 2;
-      const cy = h / 2;
-      const rings = [65, 95, 125, 155];
-
-      // Outer circulation orbit
-      rings.forEach((r, idx) => {
-        const speed = (idx + 1) * 0.4;
-        const currentAngle = angle * (idx % 2 === 0 ? 1 : -1) * speed;
-
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(currentAngle);
-
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.strokeStyle =
-          idx === 1
-            ? 'rgba(200, 245, 233, 0.45)'
-            : idx === 2
-            ? 'rgba(222, 212, 252, 0.38)'
-            : 'rgba(255, 255, 255, 0.12)';
-        ctx.lineWidth = idx === 1 ? 2 : 1;
-        ctx.setLineDash([8, 12]);
-        ctx.stroke();
-
-        // 3D Orbital node beads
-        for (let n = 0; n < 3; n++) {
-          const a = (n * Math.PI * 2) / 3;
-          const nx = r * Math.cos(a);
-          const ny = r * Math.sin(a);
-          ctx.beginPath();
-          ctx.arc(nx, ny, 3.5, 0, Math.PI * 2);
-          ctx.fillStyle = idx === 1 ? '#10B981' : idx === 2 ? '#8B5CF6' : '#FFFFFF';
-          ctx.fill();
-        }
-
-        ctx.restore();
-      });
-
-      // Central Sovereign Core
-      ctx.beginPath();
-      ctx.arc(cx, cy, 38, 0, Math.PI * 2);
-      ctx.fillStyle =
-        vaultPulseMode === 'COLLECT'
-          ? 'rgba(16, 185, 129, 0.28)'
-          : vaultPulseMode === 'DISBURSE'
-          ? 'rgba(99, 102, 241, 0.28)'
-          : 'rgba(255, 255, 255, 0.08)';
-      ctx.fill();
-      ctx.strokeStyle =
-        vaultPulseMode === 'COLLECT'
-          ? '#10B981'
-          : vaultPulseMode === 'DISBURSE'
-          ? '#818CF8'
-          : '#FFFFFF';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Rupee Symbol in Center Core
-      ctx.font = 'bold 22px system-ui, sans-serif';
-      ctx.fillStyle = '#FFFFFF';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('₹', cx, cy);
-
-      animId = requestAnimationFrame(renderVault);
-    };
-
-    renderVault();
-
-    return () => cancelAnimationFrame(animId);
-  }, [vaultPulseMode]);
-
-  // --------------------------------------------------------------------------
-  // 5. 3D ISOMETRIC LIQUIDITY & TREASURY BAR CANVAS
-  // --------------------------------------------------------------------------
-  const treasuryCanvasRef = useRef(null);
-  const [liquidityTimeframe, setLiquidityTimeframe] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
-
-  useEffect(() => {
-    const canvas = treasuryCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-
-    let w = (canvas.width = canvas.parentElement.offsetWidth);
-    let h = (canvas.height = canvas.parentElement.offsetHeight);
-
-    const handleResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      w = canvas.width = canvas.parentElement.offsetWidth;
-      h = canvas.height = canvas.parentElement.offsetHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
-    const dataset = {
-      daily: [
-        { label: 'Mon', val: 78, amt: '₹1.85L' },
-        { label: 'Tue', val: 92, amt: '₹2.10L' },
-        { label: 'Wed', val: 84, amt: '₹1.95L' },
-        { label: 'Thu', val: 110, amt: '₹2.60L' },
-        { label: 'Fri', val: 135, amt: '₹3.20L' },
-        { label: 'Sat', val: 145, amt: '₹3.50L' },
-        { label: 'Sun', val: 62, amt: '₹1.40L' },
-      ],
-      weekly: [
-        { label: 'Wk 1', val: 95, amt: '₹14.2L' },
-        { label: 'Wk 2', val: 115, amt: '₹17.8L' },
-        { label: 'Wk 3', val: 140, amt: '₹21.4L' },
-        { label: 'Wk 4', val: 165, amt: '₹25.1L' },
-      ],
-      monthly: [
-        { label: 'Q1', val: 110, amt: '₹58.4L' },
-        { label: 'Q2', val: 145, amt: '₹76.2L' },
-        { label: 'Q3', val: 180, amt: '₹94.5L' },
-        { label: 'Q4', val: 220, amt: '₹1.15Cr' },
-      ],
-    };
-
-    let step = 0;
-
-    const renderChart = () => {
-      ctx.clearRect(0, 0, w, h);
-      step += 0.03;
-
-      const items = dataset[liquidityTimeframe];
-      const barWidth = 32;
-      const barDepth = 18;
-      const spacing = w / (items.length + 1);
-
-      items.forEach((item, idx) => {
-        const x = spacing * (idx + 1) - barWidth / 2;
-        const targetHeight = (item.val / 230) * (h * 0.58);
-        const dynamicH = targetHeight + Math.sin(step + idx) * 3;
-        const baseY = h * 0.82;
-        const topY = baseY - dynamicH;
-
-        // Front Face
-        ctx.fillStyle = idx === items.length - 2 ? '#10B981' : '#27272A';
-        ctx.beginPath();
-        ctx.rect(x, topY, barWidth, dynamicH);
-        ctx.fill();
-        ctx.strokeStyle = idx === items.length - 2 ? '#34D399' : '#3F3F46';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        // Right 3D Side Face
-        ctx.fillStyle = idx === items.length - 2 ? '#059669' : '#18181B';
-        ctx.beginPath();
-        ctx.moveTo(x + barWidth, topY);
-        ctx.lineTo(x + barWidth + barDepth, topY - barDepth * 0.55);
-        ctx.lineTo(x + barWidth + barDepth, baseY - barDepth * 0.55);
-        ctx.lineTo(x + barWidth, baseY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Top 3D Isometric Cap
-        ctx.fillStyle = idx === items.length - 2 ? '#6EE7B7' : '#52525B';
-        ctx.beginPath();
-        ctx.moveTo(x, topY);
-        ctx.lineTo(x + barDepth, topY - barDepth * 0.55);
-        ctx.lineTo(x + barWidth + barDepth, topY - barDepth * 0.55);
-        ctx.lineTo(x + barWidth, topY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Amount on Top
-        ctx.font = 'bold 11px -apple-system, sans-serif';
-        ctx.fillStyle = idx === items.length - 2 ? '#34D399' : '#E4E4E7';
-        ctx.textAlign = 'center';
-        ctx.fillText(item.amt, x + barWidth / 2 + 8, topY - barDepth * 0.55 - 8);
-
-        // Day/Time Label Below
-        ctx.font = '12px -apple-system, sans-serif';
-        ctx.fillStyle = '#71717A';
-        ctx.fillText(item.label, x + barWidth / 2, baseY + 20);
-      });
-
-      animId = requestAnimationFrame(renderChart);
-    };
-
-    renderChart();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [liquidityTimeframe]);
+  const liquidityData = {
+    daily: [
+      { label: 'Mon', height: 68, amount: '₹1.85L', volume: '142 Cycles', trend: '+14%' },
+      { label: 'Tue', height: 82, amount: '₹2.10L', volume: '168 Cycles', trend: '+18%' },
+      { label: 'Wed', height: 75, amount: '₹1.95L', volume: '155 Cycles', trend: '+11%' },
+      { label: 'Thu', height: 94, amount: '₹2.60L', volume: '204 Cycles', trend: '+24%' },
+      { label: 'Fri', height: 115, amount: '₹3.20L', volume: '256 Cycles', trend: '+31%' },
+      { label: 'Sat', height: 125, amount: '₹3.50L', volume: '280 Cycles', trend: '+35%', featured: true },
+      { label: 'Sun', height: 55, amount: '₹1.40L', volume: '98 Cycles', trend: '+8%' },
+    ],
+    weekly: [
+      { label: 'Wk 1', height: 78, amount: '₹14.2L', volume: '1,120 Cycles', trend: '+15%' },
+      { label: 'Wk 2', height: 96, amount: '₹17.8L', volume: '1,410 Cycles', trend: '+22%' },
+      { label: 'Wk 3', height: 118, amount: '₹21.4L', volume: '1,720 Cycles', trend: '+29%' },
+      { label: 'Wk 4', height: 135, amount: '₹25.1L', volume: '2,040 Cycles', trend: '+34%', featured: true },
+    ],
+    monthly: [
+      { label: 'Q1', height: 85, amount: '₹58.4L', volume: '4,650 Cycles', trend: '+18%' },
+      { label: 'Q2', height: 108, amount: '₹76.2L', volume: '6,100 Cycles', trend: '+26%' },
+      { label: 'Q3', height: 128, amount: '₹94.5L', volume: '7,550 Cycles', trend: '+32%' },
+      { label: 'Q4', height: 145, amount: '₹1.15Cr', volume: '9,200 Cycles', trend: '+39%', featured: true },
+    ],
+  };
 
   // --------------------------------------------------------------------------
   // 6. REAL-TIME CRYPTOGRAPHIC AUDIT STREAM
@@ -699,10 +345,10 @@ export const WelcomePage = () => {
   // --------------------------------------------------------------------------
   // 7. PLATFORM COMPARISON TAB (MOBILE VS WEB)
   // --------------------------------------------------------------------------
-  const [platformTab, setPlatformTab] = useState('mobile'); // 'mobile' | 'web'
+  const [platformTab, setPlatformTab] = useState('mobile');
 
   // --------------------------------------------------------------------------
-  // 8. BORROWER LIFECYCLE STAGE
+  // 8. BORROWER LIFECYCLE ROADMAP
   // --------------------------------------------------------------------------
   const [activeLifecycleStage, setActiveLifecycleStage] = useState(0);
 
@@ -904,13 +550,9 @@ export const WelcomePage = () => {
   ];
 
   return (
-    <div
-      className="qonto-welcome-container"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="qonto-welcome-container">
       {/* --------------------------------------------------------------------
-          1. TOP NAVBAR
+          1. TOP NAVBAR: EXECUTIVE FINTECH NAVIGATION
           -------------------------------------------------------------------- */}
       <header className="qonto-navbar">
         <div className="qonto-navbar-inner">
@@ -921,14 +563,46 @@ export const WelcomePage = () => {
 
           <nav>
             <ul className="qonto-nav-menu">
-              <li className="qonto-nav-item"><a href="#solutions">Solutions</a></li>
-              <li className="qonto-nav-item"><a href="#card-studio">3D Cards</a></li>
-              <li className="qonto-nav-item"><a href="#route-telemetry">3D Route</a></li>
-              <li className="qonto-nav-item"><a href="#vault-chamber">3D Vault</a></li>
-              <li className="qonto-nav-item"><a href="#liquidity-radar">3D Cash Flow</a></li>
-              <li className="qonto-nav-item"><a href="#lifecycle">Lifecycle</a></li>
-              <li className="qonto-nav-item"><a href="#audit-feed">Live Stream</a></li>
-              <li className="qonto-nav-item"><a href="#faq">FAQ</a></li>
+              <li className="qonto-nav-item">
+                <a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>
+                  Products & Schemes
+                </a>
+              </li>
+              <li className="qonto-nav-item">
+                <a href="#card-studio" onClick={(e) => scrollToSection(e, 'card-studio')}>
+                  Smart Cards
+                </a>
+              </li>
+              <li className="qonto-nav-item">
+                <a href="#route-telemetry" onClick={(e) => scrollToSection(e, 'route-telemetry')}>
+                  Route Operations
+                </a>
+              </li>
+              <li className="qonto-nav-item">
+                <a href="#vault-chamber" onClick={(e) => scrollToSection(e, 'vault-chamber')}>
+                  Central Treasury
+                </a>
+              </li>
+              <li className="qonto-nav-item">
+                <a href="#liquidity-radar" onClick={(e) => scrollToSection(e, 'liquidity-radar')}>
+                  Cash Flow
+                </a>
+              </li>
+              <li className="qonto-nav-item">
+                <a href="#lifecycle" onClick={(e) => scrollToSection(e, 'lifecycle')}>
+                  Borrower Journey
+                </a>
+              </li>
+              <li className="qonto-nav-item">
+                <a href="#audit-feed" onClick={(e) => scrollToSection(e, 'audit-feed')}>
+                  Security & Ledger
+                </a>
+              </li>
+              <li className="qonto-nav-item">
+                <a href="#faq" onClick={(e) => scrollToSection(e, 'faq')}>
+                  FAQ
+                </a>
+              </li>
             </ul>
           </nav>
 
@@ -964,10 +638,14 @@ export const WelcomePage = () => {
       </header>
 
       {/* --------------------------------------------------------------------
-          2. HERO SECTION & 3D ISOMETRIC STAGE
+          2. HERO SECTION & 3D ISOMETRIC FLAGSHIP SHOWCASE
           -------------------------------------------------------------------- */}
-      <section className="qonto-hero-section">
-        {/* Left Column: Clear Bold Typography */}
+      <section
+        className="qonto-hero-section"
+        onMouseMove={handleHeroMouseMove}
+        onMouseLeave={handleHeroMouseLeave}
+      >
+        {/* Left Column: Bold Typography & Actions */}
         <div className="qonto-hero-left">
           <div className="qonto-hero-badge">
             <span className="badge-dot-live" />
@@ -992,9 +670,13 @@ export const WelcomePage = () => {
               <ArrowRight size={18} />
             </button>
 
-            <a href="#card-studio" className="qonto-btn-hero-secondary">
-              <Sparkles size={16} color="#C084FC" />
-              <span>3D Card Studio</span>
+            <a
+              href="#card-studio"
+              className="qonto-btn-hero-secondary"
+              onClick={(e) => scrollToSection(e, 'card-studio')}
+            >
+              <CreditCard size={16} color="#C084FC" />
+              <span>Smart Card Studio</span>
             </a>
           </div>
 
@@ -1003,72 +685,82 @@ export const WelcomePage = () => {
           </span>
         </div>
 
-        {/* Right Column: Isometric 3D Layered Hardware & Dashboard Showcase */}
+        {/* Right Column: High-Precision 3D Isometric Flagship Devices */}
         <div className="qonto-hero-right">
-          {/* Subtle Particle Starfield Canvas in Background */}
-          <canvas ref={heroCanvasRef} className="hero-3d-bg-canvas" />
-
           <div
             className="qonto-isometric-stage"
             style={{
-              transform: `rotateX(${50 + tilt.y}deg) rotateZ(${-35 + tilt.x}deg)`,
+              transform: `rotateX(${50 + heroTilt.y}deg) rotateZ(${-35 + heroTilt.x}deg)`,
             }}
           >
-            {/* 3D Floating Rupee Coin */}
-            <div className="floating-3d-token token-coin-gold">
-              <span>₹</span>
+            {/* 3D Floating Physical Bullion Coin */}
+            <div className="hero-3d-coin-token">
+              <div className="coin-face-front">
+                <span className="coin-symbol">₹</span>
+              </div>
+              <div className="coin-edge-grooves" />
             </div>
 
-            {/* 3D Floating Security Shield */}
-            <div className="floating-3d-token token-shield-blue">
-              <ShieldCheck size={26} />
+            {/* 3D Floating Sapphire Titanium Shield */}
+            <div className="hero-3d-shield-token">
+              <ShieldCheck size={28} color="#60A5FA" />
+              <div className="shield-glare-line" />
             </div>
 
-            {/* Tilted Desktop/Tablet Dashboard Screen */}
+            {/* Tilted High-Precision iPad Dashboard Screen */}
             <div className="qonto-mockup-tablet">
               <div className="tablet-header-bar">
-                <span className="tablet-title">Dashboard</span>
-                <span style={{ fontSize: '0.75rem', color: '#6B7280', fontWeight: 600 }}>Active Portfolio</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="tablet-cam-dot" />
+                  <span className="tablet-title">Executive Dashboard</span>
+                </div>
+                <span className="tablet-status-tag">Live Active Portfolio</span>
               </div>
 
               <div className="tablet-metric-row">
                 <div>
-                  <span className="tablet-balance-lbl">Available balance</span>
-                  <div className="tablet-balance-val">₹46,130.99</div>
-                  <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700 }}>
-                    +18.4% month-over-month
+                  <span className="tablet-balance-lbl">Available Treasury Balance</span>
+                  <div className="tablet-balance-val">₹48,20,500.00</div>
+                  <span style={{ fontSize: '0.74rem', color: '#10B981', fontWeight: 700 }}>
+                    +18.4% month-over-month · Double-Entry Audited
                   </span>
                 </div>
 
-                {/* Segmented Pastel Donut Chart */}
                 <div className="tablet-donut-chart">
-                  <div className="tablet-donut-inner" />
+                  <div className="tablet-donut-inner">
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800 }}>99.4%</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Minimal SVG Wave Graph */}
-              <svg className="tablet-wave-graph" viewBox="0 0 380 45" fill="none">
+              {/* Glowing SVG Wave Graph */}
+              <svg className="tablet-wave-graph" viewBox="0 0 380 48" fill="none">
+                <defs>
+                  <linearGradient id="waveGlow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10B981" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
                 <path
-                  d="M0 35 C 60 40, 100 15, 160 25 C 220 35, 270 5, 330 18 C 360 24, 375 10, 380 8"
-                  stroke="#6366F1"
+                  d="M0 38 C 60 42, 95 18, 160 26 C 220 34, 270 6, 330 18 C 360 24, 375 10, 380 8"
+                  stroke="#10B981"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 />
                 <path
-                  d="M0 35 C 60 40, 100 15, 160 25 C 220 35, 270 5, 330 18 C 360 24, 375 10, 380 8 L 380 45 L 0 45 Z"
-                  fill="rgba(99, 102, 241, 0.08)"
+                  d="M0 38 C 60 42, 95 18, 160 26 C 220 34, 270 6, 330 18 C 360 24, 375 10, 380 8 L 380 48 L 0 48 Z"
+                  fill="url(#waveGlow)"
                 />
               </svg>
 
-              {/* Recent Transactions List */}
               <div className="tablet-transactions-list">
                 <div className="tablet-tx-item">
-                  <span>Merchant Daily Recovery</span>
+                  <span>Daily Merchant Route Handoff</span>
                   <span className="tx-amount-green">+ ₹1,250.00</span>
                 </div>
                 <div className="tablet-tx-item">
-                  <span>Weekly Chit Installment</span>
-                  <span className="tx-amount-green">+ ₹2,500.00</span>
+                  <span>Weekly Chit Installment (Mylapore)</span>
+                  <span className="tx-amount-green">+ ₹6,250.00</span>
                 </div>
               </div>
             </div>
@@ -1077,39 +769,40 @@ export const WelcomePage = () => {
             <div className="qonto-mockup-phone">
               <div className="phone-speaker-notch" />
               <div className="phone-balance-box">
-                <span className="phone-balance-lbl">Total Recovery</span>
-                <div className="phone-balance-num">₹46,130.99</div>
+                <span className="phone-balance-lbl">Collector Mobile Terminal</span>
+                <div className="phone-balance-num">₹18,750.00</div>
+                <span style={{ fontSize: '0.62rem', color: '#10B981', fontWeight: 700 }}>14 / 16 Shops Cleared</span>
               </div>
 
               <div className="phone-mini-txs">
                 <div className="phone-mini-row">
-                  <span style={{ color: '#4B5563' }}>Saidapet Store</span>
-                  <span style={{ color: '#059669' }}>+₹125</span>
+                  <span>Saidapet Bazaar</span>
+                  <span style={{ color: '#10B981' }}>+₹125.00</span>
                 </div>
                 <div className="phone-mini-row">
-                  <span style={{ color: '#4B5563' }}>Mylapore Chit</span>
-                  <span style={{ color: '#059669' }}>+₹625</span>
+                  <span>Mylapore Tank</span>
+                  <span style={{ color: '#10B981' }}>+₹250.00</span>
                 </div>
                 <div className="phone-mini-row">
-                  <span style={{ color: '#4B5563' }}>Central Vault</span>
-                  <span style={{ color: '#2563EB' }}>Sync</span>
+                  <span>Central Vault</span>
+                  <span style={{ color: '#60A5FA' }}>Auto-Synced</span>
                 </div>
               </div>
 
               <div className="phone-bottom-nav">
-                <span>Loans</span>
-                <span style={{ color: '#111827', fontWeight: 800 }}>Vault</span>
-                <span>Audit</span>
+                <span>Routes</span>
+                <span style={{ color: '#111827', fontWeight: 800 }}>Collect</span>
+                <span>Ledger</span>
               </div>
             </div>
 
-            {/* Floating Brushed Silver Card Behind */}
+            {/* Brushed Silver Card In Depth Layer */}
             <div className="qonto-floating-card-silver" />
 
-            {/* Floating Matte Black Titanium Chip Card in Front */}
+            {/* Matte Titanium Chip Card in Front */}
             <div className="qonto-floating-card-black">
-              <div className="chip-gold" />
-              <div className="card-num-preview">•••• 9767</div>
+              <div className="chip-gold-emv-mini" />
+              <div className="card-num-preview">•••• 9842</div>
               <div className="card-brand-logo-text">Finance</div>
             </div>
           </div>
@@ -1117,7 +810,7 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          3. THE 4 SIGNATURE QONTO PASTEL FEATURE CARDS WITH 3D HOVER
+          3. THE 4 SIGNATURE QONTO PASTEL FEATURE CARDS
           -------------------------------------------------------------------- */}
       <section className="qonto-features-strip-section" id="solutions">
         <div className="qonto-section-intro">
@@ -1222,7 +915,7 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          4. [NEW & EXPANDED] INTERACTIVE 3D HOLOGRAPHIC CARD STUDIO
+          4. 3D HOLOGRAPHIC CARD SHOWROOM
           -------------------------------------------------------------------- */}
       <section className="card-studio-section" id="card-studio">
         <div className="qonto-section-intro">
@@ -1292,7 +985,7 @@ export const WelcomePage = () => {
               <button
                 type="button"
                 className="qonto-btn-hero"
-                style={{ padding: '0.65rem 1.25rem', fontSize: '0.88rem' }}
+                style={{ padding: '0.75rem 1.4rem', fontSize: '0.9rem' }}
                 onClick={() => navigate('/login')}
               >
                 <span>Request Card</span>
@@ -1301,7 +994,7 @@ export const WelcomePage = () => {
             </div>
           </div>
 
-          {/* Right 3D Rotatable Holographic Stage */}
+          {/* Right 3D Rotatable Stage with Illuminated Acrylic Pedestal */}
           <div
             className="card-studio-3d-stage"
             onMouseMove={handleCardMouseMove}
@@ -1312,14 +1005,14 @@ export const WelcomePage = () => {
             <div
               className={`holographic-3d-card ${cardFlipped ? 'is-flipped' : ''}`}
               style={{
-                transform: `perspective(1200px) rotateX(${cardRotation.x}deg) rotateY(${
+                transform: `perspective(1400px) rotateX(${cardRotation.x}deg) rotateY(${
                   cardRotation.y + (cardFlipped ? 180 : 0)
                 }deg)`,
                 background: cardTiers[activeCardTier].gradient,
                 border: `1.5px solid ${cardTiers[activeCardTier].border}`,
               }}
             >
-              {/* Dynamic Specular Spotlight */}
+              {/* Dynamic Specular Light Glare */}
               <div
                 className="card-surface-specular"
                 style={{
@@ -1367,15 +1060,23 @@ export const WelcomePage = () => {
               </div>
             </div>
 
+            {/* Glowing Floor Pedestal Reflection */}
+            <div
+              className="card-stand-pedestal"
+              style={{
+                boxShadow: `0 15px 35px ${cardTiers[activeCardTier].accentColor}33`,
+              }}
+            />
+
             <div className="card-hint-text">
-              Hover to tilt in 3D perspective · Click Flip to view back
+              Move cursor to tilt in 3D perspective · Click Flip to inspect CVV
             </div>
           </div>
         </div>
       </section>
 
       {/* --------------------------------------------------------------------
-          5. [NEW & EXPANDED] INTERACTIVE 3D FIELD ROUTE & TELEMETRY CANVAS
+          5. 3D ISOMETRIC ROUTE & BAZAAR TELEMETRY STATION
           -------------------------------------------------------------------- */}
       <section className="route-telemetry-section" id="route-telemetry">
         <div className="qonto-section-intro">
@@ -1384,37 +1085,86 @@ export const WelcomePage = () => {
         </div>
 
         <div className="route-telemetry-box">
-          <div className="route-canvas-wrapper">
+          {/* Left: 3D Isometric Route Radar Stage */}
+          <div className="route-isometric-stage">
             <div className="telemetry-badge-overlay">
               <span className="badge-dot-live" />
-              <span>LIVE ISOMETRIC ROUTE MAP</span>
+              <span>ISOMETRIC FIELD STATION #08</span>
             </div>
-            <canvas ref={routeCanvasRef} className="route-canvas-el" />
+
+            {/* Live Collection Toast Banner */}
+            <div className="route-live-toast">
+              <CheckCircle2 size={15} color="#10B981" />
+              <span>{lastPaymentToast}</span>
+            </div>
+
+            {/* 3D Isometric Map Board */}
+            <div className="route-map-board">
+              <div className="grid-isometric-mesh" />
+
+              {/* District Blocks */}
+              <div className="map-district district-saidapet">Saidapet</div>
+              <div className="map-district district-mylapore">Mylapore</div>
+              <div className="map-district district-tnagar">T. Nagar</div>
+
+              {/* Waypoints */}
+              {waypoints.map((wp, idx) => (
+                <div
+                  key={wp.id}
+                  className={`waypoint-node ${currentWaypointIdx === idx ? 'is-active' : ''} ${
+                    idx < currentWaypointIdx ? 'is-cleared' : ''
+                  }`}
+                  style={{ top: `${wp.y}%`, left: `${wp.x}%` }}
+                >
+                  <div className="waypoint-pillar" />
+                  <div className="waypoint-pin">
+                    <span className="pin-tag">{wp.amount}</span>
+                  </div>
+                  <span className="waypoint-label">{wp.name}</span>
+                </div>
+              ))}
+
+              {/* Moving Field Collector Beacon */}
+              <div
+                className="collector-gps-beacon"
+                style={{
+                  top: `${waypoints[currentWaypointIdx].y}%`,
+                  left: `${waypoints[currentWaypointIdx].x}%`,
+                }}
+              >
+                <div className="beacon-radar-pulse" />
+                <div className="beacon-core">
+                  <Compass size={12} color="#FFFFFF" />
+                </div>
+                <div className="beacon-tooltip">Agent V. Ram (Live)</div>
+              </div>
+            </div>
           </div>
 
+          {/* Right: Operational Telemetry Metrics */}
           <div className="route-telemetry-sidebar">
-            <div className="qonto-hero-badge" style={{ marginBottom: '1rem' }}>
+            <div className="qonto-hero-badge" style={{ marginBottom: '1.25rem' }}>
               <MapPin size={14} color="#10B981" />
               <span>COLLECTOR ROUTE #08 (SAIDAPET & MYLAPORE)</span>
             </div>
 
             <h3>Automated Route Pathfinding</h3>
             <p>
-              Watch field agent positions, instant offline cash match pings, and bazaar merchant waypoints mapped continuously in 3D perspective.
+              Track field agent routes, instant offline cash match pings, and bazaar merchant installments mapped continuously in 3D perspective.
             </p>
 
             <div className="telemetry-metrics-grid">
               <div className="telemetry-stat">
                 <span className="stat-label">Merchants Cleared</span>
-                <span className="stat-value">{routeStats.shopsCleared} / {routeStats.totalShops}</span>
+                <span className="stat-value">{currentWaypointIdx + 1} / {waypoints.length}</span>
               </div>
               <div className="telemetry-stat">
                 <span className="stat-label">Collected Today</span>
-                <span className="stat-value" style={{ color: '#10B981' }}>₹{routeStats.collectedToday.toLocaleString('en-IN')}</span>
+                <span className="stat-value" style={{ color: '#10B981' }}>₹18,750.00</span>
               </div>
               <div className="telemetry-stat">
                 <span className="stat-label">Active Field Agent</span>
-                <span className="stat-value">{routeStats.activeAgent}</span>
+                <span className="stat-value">Agent V. Ram</span>
               </div>
               <div className="telemetry-stat">
                 <span className="stat-label">Route Discrepancy</span>
@@ -1425,25 +1175,25 @@ export const WelcomePage = () => {
             <div className="telemetry-actions-row">
               <button
                 type="button"
-                className={`btn-telemetry-action ${routeMode === 'AUTO' ? 'active' : ''}`}
-                onClick={() => setRouteMode('AUTO')}
+                className={`btn-telemetry-action ${routeSpeed === 'STANDARD' ? 'active' : ''}`}
+                onClick={() => setRouteSpeed('STANDARD')}
               >
                 <span>Standard Sweep</span>
               </button>
 
               <button
                 type="button"
-                className={`btn-telemetry-action ${routeMode === 'FAST' ? 'active' : ''}`}
-                onClick={() => setRouteMode('FAST')}
+                className={`btn-telemetry-action ${routeSpeed === 'ACCELERATED' ? 'active' : ''}`}
+                onClick={() => setRouteSpeed('ACCELERATED')}
               >
                 <Zap size={14} />
-                <span>Accelerate Path</span>
+                <span>Accelerate Route (2x)</span>
               </button>
 
               <button
                 type="button"
                 className="qonto-btn-hero"
-                style={{ padding: '0.65rem 1.1rem', fontSize: '0.88rem' }}
+                style={{ padding: '0.75rem 1.4rem', fontSize: '0.9rem' }}
                 onClick={() => navigate('/login')}
               >
                 <span>Open Collector Portal</span>
@@ -1455,54 +1205,99 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          6. DEDICATED 3D INTERACTIVE SOVEREIGN VAULT CHAMBER
+          6. 3D SOVEREIGN VAULT GYRO-GIMBAL CHAMBER
           -------------------------------------------------------------------- */}
       <section className="vault-3d-section" id="vault-chamber">
         <div className="vault-chamber-card">
-          <div className="vault-canvas-wrap">
-            <div className="vault-canvas-overlay">
+          {/* Left: Real Multi-Axis 3D Gyroscope Gimbal Core */}
+          <div className="vault-gyro-stage">
+            <div className="vault-badge-overlay">
               <Radio size={12} color="#10B981" />
-              <span>LIVE 3D VAULT CIRCULATION</span>
+              <span>3D CRYPTOGRAPHIC GIMBAL CORE</span>
             </div>
-            <canvas ref={vaultCanvasRef} className="vault-canvas-el" />
+
+            <div className={`gyro-gimbal-system mode-${vaultPulseMode.toLowerCase()}`}>
+              {/* Ring 1: Outer Titanium Yaw Gimbal */}
+              <div className="gimbal-ring ring-outer">
+                <div className="ring-circuit-node node-1" />
+                <div className="ring-circuit-node node-2" />
+              </div>
+
+              {/* Ring 2: Intermediate Sapphire Pitch Gimbal */}
+              <div className="gimbal-ring ring-middle">
+                <div className="ring-circuit-node node-3" />
+                <div className="ring-circuit-node node-4" />
+              </div>
+
+              {/* Ring 3: Inner Emerald Flux Gimbal */}
+              <div className="gimbal-ring ring-inner">
+                <div className="ring-circuit-node node-5" />
+              </div>
+
+              {/* Central Floating 3D Sovereign Holographic Prism */}
+              <div className="vault-sovereign-core">
+                <div className="core-crystal-prism">
+                  <span className="core-currency-seal">₹</span>
+                </div>
+                <div className="core-ambient-aura" />
+              </div>
+            </div>
+
+            <div className="vault-stage-status">
+              <span>Integrity: <strong style={{ color: '#10B981' }}>{vaultStats.reconciledRate}</strong></span>
+              <span>Block: <code>{vaultStats.blockHash}</code></span>
+            </div>
           </div>
 
+          {/* Right: Treasury Operations & Simulation Controls */}
           <div className="vault-chamber-info">
-            <div className="qonto-hero-badge" style={{ marginBottom: '1rem' }}>
+            <div className="qonto-hero-badge" style={{ marginBottom: '1.25rem' }}>
               <Zap size={14} color="#C084FC" />
-              <span>CRYPTOGRAPHIC TREASURY</span>
+              <span>CRYPTOGRAPHIC TREASURY VAULT</span>
             </div>
             <h3>The Sovereign Central Vault Core</h3>
             <p>
-              Witness real-time double-entry balancing in 3D. Field collections, capital injections, and loan disbursements are mirrored with microsecond telemetry across all physical branches.
+              Witness real-time double-entry balancing. Field collections, capital injections, and loan disbursements are mirrored with microsecond telemetry across all physical branches.
             </p>
+
+            <div className="vault-stats-display-grid">
+              <div className="v-stat-card">
+                <span className="v-stat-lbl">Active Vault Balance</span>
+                <span className="v-stat-num">{vaultStats.activeBalance}</span>
+              </div>
+              <div className="v-stat-card">
+                <span className="v-stat-lbl">Today's Total Inflow</span>
+                <span className="v-stat-num" style={{ color: '#10B981' }}>{vaultStats.dayInflow}</span>
+              </div>
+            </div>
 
             <div className="vault-interactive-controls">
               <button
                 type="button"
                 className={`vault-btn-action ${vaultPulseMode === 'COLLECT' ? 'active' : ''}`}
-                onClick={() => setVaultPulseMode('COLLECT')}
+                onClick={triggerCollectionSimulation}
               >
                 <TrendingUp size={16} />
-                <span>Simulate Collection</span>
+                <span>Simulate Collection (+₹1,250)</span>
               </button>
 
               <button
                 type="button"
                 className={`vault-btn-action ${vaultPulseMode === 'DISBURSE' ? 'active' : ''}`}
-                onClick={() => setVaultPulseMode('DISBURSE')}
+                onClick={triggerDisbursalSimulation}
               >
                 <CreditCard size={16} />
-                <span>Simulate Disbursal</span>
+                <span>Simulate Disbursal (-₹15,000)</span>
               </button>
 
               <button
                 type="button"
-                className={`vault-btn-action ${vaultPulseMode === 'NORMAL' ? 'active' : ''}`}
-                onClick={() => setVaultPulseMode('NORMAL')}
+                className="qonto-btn-hero"
+                style={{ padding: '0.75rem 1.4rem', fontSize: '0.9rem' }}
+                onClick={() => navigate('/login')}
               >
-                <RefreshCw size={16} />
-                <span>Reset Orbit</span>
+                <span>Access Treasury</span>
+                <ArrowRight size={15} />
               </button>
             </div>
           </div>
@@ -1510,7 +1305,7 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          7. [NEW & EXPANDED] INTERACTIVE 3D LIQUIDITY & TREASURY BAR CANVAS
+          7. 3D ISOMETRIC LIQUIDITY & TREASURY BAR RADAR
           -------------------------------------------------------------------- */}
       <section className="liquidity-3d-section" id="liquidity-radar">
         <div className="qonto-section-intro">
@@ -1550,8 +1345,42 @@ export const WelcomePage = () => {
             </div>
           </div>
 
-          <div className="liquidity-canvas-wrap">
-            <canvas ref={treasuryCanvasRef} className="liquidity-canvas-el" />
+          {/* 3D Sculpted Isometric Columns Stage */}
+          <div className="liquidity-columns-stage">
+            <div className="columns-floor-grid" />
+
+            <div className="columns-row-container">
+              {liquidityData[liquidityTimeframe].map((item, idx) => (
+                <div
+                  key={idx}
+                  className={`isometric-column-wrapper ${item.featured ? 'is-featured' : ''}`}
+                  onMouseEnter={() => setActiveHoverBar(item)}
+                  onMouseLeave={() => setActiveHoverBar(null)}
+                >
+                  {/* Tooltip on hover */}
+                  {activeHoverBar?.label === item.label && (
+                    <div className="column-floating-tooltip">
+                      <div className="tooltip-amount">{item.amount}</div>
+                      <div className="tooltip-sub">{item.volume} · {item.trend}</div>
+                    </div>
+                  )}
+
+                  {/* 3D Pillar Geometry */}
+                  <div
+                    className="pillar-3d-body"
+                    style={{ height: `${item.height * 1.5}px` }}
+                  >
+                    <div className="pillar-face pillar-front" />
+                    <div className="pillar-face pillar-side" />
+                    <div className="pillar-face pillar-top">
+                      <span className="pillar-top-num">{item.amount}</span>
+                    </div>
+                  </div>
+
+                  <span className="pillar-label">{item.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="liquidity-footer-metrics">
@@ -1572,7 +1401,7 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          8. INTERACTIVE 3D ISOMETRIC WORKFLOW PIPELINE
+          8. 3D ISOMETRIC WORKFLOW PIPELINE
           -------------------------------------------------------------------- */}
       <section className="pipeline-section" id="pipeline">
         <div className="qonto-section-intro">
@@ -1628,7 +1457,7 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          9. [NEW & EXPANDED] MOBILE APP VS WEB HQ PLATFORM COMPARISON
+          9. MOBILE APP VS WEB HQ PLATFORM COMPARISON
           -------------------------------------------------------------------- */}
       <section className="platform-comparison-section" id="platform">
         <div className="qonto-section-intro">
@@ -1716,7 +1545,7 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          10. [NEW & EXPANDED] 6-STAGE BORROWER LIFECYCLE ROADMAP
+          10. 6-STAGE BORROWER LIFECYCLE ROADMAP
           -------------------------------------------------------------------- */}
       <section className="lifecycle-section" id="lifecycle">
         <div className="qonto-section-intro">
@@ -1743,7 +1572,7 @@ export const WelcomePage = () => {
       </section>
 
       {/* --------------------------------------------------------------------
-          11. [NEW & EXPANDED] REAL-TIME CRYPTOGRAPHIC AUDIT STREAM
+          11. REAL-TIME CRYPTOGRAPHIC AUDIT STREAM
           -------------------------------------------------------------------- */}
       <section className="audit-feed-section" id="audit-feed">
         <div className="qonto-section-intro">
@@ -2357,22 +2186,22 @@ export const WelcomePage = () => {
           <div className="footer-col-links">
             <h5>Solutions</h5>
             <ul>
-              <li><a href="#solutions">Daily Bazaar Loans</a></li>
-              <li><a href="#solutions">Weekly Chit Cycles</a></li>
-              <li><a href="#solutions">Monthly Business EMIs</a></li>
-              <li><a href="#vault-chamber">Central Vault</a></li>
+              <li><a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>Daily Bazaar Loans</a></li>
+              <li><a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>Weekly Chit Cycles</a></li>
+              <li><a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>Monthly Business EMIs</a></li>
+              <li><a href="#vault-chamber" onClick={(e) => scrollToSection(e, 'vault-chamber')}>Central Vault</a></li>
             </ul>
           </div>
 
           <div className="footer-col-links">
             <h5>3D Engine</h5>
             <ul>
-              <li><a href="#card-studio">3D Card Studio</a></li>
-              <li><a href="#route-telemetry">3D Route Telemetry</a></li>
-              <li><a href="#vault-chamber">3D Sovereign Vault</a></li>
-              <li><a href="#liquidity-radar">3D Cash Flow</a></li>
-              <li><a href="#lifecycle">Borrower Lifecycle</a></li>
-              <li><a href="#audit-feed">Live Stream</a></li>
+              <li><a href="#card-studio" onClick={(e) => scrollToSection(e, 'card-studio')}>Smart Card Studio</a></li>
+              <li><a href="#route-telemetry" onClick={(e) => scrollToSection(e, 'route-telemetry')}>Route Operations</a></li>
+              <li><a href="#vault-chamber" onClick={(e) => scrollToSection(e, 'vault-chamber')}>Sovereign Vault</a></li>
+              <li><a href="#liquidity-radar" onClick={(e) => scrollToSection(e, 'liquidity-radar')}>Cash Flow Radar</a></li>
+              <li><a href="#lifecycle" onClick={(e) => scrollToSection(e, 'lifecycle')}>Borrower Journey</a></li>
+              <li><a href="#audit-feed" onClick={(e) => scrollToSection(e, 'audit-feed')}>Security & Ledger</a></li>
             </ul>
           </div>
 
@@ -2392,9 +2221,9 @@ export const WelcomePage = () => {
             © {new Date().getFullYear()} Finance Portal Engine. All rights reserved.
           </span>
           <ul className="qonto-footer-legal-links">
-            <li><a href="#security">Privacy Policy</a></li>
-            <li><a href="#security">Terms of Service</a></li>
-            <li><a href="#security">Regulatory Compliance</a></li>
+            <li><a href="#security" onClick={(e) => scrollToSection(e, 'security')}>Privacy Policy</a></li>
+            <li><a href="#security" onClick={(e) => scrollToSection(e, 'security')}>Terms of Service</a></li>
+            <li><a href="#security" onClick={(e) => scrollToSection(e, 'security')}>Regulatory Compliance</a></li>
           </ul>
         </div>
       </footer>
