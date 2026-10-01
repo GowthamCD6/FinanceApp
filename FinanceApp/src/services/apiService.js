@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV } from '../config/env';
 
 class ApiService {
@@ -7,6 +8,15 @@ class ApiService {
     this.organizationId = null;
     this.branchId = null;
     this.sessionTerminatedCallback = null;
+
+    // Fast-restore previously verified working backend host
+    AsyncStorage.getItem('api_working_host')
+      .then((savedHost) => {
+        if (savedHost) {
+          this.baseUrl = savedHost;
+        }
+      })
+      .catch(() => {});
   }
 
   onSessionTerminated(callback) {
@@ -27,6 +37,9 @@ class ApiService {
 
   setBaseUrl(url) {
     this.baseUrl = url;
+    if (url) {
+      AsyncStorage.setItem('api_working_host', url).catch(() => {});
+    }
   }
 
   async request(endpoint, options = {}) {
@@ -38,12 +51,21 @@ class ApiService {
       ...options.headers,
     };
 
-    const candidateHosts = ENV.FALLBACK_HOSTS || [this.baseUrl];
+    // Prioritize already working host first to eliminate multi-second latency
+    const fallbackList = ENV.FALLBACK_HOSTS || [ENV.API_BASE_URL];
+    const candidateHosts = this.baseUrl
+      ? [this.baseUrl, ...fallbackList.filter((h) => h !== this.baseUrl)]
+      : fallbackList;
+
     let lastError = null;
 
-    for (const host of candidateHosts) {
+    for (let i = 0; i < candidateHosts.length; i++) {
+      const host = candidateHosts[i];
+      const isPrimary = host === this.baseUrl;
+      const timeoutMs = isPrimary ? (ENV.API_TIMEOUT_MS || 8000) : 2000;
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), ENV.API_TIMEOUT_MS || 8000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
         const response = await fetch(`${host}${endpoint}`, {
@@ -66,8 +88,11 @@ class ApiService {
           }
           throw new Error(json.message || `HTTP ${response.status}`);
         }
-        // Remember working host
-        this.baseUrl = host;
+        // Remember and persist working host for instant subsequent requests
+        if (this.baseUrl !== host) {
+          this.baseUrl = host;
+          AsyncStorage.setItem('api_working_host', host).catch(() => {});
+        }
         return json;
       } catch (error) {
         clearTimeout(timeoutId);

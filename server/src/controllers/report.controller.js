@@ -41,8 +41,11 @@ async function getOverdue(req, res) {
 
 async function getPaymentReport(req, res) {
   try {
-    const orgId = req.query.organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null;
-    const branchId = req.query.branchId || req.branchId || req.headers['x-branch-id'] || req.user?.branch_id || null;
+    const isSuperAdmin = req.user?.roles?.includes('SUPER_ADMIN');
+    const orgId = isSuperAdmin
+      ? (req.query.organizationId || req.headers['x-organization-id'] || req.organizationId || req.user?.organization_id || null)
+      : (req.organizationId || req.user?.organization_id || req.headers['x-organization-id'] || null);
+    const branchId = req.branchId || req.user?.branch_id || req.query.branchId || req.headers['x-branch-id'] || null;
     const start_date = req.query.start_date || req.query.startDate;
     const end_date = req.query.end_date || req.query.endDate;
     const { frequency, status } = req.query;

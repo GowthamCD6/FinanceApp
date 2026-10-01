@@ -498,66 +498,72 @@ async function getOverdueReport(organizationId, branchId) {
 async function getPaymentReport({ startDate, endDate, frequency, status, organizationId, branchId }) {
   const today = new Date().toISOString().slice(0, 10);
 
-  // 1. Auto-generate installments for any active loan that is missing schedule rows
-  try {
-    const loansWithoutInstallments = await query(
-      `SELECT l.id, l.principal_amount, l.total_repayment_amount, l.total_installments, l.paid_installments, l.repayment_frequency, l.disbursement_date, l.application_date
-       FROM loans l
-       WHERE NOT EXISTS (SELECT 1 FROM loan_installments li WHERE li.loan_id = l.id)
-         AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'APPROVED', 'COMPLETED')
-       LIMIT 50`
-    );
+  // 1. Asynchronously ensure any legacy loan has schedule rows without blocking report response
+  setImmediate(async () => {
+    try {
+      const loansWithoutInstallments = await query(
+        `SELECT l.id, l.principal_amount, l.total_repayment_amount, l.total_installments, l.paid_installments, l.repayment_frequency, l.disbursement_date, l.application_date
+         FROM loans l
+         WHERE NOT EXISTS (SELECT 1 FROM loan_installments li WHERE li.loan_id = l.id)
+           AND l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'APPROVED', 'COMPLETED')
+         LIMIT 20`
+      );
 
-    for (const l of loansWithoutInstallments) {
-      const totalInst = Math.max(1, parseInt(l.total_installments || 10, 10));
-      const totalRepay = parseFloat(l.total_repayment_amount || l.principal_amount || 10000);
-      const principalAmt = parseFloat(l.principal_amount || 10000);
-      const instAmt = Math.round((totalRepay / totalInst) * 100) / 100;
-      const baseDateStr = l.disbursement_date || l.application_date ? new Date(l.disbursement_date || l.application_date).toISOString().slice(0, 10) : today;
-      const baseDate = new Date(baseDateStr);
-      const paidCount = parseInt(l.paid_installments || 0, 10);
-      const freq = l.repayment_frequency || 'WEEKLY';
+      if (!loansWithoutInstallments || loansWithoutInstallments.length === 0) return;
 
-      for (let idx = 1; idx <= totalInst; idx++) {
-        const d = new Date(baseDate);
-        if (freq === 'DAILY') {
-          d.setDate(d.getDate() + (idx - 1));
-        } else if (freq === 'MONTHLY') {
-          d.setMonth(d.getMonth() + (idx - 1));
-        } else {
-          d.setDate(d.getDate() + (idx - 1) * 7);
+      for (const l of loansWithoutInstallments) {
+        const totalInst = Math.max(1, parseInt(l.total_installments || 10, 10));
+        const totalRepay = parseFloat(l.total_repayment_amount || l.principal_amount || 10000);
+        const principalAmt = parseFloat(l.principal_amount || 10000);
+        const instAmt = Math.round((totalRepay / totalInst) * 100) / 100;
+        const baseDateStr = l.disbursement_date || l.application_date ? new Date(l.disbursement_date || l.application_date).toISOString().slice(0, 10) : today;
+        const baseDate = new Date(baseDateStr);
+        const paidCount = parseInt(l.paid_installments || 0, 10);
+        const freq = l.repayment_frequency || 'WEEKLY';
+
+        const rowValues = [];
+        const placeholders = [];
+        for (let idx = 1; idx <= totalInst; idx++) {
+          const d = new Date(baseDate);
+          if (freq === 'DAILY') {
+            d.setDate(d.getDate() + (idx - 1));
+          } else if (freq === 'MONTHLY') {
+            d.setMonth(d.getMonth() + (idx - 1));
+          } else {
+            d.setDate(d.getDate() + (idx - 1) * 7);
+          }
+
+          const dateStr = d.toISOString().slice(0, 10);
+          const isPaid = idx <= paidCount;
+
+          placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+          rowValues.push(
+            l.id,
+            idx,
+            dateStr,
+            instAmt,
+            Math.round((principalAmt / totalInst) * 100) / 100,
+            Math.round(((totalRepay - principalAmt) / totalInst) * 100) / 100,
+            isPaid ? instAmt : 0,
+            isPaid ? 0 : instAmt,
+            isPaid ? 'PAID' : (dateStr < today ? 'OVERDUE' : 'PENDING'),
+            isPaid ? dateStr : null
+          );
         }
 
-        const dateStr = d.toISOString().slice(0, 10);
-        const isPaid = idx <= paidCount;
-
-        try {
+        if (placeholders.length > 0) {
           await query(
-            `INSERT INTO loan_installments 
+            `INSERT IGNORE INTO loan_installments 
              (loan_id, installment_number, due_date, scheduled_amount, principal_component, income_component, paid_amount, outstanding_amount, status, paid_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE due_date = VALUES(due_date)`,
-            [
-              l.id,
-              idx,
-              dateStr,
-              instAmt,
-              Math.round((principalAmt / totalInst) * 100) / 100,
-              Math.round(((totalRepay - principalAmt) / totalInst) * 100) / 100,
-              isPaid ? instAmt : 0,
-              isPaid ? 0 : instAmt,
-              isPaid ? 'PAID' : (dateStr < today ? 'OVERDUE' : 'PENDING'),
-              isPaid ? dateStr : null,
-            ]
+             VALUES ${placeholders.join(', ')}`,
+            rowValues
           );
-        } catch (_) {}
+        }
       }
-    }
-  } catch (e) {
-    console.warn('Auto-installment generation notice:', e.message);
-  }
+    } catch (_) {}
+  });
 
-  // 2. Build Query Clauses
+  // 2. Build Query Clauses (Optimized using indexed columns)
   let whereClauses = [
     `l.status IN ('ACTIVE', 'DISBURSED', 'PARTIALLY_PAID', 'OVERDUE', 'COMPLETED', 'APPROVED')`,
   ];
@@ -565,15 +571,15 @@ async function getPaymentReport({ startDate, endDate, frequency, status, organiz
 
   if (startDate && endDate && startDate !== 'ALL') {
     if (status === 'OVERDUE') {
-      whereClauses.push(`DATE(li.due_date) <= ? AND DATE(li.due_date) < ? AND (li.status != 'PAID' AND (li.outstanding_amount > 0 OR li.paid_amount < li.scheduled_amount))`);
+      whereClauses.push(`li.due_date <= ? AND li.due_date < ? AND (li.status != 'PAID' AND (li.outstanding_amount > 0 OR li.paid_amount < li.scheduled_amount))`);
       params.push(endDate, today);
     } else if (status === 'PAID') {
-      whereClauses.push(`DATE(li.due_date) BETWEEN ? AND ?`);
+      whereClauses.push(`li.due_date BETWEEN ? AND ?`);
       params.push(startDate, endDate);
     } else {
       whereClauses.push(`(
-        DATE(li.due_date) BETWEEN ? AND ?
-        OR (DATE(li.due_date) <= ? AND DATE(li.due_date) < ? AND (li.status != 'PAID' AND (li.outstanding_amount > 0 OR li.paid_amount < li.scheduled_amount)))
+        li.due_date BETWEEN ? AND ?
+        OR (li.due_date <= ? AND li.due_date < ? AND (li.status != 'PAID' AND (li.outstanding_amount > 0 OR li.paid_amount < li.scheduled_amount)))
       )`);
       params.push(startDate, endDate, endDate, today);
     }

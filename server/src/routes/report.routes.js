@@ -3,13 +3,8 @@ const router = express.Router();
 const reportController = require('../controllers/report.controller');
 const { authenticate } = require('../middleware/auth');
 
-// Support authenticated requests (with optional fallback for demo/portal access)
-router.use((req, res, next) => {
-  if (req.headers.authorization) {
-    return authenticate(req, res, next);
-  }
-  next();
-});
+// Secure all financial report endpoints with JWT authentication
+router.use(authenticate);
 
 router.get('/dashboard', reportController.getDashboard);
 router.get('/cashflow', reportController.getCashFlow);
