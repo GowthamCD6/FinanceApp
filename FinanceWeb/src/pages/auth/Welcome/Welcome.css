@@ -1,21 +1,26 @@
 /* ==========================================================================
-   QONTO-INSPIRED ULTRA-PROFESSIONAL FINTECH THEME
-   Palette: Matte Obsidian Black (#161616), Crisp White (#FFFFFF), 
-   Muted Slate (#8C8C8C), Pastel Accents (Mint, Lemon, Lavender, Peach)
+   QONTO-INSPIRED ULTRA-PROFESSIONAL FINTECH THEME - EXPANDED MANIFEST
+   Palette: Matte Obsidian Black (#141414), Card Dark (#1E1E1E / #222222),
+   Crisp White (#FFFFFF), Muted Slate (#8E8E93), 
+   Pastels: Mint (#C8F5E9), Lemon (#FBF6B6), Lavender (#DED4FC), Peach (#FCE0D2)
    ========================================================================== */
 
 :root {
   --qonto-black: #141414;
-  --qonto-dark: #1A1A1A;
-  --qonto-card-dark: #222222;
-  --qonto-border-dark: #2E2E2E;
+  --qonto-dark: #191919;
+  --qonto-card-dark: #202020;
+  --qonto-card-hover: #262626;
+  --qonto-border-dark: #2A2A2A;
+  --qonto-border-light: rgba(255, 255, 255, 0.1);
   --qonto-white: #FFFFFF;
-  --qonto-text-dim: #909090;
-  --qonto-text-light: #E0E0E0;
+  --qonto-text-dim: #8E8E93;
+  --qonto-text-light: #E5E5EA;
   --qonto-pastel-mint: #C8F5E9;
   --qonto-pastel-lemon: #FBF6B6;
   --qonto-pastel-lavender: #DED4FC;
   --qonto-pastel-peach: #FCE0D2;
+  --qonto-accent-green: #10B981;
+  --qonto-accent-blue: #3B82F6;
   --qonto-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -40,14 +45,16 @@
 }
 
 /* --------------------------------------------------------------------------
-   TOP NAVBAR (Clean Minimalist Qonto Style)
+   1. TOP NAVBAR
    -------------------------------------------------------------------------- */
 .qonto-navbar {
   position: sticky;
   top: 0;
   width: 100%;
   height: 80px;
-  background-color: var(--qonto-black);
+  background-color: rgba(20, 20, 20, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--qonto-border-dark);
   z-index: 100;
   display: flex;
@@ -110,7 +117,7 @@
 .qonto-nav-actions {
   display: flex;
   align-items: center;
-  gap: 1.75rem;
+  gap: 1.5rem;
 }
 
 .qonto-btn-signin {
@@ -149,7 +156,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   HERO SECTION (Qonto 2-Column Clean Presentation)
+   2. HERO SECTION
    -------------------------------------------------------------------------- */
 .qonto-hero-section {
   max-width: 1240px;
@@ -169,6 +176,28 @@
   z-index: 2;
 }
 
+.qonto-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.35rem 0.85rem;
+  background-color: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #A1A1AA;
+  margin-bottom: 1.25rem;
+}
+
+.badge-dot-live {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--qonto-accent-green);
+  box-shadow: 0 0 8px var(--qonto-accent-green);
+}
+
 .qonto-hero-heading {
   font-size: 3.8rem;
   font-weight: 800;
@@ -184,6 +213,13 @@
   color: var(--qonto-text-dim);
   margin: 0 0 2rem 0;
   max-width: 480px;
+}
+
+.hero-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
 }
 
 .qonto-btn-hero {
@@ -209,6 +245,27 @@
   box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
 }
 
+.qonto-btn-hero-secondary {
+  background-color: transparent;
+  color: var(--qonto-white);
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--qonto-border-dark);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.qonto-btn-hero-secondary:hover {
+  background-color: var(--qonto-card-dark);
+  border-color: #444444;
+}
+
 .qonto-hero-subnote {
   font-size: 0.85rem;
   color: #6C6C6C;
@@ -216,8 +273,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   HERO RIGHT: ISOMETRIC 3D FINTECH COMPOSITION
-   (Tilted Dashboard Tablet + Smartphone + Floating Matte Titanium Cards)
+   3. ISOMETRIC 3D FINTECH COMPOSITION
    -------------------------------------------------------------------------- */
 .qonto-hero-right {
   position: relative;
@@ -238,7 +294,7 @@
   transition: transform 0.25s ease-out;
 }
 
-/* 1. Base Tilted Tablet Dashboard Layer */
+/* Base Tilted Tablet Dashboard Layer */
 .qonto-mockup-tablet {
   position: absolute;
   top: 0;
@@ -290,7 +346,6 @@
   font-weight: 500;
 }
 
-/* Donut Chart Visual on Tablet */
 .tablet-donut-chart {
   width: 72px;
   height: 72px;
@@ -341,7 +396,7 @@
   font-weight: 700;
 }
 
-/* 2. Floating Tilted Smartphone Layer */
+/* Floating Tilted Smartphone */
 .qonto-mockup-phone {
   position: absolute;
   bottom: -40px;
@@ -405,7 +460,7 @@
   color: #9CA3AF;
 }
 
-/* 3. Floating Titanium / Matte Platinum Cards */
+/* Floating Titanium Cards */
 .qonto-floating-card-black {
   position: absolute;
   top: 120px;
@@ -460,13 +515,33 @@
 }
 
 /* --------------------------------------------------------------------------
-   THE 4 SIGNATURE QONTO PASTEL FEATURE CARDS
-   (Business Account, Invoice, Expense, Bookkeeping)
+   4. THE 4 SIGNATURE QONTO PASTEL FEATURE CARDS
    -------------------------------------------------------------------------- */
 .qonto-features-strip-section {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 2rem 2rem 6rem 2rem;
+  padding: 2rem 2rem 5rem 2rem;
+}
+
+.qonto-section-intro {
+  margin-bottom: 2.5rem;
+}
+
+.qonto-section-intro-tag {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #A1A1AA;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+
+.qonto-section-intro-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--qonto-white);
+  margin: 0;
 }
 
 .qonto-cards-grid {
@@ -491,7 +566,6 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* Pastel Top Banners */
 .qonto-card-banner {
   padding: 1.5rem 1.25rem 1.25rem 1.25rem;
   min-height: 100px;
@@ -499,21 +573,10 @@
   align-items: flex-start;
 }
 
-.banner-mint {
-  background-color: var(--qonto-pastel-mint);
-}
-
-.banner-lemon {
-  background-color: var(--qonto-pastel-lemon);
-}
-
-.banner-lavender {
-  background-color: var(--qonto-pastel-lavender);
-}
-
-.banner-peach {
-  background-color: var(--qonto-pastel-peach);
-}
+.banner-mint { background-color: var(--qonto-pastel-mint); }
+.banner-lemon { background-color: var(--qonto-pastel-lemon); }
+.banner-lavender { background-color: var(--qonto-pastel-lavender); }
+.banner-peach { background-color: var(--qonto-pastel-peach); }
 
 .qonto-card-title {
   font-size: 1.35rem;
@@ -539,7 +602,6 @@
   margin: 0 0 2rem 0;
 }
 
-/* Minimal Line Illustrations */
 .qonto-card-illustration {
   height: 85px;
   display: flex;
@@ -553,7 +615,571 @@
 }
 
 /* --------------------------------------------------------------------------
-   INSTITUTIONAL METRICS / REPUTATION SECTION
+   5. INTERACTIVE PRODUCT EXPERIENCE TABS (Interactive Switcher)
+   -------------------------------------------------------------------------- */
+.product-showcase-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 3rem 2rem 6rem 2rem;
+}
+
+.showcase-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--qonto-card-dark);
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--qonto-border-dark);
+  margin-bottom: 2.5rem;
+  overflow-x: auto;
+}
+
+.showcase-tab-btn {
+  flex: 1;
+  padding: 0.85rem 1.25rem;
+  background: transparent;
+  color: #A1A1AA;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.showcase-tab-btn.active {
+  background-color: var(--qonto-white);
+  color: #111111;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.showcase-content-box {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 20px;
+  padding: 3rem;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+
+.showcase-left-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.showcase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 1rem;
+  align-self: flex-start;
+}
+
+.showcase-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--qonto-white);
+  margin: 0 0 1rem 0;
+  line-height: 1.2;
+}
+
+.showcase-desc {
+  font-size: 1.05rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.65;
+  margin: 0 0 1.75rem 0;
+}
+
+.showcase-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--qonto-text-light);
+  font-weight: 500;
+}
+
+/* Right Mockup Display in Showcase */
+.showcase-right-visual {
+  background-color: #FFFFFF;
+  border-radius: 16px;
+  padding: 1.75rem;
+  color: #111111;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.visual-metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.visual-metric-amount {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #111111;
+  margin: 0.75rem 0 0.25rem 0;
+}
+
+.visual-progress-track {
+  height: 8px;
+  background-color: #F3F4F6;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 1.25rem 0;
+}
+
+.visual-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.visual-details-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.visual-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #4B5563;
+  padding: 4px 0;
+}
+
+.visual-detail-row span:last-child {
+  font-weight: 700;
+  color: #111111;
+}
+
+/* --------------------------------------------------------------------------
+   6. 3-STEP OPERATIONAL LIFECYCLE ("How It Works")
+   -------------------------------------------------------------------------- */
+.how-it-works-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2rem 2rem 6rem 2rem;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.step-card {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 16px;
+  padding: 2.25rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.step-card:hover {
+  transform: translateY(-4px);
+  border-color: #444444;
+}
+
+.step-num-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: var(--qonto-white);
+  color: #111111;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+}
+
+.step-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.02em;
+}
+
+.step-desc {
+  font-size: 0.95rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   7. INTERACTIVE LOAN CALCULATOR (Fintech Simulator)
+   -------------------------------------------------------------------------- */
+.qonto-calc-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.qonto-calc-box {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 24px;
+  padding: 3.5rem 3rem;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.calc-controls-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.calc-heading-box h3 {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.03em;
+}
+
+.calc-heading-box p {
+  font-size: 0.95rem;
+  color: var(--qonto-text-dim);
+  margin: 0;
+}
+
+.calc-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.calc-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--qonto-text-light);
+}
+
+.calc-display-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+}
+
+.qonto-range-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #333333;
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.qonto-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--qonto-white);
+  border: 2px solid #111111;
+  cursor: pointer;
+}
+
+.calc-pills-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.calc-pill-btn {
+  padding: 0.75rem;
+  border-radius: 8px;
+  background-color: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  color: var(--qonto-text-dim);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.calc-pill-btn.active {
+  background-color: var(--qonto-white);
+  color: #111111;
+  font-weight: 700;
+  border-color: var(--qonto-white);
+}
+
+/* Calculator Breakdown Box (Crisp White Card) */
+.calc-breakdown-card {
+  background-color: #FFFFFF;
+  border-radius: 16px;
+  padding: 2.25rem;
+  color: #111111;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.breakdown-row.total-row {
+  border-bottom: none;
+  padding-top: 0.5rem;
+}
+
+.breakdown-lbl {
+  font-size: 0.92rem;
+  color: #4B5563;
+  font-weight: 500;
+}
+
+.breakdown-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #111111;
+}
+
+.breakdown-val.highlight {
+  font-size: 1.8rem;
+  color: #111111;
+  font-weight: 900;
+}
+
+.btn-calc-submit {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #111111;
+  color: #FFFFFF;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  margin-top: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.btn-calc-submit:hover {
+  background-color: #2D2D2D;
+}
+
+/* --------------------------------------------------------------------------
+   8. ENTERPRISE SECURITY & COMPLIANCE BENTO GRID
+   -------------------------------------------------------------------------- */
+.security-bento-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+
+.bento-card {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 16px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-card.col-span-2 {
+  grid-column: span 2;
+}
+
+.bento-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: var(--qonto-card-dark);
+  border: 1px solid var(--qonto-border-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  color: var(--qonto-white);
+}
+
+.bento-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.bento-desc {
+  font-size: 0.92rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   9. CLIENT TESTIMONIALS & TRUST
+   -------------------------------------------------------------------------- */
+.testimonials-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+  margin-top: 3rem;
+}
+
+.testimonial-card {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 16px;
+  padding: 2.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.testimonial-quote {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--qonto-text-light);
+  margin: 0 0 1.75rem 0;
+  font-style: normal;
+}
+
+.testimonial-author-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.author-avatar-initials {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: var(--qonto-white);
+  color: #111111;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.author-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--qonto-white);
+}
+
+.author-role {
+  font-size: 0.8rem;
+  color: var(--qonto-text-dim);
+}
+
+/* --------------------------------------------------------------------------
+   10. INTERACTIVE FAQ ACCORDION
+   -------------------------------------------------------------------------- */
+.faq-section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem 2rem;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 2.5rem;
+}
+
+.faq-item {
+  background-color: var(--qonto-dark);
+  border: 1px solid var(--qonto-border-dark);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.faq-item.active {
+  border-color: #444444;
+}
+
+.faq-question-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.4rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: var(--qonto-white);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.faq-answer-content {
+  padding: 0 1.5rem 1.4rem 1.5rem;
+  font-size: 0.95rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.65;
+}
+
+/* --------------------------------------------------------------------------
+   11. INSTITUTIONAL METRICS SECTION
    -------------------------------------------------------------------------- */
 .qonto-metrics-section {
   border-top: 1px solid var(--qonto-border-dark);
@@ -593,7 +1219,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   BOTTOM PROMPT / DISCOVER CTA
+   12. BOTTOM CONVERSION ACTION
    -------------------------------------------------------------------------- */
 .qonto-bottom-cta {
   max-width: 1240px;
@@ -606,69 +1232,114 @@
 }
 
 .qonto-cta-heading {
-  font-size: 3rem;
+  font-size: 3.2rem;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--qonto-white);
   margin: 0 0 1.25rem 0;
-  max-width: 650px;
+  max-width: 680px;
   line-height: 1.15;
 }
 
 .qonto-cta-sub {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   color: var(--qonto-text-dim);
-  max-width: 520px;
-  margin: 0 0 2.25rem 0;
+  max-width: 540px;
+  margin: 0 0 2.5rem 0;
+  line-height: 1.6;
 }
 
 /* --------------------------------------------------------------------------
-   FOOTER (Clean Qonto Minimalist)
+   13. FOOTER
    -------------------------------------------------------------------------- */
 .qonto-footer {
   border-top: 1px solid var(--qonto-border-dark);
   background-color: var(--qonto-black);
-  padding: 3.5rem 2rem 2.5rem 2rem;
+  padding: 4rem 2rem 2.5rem 2rem;
 }
 
-.qonto-footer-inner {
+.qonto-footer-grid {
+  max-width: 1240px;
+  margin: 0 auto 3rem auto;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 3rem;
+}
+
+.footer-col-brand h4 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--qonto-white);
+  margin: 0 0 0.75rem 0;
+}
+
+.footer-col-brand p {
+  font-size: 0.9rem;
+  color: var(--qonto-text-dim);
+  line-height: 1.6;
+  max-width: 320px;
+}
+
+.footer-col-links h5 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--qonto-white);
+  margin: 0 0 1.25rem 0;
+}
+
+.footer-col-links ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-col-links a {
+  color: #8C8C8C;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.15s ease;
+}
+
+.footer-col-links a:hover {
+  color: var(--qonto-white);
+}
+
+.qonto-footer-bottom {
   max-width: 1240px;
   margin: 0 auto;
+  padding-top: 2rem;
+  border-top: 1px solid var(--qonto-border-dark);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1.5rem;
-}
-
-.qonto-footer-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 1rem;
 }
 
 .qonto-footer-copy {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   color: #64748B;
 }
 
-.qonto-footer-links {
+.qonto-footer-legal-links {
   display: flex;
-  align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.qonto-footer-links a {
-  color: #8C8C8C;
+.qonto-footer-legal-links a {
+  color: #64748B;
   text-decoration: none;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   transition: color 0.15s ease;
 }
 
-.qonto-footer-links a:hover {
+.qonto-footer-legal-links a:hover {
   color: var(--qonto-white);
 }
 
@@ -676,13 +1347,28 @@
    RESPONSIVE QUERIES
    -------------------------------------------------------------------------- */
 @media (max-width: 1100px) {
-  .qonto-cards-grid {
+  .qonto-cards-grid,
+  .steps-grid,
+  .testimonials-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .qonto-metrics-inner {
+  .bento-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 3rem;
+  }
+
+  .bento-card.col-span-2 {
+    grid-column: span 1;
+  }
+
+  .showcase-content-box,
+  .qonto-calc-box {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .qonto-footer-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -695,6 +1381,10 @@
 
   .qonto-hero-left {
     align-items: center;
+  }
+
+  .hero-actions-row {
+    justify-content: center;
   }
 
   .qonto-hero-heading {
@@ -719,12 +1409,22 @@
     font-size: 2.2rem;
   }
 
-  .qonto-cards-grid {
+  .qonto-cards-grid,
+  .steps-grid,
+  .testimonials-grid,
+  .bento-grid,
+  .qonto-metrics-inner,
+  .qonto-footer-grid {
     grid-template-columns: 1fr;
   }
 
-  .qonto-metrics-inner {
-    grid-template-columns: 1fr;
+  .showcase-tab-bar {
+    flex-direction: column;
+  }
+
+  .showcase-content-box,
+  .qonto-calc-box {
+    padding: 2rem 1.25rem;
   }
 
   .qonto-isometric-stage {
