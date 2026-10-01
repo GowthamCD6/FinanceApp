@@ -1484,16 +1484,11 @@ const styles = StyleSheet.create({
   },
   metricCardProper: {
     flex: 1,
-    backgroundColor: '#F3F4F6', // Gray card
-    borderRadius: 12,
-    padding: 10,
+    backgroundColor: '#FFFFFF', // Clean White card
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: '#E2E8F0', // Box side line width and darkness from reference
     justifyContent: 'space-between',
   },
   metricTopProper: {
@@ -1517,13 +1512,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metricValueProper: {
-    fontSize: 14,
+    fontSize: 15,
+    color: '#1E1B4B', // Sleek deep title color from reference
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
     marginTop: 2,
   },
   metricSubtextProper: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#64748B',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
     marginTop: 2,
   },
@@ -1692,18 +1688,13 @@ const styles = StyleSheet.create({
 
   // Borrower Record Card
   recordCard: {
-    backgroundColor: '#F3F4F6', // Gray card
+    backgroundColor: '#FFFFFF', // Pure White card as requested
     marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    padding: 12,
+    marginBottom: 10,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: '#E2E8F0', // Box side line width and darkness from reference
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1727,8 +1718,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   customerName: {
-    fontSize: 15,
-    color: '#212121',
+    fontSize: 16,
+    color: '#1E1B4B', // Sleek deep title color from reference
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   phoneRow: {
@@ -1738,7 +1729,7 @@ const styles = StyleSheet.create({
   },
   phoneText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B', // From reference
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   dotSeparator: {
@@ -1747,7 +1738,7 @@ const styles = StyleSheet.create({
   },
   shopText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B', // From reference
     flex: 1,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
@@ -1817,7 +1808,7 @@ const styles = StyleSheet.create({
   },
   amountVal: {
     fontSize: 14,
-    color: '#212121',
+    color: '#1E1B4B', // Sleek deep title color from reference
     marginTop: 2,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },

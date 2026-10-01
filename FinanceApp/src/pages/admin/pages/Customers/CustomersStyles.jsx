@@ -102,16 +102,12 @@ export default StyleSheet.create({
   },
   metricCardProper: {
     flex: 1,
-    backgroundColor: '#F3F4F6', // Gray card
+    backgroundColor: '#FFFFFF', // Clean White card
     borderRadius: 14,
     padding: 12,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: '#E2E8F0', // Box side line width and darkness
+    justifyContent: 'space-between',
   },
   metricTopProper: {
     flexDirection: 'row',
@@ -122,7 +118,7 @@ export default StyleSheet.create({
   metricLabelProper: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#6B7280',
+    color: '#64748B',
     letterSpacing: 0.5,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
@@ -136,11 +132,12 @@ export default StyleSheet.create({
   metricValueProper: {
     fontSize: 16,
     fontWeight: '800',
+    color: '#1E1B4B',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   metricSubtextProper: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#64748B',
     marginTop: 2,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
@@ -329,17 +326,12 @@ export default StyleSheet.create({
 
   // Borrower Card (Matching Reports Page Card Architecture)
   recordCard: {
-    backgroundColor: '#F3F4F6', // Gray card
+    backgroundColor: '#FFFFFF', // Pure White card as requested
     borderRadius: 14,
-    padding: 12,
-    marginBottom: 8,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: '#E2E8F0', // Box side line width and darkness from reference
   },
   cardHeader: {
     flexDirection: 'row',
@@ -375,8 +367,8 @@ export default StyleSheet.create({
     flexWrap: 'wrap',
   },
   customerName: {
-    fontSize: 15,
-    color: '#212121',
+    fontSize: 16,
+    color: '#1E1B4B', // Sleek deep dark title from reference
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   shopPill: {
@@ -403,7 +395,7 @@ export default StyleSheet.create({
   },
   phoneText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B', // From reference
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   dotSeparator: {
@@ -446,7 +438,7 @@ export default StyleSheet.create({
   schemeTagText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
+    color: '#334155', // Sleek message color from reference
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
   loanCodeBadge: {
@@ -478,14 +470,14 @@ export default StyleSheet.create({
   },
   amountLabel: {
     fontSize: 10,
-    color: '#64748B',
+    color: '#64748B', // From reference
     textTransform: 'uppercase',
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   amountVal: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1E1B4B', // Sleek deep title color from reference
     marginTop: 2,
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Bold' : 'Poppins-Bold',
   },
@@ -538,7 +530,7 @@ export default StyleSheet.create({
   },
   noLoanText: {
     fontSize: 12,
-    color: '#475569',
+    color: '#334155', // From reference
     fontFamily: Platform.OS === 'android' ? 'Gilroy-Medium' : 'Poppins-Medium',
   },
   noLoanSchemeTag: {

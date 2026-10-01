@@ -61,17 +61,12 @@ export default StyleSheet.create({
     fontWeight: '700',
   },
   loanCard: {
-    backgroundColor: Colors.backgroundContainer, // Gray card #F3F4F6
+    backgroundColor: '#FFFFFF', // Pure White loan card as requested
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.lightGray400, // #E5E7EB
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0', // Box side line width and darkness from reference
     padding: 16,
     marginBottom: 14,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
   loanTop: {
     flexDirection: 'row',
@@ -83,7 +78,7 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     fontFamily: Fonts.gilroy.bold,
-    color: Colors.gray800,
+    color: '#1E1B4B', // Sleek deep title color from reference
   },
   loanPurpose: {
     fontSize: 12,
@@ -93,13 +88,13 @@ export default StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.white,
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
     justifyContent: 'space-around',
     borderWidth: 1,
-    borderColor: Colors.lightGray400,
+    borderColor: '#E2E8F0',
   },
   statCol: {
     alignItems: 'center',
@@ -115,7 +110,7 @@ export default StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     fontFamily: Fonts.gilroy.bold,
-    color: Colors.gray800,
+    color: '#1E1B4B',
     marginTop: 2,
   },
   payButton: {

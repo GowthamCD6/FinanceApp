@@ -288,16 +288,11 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 44 : 32,
   },
   card: {
-    backgroundColor: Colors.backgroundContainer, // Clean light gray card #F3F4F6
+    backgroundColor: '#FFFFFF', // Pure White card as requested
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.lightGray400, // #E5E7EB
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0', // Box side line width and darkness from reference
   },
   reportEyebrow: {
     fontSize: 10,
@@ -307,24 +302,24 @@ const styles = StyleSheet.create({
   },
   reportTitle: {
     fontSize: 18,
-    color: Colors.textPrimary,
+    color: '#1E1B4B', // Sleek deep title color from reference
     marginTop: 2,
     fontFamily: Fonts.gilroy.bold,
   },
   reportSub: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: '#64748B', // From reference
     marginBottom: 16,
     fontFamily: Fonts.gilroy.medium,
   },
   flowChain: { gap: 10, alignItems: 'center' },
   flowStep: {
     width: '100%',
-    backgroundColor: Colors.white,
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.lightGray400,
+    borderColor: '#E2E8F0',
   },
   stepTitle: {
     fontSize: 13,
@@ -398,12 +393,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.gilroy.bold,
   },
   outItem: {
-    backgroundColor: Colors.white,
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: Colors.lightGray400,
+    borderColor: '#E2E8F0',
   },
   outHeader: {
     flexDirection: 'row',
@@ -413,7 +408,7 @@ const styles = StyleSheet.create({
   },
   outCust: {
     fontSize: 14,
-    color: Colors.textPrimary,
+    color: '#1E1B4B', // Sleek deep title color from reference
     fontFamily: Fonts.gilroy.bold,
   },
   outNums: {
@@ -423,7 +418,7 @@ const styles = StyleSheet.create({
   },
   outNumText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: '#64748B', // From reference
     fontFamily: Fonts.gilroy.medium,
   },
 });
