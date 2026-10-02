@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import logoImg from '../../../assets/logo-tight.png';
+import { LiquidHeroArtwork } from './LiquidHeroArtwork';
 import {
   ArrowRight,
   CheckCircle2,
@@ -13,12 +14,36 @@ import {
   Key,
   Shield,
   Smartphone,
-  Radio,
-  RotateCcw,
   Sparkles,
   TrendingUp,
-  CreditCard,
   Zap,
+  Users,
+  BarChart3,
+  Globe,
+  Clock,
+  Layers,
+  Receipt,
+  Printer,
+  QrCode,
+  Check,
+  RefreshCw,
+  Star,
+  ChevronRight,
+  FileCheck2,
+  Percent,
+  Wallet,
+  Activity,
+  Calendar,
+  Eye,
+  EyeOff,
+  Database,
+  Cpu,
+  Fingerprint,
+  Sliders,
+  Network,
+  Save,
+  Search,
+  Menu,
 } from 'lucide-react';
 import './Welcome.css';
 
@@ -26,42 +51,146 @@ export const WelcomePage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  // --------------------------------------------------------------------------
-  // SCROLL-AWARE DYNAMIC HEADER STATE
-  // --------------------------------------------------------------------------
+  // Scroll Header state
   const [isScrolled, setIsScrolled] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [activeSection, setActiveSection] = useState('hero');
+
+  // Multi-Tenant Interactive Hero State
+  const [selectedTenantIdx, setSelectedTenantIdx] = useState(0);
+  const [isConfidentialMode, setIsConfidentialMode] = useState(true);
+  const [heroActiveView, setHeroActiveView] = useState('overview'); // 'overview', 'branches', 'enclave'
+  const [activeTab, setActiveTab] = useState('daily');
+  const [openFaq, setOpenFaq] = useState(0);
+
+  // Multi-Tenant Demo Data Profiles (Sanitized, Confidential Enterprise Architecture)
+  const tenantProfiles = [
+    {
+      id: 'ORG-8041',
+      name: 'Apex Finance Corp',
+      tier: 'Enterprise NBFC',
+      subdomain: 'apex-capital.financeapp.io',
+      branchesCount: 12,
+      agentsCount: 48,
+      scheme: 'Daily 100-Day Merchant Advances',
+      stats: {
+        portfolio: '₹4,82,50,000',
+        portfolioMasked: '₹ • • , • • , • • •',
+        todayCollections: '₹3,84,250',
+        todayCollectionsMasked: '₹ • , • • , • • •',
+        borrowersCount: '1,420 Active',
+        recoveryRate: '99.4%',
+        vaultBalance: '₹12,45,000',
+        vaultBalanceMasked: '₹ • • , • • , • • •',
+      },
+      branches: [
+        { name: 'Central Branch Hub', collectors: 14, status: 'Reconciled' },
+        { name: 'Metropolitan Commercial Branch', collectors: 18, status: 'Reconciled' },
+        { name: 'Bazaar Route Cluster Branch', collectors: 16, status: 'Reconciled' },
+      ],
+      stream: [
+        { id: 'TX-901', shop: 'Merchant #M-8821', route: 'Sector 04 Route', amount: '₹125.00', status: 'Cleared' },
+        { id: 'TX-902', shop: 'Merchant #M-4412', route: 'Sector 12 Route', amount: '₹250.00', status: 'Cleared' },
+        { id: 'TX-903', shop: 'Merchant #M-7709', route: 'Sector 02 Route', amount: '₹500.00', status: 'Cleared' },
+      ],
+    },
+    {
+      id: 'ORG-9214',
+      name: 'Zenith Chit Fund Syndicate',
+      tier: 'Multi-Branch Cooperative',
+      subdomain: 'zenith-chits.financeapp.io',
+      branchesCount: 8,
+      agentsCount: 32,
+      scheme: 'Weekly Chit & Group Lending',
+      stats: {
+        portfolio: '₹2,65,00,000',
+        portfolioMasked: '₹ • • , • • , • • •',
+        todayCollections: '₹2,10,000',
+        todayCollectionsMasked: '₹ • , • • , • • •',
+        borrowersCount: '860 Active',
+        recoveryRate: '99.8%',
+        vaultBalance: '₹38,50,000',
+        vaultBalanceMasked: '₹ • • , • • , • • •',
+      },
+      branches: [
+        { name: 'Regional Chit Office', collectors: 12, status: 'Reconciled' },
+        { name: 'Industrial Belt Branch', collectors: 10, status: 'Reconciled' },
+        { name: 'Suburban Hub Branch', collectors: 10, status: 'Reconciled' },
+      ],
+      stream: [
+        { id: 'TX-601', shop: 'Chit Group #G-104', route: 'Weekly Batch A', amount: '₹2,500.00', status: 'Cleared' },
+        { id: 'TX-602', shop: 'Chit Group #G-208', route: 'Weekly Batch B', amount: '₹5,000.00', status: 'Cleared' },
+        { id: 'TX-603', shop: 'Chit Group #G-112', route: 'Weekly Batch A', amount: '₹2,500.00', status: 'Cleared' },
+      ],
+    },
+    {
+      id: 'ORG-7750',
+      name: 'Sovereign Rural Microcredit',
+      tier: 'Federated Rural Credit Hub',
+      subdomain: 'sovereign-credit.financeapp.io',
+      branchesCount: 16,
+      agentsCount: 64,
+      scheme: 'Hybrid Bazaar & Weekly Microcredit',
+      stats: {
+        portfolio: '₹6,15,00,000',
+        portfolioMasked: '₹ • • , • • , • • •',
+        todayCollections: '₹5,20,000',
+        todayCollectionsMasked: '₹ • , • • , • • •',
+        borrowersCount: '2,840 Active',
+        recoveryRate: '99.1%',
+        vaultBalance: '₹45,20,000',
+        vaultBalanceMasked: '₹ • • , • • , • • •',
+      },
+      branches: [
+        { name: 'Agri Mandi Terminal', collectors: 22, status: 'Reconciled' },
+        { name: 'Wholesale Market Division', collectors: 24, status: 'Reconciled' },
+        { name: 'Retail Merchant Cluster', collectors: 18, status: 'Reconciled' },
+      ],
+      stream: [
+        { id: 'TX-401', shop: 'Terminal #T-102', route: 'Mandi Route 01', amount: '₹375.00', status: 'Cleared' },
+        { id: 'TX-402', shop: 'Terminal #T-309', route: 'Mandi Route 04', amount: '₹125.00', status: 'Cleared' },
+        { id: 'TX-403', shop: 'Terminal #T-512', route: 'Mandi Route 02', amount: '₹250.00', status: 'Cleared' },
+      ],
+    },
+  ];
+
+  const currentTenant = tenantProfiles[selectedTenantIdx];
+
+  // Org Admin Interactive Configurator Demo State
+  const [adminConfigScheme, setAdminConfigScheme] = useState('DAILY');
+  const [adminDailyRate, setAdminDailyRate] = useState(10.0);
+  const [adminDailyTenure, setAdminDailyTenure] = useState(100);
+  const [adminWeeklyRate, setAdminWeeklyRate] = useState(10.0);
+  const [adminWeeklyTenure, setAdminWeeklyTenure] = useState(10);
+  const [adminOperatingDays, setAdminOperatingDays] = useState(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']);
+  const [adminToast, setAdminToast] = useState(false);
+
+  // Repayment Mode Demo State ('NORMAL' vs 'LUMP_SUM_END')
+  const [repaymentDemoMode, setRepaymentDemoMode] = useState('LUMP_SUM_END');
+
+  // Interactive Loan Calculator State
+  const [calcAmount, setCalcAmount] = useState(50000);
+  const [calcScheme, setCalcScheme] = useState('DAILY');
+  const [calcTenure, setCalcTenure] = useState(100);
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      setIsScrolled(scrollY > 20);
-
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (docHeight > 0) {
-        setScrollProgress(Math.min(100, Math.max(0, (scrollY / docHeight) * 100)));
-      }
-
-      const sections = ['hero', 'card-studio', 'route-telemetry', 'vault-chamber', 'calculator', 'security', 'faq'];
-      for (const sectionId of sections) {
-        const el = document.getElementById(sectionId);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= 160 && rect.bottom >= 160) {
-            setActiveSection(sectionId);
-            break;
-          }
-        }
-      }
+      setIsScrolled(window.scrollY > 20);
     };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Smooth scroll helper for top navigation
+  const interestRate = calcScheme === 'DAILY' ? 25 : calcScheme === 'WEEKLY' ? 22 : 18;
+  const totalInterest = Math.round(calcAmount * (interestRate / 100));
+  const totalRepayable = calcAmount + totalInterest;
+  const cycleInstallment = Math.round(totalRepayable / calcTenure);
+
+  const handleSchemeChange = (scheme) => {
+    setCalcScheme(scheme);
+    if (scheme === 'DAILY') setCalcTenure(100);
+    else if (scheme === 'WEEKLY') setCalcTenure(10);
+    else setCalcTenure(12);
+  };
+
   const scrollToSection = (e, id) => {
     e.preventDefault();
     const element = document.getElementById(id);
@@ -70,881 +199,1069 @@ export const WelcomePage = () => {
     }
   };
 
-  // --------------------------------------------------------------------------
-  // 1. HERO 3D ISOMETRIC PARALLAX TILT
-  // --------------------------------------------------------------------------
-  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 });
-
-  const handleHeroMouseMove = (e) => {
-    const { clientX, clientY } = e;
-    const { innerWidth, innerHeight } = window;
-    const xOffset = (clientX / innerWidth - 0.5) * 8;
-    const yOffset = (clientY / innerHeight - 0.5) * 8;
-    setHeroTilt({ x: xOffset, y: yOffset });
-  };
-
-  const handleHeroMouseLeave = () => {
-    setHeroTilt({ x: 0, y: 0 });
-  };
-
-  // --------------------------------------------------------------------------
-  // 2. 3D CARD STUDIO: BESPOKE HARDWARE CARDS
-  // --------------------------------------------------------------------------
-  const [activeCardTier, setActiveCardTier] = useState('obsidian'); // obsidian | emerald | gold | cobalt
-  const [cardRotation, setCardRotation] = useState({ x: 0, y: 0 });
-  const [cardFlipped, setCardFlipped] = useState(false);
-  const [cardShine, setCardShine] = useState({ x: 50, y: 50, opacity: 0 });
-  const [nfcBeaming, setNfcBeaming] = useState(false);
-
-  const cardTiers = {
-    obsidian: {
-      name: 'Matte Obsidian Titanium',
-      badge: 'ENTERPRISE SOVEREIGN',
-      tagline: 'Heavy aerospace titanium with cold-engraved cryptographic tenant keys',
-      accentColor: '#10B981',
-      gradient: 'linear-gradient(135deg, #242731 0%, #16181F 50%, #0D0F14 100%)',
-      border: 'rgba(255, 255, 255, 0.18)',
-      cardNum: '•••• 9842',
-      holder: 'KUMAR FINANCIALS',
-      limit: '₹50,00,000 / day',
-    },
-    emerald: {
-      name: 'Emerald Bazaar Merchant',
-      badge: 'RETAIL ROUTE TERMINAL',
-      tagline: 'High-resilience polycarbonate for daily market collectors',
-      accentColor: '#34D399',
-      gradient: 'linear-gradient(135deg, #064E3B 0%, #032E24 60%, #021D17 100%)',
-      border: 'rgba(52, 211, 153, 0.45)',
-      cardNum: '•••• 5120',
-      holder: 'BAZAAR AGENT #08',
-      limit: '₹5,00,000 / day',
-    },
-    gold: {
-      name: 'Rose Gold Sovereign Vault',
-      badge: 'TREASURY & GOVERNANCE',
-      tagline: 'Electrum alloy with dual-custody cryptographic approval',
-      accentColor: '#F59E0B',
-      gradient: 'linear-gradient(135deg, #572A0D 0%, #38154D 60%, #1E1226 100%)',
-      border: 'rgba(245, 158, 11, 0.45)',
-      cardNum: '•••• 8801',
-      holder: 'CENTRAL TREASURY',
-      limit: '₹1,50,00,000 / day',
-    },
-    cobalt: {
-      name: 'Royal Cobalt Fleet',
-      badge: 'MULTI-BRANCH DISBURSAL',
-      tagline: 'Luminescent core with instant field-freeze protocol',
-      accentColor: '#60A5FA',
-      gradient: 'linear-gradient(135deg, #1E3A8A 0%, #0F2042 60%, #040E24 100%)',
-      border: 'rgba(96, 165, 250, 0.45)',
-      cardNum: '•••• 3390',
-      holder: 'BRANCH SOUTH #03',
-      limit: '₹25,00,000 / day',
-    },
-  };
-
-  const handleCardMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const xPercent = (x / rect.width) * 100;
-    const yPercent = (y / rect.height) * 100;
-    const rotX = -((y / rect.height - 0.5) * 20);
-    const rotY = (x / rect.width - 0.5) * 20;
-
-    setCardRotation({ x: rotX, y: rotY });
-    setCardShine({ x: xPercent, y: yPercent, opacity: 0.75 });
-  };
-
-  const handleCardMouseLeave = () => {
-    setCardRotation({ x: 0, y: 0 });
-    setCardShine({ x: 50, y: 50, opacity: 0 });
-  };
-
-  const triggerNfcBeam = () => {
-    setNfcBeaming(true);
-    setTimeout(() => setNfcBeaming(false), 1400);
-  };
-
-  // --------------------------------------------------------------------------
-  // 3. 3D ISOMETRIC ROUTE & BAZAAR TELEMETRY STATION
-  // --------------------------------------------------------------------------
-  const [routeSpeed, setRouteSpeed] = useState('STANDARD'); // 'STANDARD' | 'ACCELERATED'
-  const [currentWaypointIdx, setCurrentWaypointIdx] = useState(2);
-  const [lastPaymentToast, setLastPaymentToast] = useState('Selvi Groceries · Installment +₹125.00 matched');
-
-  const waypoints = [
-    { id: 1, name: 'Saidapet Bazaar #01', type: 'Vegetable Mandi', amount: '₹125', status: 'CLEARED', x: 18, y: 28 },
-    { id: 2, name: 'Mylapore Tank #04', type: 'Provision Store', amount: '₹250', status: 'CLEARED', x: 42, y: 22 },
-    { id: 3, name: 'T. Nagar Hub #07', type: 'Textile Mart', amount: '₹500', status: 'IN_TRANSIT', x: 68, y: 35 },
-    { id: 4, name: 'Purasawalkam #09', type: 'Stationery Works', amount: '₹125', status: 'PENDING', x: 82, y: 62 },
-    { id: 5, name: 'George Town #12', type: 'Wholesale Dryfruits', amount: '₹375', status: 'PENDING', x: 55, y: 78 },
-    { id: 6, name: 'Triplicane High #15', type: 'Tea Stall', amount: '₹125', status: 'PENDING', x: 26, y: 68 },
-  ];
-
-  useEffect(() => {
-    const intervalTime = routeSpeed === 'ACCELERATED' ? 2200 : 4200;
-    const timer = setInterval(() => {
-      setCurrentWaypointIdx((prev) => {
-        const next = (prev + 1) % waypoints.length;
-        const wp = waypoints[next];
-        setLastPaymentToast(`${wp.name} · ${wp.type} (+${wp.amount}) Verified`);
-        return next;
-      });
-    }, intervalTime);
-
-    return () => clearInterval(timer);
-  }, [routeSpeed]);
-
-  // --------------------------------------------------------------------------
-  // 4. 3D SOVEREIGN VAULT GYRO-GIMBAL STATE
-  // --------------------------------------------------------------------------
-  const [vaultPulseMode, setVaultPulseMode] = useState('NORMAL'); // 'COLLECT' | 'DISBURSE' | 'NORMAL'
-  const [vaultStats, setVaultStats] = useState({
-    activeBalance: '₹48,20,500.00',
-    dayInflow: '+ ₹3,84,250',
-    dayOutflow: '- ₹2,15,000',
-    reconciledRate: '100.0%',
-    blockHash: '0x8f2d...91c4',
-  });
-
-  const triggerCollectionSimulation = () => {
-    setVaultPulseMode('COLLECT');
-    setVaultStats((prev) => ({
-      ...prev,
-      activeBalance: '₹48,21,750.00',
-      dayInflow: '+ ₹3,85,500',
-      blockHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
-    }));
-    setTimeout(() => setVaultPulseMode('NORMAL'), 2500);
-  };
-
-  const triggerDisbursalSimulation = () => {
-    setVaultPulseMode('DISBURSE');
-    setVaultStats((prev) => ({
-      ...prev,
-      activeBalance: '₹48,06,750.00',
-      dayOutflow: '- ₹2,30,000',
-      blockHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
-    }));
-    setTimeout(() => setVaultPulseMode('NORMAL'), 2500);
-  };
-
-  // --------------------------------------------------------------------------
-  // 5. LOAN SIMULATOR CALCULATIONS
-  // --------------------------------------------------------------------------
-  const [calcAmount, setCalcAmount] = useState(50000);
-  const [calcFrequency, setCalcFrequency] = useState('WEEKLY');
-  const [calcTenure, setCalcTenure] = useState(10);
-
-  const interestRate = calcFrequency === 'DAILY' ? 25 : calcFrequency === 'WEEKLY' ? 25 : 20;
-  const totalInterest = Math.round(calcAmount * (interestRate / 100));
-  const totalRepayable = calcAmount + totalInterest;
-  const emiAmount = Math.round(totalRepayable / calcTenure);
-
-  // --------------------------------------------------------------------------
-  // 6. FAQ ACCORDION
-  // --------------------------------------------------------------------------
-  const [openFaq, setOpenFaq] = useState(0);
-
+  // FAQ Data tailored to Multi-Tenant SaaS
   const faqs = [
     {
-      q: 'How does daily merchant collection calculate interest and tenure?',
-      a: 'The daily merchant module is calibrated for typical 100-day bazaar cycles (e.g. ₹10,000 principal disbursed yields ₹12,500 total repayment at ₹125/day). Both the tenure and interest rate are fully configurable by branch admins.',
+      q: 'How does Multi-Tenant separation guarantee that customer credentials remain confidential?',
+      a: 'Every finance organization is provisioned with an isolated cryptographic tenant workspace. Borrower identities, phone numbers, phone OTPs, and double-entry vault records are cryptographically tagged with organization UUIDs. No tenant or branch officer can ever query, inspect, or leak data outside their assigned organization.',
     },
     {
-      q: 'Can field agents collect payments on mobile devices offline without cellular signal?',
-      a: 'Yes. Our companion mobile app stores encrypted SQLite records locally. Field agents can collect cash, print 58mm thermal receipts via Bluetooth, and auto-sync records to the central cloud once connectivity is restored.',
+      q: 'Can our organization operate multiple physical branches on our own branded workspace?',
+      a: 'Yes. Each tenant receives a dedicated white-labeled portal (e.g. yourcompany.financeapp.io). The organization admin can create unlimited branches, assign branch managers, define local route collectors, and monitor real-time cash balances across physical branch safes.',
     },
     {
-      q: 'How does multi-tenant branch separation work?',
-      a: 'Every organization is isolated with strict cryptographic tenant boundaries. Branch managers only access borrowers, collectors, and cash vaults assigned to their specific physical branch, while SuperAdmins retain 360-degree governance.',
+      q: 'How do field agents record collections offline in busy bazaars?',
+      a: 'Field agents utilize our encrypted mobile app with local SQLite storage. When collecting daily 100-day bazaar installments or weekly chits without network connectivity, agents issue 58mm thermal receipts via Bluetooth. The records automatically synchronize securely with central cloud vaults as soon as connectivity resumes.',
     },
     {
-      q: 'What hardware biometric security is supported?',
-      a: 'The system natively interfaces with Android BiometricPrompt and iOS LocalAuthentication for fingerprint and FaceID sensor unlock, automatically locking when backgrounded to prevent unauthorized field access.',
+      q: 'What role-based access control (RBAC) levels exist in the platform?',
+      a: 'The system enforces 4 strict governance tiers: (1) SuperAdmin Platform Overseer, (2) Organization Admin (Tenant Owner), (3) Branch Officer / Cashier, and (4) Field Collection Route Agent. Each tier has tightly enforced token expiration and permission sets.',
     },
     {
-      q: 'How does the "Settlement at Last Date" feature operate?',
-      a: 'On maturity or during early closure, our engine automatically computes the remaining balance minus any waived interest for early settlement, instantly generating a zero-dues certificate.',
+      q: 'Can each organization configure custom interest rates and 100-day cycles?',
+      a: 'Yes. Tenant Admins can set organization-specific lending rules: 100-day daily merchant advances (e.g. ₹10,000 principal yields ₹12,500 at ₹125/day), 10-week/20-week chit funds, or monthly business loans, complete with automated penalty grace periods.',
     },
     {
-      q: 'Is there direct WhatsApp messaging integration?',
-      a: 'Yes. Automated WhatsApp messages dispatch verified payment receipts, balance alerts, and zero-dues clearance certificates directly to the borrower upon each transaction.',
+      q: 'Are automated customer WhatsApp receipts sent directly?',
+      a: 'Yes. Upon receiving an installment, an automated verified WhatsApp receipt with remaining balance and transaction token is dispatched directly to the borrower without exposing internal ledger credentials.',
     },
   ];
 
   return (
-    <div className="qonto-welcome-container">
-      {/* --------------------------------------------------------------------
-          1. TOP NAVBAR: EXECUTIVE FINTECH NAVIGATION
-          -------------------------------------------------------------------- */}
-      <header className={`qonto-navbar ${isScrolled ? 'is-scrolled' : ''}`}>
-        <div className="navbar-scroll-progress" style={{ width: `${scrollProgress}%` }} />
-        <div className="qonto-navbar-inner">
-          <Link to="/" className="qonto-brand">
-            <div className="brand-logo-glow-wrapper">
-              <img src={logoImg} alt="Finance Portal" className="qonto-brand-logo" />
-            </div>
-            <div className="brand-title-wrap">
-              <span className="qonto-brand-name">Finance</span>
-              <span className="brand-badge-pill">ENTERPRISE</span>
-            </div>
-          </Link>
+    <div className="landing-wrapper">
+      {/* ================================================================
+          1. EXACT LIQUID FLUID HOME SCREEN (100% IDENTICAL ARTWORK FROM REFERENCE)
+          ================================================================ */}
+      <section className="exact-liquid-screen" id="hero">
+        <div className="exact-liquid-frame">
+          {/* 100% Pure Vector Code Liquid Artwork (No Images) */}
+          <div className="exact-liquid-code-wrapper">
+            <LiquidHeroArtwork />
+          </div>
 
-          <nav className="qonto-nav-links">
-            {[
-              { id: 'hero', label: 'Features' },
-              { id: 'card-studio', label: 'Smart Cards' },
-              { id: 'route-telemetry', label: 'Route Telemetry' },
-              { id: 'vault-chamber', label: 'Sovereign Vault' },
-              { id: 'calculator', label: 'Loan Simulator' },
-              { id: 'security', label: 'Security' },
-              { id: 'faq', label: 'FAQ' },
-            ].map((item) => (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                className={`nav-link-item ${activeSection === item.id ? 'is-active' : ''}`}
-                onClick={(e) => scrollToSection(e, item.id)}
+          {/* Integrated Top Navigation */}
+          <nav className="exact-top-nav">
+            <div className="et-links">
+              <a href="#hero" onClick={(e) => scrollToSection(e, 'hero')} className="et-link active">Home</a>
+              <a href="#multi-tenancy" onClick={(e) => scrollToSection(e, 'multi-tenancy')} className="et-link">Service</a>
+              <a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')} className="et-link">Products</a>
+              <a href="#admin-powers" onClick={(e) => scrollToSection(e, 'admin-powers')} className="et-link">About Us</a>
+              <a href="#privacy" onClick={(e) => scrollToSection(e, 'privacy')} className="et-link">Contact</a>
+            </div>
+
+            <div className="et-right-tools">
+              <button
+                type="button"
+                className="et-tool-btn"
+                title="Portal Menu"
+                onClick={() => scrollToSection({ preventDefault: () => {} }, 'multi-tenancy')}
               >
-                <span>{item.label}</span>
-                {activeSection === item.id && <span className="nav-active-pip" />}
-              </a>
-            ))}
+                <Menu size={20} />
+              </button>
+              <button
+                type="button"
+                className="et-tool-btn"
+                title="Search Platform"
+                onClick={() => scrollToSection({ preventDefault: () => {} }, 'solutions')}
+              >
+                <Search size={18} />
+              </button>
+            </div>
           </nav>
 
-          <div className="qonto-nav-actions">
-            <Link to="/login" className="qonto-btn-text">
-              Sign in
-            </Link>
-            <button
-              type="button"
-              className="qonto-btn-nav-primary"
-              onClick={() => navigate('/login')}
-            >
-              <span>Open an account</span>
-              <ArrowRight size={14} className="nav-btn-arrow" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* --------------------------------------------------------------------
-          2. HERO SECTION & 3D ISOMETRIC FLAGSHIP SHOWCASE
-          -------------------------------------------------------------------- */}
-      <section
-        className="qonto-hero-section"
-        id="hero"
-        onMouseMove={handleHeroMouseMove}
-        onMouseLeave={handleHeroMouseLeave}
-      >
-        <div className="qonto-hero-grid">
-          {/* Left Text & CTA */}
-          <div className="qonto-hero-left">
-            <div className="qonto-hero-badge">
-              <span className="badge-dot-live" />
-              <span>ENTERPRISE LENDING & RECOVERY ENGINE</span>
-            </div>
-
-            <h1 className="qonto-hero-title">
-              All your business finances.{' '}
-              <span className="qonto-title-gradient">In one app.</span>
-            </h1>
-
-            <p className="qonto-hero-sub">
-              Keep your business account and all your finance needs safely organized under one roof. Manage money quickly, easily & efficiently. Whether you're alone or leading a team.
+          {/* Content Block overlaid directly on the right white region */}
+          <div className="exact-content-overlay">
+            <h1 className="et-main-title">FINANCE PORTAL</h1>
+            <h2 className="et-sub-title">SAAS LENDING PLATFORM</h2>
+            <p className="et-desc">
+              Enterprise multi-tenant cloud infrastructure for daily retail merchant advances (100-day), weekly chit fund administration, and centralized double-entry branch vaults. Configure custom interest rates, delegate role-based staff, and settle at maturity with zero credential leakage.
             </p>
-
-            <div className="qonto-hero-cta-group">
+            <div className="et-actions">
               <button
                 type="button"
-                className="qonto-btn-hero"
+                className="btn-et-join"
                 onClick={() => navigate('/login')}
               >
-                <span>Discover our offers</span>
-                <ArrowRight size={18} />
+                <span>JOIN US</span>
               </button>
-
               <button
                 type="button"
-                className="qonto-btn-hero-ghost"
-                onClick={(e) => scrollToSection(e, 'card-studio')}
+                className="btn-et-signup"
+                onClick={() => navigate('/login')}
               >
-                <CreditCard size={18} color="#10B981" />
-                <span>Smart Card Studio</span>
+                <span>SIGN UP</span>
               </button>
-            </div>
-
-            <div className="qonto-hero-microcopy">
-              From ₹0/month. Enterprise multi-tenant engine. Access with zero obligations.
             </div>
           </div>
 
-          {/* Right 3D Lottie-Style Visual Stage */}
-          <div className="qonto-hero-right-stage">
-            <div
-              className="hero-lottie-stage"
-              style={{
-                transform: `rotateX(${10 - heroTilt.y}deg) rotateY(${-14 + heroTilt.x}deg) rotateZ(1deg)`,
-              }}
-            >
-              {/* Radial Lighting Aura behind 3D models */}
-              <div className="hero-stage-ambient-glow" />
+          {/* Interactive 3-Dot Indicator at Bottom Center */}
+          <div className="exact-dots-row">
+            <span className="e-dot active" />
+            <span className="e-dot" />
+            <span className="e-dot" />
+          </div>
+        </div>
+      </section>
 
-              {/* Central Active Banking Tablet (White Ceramic Chassis with Live Functional UI) */}
-              <div className="lottie-tablet-chassis">
-                <div className="tablet-screen-header">
-                  <div className="screen-header-left">
-                    <span className="header-status-indicator" />
-                    <span className="header-title-text">Executive Dashboard</span>
-                  </div>
-                  <div className="screen-header-right">
-                    <span className="status-pill-green">Live Active Portfolio</span>
-                    <div className="circular-progress-badge">
-                      <span>99.4%</span>
-                    </div>
+      {/* ================================================================
+          2. WORKSPACE SHOWCASE (Live Multi-Tenant Enclave & Branch Safes)
+          ================================================================ */}
+      <section className="workspace-showcase-section" id="workspace-preview">
+        <div className="section-header">
+          <div className="section-pill">LIVE CLOUD WORKSPACE DEMO</div>
+          <h2 className="section-title">Isolated multi-tenant execution with row-level security</h2>
+          <p className="section-subtitle">
+            Switch between demo organizations to see real-time ledger isolation and credential masking in action.
+          </p>
+        </div>
+
+        <div className="hero-container" style={{ paddingTop: '1rem' }}>
+
+          {/* ============================================================
+              HERO SAAS WORKSPACE SHOWCASE (Interactive Multi-Tenant Switcher)
+              ============================================================ */}
+          <div className="hero-app-mockup">
+            <div className="app-window-frame">
+              {/* Window Top Controls */}
+              <div className="window-header">
+                <div className="window-dots">
+                  <span className="dot red" />
+                  <span className="dot yellow" />
+                  <span className="dot green" />
+                </div>
+
+                <div className="window-tenant-selector">
+                  <span className="selector-label">ACTIVE TENANT WORKSPACE:</span>
+                  <div className="tenant-pills">
+                    {tenantProfiles.map((t, idx) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`tenant-pill-btn ${selectedTenantIdx === idx ? 'active' : ''}`}
+                        onClick={() => setSelectedTenantIdx(idx)}
+                      >
+                        <Building2 size={13} />
+                        <span>{t.name}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="tablet-screen-body">
-                  <div className="screen-metric-row">
-                    <div className="metric-label-small">Available Treasury Balance</div>
-                    <div className="metric-amount-primary">₹48,20,500.00</div>
-                    <div className="metric-trend-tag">
-                      <TrendingUp size={14} />
-                      <span>+18.4% this month</span>
-                    </div>
-                  </div>
-
-                  {/* Animated Lottie-Style SVG Chart Wave */}
-                  <div className="screen-chart-box">
-                    <svg viewBox="0 0 420 110" className="hero-chart-svg">
-                      <defs>
-                        <linearGradient id="emeraldLottieGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10B981" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d="M 0,85 Q 70,30 140,55 T 280,25 T 420,40 L 420,110 L 0,110 Z"
-                        fill="url(#emeraldLottieGrad)"
-                      />
-                      <path
-                        d="M 0,85 Q 70,30 140,55 T 280,25 T 420,40"
-                        fill="none"
-                        stroke="#10B981"
-                        strokeWidth="3.5"
-                        className="chart-animated-path"
-                      />
-                      <circle cx="280" cy="25" r="5" fill="#10B981" />
-                      <circle cx="280" cy="25" r="9" fill="none" stroke="#34D399" strokeWidth="2" opacity="0.6">
-                        <animate attributeName="r" values="6;14;6" dur="2.4s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" values="0.8;0;0.8" dur="2.4s" repeatCount="indefinite" />
-                      </circle>
-                    </svg>
-                  </div>
-
-                  <div className="screen-cards-strip">
-                    <div className="screen-mini-stat">
-                      <span className="mini-stat-label">Daily Route</span>
-                      <span className="mini-stat-val">₹1,85,250</span>
-                    </div>
-                    <div className="screen-mini-stat">
-                      <span className="mini-stat-label">Active Loans</span>
-                      <span className="mini-stat-val">1,248</span>
-                    </div>
-                    <div className="screen-mini-stat">
-                      <span className="mini-stat-label">Disbursal Lag</span>
-                      <span className="mini-stat-val">0ms</span>
-                    </div>
-                  </div>
+                {/* Confidentiality Privacy Mask Toggle */}
+                <div className="window-privacy-toggle">
+                  <button
+                    type="button"
+                    className={`privacy-btn ${isConfidentialMode ? 'is-masked' : ''}`}
+                    onClick={() => setIsConfidentialMode(!isConfidentialMode)}
+                    title="Toggle Confidentiality Protection Mode"
+                  >
+                    {isConfidentialMode ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <span>{isConfidentialMode ? 'Confidential Shield: ON' : 'Confidential Shield: OFF'}</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Dangling Card 1: Matte Obsidian Titanium Card */}
-              <div className="lottie-card-dangle-anchor lottie-card-obsidian">
-                <div className="card-light-sheen" />
-                <div className="hero-card-top-row">
-                  <div className="hero-card-chip" />
-                  <Radio size={18} color="rgba(255, 255, 255, 0.75)" />
+              {/* Sub-Header: Subdomain & Navigation */}
+              <div className="window-sub-bar">
+                <div className="sub-bar-domain">
+                  <Lock size={13} className="lock-icon" />
+                  <span className="domain-text">https://{currentTenant.subdomain}</span>
+                  <span className="tenant-id-tag">ID: {currentTenant.id}</span>
                 </div>
-                <div className="hero-card-number">••••  9842</div>
-                <div className="hero-card-footer">
-                  <span>ENTERPRISE SOVEREIGN</span>
-                  <span className="hero-card-brand">Finance</span>
-                </div>
-              </div>
-
-              {/* Dangling Card 2: Emerald Sovereign Smart Card */}
-              <div className="lottie-card-dangle-anchor lottie-card-emerald">
-                <div className="card-light-sheen" />
-                <div className="hero-card-top-row">
-                  <div className="hero-card-chip emerald-chip" />
-                  <Radio size={18} color="rgba(255, 255, 255, 0.85)" />
-                </div>
-                <div className="hero-card-number">••••  5120</div>
-                <div className="hero-card-footer">
-                  <span>DAILY ROUTE TERMINAL</span>
-                  <span className="hero-card-brand">Finance</span>
-                </div>
-              </div>
-
-              {/* Floating Lottie Telemetry Badges */}
-              <div className="lottie-telemetry-badge badge-top-left">
-                <div className="badge-glow-dot" />
-                <div className="badge-content">
-                  <span className="badge-micro-title">DAILY ROUTE DISBURSAL</span>
-                  <span className="badge-main-val">+₹1,85,250 Cleared (0ms Lag)</span>
+                <div className="sub-bar-tabs">
+                  <button
+                    type="button"
+                    className={`sub-tab ${heroActiveView === 'overview' ? 'active' : ''}`}
+                    onClick={() => setHeroActiveView('overview')}
+                  >
+                    Tenant Overview
+                  </button>
+                  <button
+                    type="button"
+                    className={`sub-tab ${heroActiveView === 'branches' ? 'active' : ''}`}
+                    onClick={() => setHeroActiveView('branches')}
+                  >
+                    Branch Network ({currentTenant.branchesCount})
+                  </button>
+                  <button
+                    type="button"
+                    className={`sub-tab ${heroActiveView === 'enclave' ? 'active' : ''}`}
+                    onClick={() => setHeroActiveView('enclave')}
+                  >
+                    Security Enclave
+                  </button>
                 </div>
               </div>
 
-              <div className="lottie-telemetry-badge badge-bottom-right">
-                <ShieldCheck size={20} color="#10B981" />
-                <div className="badge-content">
-                  <span className="badge-micro-title">DOUBLE-ENTRY LEDGER</span>
-                  <span className="badge-main-val">100.0% Reconciled Zero-Leakage</span>
-                </div>
+              {/* Window Body: Interactive Multi-Tenant Views */}
+              <div className="window-body">
+                {heroActiveView === 'overview' && (
+                  <>
+                    {/* KPI Grid */}
+                    <div className="mockup-kpi-grid">
+                      <div className="kpi-card">
+                        <div className="kpi-header">
+                          <span className="kpi-label">Active Portfolio</span>
+                          <span className="kpi-badge green">+18.4% MoM</span>
+                        </div>
+                        <div className="kpi-val">
+                          {isConfidentialMode ? currentTenant.stats.portfolioMasked : currentTenant.stats.portfolio}
+                        </div>
+                        <span className="kpi-sub">{currentTenant.stats.borrowersCount}</span>
+                      </div>
+
+                      <div className="kpi-card">
+                        <div className="kpi-header">
+                          <span className="kpi-label">Today's Collections</span>
+                          <span className="kpi-badge blue">99.4% on-time</span>
+                        </div>
+                        <div className="kpi-val" style={{ color: '#059669' }}>
+                          {isConfidentialMode ? currentTenant.stats.todayCollectionsMasked : currentTenant.stats.todayCollections}
+                        </div>
+                        <span className="kpi-sub">Across {currentTenant.agentsCount} field routes</span>
+                      </div>
+
+                      <div className="kpi-card">
+                        <div className="kpi-header">
+                          <span className="kpi-label">Central Vault Balance</span>
+                          <span className="kpi-badge purple">Double-Entry Verified</span>
+                        </div>
+                        <div className="kpi-val">
+                          {isConfidentialMode ? currentTenant.stats.vaultBalanceMasked : currentTenant.stats.vaultBalance}
+                        </div>
+                        <span className="kpi-sub">{currentTenant.branchesCount} physical branches</span>
+                      </div>
+
+                      <div className="kpi-card">
+                        <div className="kpi-header">
+                          <span className="kpi-label">Tenant Isolation</span>
+                          <span className="kpi-badge green">AES-256</span>
+                        </div>
+                        <div className="kpi-val" style={{ color: '#4F46E5', fontSize: '1.25rem' }}>
+                          Partitioned
+                        </div>
+                        <span className="kpi-sub">Zero credential cross-exposure</span>
+                      </div>
+                    </div>
+
+                    {/* Chart & Stream Split */}
+                    <div className="mockup-split-view">
+                      <div className="mockup-chart-panel">
+                        <div className="panel-title-row">
+                          <div>
+                            <h4 className="panel-title">{currentTenant.name} · Recovery Curve</h4>
+                            <p className="panel-sub">{currentTenant.scheme}</p>
+                          </div>
+                          <span className="badge-live-stream">● ENCRYPTED TENANT FEED</span>
+                        </div>
+
+                        <div className="chart-canvas-mock">
+                          <svg viewBox="0 0 540 130" className="chart-mock-svg">
+                            <defs>
+                              <linearGradient id="tenantAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.18" />
+                                <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.0" />
+                              </linearGradient>
+                            </defs>
+                            <path
+                              d="M0,100 Q70,35 140,65 T280,25 T420,45 T540,15 L540,130 L0,130 Z"
+                              fill="url(#tenantAreaGrad)"
+                            />
+                            <path
+                              d="M0,90 L540,25"
+                              stroke="#E2E8F0"
+                              strokeWidth="2"
+                              strokeDasharray="6 6"
+                              fill="none"
+                            />
+                            <path
+                              d="M0,100 Q70,35 140,65 T280,25 T420,45 T540,15"
+                              stroke="#4F46E5"
+                              strokeWidth="3.5"
+                              fill="none"
+                            />
+                            <circle cx="420" cy="45" r="5" fill="#FFFFFF" stroke="#4F46E5" strokeWidth="3" />
+                          </svg>
+                          <div className="chart-legend-row">
+                            <div className="legend-item"><span className="legend-dot indigo" />Recovered Cashflow</div>
+                            <div className="legend-item"><span className="legend-dot gray" />Target Forecast</div>
+                            <div className="legend-item" style={{ marginLeft: 'auto' }}>
+                              <Shield size={12} color="#059669" />
+                              <span>Row-Level Security Active</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Anonymized / Confidential Incoming Ledger Stream */}
+                      <div className="mockup-feed-panel">
+                        <div className="panel-title-row">
+                          <h4 className="panel-title">Real-Time Ingestion</h4>
+                          <span className="feed-counter">Encrypted Stream</span>
+                        </div>
+
+                        <div className="live-feed-list">
+                          {currentTenant.stream.map((item) => (
+                            <div key={item.id} className="feed-item-card">
+                              <div className="feed-avatar">
+                                <Receipt size={16} color="#4F46E5" />
+                              </div>
+                              <div className="feed-details">
+                                <div className="feed-row-top">
+                                  <span className="feed-borrower">
+                                    {isConfidentialMode ? `[CONFIDENTIAL ${item.id}]` : item.shop}
+                                  </span>
+                                  <span className="feed-amount">
+                                    {isConfidentialMode ? '₹ • • •' : item.amount}
+                                  </span>
+                                </div>
+                                <div className="feed-row-bot">
+                                  <span className="feed-route">{item.route}</span>
+                                  <span className="feed-tag">{item.status}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {heroActiveView === 'branches' && (
+                  <div className="tenant-branches-view">
+                    <div className="branch-view-header">
+                      <div>
+                        <h4>Configured Branch Units for {currentTenant.name}</h4>
+                        <p>Each branch operates with an independent physical cash safe, staff fleet, and route schedule.</p>
+                      </div>
+                      <span className="badge-branches">{currentTenant.branchesCount} Total Branches</span>
+                    </div>
+
+                    <div className="branches-grid-mock">
+                      {currentTenant.branches.map((b, i) => (
+                        <div key={i} className="branch-card-mock">
+                          <div className="b-head">
+                            <Building2 size={18} color="#4F46E5" />
+                            <span className="b-name">{b.name}</span>
+                          </div>
+                          <div className="b-meta">
+                            <span>Field Fleet: <strong>{b.collectors} Collectors</strong></span>
+                            <span>Safe Vault: <strong style={{ color: '#059669' }}>{b.status}</strong></span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {heroActiveView === 'enclave' && (
+                  <div className="tenant-enclave-view">
+                    <div className="enclave-banner">
+                      <ShieldCheck size={28} color="#059669" />
+                      <div>
+                        <h4>Cryptographic Multi-Tenant Enclave Active</h4>
+                        <p>Tenant ID <code>{currentTenant.id}</code> is strictly partitioned. Database queries enforce hard row-level tenant filtering.</p>
+                      </div>
+                    </div>
+                    <div className="enclave-features-row">
+                      <div className="enclave-chip">
+                        <Lock size={14} color="#4F46E5" />
+                        <span>AES-256 Storage Encryption</span>
+                      </div>
+                      <div className="enclave-chip">
+                        <Key size={14} color="#D97706" />
+                        <span>RBAC Token Enforcement</span>
+                      </div>
+                      <div className="enclave-chip">
+                        <Database size={14} color="#0891B2" />
+                        <span>Zero Cross-Tenant Leakage</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Context Floating Pills */}
+            <div className="floating-context-badge badge-top-left">
+              <div className="f-icon-circle green">
+                <Check size={14} />
+              </div>
+              <div>
+                <div className="f-title">Zero Credential Exposure</div>
+                <div className="f-desc">End-to-End Encrypted Tenant Enclave</div>
+              </div>
+            </div>
+
+            <div className="floating-context-badge badge-bottom-right">
+              <div className="f-icon-circle indigo">
+                <Building2 size={14} />
+              </div>
+              <div>
+                <div className="f-title">Multi-Branch Architecture</div>
+                <div className="f-desc">Independent Branch Safes & Rosters</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* --------------------------------------------------------------------
-          3. 3D SMART CARD STUDIO: BESPOKE HARDWARE CARDS
-          -------------------------------------------------------------------- */}
-      <section className="card-studio-section" id="card-studio">
-        <div className="qonto-section-intro">
-          <div className="qonto-section-intro-tag">INTERACTIVE HARDWARE SUITE</div>
-          <h2 className="qonto-section-intro-title">Institutional titanium & merchant smart cards</h2>
-          <p className="qonto-section-intro-desc">
-            Equip collection agents and branch treasuries with cryptographic hardware cards linked directly to branch cash limits.
+      {/* ================================================================
+          3. MULTI-TENANT ARCHITECTURE: 4-TIER GOVERNANCE
+          ================================================================ */}
+      <section className="architecture-section" id="multi-tenancy">
+        <div className="section-header">
+          <div className="section-pill">ENTERPRISE SAAS INFRASTRUCTURE</div>
+          <h2 className="section-title">Engineered from the ground up for multi-tenancy</h2>
+          <p className="section-subtitle">
+            Scale from a single finance organization to hundreds of autonomous tenant companies with institutional-grade separation.
           </p>
         </div>
 
-        <div className="card-studio-container">
-          {/* Left Controls & Specifications */}
-          <div className="card-studio-left">
-            <div className="tier-pills-row">
-              {Object.keys(cardTiers).map((tierKey) => (
-                <button
-                  key={tierKey}
-                  type="button"
-                  className={`tier-pill-btn ${activeCardTier === tierKey ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveCardTier(tierKey);
-                    setCardFlipped(false);
-                  }}
-                >
-                  {cardTiers[tierKey].badge}
-                </button>
-              ))}
+        <div className="architecture-grid">
+          {/* Tier 1 */}
+          <div className="arch-card tier-1">
+            <div className="arch-tier-badge">TIER 1 · GLOBAL SAAS GOVERNANCE</div>
+            <div className="arch-icon-box">
+              <Server size={24} color="#4F46E5" />
             </div>
-
-            <h3 className="tier-name-heading">
-              {cardTiers[activeCardTier].name}
-            </h3>
-            <p className="tier-tagline">
-              {cardTiers[activeCardTier].tagline}
+            <h3 className="arch-title">SuperAdmin Global Hub</h3>
+            <p className="arch-desc">
+              Platform-level control plane. Provision new tenant organizations in 60 seconds, monitor API latency, inspect audit trails, and manage cluster resources.
             </p>
-
-            <div className="tier-specs-grid">
-              <div className="tier-spec-card">
-                <span className="spec-label">CARD LIMIT</span>
-                <span className="spec-val" style={{ color: cardTiers[activeCardTier].accentColor }}>
-                  {cardTiers[activeCardTier].limit}
-                </span>
-              </div>
-              <div className="tier-spec-card">
-                <span className="spec-label">CHIP TECHNOLOGY</span>
-                <span className="spec-val">EMV Dual Interface + Contactless NFC</span>
-              </div>
-              <div className="tier-spec-card">
-                <span className="spec-label">HARDWARE BIOMETRICS</span>
-                <span className="spec-val">Sensors paired to collector device</span>
-              </div>
-              <div className="tier-spec-card">
-                <span className="spec-label">SECURITY ACTION</span>
-                <span className="spec-val" style={{ color: '#10B981' }}>Instant 0-Lag Remote Freeze</span>
-              </div>
-            </div>
-
-            <div className="card-actions-row">
-              <button
-                type="button"
-                className="btn-flip-card"
-                onClick={() => setCardFlipped(!cardFlipped)}
-              >
-                <RotateCcw size={16} />
-                <span>{cardFlipped ? 'View Front Face' : 'Flip to Back (CVV)'}</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn-beam-nfc"
-                onClick={triggerNfcBeam}
-              >
-                <Radio size={16} />
-                <span>Simulate Contactless Beam</span>
-              </button>
-
-              <button
-                type="button"
-                className="qonto-btn-hero"
-                style={{ padding: '0.65rem 1.4rem', fontSize: '0.9rem' }}
-                onClick={() => navigate('/login')}
-              >
-                <span>Request Card</span>
-                <ArrowRight size={15} />
-              </button>
-            </div>
+            <ul className="arch-bullets">
+              <li><Check size={14} className="bullet-ico" /> 1-Click Tenant Provisioning</li>
+              <li><Check size={14} className="bullet-ico" /> Platform-Wide API Health</li>
+              <li><Check size={14} className="bullet-ico" /> Global Compliance Auditing</li>
+            </ul>
           </div>
 
-          {/* Right 3D Realistic Card Stage */}
-          <div className="card-studio-right-stage">
-            <div className="card-stand-pedestal">
-              <div
-                className={`realistic-3d-card-rig ${cardFlipped ? 'is-flipped' : ''}`}
-                onMouseMove={handleCardMouseMove}
-                onMouseLeave={handleCardMouseLeave}
-                style={{
-                  transform: cardFlipped
-                    ? `rotateY(180deg) rotateX(${cardRotation.x}deg)`
-                    : `rotateX(${cardRotation.x}deg) rotateY(${cardRotation.y}deg)`,
-                }}
-              >
-                {/* NFC Beaming Wave effect */}
-                {nfcBeaming && <div className="card-nfc-beaming-waves" />}
+          {/* Tier 2 */}
+          <div className="arch-card tier-2">
+            <div className="arch-tier-badge">TIER 2 · TENANT ORGANIZATION</div>
+            <div className="arch-icon-box">
+              <Building2 size={24} color="#059669" />
+            </div>
+            <h3 className="arch-title">Tenant Org Admin Workspace</h3>
+            <p className="arch-desc">
+              Autonomous corporate portal for each finance company. Define 100-day daily lending rates, weekly chit rules, and add physical branches.
+            </p>
+            <ul className="arch-bullets">
+              <li><Check size={14} className="bullet-ico" /> Custom White-Label Subdomains</li>
+              <li><Check size={14} className="bullet-ico" /> Custom Interest & Amortization</li>
+              <li><Check size={14} className="bullet-ico" /> Central Treasury Balancing</li>
+            </ul>
+          </div>
 
-                {/* Card Front Face */}
-                <div
-                  className="card-face card-front"
-                  style={{
-                    background: cardTiers[activeCardTier].gradient,
-                    borderColor: cardTiers[activeCardTier].border,
-                  }}
-                >
-                  <div
-                    className="card-dynamic-shine"
-                    style={{
-                      background: `radial-gradient(circle at ${cardShine.x}% ${cardShine.y}%, rgba(255, 255, 255, 0.45) 0%, transparent 65%)`,
-                      opacity: cardShine.opacity,
+          {/* Tier 3 */}
+          <div className="arch-card tier-3">
+            <div className="arch-tier-badge">TIER 3 · PHYSICAL BRANCH</div>
+            <div className="arch-icon-box">
+              <Layers size={24} color="#0891B2" />
+            </div>
+            <h3 className="arch-title">Branch Cashier Terminal</h3>
+            <p className="arch-desc">
+              Dedicated branch management interface. Local cashiers manage the physical branch safe, verify agent counter handovers, and disburse loans.
+            </p>
+            <ul className="arch-bullets">
+              <li><Check size={14} className="bullet-ico" /> Local Safe Vault Reconciliation</li>
+              <li><Check size={14} className="bullet-ico" /> Agent Shift Check-In / Check-Out</li>
+              <li><Check size={14} className="bullet-ico" /> Zero Cross-Branch Visibility</li>
+            </ul>
+          </div>
+
+          {/* Tier 4 */}
+          <div className="arch-card tier-4">
+            <div className="arch-tier-badge">TIER 4 · FIELD AGENT FLEET</div>
+            <div className="arch-icon-box">
+              <Smartphone size={24} color="#D97706" />
+            </div>
+            <h3 className="arch-title">Offline Field Agent Fleet</h3>
+            <p className="arch-desc">
+              Field agents collect on bazaar routes with offline-capable mobile apps, biometric security, Bluetooth thermal printing, and auto-sync.
+            </p>
+            <ul className="arch-bullets">
+              <li><Check size={14} className="bullet-ico" /> Offline SQLite Local Storage</li>
+              <li><Check size={14} className="bullet-ico" /> 58mm Bluetooth Thermal Print</li>
+              <li><Check size={14} className="bullet-ico" /> Instant WhatsApp Receipts</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================
+          3B. ORG ADMIN POWERS: RATE CONFIGURATION & ADMIN DELEGATION
+          ================================================================ */}
+      <section className="admin-powers-section" id="admin-powers">
+        <div className="section-header">
+          <div className="section-pill">TENANT AUTONOMY & CONTROL</div>
+          <h2 className="section-title">Complete power in the hands of the Org Admin</h2>
+          <p className="section-subtitle">
+            Configure custom interest percentage rates per scheme, manage lending operating calendars, and delegate branch administrators with explicit permission tiers.
+          </p>
+        </div>
+
+        <div className="admin-powers-grid">
+          {/* Feature 1: Org Admin Sets Percentage Rates & Operating Days */}
+          <div className="admin-power-box">
+            <div className="ap-badge-top">
+              <Percent size={14} color="#4F46E5" />
+              <span>CUSTOM INTEREST RATE & TENURE ENGINE</span>
+            </div>
+            <h3 className="ap-title">Set Custom Interest Rates & Days</h3>
+            <p className="ap-desc">
+              Organization Admins have 100% control over lending parameters. Define exact interest percentages, tenure lengths, minimum/maximum amounts, and operating days for each scheme.
+            </p>
+
+            <div className="ap-configurator-card">
+              <div className="ap-scheme-selector">
+                {['DAILY', 'WEEKLY', 'MONTHLY'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`ap-scheme-btn ${adminConfigScheme === s ? 'active' : ''}`}
+                    onClick={() => {
+                      setAdminConfigScheme(s);
+                      if (s === 'DAILY') { setAdminDailyRate(10.0); setAdminDailyTenure(100); }
+                      else if (s === 'WEEKLY') { setAdminWeeklyRate(10.0); setAdminWeeklyTenure(10); }
+                      else { setAdminDailyRate(18.0); setAdminDailyTenure(12); }
                     }}
-                  />
+                  >
+                    {s === 'DAILY' ? '100-Day Daily' : s === 'WEEKLY' ? 'Weekly Chit' : 'Monthly SME'}
+                  </button>
+                ))}
+              </div>
 
-                  <div className="card-front-top">
-                    {/* Realistic Gold EMV Chip */}
-                    <div className="card-emv-gold-chip">
-                      <div className="chip-line horizontal" />
-                      <div className="chip-line vertical" />
-                      <div className="chip-center-pin" />
-                    </div>
-
-                    <div className="card-contactless-icon">
-                      <Radio size={22} color="rgba(255, 255, 255, 0.8)" />
-                    </div>
-                  </div>
-
-                  <div className="card-front-number">
-                    {cardTiers[activeCardTier].cardNum}
-                  </div>
-
-                  <div className="card-front-bottom">
-                    <div className="card-holder-info">
-                      <span className="holder-label">CARDHOLDER</span>
-                      <span className="holder-name">{cardTiers[activeCardTier].holder}</span>
-                    </div>
-
-                    <div className="card-expiry-info">
-                      <span className="expiry-label">EXPIRES</span>
-                      <span className="expiry-val">10/29</span>
-                    </div>
-
-                    <div className="card-brand-logo">
-                      Finance
-                    </div>
+              <div className="ap-control-rows">
+                <div className="ap-input-row">
+                  <span className="ap-lbl">Interest Percentage Rate (%):</span>
+                  <div className="ap-val-stepper">
+                    <button type="button" onClick={() => setAdminDailyRate(Math.max(1, adminDailyRate - 0.5))}>-</button>
+                    <span className="ap-num-val">{adminDailyRate.toFixed(1)}%</span>
+                    <button type="button" onClick={() => setAdminDailyRate(adminDailyRate + 0.5)}>+</button>
                   </div>
                 </div>
 
-                {/* Card Back Face */}
-                <div
-                  className="card-face card-back"
-                  style={{
-                    background: cardTiers[activeCardTier].gradient,
-                    borderColor: cardTiers[activeCardTier].border,
+                <div className="ap-input-row">
+                  <span className="ap-lbl">Standard Tenure Duration:</span>
+                  <span className="ap-badge-tenure">{adminDailyTenure} {adminConfigScheme === 'DAILY' ? 'Days' : adminConfigScheme === 'WEEKLY' ? 'Weeks' : 'Months'}</span>
+                </div>
+
+                <div className="ap-operating-days">
+                  <span className="ap-lbl">Collection Operating Days:</span>
+                  <div className="day-chips-row">
+                    {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) => {
+                      const isActive = adminOperatingDays.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          className={`day-chip ${isActive ? 'active' : ''}`}
+                          onClick={() => {
+                            if (isActive) setAdminOperatingDays(adminOperatingDays.filter(d => d !== day));
+                            else setAdminOperatingDays([...adminOperatingDays, day]);
+                          }}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-ap-save"
+                  onClick={() => {
+                    setAdminToast(true);
+                    setTimeout(() => setAdminToast(false), 3000);
                   }}
                 >
-                  <div className="card-magnetic-stripe" />
-                  <div className="card-signature-box">
-                    <div className="signature-pattern">Authorized Cryptographic Signature</div>
-                    <div className="cvv-box">CVV: 482</div>
-                  </div>
-                  <div className="card-back-disclaimer">
-                    Issued under Multi-Tenant Enterprise Banking Agreement. Valid for authorized route collectors and branch treasury disbars only. Loss of card must be reported via Portal 0-Lag freeze.
-                  </div>
-                  <div className="card-back-chip-stub">
-                    <ShieldCheck size={18} color="#10B981" />
-                    <span>EMV HARDWARE CIPHER SECURED</span>
-                  </div>
-                </div>
+                  <Save size={15} />
+                  <span>{adminToast ? '✓ Rates Saved to Tenant Enclave!' : 'Save Scheme Configuration'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 2: Multi-Tier Staff Delegation ("Add the Admin") */}
+          <div className="admin-power-box">
+            <div className="ap-badge-top">
+              <Users size={14} color="#059669" />
+              <span>ROLE-BASED STAFF DELEGATION</span>
+            </div>
+            <h3 className="ap-title">Add & Delegate Administrators</h3>
+            <p className="ap-desc">
+              SuperAdmins and Org Admins can provision new staff in seconds. Assign explicit permission tiers to branch managers, cashiers, and mobile field collectors with branch boundaries.
+            </p>
+
+            <div className="ap-staff-directory-card">
+              <div className="staff-header-row">
+                <span className="sh-title">Tenant Administrative Roster</span>
+                <span className="sh-badge">+ Add New Admin</span>
               </div>
 
-              <div className="card-pedestal-label">
-                Move cursor to tilt in 3D perspective · Click Flip to inspect CVV
+              <div className="staff-roster-list">
+                <div className="staff-member-item">
+                  <div className="sm-avatar org">OA</div>
+                  <div className="sm-info">
+                    <span className="sm-name">Organization Admin</span>
+                    <span className="sm-role">Tenant Corporate Control · All Branches</span>
+                  </div>
+                  <span className="sm-pill primary">FULL ACCESS</span>
+                </div>
+
+                <div className="staff-member-item">
+                  <div className="sm-avatar branch">BA</div>
+                  <div className="sm-info">
+                    <span className="sm-name">Branch Manager (South Hub)</span>
+                    <span className="sm-role">Branch Vault Safe · Daily Loan Approval</span>
+                  </div>
+                  <span className="sm-pill emerald">BRANCH BOUND</span>
+                </div>
+
+                <div className="staff-member-item">
+                  <div className="sm-avatar cashier">CS</div>
+                  <div className="sm-info">
+                    <span className="sm-name">Cashier & Counter Desk</span>
+                    <span className="sm-role">End-of-Day Agent Cash Handover</span>
+                  </div>
+                  <span className="sm-pill amber">CASH DESK</span>
+                </div>
+
+                <div className="staff-member-item">
+                  <div className="sm-avatar agent">FA</div>
+                  <div className="sm-info">
+                    <span className="sm-name">Route Collection Agent</span>
+                    <span className="sm-role">Mobile SQLite App · Bluetooth Thermal</span>
+                  </div>
+                  <span className="sm-pill cyan">ROUTE FLEET</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* --------------------------------------------------------------------
-          4. 3D ISOMETRIC ROUTE & BAZAAR TELEMETRY STATION
-          -------------------------------------------------------------------- */}
-      <section className="route-telemetry-section" id="route-telemetry">
-        <div className="qonto-section-intro">
-          <div className="qonto-section-intro-tag">REAL-TIME FIELD TELEMETRY</div>
-          <h2 className="qonto-section-intro-title">Live 3D route pathfinding & collection telemetry</h2>
-          <p className="qonto-section-intro-desc">
-            Monitor bazaar route collectors in real-time with offline SQLite caching, instant receipt confirmation, and zero cash discrepancy.
+      {/* ================================================================
+          3C. DUAL REPAYMENT ENGINE: NORMAL VS. LUMP_SUM_END (SETTLE AT LAST DATE)
+          ================================================================ */}
+      <section className="repayment-modes-section" id="repayment-modes">
+        <div className="section-header">
+          <div className="section-pill">SPECIALIZED FINTECH WORKFLOW</div>
+          <h2 className="section-title">Cycle installments or collect full amount at the last date</h2>
+          <p className="section-subtitle">
+            Support diverse merchant cashflows: standard daily installments or bullet repayment at tenure maturity with early settlement waivers.
           </p>
         </div>
 
-        <div className="route-telemetry-box">
-          {/* Left Isometric 3D Board */}
-          <div className="route-map-viewport">
-            <div className="route-map-hud-top">
-              <span className="hud-badge-live">● ISOMETRIC FIELD STATION #08</span>
-              <span className="hud-toast-text">{lastPaymentToast}</span>
-            </div>
-
-            <div className="route-map-board">
-              <div className="district-zone zone-saidapet">SAIDAPET</div>
-              <div className="district-zone zone-mylapore">MYLAPORE</div>
-              <div className="district-zone zone-tnagar">T. NAGAR</div>
-
-              {/* Waypoint Monoliths */}
-              {waypoints.map((wp, idx) => (
-                <div
-                  key={wp.id}
-                  className={`waypoint-monolith ${idx === currentWaypointIdx ? 'is-active-target' : ''}`}
-                  style={{ left: `${wp.x}%`, top: `${wp.y}%` }}
-                >
-                  <div className="waypoint-pin-cap">
-                    <span className="wp-amount">{wp.amount}</span>
-                  </div>
-                  <div className="waypoint-pillar-stem" />
-                  <div className="waypoint-label-card">
-                    <span className="wp-name">{wp.name}</span>
-                  </div>
-                </div>
-              ))}
-
-              {/* Active Collector GPS Ping Beacon */}
-              <div
-                className="collector-gps-beacon"
-                style={{
-                  left: `${waypoints[currentWaypointIdx].x}%`,
-                  top: `${waypoints[currentWaypointIdx].y}%`,
-                }}
-              >
-                <div className="beacon-core-dot" />
-                <div className="beacon-radar-pulse" />
-                <div className="beacon-agent-tag">Agent V. Ram (Live)</div>
+        <div className="repayment-modes-card">
+          <div className="rm-mode-selector">
+            <button
+              type="button"
+              className={`rm-toggle-btn ${repaymentDemoMode === 'NORMAL' ? 'active' : ''}`}
+              onClick={() => setRepaymentDemoMode('NORMAL')}
+            >
+              <Calendar size={18} />
+              <div>
+                <strong>NORMAL Collection Mode</strong>
+                <span>Equal daily/weekly cycle installments</span>
               </div>
-            </div>
-          </div>
-
-          {/* Right Telemetry Details */}
-          <div className="route-telemetry-details">
-            <div className="telemetry-agent-badge">
-              <span>COLLECTOR ROUTE #08 (SAIDAPET & MYLAPORE)</span>
-            </div>
-
-            <h3 className="telemetry-heading">Automated Route Pathfinding</h3>
-            <p className="telemetry-desc">
-              Track field agent routes, instant offline cash match pings, and bazaar merchant installments mapped continuously in 3D perspective.
-            </p>
-
-            <div className="telemetry-metrics-grid">
-              <div className="telemetry-metric-card">
-                <span className="m-label">MERCHANTS CLEARED</span>
-                <span className="m-val">6 / 6</span>
-              </div>
-              <div className="telemetry-metric-card">
-                <span className="m-label">COLLECTED TODAY</span>
-                <span className="m-val" style={{ color: '#10B981' }}>₹18,750.00</span>
-              </div>
-              <div className="telemetry-metric-card">
-                <span className="m-label">ACTIVE FIELD AGENT</span>
-                <span className="m-val">Agent V. Ram</span>
-              </div>
-              <div className="telemetry-metric-card">
-                <span className="m-label">ROUTE DISCREPANCY</span>
-                <span className="m-val" style={{ color: '#0284C7' }}>0.00 (Zero Leakage)</span>
-              </div>
-            </div>
-
-            <div className="telemetry-controls-row">
-              <button
-                type="button"
-                className={`telemetry-mode-btn ${routeSpeed === 'STANDARD' ? 'active' : ''}`}
-                onClick={() => setRouteSpeed('STANDARD')}
-              >
-                Standard Sweep
-              </button>
-              <button
-                type="button"
-                className={`telemetry-mode-btn ${routeSpeed === 'ACCELERATED' ? 'active' : ''}`}
-                onClick={() => setRouteSpeed('ACCELERATED')}
-              >
-                <Zap size={14} />
-                <span>Accelerate Route (2x)</span>
-              </button>
-            </div>
+            </button>
 
             <button
               type="button"
-              className="qonto-btn-hero"
-              style={{ marginTop: '1.5rem', alignSelf: 'flex-start' }}
-              onClick={() => navigate('/login')}
+              className={`rm-toggle-btn ${repaymentDemoMode === 'LUMP_SUM_END' ? 'active' : ''}`}
+              onClick={() => setRepaymentDemoMode('LUMP_SUM_END')}
             >
-              <span>Open Collector Portal</span>
-              <ArrowRight size={16} />
+              <Wallet size={18} />
+              <div>
+                <strong>LUMP_SUM_END Mode (Get Amount at Last Date)</strong>
+                <span>Zero daily dues during tenure · Settle full amount on last day</span>
+              </div>
             </button>
+          </div>
+
+          <div className="rm-demo-display">
+            {repaymentDemoMode === 'NORMAL' ? (
+              <div className="rm-mode-details">
+                <div className="rm-explanation">
+                  <h4>Standard Installment Recovery</h4>
+                  <p>
+                    Borrower receives principal (e.g. ₹10,000) and repays an exact equal installment (₹125.00) every single operating day for 100 days until ₹12,500 is recovered.
+                  </p>
+                  <ul className="rm-tags">
+                    <li><Check size={14} /> Fixed daily collections</li>
+                    <li><Check size={14} /> WhatsApp confirmation per installment</li>
+                    <li><Check size={14} /> Automated overdue flags if day is missed</li>
+                  </ul>
+                </div>
+                <div className="rm-schedule-box">
+                  <div className="rm-sched-header">
+                    <span>100-Day Schedule Preview (NORMAL)</span>
+                    <span className="sched-tag">Daily Dues</span>
+                  </div>
+                  <div className="sched-rows">
+                    <div className="s-row"><span className="s-day">Day 01</span><span className="s-amt">₹125.00</span><span className="status-tag green">Paid</span></div>
+                    <div className="s-row"><span className="s-day">Day 02</span><span className="s-amt">₹125.00</span><span className="status-tag green">Paid</span></div>
+                    <div className="s-row"><span className="s-day">Day ...</span><span className="s-amt">₹125.00 / day</span><span className="status-tag green">In Progress</span></div>
+                    <div className="s-row"><span className="s-day">Day 100</span><span className="s-amt">₹125.00</span><span className="status-tag green">Final Day Cleared</span></div>
+                  </div>
+                  <div className="sched-footer">Total Recovered: <strong>₹12,500.00</strong></div>
+                </div>
+              </div>
+            ) : (
+              <div className="rm-mode-details">
+                <div className="rm-explanation">
+                  <h4>Settle Fixed Amount at Last Date (`LUMP_SUM_END`)</h4>
+                  <p>
+                    Specially designed for seasonal bazaar merchants, wholesale inventory purchases, and harvest traders. During days 1 to 99, daily dues are deferred (<code>DUE_AT_END</code>). On the final 100th date, the borrower repays the complete fixed amount (₹12,500.00).
+                  </p>
+                  <ul className="rm-tags">
+                    <li><Check size={14} /> Zero daily pressure during active sales cycle</li>
+                    <li><Check size={14} /> Settle full balance at last date with 1 click</li>
+                    <li><Check size={14} /> Early settlement interest waiver auto-calculated</li>
+                  </ul>
+                </div>
+                <div className="rm-schedule-box highlight">
+                  <div className="rm-sched-header">
+                    <span>100-Day Schedule Preview (LUMP_SUM_END)</span>
+                    <span className="sched-tag purple">Bullet Repayment</span>
+                  </div>
+                  <div className="sched-rows">
+                    <div className="s-row"><span className="s-day">Day 01 - 99</span><span className="s-amt">₹0.00 / day</span><span className="status-tag purple">DUE_AT_END</span></div>
+                    <div className="s-row highlight-final">
+                      <div>
+                        <span className="s-day">Day 100 (Final Maturity Date)</span>
+                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>Zero-Dues Certificate Issued Upon Settle</div>
+                      </div>
+                      <span className="s-amt highlight">₹12,500.00</span>
+                      <span className="status-tag green">Settle Full Balance</span>
+                    </div>
+                  </div>
+                  <div className="sched-footer">
+                    <span>Total Settle at Last Date: <strong style={{ color: '#4F46E5', fontSize: '1.05rem' }}>₹12,500.00</strong></span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* --------------------------------------------------------------------
-          5. 3D SOVEREIGN VAULT GYRO-GIMBAL CHAMBER
-          -------------------------------------------------------------------- */}
-      <section className="vault-3d-section" id="vault-chamber">
-        <div className="vault-chamber-card">
-          {/* Left: 3D Gyroscope Gimbal Core */}
-          <div className="vault-gyro-stage">
-            <div className="vault-hud-status">
-              <span>((●)) 3D CRYPTOGRAPHIC GIMBAL CORE</span>
+      {/* ================================================================
+          4. CONFIDENTIALITY & PRIVACY SHIELD
+          ================================================================ */}
+      <section className="privacy-section" id="privacy">
+        <div className="privacy-banner-box">
+          <div className="privacy-content">
+            <div className="privacy-pill">
+              <ShieldCheck size={16} />
+              <span>TOTAL CREDENTIAL PRIVACY & ENCRYPTION</span>
             </div>
-
-            <div className={`gyro-gimbal-rig ${vaultPulseMode.toLowerCase()}`}>
-              {/* Outer Ring: Titanium Yaw */}
-              <div className="gimbal-ring ring-outer-yaw">
-                <div className="orbital-node node-1" />
-                <div className="orbital-node node-2" />
-              </div>
-
-              {/* Middle Ring: Sapphire Pitch */}
-              <div className="gimbal-ring ring-middle-pitch">
-                <div className="orbital-node node-3" />
-                <div className="orbital-node node-4" />
-              </div>
-
-              {/* Inner Ring: Emerald Roll */}
-              <div className="gimbal-ring ring-inner-roll">
-                <div className="orbital-node node-5" />
-              </div>
-
-              {/* Central Floating Rupee Core */}
-              <div className="vault-center-core">
-                <div className="core-cube">
-                  <div className="cube-face front">₹</div>
-                  <div className="cube-face back">₹</div>
-                  <div className="cube-face right">₹</div>
-                  <div className="cube-face left">₹</div>
-                  <div className="cube-face top" />
-                  <div className="cube-face bottom" />
-                </div>
-                <div className="core-glow-aura" />
-              </div>
-            </div>
-
-            <div className="vault-hud-bottom">
-              <span>Integrity: <strong style={{ color: '#10B981' }}>100.0%</strong></span>
-              <span>Block: <code>{vaultStats.blockHash}</code></span>
-            </div>
-          </div>
-
-          {/* Right: Treasury Controls & Balancing */}
-          <div className="vault-chamber-info">
-            <div className="vault-badge-tag">
-              <Zap size={14} color="#F59E0B" />
-              <span>CRYPTOGRAPHIC TREASURY VAULT</span>
-            </div>
-
-            <h3 className="vault-title">The Sovereign Central Vault Core</h3>
-            <p className="vault-desc">
-              Witness real-time double-entry balancing. Field collections, capital injections, and loan disbursements are mirrored with microsecond telemetry across all physical branches.
+            <h2 className="privacy-heading">Your borrowers, your ledgers. 100% confidential.</h2>
+            <p className="privacy-sub">
+              Unlike legacy lending software that bundles records together, our multi-tenant enclave guarantees that no competitor, external user, or third party can ever see your customer names, contact credentials, or loan amounts.
             </p>
 
-            <div className="vault-stats-row">
-              <div className="vault-stat-box">
-                <span className="v-lbl">ACTIVE VAULT BALANCE</span>
-                <span className="v-amt">{vaultStats.activeBalance}</span>
+            <div className="privacy-badges-row">
+              <div className="p-badge">
+                <Lock size={15} color="#4F46E5" />
+                <span>AES-256 Storage & SSL In-Transit</span>
               </div>
-              <div className="vault-stat-box">
-                <span className="v-lbl">TODAY'S TOTAL INFLOW</span>
-                <span className="v-amt highlight-green">{vaultStats.dayInflow}</span>
+              <div className="p-badge">
+                <Database size={15} color="#059669" />
+                <span>Tenant-Enforced Row Level Security</span>
+              </div>
+              <div className="p-badge">
+                <Fingerprint size={15} color="#0891B2" />
+                <span>Hardware Biometric Terminal Lock</span>
               </div>
             </div>
-
-            <div className="vault-interactive-triggers">
-              <button
-                type="button"
-                className="btn-trigger-action collect"
-                onClick={triggerCollectionSimulation}
-              >
-                <TrendingUp size={16} />
-                <span>Simulate Collection (+₹1,250)</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn-trigger-action disburse"
-                onClick={triggerDisbursalSimulation}
-              >
-                <CreditCard size={16} />
-                <span>Simulate Disbursal (-₹15,000)</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className="qonto-btn-hero"
-              style={{ marginTop: '1.75rem', alignSelf: 'flex-start' }}
-              onClick={() => navigate('/login')}
-            >
-              <span>Access Treasury</span>
-              <ArrowRight size={16} />
-            </button>
           </div>
         </div>
       </section>
 
-      {/* --------------------------------------------------------------------
-          6. INTERACTIVE LOAN CALCULATOR & AMORTIZATION
-          -------------------------------------------------------------------- */}
-      <section className="qonto-calc-section" id="calculator">
-        <div className="qonto-section-intro">
-          <div className="qonto-section-intro-tag">LENDING ENGINE & AMORTIZATION</div>
-          <h2 className="qonto-section-intro-title">Interactive loan simulator for every financial scheme</h2>
-          <p className="qonto-section-intro-desc">
-            Instantly simulate principal disbursals, fixed interest yields, and installment repayment schedules across Daily, Weekly, and Monthly cycles.
+      {/* ================================================================
+          5. SOLUTIONS: TAILORED FOR DAILY, WEEKLY & MONTHLY LENDING
+          ================================================================ */}
+      <section className="solutions-section" id="solutions">
+        <div className="section-header">
+          <div className="section-pill">FLEXIBLE TENANT SCHEMES</div>
+          <h2 className="section-title">Support every financial model on your tenant workspace</h2>
+          <p className="section-subtitle">
+            Configure daily 100-day bazaar advances, weekly chit group auctions, or monthly SME term loans.
           </p>
         </div>
 
-        <div className="qonto-calc-box">
-          <div className="calc-controls-col">
-            <div className="calc-heading-box">
-              <h3>Configure Lending Parameters</h3>
-              <p>Adjust principal, select collection frequency, and define tenure duration.</p>
-            </div>
+        <div className="solutions-tabs-nav">
+          <button
+            type="button"
+            className={`tab-nav-btn ${activeTab === 'daily' ? 'active' : ''}`}
+            onClick={() => setActiveTab('daily')}
+          >
+            <Activity size={18} />
+            <span>Daily Merchant Advance (100-Day)</span>
+          </button>
+          <button
+            type="button"
+            className={`tab-nav-btn ${activeTab === 'weekly' ? 'active' : ''}`}
+            onClick={() => setActiveTab('weekly')}
+          >
+            <Calendar size={18} />
+            <span>Weekly Chit & Market Loans</span>
+          </button>
+          <button
+            type="button"
+            className={`tab-nav-btn ${activeTab === 'vault' ? 'active' : ''}`}
+            onClick={() => setActiveTab('vault')}
+          >
+            <Wallet size={18} />
+            <span>Multi-Branch Vault Treasury</span>
+          </button>
+        </div>
 
-            {/* Amount Slider */}
-            <div className="calc-input-group">
+        <div className="solution-content-card">
+          {activeTab === 'daily' && (
+            <div className="solution-grid">
+              <div className="solution-copy">
+                <div className="sol-tag">100-DAY BAZAAR AMORTIZATION</div>
+                <h3 className="sol-heading">Daily bazaar merchant advance with zero collection leakage</h3>
+                <p className="sol-body">
+                  Disburse capital to vegetable vendors, grocery shop owners, and tea stalls in the morning. Field agents collect fixed installments every afternoon using our offline-capable mobile app.
+                </p>
+                <ul className="sol-checklist">
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>100-Day Mathematical Amortization:</strong> Disburse ₹10,000, collect ₹125/day to recover ₹12,500 total.</span>
+                  </li>
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>Automated WhatsApp Receipts:</strong> Borrowers immediately receive a verified digital confirmation with days remaining.</span>
+                  </li>
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>Route Risk Engine:</strong> Auto-flags overdue accounts and optimizes field agent sweep orders.</span>
+                  </li>
+                </ul>
+                <button type="button" className="btn-sol-action" onClick={() => navigate('/login')}>
+                  <span>Deploy Daily Advance Scheme</span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+
+              <div className="solution-preview-box">
+                <div className="mini-ledger-card">
+                  <div className="ml-header">
+                    <span>100-Day Collection Ledger · Tenant Enclave #ORG-8041</span>
+                    <span className="ml-status">Encrypted Sandbox</span>
+                  </div>
+                  <table className="ml-table">
+                    <thead>
+                      <tr>
+                        <th>Account ID</th>
+                        <th>Cycle</th>
+                        <th>Per Day</th>
+                        <th>Repaid / Target</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Merchant #M-8821</strong></td>
+                        <td>Day 42/100</td>
+                        <td>₹125.00</td>
+                        <td>₹5,250 / ₹12,500</td>
+                        <td><span className="status-tag green">Paid</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Merchant #M-4412</strong></td>
+                        <td>Day 78/100</td>
+                        <td>₹125.00</td>
+                        <td>₹9,750 / ₹12,500</td>
+                        <td><span className="status-tag green">Paid</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Merchant #M-3190</strong></td>
+                        <td>Day 12/100</td>
+                        <td>₹250.00</td>
+                        <td>₹3,000 / ₹25,000</td>
+                        <td><span className="status-tag orange">Pending</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Merchant #M-9024</strong></td>
+                        <td>Day 95/100</td>
+                        <td>₹375.00</td>
+                        <td>₹35,625 / ₹37,500</td>
+                        <td><span className="status-tag green">Paid</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="ml-footer">
+                    <span>Route Completion: <strong>92.5%</strong></span>
+                    <span>Collected Today: <strong style={{ color: '#059669' }}>₹14,250.00</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'weekly' && (
+            <div className="solution-grid">
+              <div className="solution-copy">
+                <div className="sol-tag">WEEKLY CHIT FUND MANAGEMENT</div>
+                <h3 className="sol-heading">Weekly chit fund tracking and auction ledger administration</h3>
+                <p className="sol-body">
+                  Structure weekly collections, dividend allocations, and chit auctions with automated double-entry verification. Prevent cashier disputes with digital borrower signoffs.
+                </p>
+                <ul className="sol-checklist">
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>10-Week / 20-Week Tenures:</strong> Configurable weekly installment tables with automatic grace period calculation.</span>
+                  </li>
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>Member Dividend Ledger:</strong> Real-time tracking of auction discount payouts and monthly dividends.</span>
+                  </li>
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>Early Settlement Waivers:</strong> Instant zero-dues computation when borrowers pay off the lump sum before tenure ends.</span>
+                  </li>
+                </ul>
+                <button type="button" className="btn-sol-action" onClick={() => navigate('/login')}>
+                  <span>Deploy Weekly Chit Scheme</span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+
+              <div className="solution-preview-box">
+                <div className="mini-ledger-card">
+                  <div className="ml-header">
+                    <span>Weekly Chit Batch #W-20 · Tenant #ORG-9214</span>
+                    <span className="ml-status">Week 04</span>
+                  </div>
+                  <table className="ml-table">
+                    <thead>
+                      <tr>
+                        <th>Member Code</th>
+                        <th>Chit Value</th>
+                        <th>Weekly Due</th>
+                        <th>Auction Taken</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Member #CH-102</strong></td>
+                        <td>₹1,00,000</td>
+                        <td>₹10,000</td>
+                        <td>No (Investor)</td>
+                        <td><span className="status-tag green">Cleared</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Member #CH-205</strong></td>
+                        <td>₹1,00,000</td>
+                        <td>₹10,000</td>
+                        <td>Yes (Week 02)</td>
+                        <td><span className="status-tag green">Cleared</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Member #CH-319</strong></td>
+                        <td>₹1,00,000</td>
+                        <td>₹10,000</td>
+                        <td>No (Investor)</td>
+                        <td><span className="status-tag green">Cleared</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="ml-footer">
+                    <span>Group Total: <strong>₹10,00,000</strong></span>
+                    <span>Pool Cleared: <strong style={{ color: '#4F46E5' }}>100%</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'vault' && (
+            <div className="solution-grid">
+              <div className="solution-copy">
+                <div className="sol-tag">DOUBLE-ENTRY TREASURY</div>
+                <h3 className="sol-heading">Sovereign vault balancing across all physical branch safes</h3>
+                <p className="sol-body">
+                  Eliminate internal discrepancies. Every field agent cash deposit, branch disbursement, and owner capital infusion is tied to an immutable double-entry ledger.
+                </p>
+                <ul className="sol-checklist">
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>End-of-Day Branch Handover:</strong> Field agents return collected cash to cashier with 1-click counter reconciliation.</span>
+                  </li>
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>Multi-Branch Safe Governance:</strong> SuperAdmin monitors real-time cash balances across 10+ branch safes simultaneously.</span>
+                  </li>
+                  <li>
+                    <CheckCircle2 size={18} className="check-ico" />
+                    <span><strong>Audit-Ready Ledger:</strong> Export RBI and tax-ready journal vouchers in Excel and PDF formats instantly.</span>
+                  </li>
+                </ul>
+                <button type="button" className="btn-sol-action" onClick={() => navigate('/login')}>
+                  <span>Deploy Multi-Branch Vault</span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+
+              <div className="solution-preview-box">
+                <div className="mini-ledger-card">
+                  <div className="ml-header">
+                    <span>Central Vault Summary · Tenant #ORG-7750</span>
+                    <span className="ml-status">Reconciled</span>
+                  </div>
+                  <div className="vault-split-summary">
+                    <div className="v-stat-item">
+                      <span className="v-label">Physical Cash in Branch Safes</span>
+                      <span className="v-amount">₹24,80,000.00</span>
+                    </div>
+                    <div className="v-stat-item">
+                      <span className="v-label">Bank Accounts / UPI Balance</span>
+                      <span className="v-amount">₹59,40,500.00</span>
+                    </div>
+                  </div>
+                  <div className="vault-audit-row">
+                    <ShieldCheck size={16} color="#059669" />
+                    <span>Double-Entry Balancing: <strong>Zero Discrepancy Verified</strong></span>
+                  </div>
+                  <div className="ml-footer">
+                    <span>Total Liquid Treasury: <strong>₹84,20,500.00</strong></span>
+                    <span>Status: <strong style={{ color: '#059669' }}>100% Balanced</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ================================================================
+          6. INTERACTIVE LOAN CALCULATOR
+          ================================================================ */}
+      <section className="calculator-section" id="calculator">
+        <div className="section-header">
+          <div className="section-pill">INTERACTIVE AMORTIZATION ENGINE</div>
+          <h2 className="section-title">Simulate any lending scheme in real time</h2>
+          <p className="section-subtitle">
+            Adjust principal disbursal amount, collection frequency, and tenure to see exact installment amounts and total yields.
+          </p>
+        </div>
+
+        <div className="calculator-container">
+          {/* Controls Column */}
+          <div className="calc-inputs-column">
+            <div className="calc-group">
               <div className="calc-label-row">
-                <span>Principal Disbursal Amount</span>
-                <span className="calc-display-val">₹{calcAmount.toLocaleString('en-IN')}</span>
+                <span className="calc-label">Principal Disbursal Amount</span>
+                <span className="calc-value-display">₹{calcAmount.toLocaleString('en-IN')}</span>
               </div>
               <input
                 type="range"
@@ -953,230 +1270,171 @@ export const WelcomePage = () => {
                 step="5000"
                 value={calcAmount}
                 onChange={(e) => setCalcAmount(Number(e.target.value))}
-                className="qonto-range-slider"
+                className="clean-slider"
               />
+              <div className="slider-limits">
+                <span>₹5,000</span>
+                <span>₹5,00,000</span>
+              </div>
             </div>
 
-            {/* Frequency Selector */}
-            <div className="calc-input-group">
+            <div className="calc-group">
               <div className="calc-label-row">
-                <span>Repayment Cycle Scheme</span>
+                <span className="calc-label">Collection Frequency Scheme</span>
+                <span className="calc-value-display">{calcScheme}</span>
               </div>
-              <div className="calc-pills-row">
+              <div className="calc-scheme-toggles">
                 <button
                   type="button"
-                  className={`calc-pill-btn ${calcFrequency === 'DAILY' ? 'active' : ''}`}
-                  onClick={() => { setCalcFrequency('DAILY'); setCalcTenure(100); }}
+                  className={`scheme-btn ${calcScheme === 'DAILY' ? 'active' : ''}`}
+                  onClick={() => handleSchemeChange('DAILY')}
                 >
                   Daily (Merchant 100-Day)
                 </button>
                 <button
                   type="button"
-                  className={`calc-pill-btn ${calcFrequency === 'WEEKLY' ? 'active' : ''}`}
-                  onClick={() => { setCalcFrequency('WEEKLY'); setCalcTenure(10); }}
+                  className={`scheme-btn ${calcScheme === 'WEEKLY' ? 'active' : ''}`}
+                  onClick={() => handleSchemeChange('WEEKLY')}
                 >
                   Weekly (Chit 10-Week)
                 </button>
                 <button
                   type="button"
-                  className={`calc-pill-btn ${calcFrequency === 'MONTHLY' ? 'active' : ''}`}
-                  onClick={() => { setCalcFrequency('MONTHLY'); setCalcTenure(12); }}
+                  className={`scheme-btn ${calcScheme === 'MONTHLY' ? 'active' : ''}`}
+                  onClick={() => handleSchemeChange('MONTHLY')}
                 >
                   Monthly (Business 12-Month)
                 </button>
               </div>
             </div>
 
-            {/* Tenure Slider */}
-            <div className="calc-input-group">
+            <div className="calc-group">
               <div className="calc-label-row">
-                <span>Tenure Duration</span>
-                <span className="calc-display-val">
-                  {calcTenure} {calcFrequency === 'DAILY' ? 'Days' : calcFrequency === 'WEEKLY' ? 'Weeks' : 'Months'}
+                <span className="calc-label">Tenure Duration</span>
+                <span className="calc-value-display">
+                  {calcTenure} {calcScheme === 'DAILY' ? 'Days' : calcScheme === 'WEEKLY' ? 'Weeks' : 'Months'}
                 </span>
               </div>
               <input
                 type="range"
-                min={calcFrequency === 'DAILY' ? 30 : calcFrequency === 'WEEKLY' ? 5 : 3}
-                max={calcFrequency === 'DAILY' ? 120 : calcFrequency === 'WEEKLY' ? 25 : 36}
+                min={calcScheme === 'DAILY' ? 30 : calcScheme === 'WEEKLY' ? 5 : 3}
+                max={calcScheme === 'DAILY' ? 120 : calcScheme === 'WEEKLY' ? 25 : 36}
                 step="1"
                 value={calcTenure}
                 onChange={(e) => setCalcTenure(Number(e.target.value))}
-                className="qonto-range-slider"
+                className="clean-slider"
               />
+              <div className="slider-limits">
+                <span>Min: {calcScheme === 'DAILY' ? '30 Days' : calcScheme === 'WEEKLY' ? '5 Wks' : '3 Mos'}</span>
+                <span>Max: {calcScheme === 'DAILY' ? '120 Days' : calcScheme === 'WEEKLY' ? '25 Wks' : '36 Mos'}</span>
+              </div>
             </div>
           </div>
 
           {/* Breakdown Card */}
-          <div className="calc-breakdown-card">
-            <div className="breakdown-badge">SIMULATED SCHEDULE</div>
+          <div className="calc-summary-column">
+            <div className="summary-card">
+              <div className="summary-header">
+                <span className="summary-badge">SIMULATED SCHEDULE</span>
+                <span className="rate-badge">{interestRate}% Fixed Fee</span>
+              </div>
 
-            <div className="breakdown-row">
-              <span className="breakdown-lbl">Base Principal</span>
-              <span className="breakdown-val">₹{calcAmount.toLocaleString('en-IN')}</span>
-            </div>
+              <div className="summary-stat-row">
+                <span className="stat-label">Principal Amount</span>
+                <span className="stat-val">₹{calcAmount.toLocaleString('en-IN')}</span>
+              </div>
 
-            <div className="breakdown-row">
-              <span className="breakdown-lbl">Lending Fee / Rate</span>
-              <span className="breakdown-val" style={{ color: '#10B981' }}>{interestRate}% Fixed</span>
-            </div>
+              <div className="summary-stat-row">
+                <span className="stat-label">Total Fee / Interest</span>
+                <span className="stat-val" style={{ color: '#059669' }}>+₹{totalInterest.toLocaleString('en-IN')}</span>
+              </div>
 
-            <div className="breakdown-row">
-              <span className="breakdown-lbl">Total Repayable</span>
-              <span className="breakdown-val">₹{totalRepayable.toLocaleString('en-IN')}</span>
-            </div>
+              <div className="summary-stat-row">
+                <span className="stat-label">Total Repayable</span>
+                <span className="stat-val">₹{totalRepayable.toLocaleString('en-IN')}</span>
+              </div>
 
-            <div className="breakdown-row total-row">
-              <span className="breakdown-lbl">Cycle Installment ({calcFrequency.toLowerCase()})</span>
-              <span className="breakdown-val highlight">₹{emiAmount.toLocaleString('en-IN')}</span>
-            </div>
+              <div className="installment-box">
+                <span className="inst-sub">Each Installment ({calcScheme.toLowerCase()})</span>
+                <div className="inst-amount">₹{cycleInstallment.toLocaleString('en-IN')}</div>
+                <span className="inst-note">For {calcTenure} scheduled {calcScheme === 'DAILY' ? 'days' : calcScheme === 'WEEKLY' ? 'weeks' : 'months'}</span>
+              </div>
 
-            {/* Visual Amortization Bar */}
-            <div className="amortization-progress-track">
-              <div className="amortization-fill" style={{ width: '75%' }} />
-            </div>
-            <div className="amortization-label-row">
-              <span>Principal: ₹{calcAmount.toLocaleString('en-IN')}</span>
-              <span>Yield: ₹{totalInterest.toLocaleString('en-IN')}</span>
-            </div>
+              <div className="yield-progress-track">
+                <div className="track-bar fill-principal" style={{ width: '80%' }} />
+                <div className="track-bar fill-yield" style={{ width: '20%' }} />
+              </div>
+              <div className="track-labels">
+                <span>Principal 80%</span>
+                <span>Yield 20%</span>
+              </div>
 
-            <button
-              type="button"
-              className="btn-calc-submit"
-              onClick={() => navigate('/login')}
-            >
-              <span>Disburse in Portal</span>
-              <ArrowRight size={16} />
-            </button>
+              <button
+                type="button"
+                className="btn-calc-disburse"
+                onClick={() => navigate('/login')}
+              >
+                <span>Disburse in Portal</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* --------------------------------------------------------------------
-          7. ENTERPRISE SECURITY & COMPLIANCE BENTO GRID
-          -------------------------------------------------------------------- */}
-      <section className="security-bento-section" id="security">
-        <div className="qonto-section-intro">
-          <div className="qonto-section-intro-tag">SECURITY & RELIABILITY</div>
-          <h2 className="qonto-section-intro-title">Institutional governance baked into every layer</h2>
-          <p className="qonto-section-intro-desc">
-            Engineered with bank-grade tenant partitioning, biometric enforcement, and zero data leakage.
+      {/* ================================================================
+          7. METRICS BANNER
+          ================================================================ */}
+      <section className="metrics-banner-section">
+        <div className="metrics-banner-inner">
+          <div className="metric-box">
+            <div className="metric-big-num">100+</div>
+            <div className="metric-small-label">Finance Organizations Supported</div>
+          </div>
+          <div className="metric-box">
+            <div className="metric-big-num">₹50 Cr+</div>
+            <div className="metric-small-label">Circulating Portfolio Deployed</div>
+          </div>
+          <div className="metric-box">
+            <div className="metric-big-num">99.4%</div>
+            <div className="metric-small-label">On-Time Daily Recovery Rate</div>
+          </div>
+          <div className="metric-box">
+            <div className="metric-big-num">100%</div>
+            <div className="metric-small-label">Tenant Cryptographic Isolation</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================
+          8. FAQ SECTION
+          ================================================================ */}
+      <section className="faq-section" id="faq">
+        <div className="section-header">
+          <div className="section-pill">FREQUENTLY ASKED QUESTIONS</div>
+          <h2 className="section-title">Everything you need to know about the SaaS platform</h2>
+          <p className="section-subtitle">
+            Clear answers on tenant isolation, data confidentiality, and multi-branch onboarding.
           </p>
         </div>
 
-        <div className="bento-grid">
-          <div className="bento-card col-span-2">
-            <div className="bento-icon-box">
-              <ShieldCheck size={24} color="#10B981" />
-            </div>
-            <h3 className="bento-title">Hardware Biometric Authentication</h3>
-            <p className="bento-desc">
-              Biometric sensors protect mobile collection terminals with instant FaceID and fingerprint validation. Automated background timers lock the application immediately upon task switching.
-            </p>
-          </div>
-
-          <div className="bento-card">
-            <div className="bento-icon-box">
-              <Building2 size={24} color="#38BDF8" />
-            </div>
-            <h3 className="bento-title">Multi-Tenant Isolation</h3>
-            <p className="bento-desc">
-              Strict compartmentalization guarantees that physical branches operate independently with zero cross-tenant ledger exposure.
-            </p>
-          </div>
-
-          <div className="bento-card">
-            <div className="bento-icon-box">
-              <Key size={24} color="#F59E0B" />
-            </div>
-            <h3 className="bento-title">Role-Based Access (RBAC)</h3>
-            <p className="bento-desc">
-              SuperAdmins, Branch Managers, Cashiers, and Field Collectors operate with tightly defined permissions and session token invalidation.
-            </p>
-          </div>
-
-          <div className="bento-card">
-            <div className="bento-icon-box">
-              <Server size={24} color="#A78BFA" />
-            </div>
-            <h3 className="bento-title">Double-Entry Cryptographic Ledger</h3>
-            <p className="bento-desc">
-              Every loan repayment, capital injection, and write-off is verified with double-entry balancing to prevent discrepancies.
-            </p>
-          </div>
-
-          <div className="bento-card col-span-2">
-            <div className="bento-icon-box">
-              <Lock size={24} color="#34D399" />
-            </div>
-            <h3 className="bento-title">Automated Cloud Backups & 99.99% SLA</h3>
-            <p className="bento-desc">
-              Continuous geo-distributed database snapshots ensure zero data loss during power outages or connectivity drops on field routes.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* --------------------------------------------------------------------
-          8. INSTITUTIONAL METRICS SECTION
-          -------------------------------------------------------------------- */}
-      <section className="qonto-metrics-section">
-        <div className="qonto-metrics-inner">
-          <div className="qonto-metric-col">
-            <div className="qonto-metric-number">₹2.4 Cr+</div>
-            <div className="qonto-metric-label">Circulating capital actively deployed across borrowers</div>
-          </div>
-
-          <div className="qonto-metric-col">
-            <div className="qonto-metric-number">99.4%</div>
-            <div className="qonto-metric-label">On-time collection recovery across daily & weekly cycles</div>
-          </div>
-
-          <div className="qonto-metric-col">
-            <div className="qonto-metric-number">12,800+</div>
-            <div className="qonto-metric-label">Registered retail shopkeepers and verified chit borrowers</div>
-          </div>
-
-          <div className="qonto-metric-col">
-            <div className="qonto-metric-number">0-Lag</div>
-            <div className="qonto-metric-label">Real-time cryptographic double-entry ledger verification</div>
-          </div>
-        </div>
-      </section>
-
-      {/* --------------------------------------------------------------------
-          9. FAQ ACCORDION
-          -------------------------------------------------------------------- */}
-      <section className="faq-section" id="faq">
-        <div className="qonto-section-intro" style={{ textAlign: 'center' }}>
-          <div className="qonto-section-intro-tag">FREQUENTLY ASKED QUESTIONS</div>
-          <h2 className="qonto-section-intro-title">Everything you need to know</h2>
-        </div>
-
-        <div className="faq-list">
+        <div className="faq-accordion-list">
           {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              className={`faq-item ${openFaq === idx ? 'active' : ''}`}
-            >
+            <div key={idx} className={`faq-row-item ${openFaq === idx ? 'open' : ''}`}>
               <button
                 type="button"
-                className="faq-question-btn"
+                className="faq-toggle-btn"
                 onClick={() => setOpenFaq(openFaq === idx ? -1 : idx)}
               >
                 <span>{faq.q}</span>
                 <ChevronDown
                   size={18}
-                  style={{
-                    transform: openFaq === idx ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)',
-                  }}
+                  className="faq-arrow-icon"
                 />
               </button>
-
               {openFaq === idx && (
-                <div className="faq-answer-content">
-                  {faq.a}
+                <div className="faq-content-body">
+                  <p>{faq.a}</p>
                 </div>
               )}
             </div>
@@ -1184,81 +1442,86 @@ export const WelcomePage = () => {
         </div>
       </section>
 
-      {/* --------------------------------------------------------------------
-          10. BOTTOM CONVERSION ACTION
-          -------------------------------------------------------------------- */}
-      <section className="qonto-bottom-cta">
-        <div className="cta-ambient-glow" />
-        <h2 className="qonto-cta-heading">
-          All your business finances in one place.
-        </h2>
-        <p className="qonto-cta-sub">
-          Join modern institutions and microfinance organizations operating on the Finance Portal.
-        </p>
-        <button
-          type="button"
-          className="qonto-btn-hero"
-          onClick={() => navigate('/login')}
-        >
-          <span>Open an account</span>
-          <ArrowRight size={18} />
-        </button>
+      {/* ================================================================
+          9. HIGH-CONVERSION BOTTOM CTA
+          ================================================================ */}
+      <section className="bottom-cta-banner">
+        <div className="cta-container">
+          <div className="cta-pill">DEPLOY YOUR ORGANIZATION WORKSPACE</div>
+          <h2 className="cta-heading">Ready to scale your finance organization?</h2>
+          <p className="cta-subtitle">
+            Launch your isolated tenant portal with multi-branch management, offline mobile collectors, and zero credential leakage.
+          </p>
+          <div className="cta-btn-group">
+            <button
+              type="button"
+              className="btn-cta-primary-large"
+              onClick={() => navigate('/login')}
+            >
+              <span>Get Started Now</span>
+              <ArrowRight size={18} />
+            </button>
+            <Link to="/login" className="btn-cta-ghost-large">
+              <span>Sign In to Tenant Portal</span>
+            </Link>
+          </div>
+          <span className="cta-footnote">Setup in under 60 seconds · Dedicated tenant encryption enclave</span>
+        </div>
       </section>
 
-      {/* --------------------------------------------------------------------
-          11. COMPREHENSIVE FOOTER
-          -------------------------------------------------------------------- */}
-      <footer className="qonto-footer">
-        <div className="qonto-footer-grid">
-          <div className="footer-col-brand">
-            <div className="footer-brand-header">
+      {/* ================================================================
+          10. CORPORATE FOOTER
+          ================================================================ */}
+      <footer className="landing-footer">
+        <div className="footer-top-grid">
+          <div className="footer-brand-column">
+            <div className="footer-brand-title">
               <img src={logoImg} alt="Finance Portal" className="footer-logo-img" />
-              <h4>Finance Portal</h4>
+              <span>Finance Portal SaaS</span>
             </div>
-            <p>
-              Enterprise cloud infrastructure for daily retail merchant advances, structured weekly chits, and central vault double-entry treasury management.
+            <p className="footer-brand-desc">
+              Enterprise multi-tenant cloud infrastructure for daily merchant advances, weekly chit funds, and centralized branch vault management.
             </p>
           </div>
 
-          <div className="footer-col-links">
-            <h5>Navigation</h5>
+          <div className="footer-nav-column">
+            <h6>Multi-Tenant Platform</h6>
             <ul>
-              <li><a href="#hero" onClick={(e) => scrollToSection(e, 'hero')}>Features</a></li>
-              <li><a href="#card-studio" onClick={(e) => scrollToSection(e, 'card-studio')}>Smart Card Studio</a></li>
-              <li><a href="#route-telemetry" onClick={(e) => scrollToSection(e, 'route-telemetry')}>Route Telemetry</a></li>
-              <li><a href="#vault-chamber" onClick={(e) => scrollToSection(e, 'vault-chamber')}>Sovereign Vault</a></li>
+              <li><a href="#multi-tenancy" onClick={(e) => scrollToSection(e, 'multi-tenancy')}>SuperAdmin Global Hub</a></li>
+              <li><a href="#multi-tenancy" onClick={(e) => scrollToSection(e, 'multi-tenancy')}>Tenant Org Portal</a></li>
+              <li><a href="#multi-tenancy" onClick={(e) => scrollToSection(e, 'multi-tenancy')}>Branch Cashier Safes</a></li>
+              <li><a href="#multi-tenancy" onClick={(e) => scrollToSection(e, 'multi-tenancy')}>Field Mobile Fleet</a></li>
             </ul>
           </div>
 
-          <div className="footer-col-links">
-            <h5>Platform</h5>
+          <div className="footer-nav-column">
+            <h6>Lending Schemes</h6>
             <ul>
-              <li><a href="#calculator" onClick={(e) => scrollToSection(e, 'calculator')}>Loan Simulator</a></li>
-              <li><a href="#security" onClick={(e) => scrollToSection(e, 'security')}>Security Architecture</a></li>
-              <li><a href="#faq" onClick={(e) => scrollToSection(e, 'faq')}>FAQ</a></li>
+              <li><a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>Daily Merchant 100-Day</a></li>
+              <li><a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>Weekly Chit Funds</a></li>
+              <li><a href="#privacy" onClick={(e) => scrollToSection(e, 'privacy')}>Data Confidentiality Shield</a></li>
+              <li><a href="#calculator" onClick={(e) => scrollToSection(e, 'calculator')}>Loan Engine Simulator</a></li>
             </ul>
           </div>
 
-          <div className="footer-col-links">
-            <h5>Access</h5>
+          <div className="footer-nav-column">
+            <h6>Access</h6>
             <ul>
-              <li><Link to="/login">Sign In to Account</Link></li>
-              <li><Link to="/login">Open an Account</Link></li>
-              <li><Link to="/login">Staff Terminal</Link></li>
-              <li><Link to="/login">Admin Portal</Link></li>
+              <li><Link to="/login">SuperAdmin Central Hub</Link></li>
+              <li><Link to="/login">Tenant Admin Workspace</Link></li>
+              <li><Link to="/login">Branch Manager Terminal</Link></li>
+              <li><Link to="/login">Field Staff Mobile App</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="qonto-footer-bottom">
-          <span className="qonto-footer-copy">
-            © {new Date().getFullYear()} Finance Portal Engine. All rights reserved.
-          </span>
-          <ul className="qonto-footer-legal-links">
-            <li><a href="#security" onClick={(e) => scrollToSection(e, 'security')}>Privacy Policy</a></li>
-            <li><a href="#security" onClick={(e) => scrollToSection(e, 'security')}>Terms of Service</a></li>
-            <li><a href="#security" onClick={(e) => scrollToSection(e, 'security')}>Regulatory Compliance</a></li>
-          </ul>
+        <div className="footer-bottom-bar">
+          <span>© {new Date().getFullYear()} Finance Portal SaaS Inc. All tenant records are cryptographically isolated.</span>
+          <div className="footer-legal-links">
+            <Link to="/login">Privacy Policy</Link>
+            <Link to="/login">Terms of Service</Link>
+            <Link to="/login">Tenant Data Encryption Standard</Link>
+          </div>
         </div>
       </footer>
     </div>
