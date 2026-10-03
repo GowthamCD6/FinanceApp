@@ -254,11 +254,18 @@ export const WelcomePage = () => {
 
           {/* Content Block overlaid directly on the right white region */}
           <div className="exact-content-overlay">
+            <div className="et-tag-badge">
+              <span className="et-tag-dot" />
+              <span>Next-Gen Enterprise Lending OS</span>
+            </div>
+
             <h1 className="et-main-title">FINANCE PORTAL</h1>
             <h2 className="et-sub-title">SAAS LENDING PLATFORM</h2>
+
             <p className="et-desc">
-              Enterprise multi-tenant cloud infrastructure for daily 100-day merchant advances, weekly chit fund administration, and centralized double-entry branch vaults with zero credential leakage.
+              High-throughput cloud infrastructure engineered for automated 100-day daily microcredit, weekly chit fund syndicates, and centralized double-entry branch vaults with real-time audit verification.
             </p>
+
             <div className="et-actions">
               <button
                 type="button"
@@ -266,6 +273,7 @@ export const WelcomePage = () => {
                 onClick={() => navigate('/login')}
               >
                 <span>JOIN US</span>
+                <ArrowRight size={15} />
               </button>
               <button
                 type="button"
@@ -274,6 +282,23 @@ export const WelcomePage = () => {
               >
                 <span>SIGN UP</span>
               </button>
+            </div>
+
+            <div className="et-trust-bar">
+              <div className="et-trust-item">
+                <CheckCircle2 size={13} className="et-check-icon" />
+                <span>Zero Credential Leakage</span>
+              </div>
+              <span className="et-trust-dot">•</span>
+              <div className="et-trust-item">
+                <CheckCircle2 size={13} className="et-check-icon" />
+                <span>Multi-Tenant Vaults</span>
+              </div>
+              <span className="et-trust-dot">•</span>
+              <div className="et-trust-item">
+                <CheckCircle2 size={13} className="et-check-icon" />
+                <span>Automated Daily Settlement</span>
+              </div>
             </div>
           </div>
         </div>
