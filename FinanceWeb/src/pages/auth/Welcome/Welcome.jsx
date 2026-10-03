@@ -276,13 +276,6 @@ export const WelcomePage = () => {
               </button>
             </div>
           </div>
-
-          {/* Interactive 3-Dot Indicator at Bottom Center */}
-          <div className="exact-dots-row">
-            <span className="e-dot active" />
-            <span className="e-dot" />
-            <span className="e-dot" />
-          </div>
         </div>
       </section>
 

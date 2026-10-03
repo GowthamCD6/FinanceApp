@@ -352,42 +352,110 @@
   filter: blur(1.2px) drop-shadow(0 8px 16px rgba(2, 6, 60, 0.35));
 }
 
-/* Gentle floating micro-animations */
-@keyframes sphereFloatSlow {
+/* ==========================================================================
+   UNIQUE 3D SPHERE FLOATING TRAJECTORIES (EACH BALL MOVES UNIQUELY)
+   ========================================================================== */
+
+/* 1. Lower-Left Sphere: Wide lazy zero-g orbital wander & breathing */
+@keyframes orbFloatLowerLeft {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translate(0px, 0px) scale(1);
+  }
+  25% {
+    transform: translate(8px, -12px) scale(1.04);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translate(12px, -3px) scale(1.01);
+  }
+  75% {
+    transform: translate(4px, 8px) scale(0.97);
   }
 }
 
-@keyframes sphereFloatMedium {
+/* 2. Mid-Left Pair (Left): Elliptical counter-orbit dancing near the wave lobe */
+@keyframes orbFloatPairLeft {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translate(0px, 0px) scale(1);
+  }
+  30% {
+    transform: translate(-7px, -10px) scale(1.03);
+  }
+  65% {
+    transform: translate(6px, 7px) scale(0.97);
+  }
+}
+
+/* 3. Mid-Left Pair (Right / Largest): Heavy majestic inertia float & deep pulse */
+@keyframes orbFloatPairRight {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  35% {
+    transform: translate(8px, -9px) scale(1.04);
+  }
+  70% {
+    transform: translate(-5px, 6px) scale(0.98);
+  }
+}
+
+/* 4. Center Valley Sphere: Buoyant, playful vertical bob & harmonic sway */
+@keyframes orbFloatCenterValley {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  25% {
+    transform: translate(3px, -7px) scale(1.06);
   }
   50% {
-    transform: translateY(-5px);
+    transform: translate(-3px, -13px) scale(1.09);
+  }
+  75% {
+    transform: translate(-5px, 5px) scale(0.95);
+  }
+}
+
+/* 5. Right Wave Sphere: Diagonal wave glide sliding along the crest */
+@keyframes orbFloatRightWave {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(9px, -8px) scale(1.03);
+  }
+  66% {
+    transform: translate(-7px, 9px) scale(0.97);
+  }
+}
+
+/* 6. Far-Right Ambient Sphere: Deep space float with opacity and scale drift */
+@keyframes orbFloatFarRight {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate(-10px, -14px) scale(1.09);
+    opacity: 0.94;
   }
 }
 
 .float-anim-1 {
-  animation: sphereFloatSlow 6.2s ease-in-out infinite;
+  animation: orbFloatLowerLeft 8.8s ease-in-out infinite;
 }
 .float-anim-2 {
-  animation: sphereFloatMedium 5.4s ease-in-out infinite 0.9s;
+  animation: orbFloatPairLeft 6.6s ease-in-out infinite 0.7s;
 }
 .float-anim-3 {
-  animation: sphereFloatSlow 5.8s ease-in-out infinite 1.7s;
+  animation: orbFloatPairRight 9.6s ease-in-out infinite 1.9s;
 }
 .float-anim-4 {
-  animation: sphereFloatMedium 4.8s ease-in-out infinite 2.3s;
+  animation: orbFloatCenterValley 5.0s ease-in-out infinite 2.5s;
 }
 .float-anim-5 {
-  animation: sphereFloatSlow 5.6s ease-in-out infinite 1.3s;
+  animation: orbFloatRightWave 7.4s ease-in-out infinite 1.3s;
 }
 .float-anim-6 {
-  animation: sphereFloatMedium 6.5s ease-in-out infinite 0.5s;
+  animation: orbFloatFarRight 11.2s ease-in-out infinite 0.4s;
 }
 
 /* Navigation directly mapped to the top bar inside the dark navy header */
@@ -465,9 +533,9 @@
 /* Content Box directly mapped to the right white region */
 .exact-content-overlay {
   position: absolute;
-  top: clamp(265px, 35vh, 335px);
-  right: clamp(4%, 7vw, 10%);
-  width: clamp(380px, 38vw, 530px);
+  top: clamp(250px, 35vh, 340px);
+  right: clamp(4%, 7.5vw, 11%);
+  width: clamp(390px, 40vw, 550px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -476,111 +544,114 @@
 }
 
 .et-main-title {
-  font-size: clamp(2rem, 2.8vw, 3.4rem);
+  font-size: clamp(2.2rem, 3.1vw, 3.6rem);
   font-weight: 900;
-  color: #121835;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.025em;
   margin: 0;
   line-height: 1.05;
   text-align: center;
+  background: linear-gradient(135deg, #070928 0%, #111A4D 45%, #1D237A 85%, #2563EB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(17, 26, 77, 0.08));
 }
 
 .et-sub-title {
-  font-size: clamp(0.9rem, 1.1vw, 1.25rem);
-  font-weight: 600;
-  color: #6B779E;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.78rem, 0.9vw, 0.98rem);
+  font-weight: 800;
+  color: #2563EB;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(79, 70, 229, 0.12) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  padding: 0.35rem 1rem;
+  border-radius: var(--radius-full);
   letter-spacing: 0.22em;
-  margin: 0.4rem 0 1.1rem;
+  margin: 0.85rem 0 1.25rem;
   text-transform: uppercase;
   text-align: center;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.08);
+  backdrop-filter: blur(8px);
 }
 
 .et-desc {
-  font-size: clamp(0.84rem, 0.96vw, 1rem);
-  line-height: 1.7;
-  color: #596587;
-  margin: 0 0 1.75rem;
-  max-width: 440px;
+  font-size: clamp(0.88rem, 0.98vw, 1.04rem);
+  line-height: 1.75;
+  color: #4B5563;
+  margin: 0 0 2rem;
+  max-width: 470px;
   text-align: center;
+  font-weight: 450;
+  letter-spacing: -0.005em;
 }
 
 .et-actions {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.25rem;
+  gap: 1.35rem;
 }
 
 .btn-et-join {
-  background: linear-gradient(135deg, #0056F6 0%, #1538D4 55%, #2B1280 100%);
+  position: relative;
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 48%, #1E1B4B 100%);
   color: #FFFFFF;
   border: none;
-  padding: clamp(0.8rem, 1vw, 1.1rem) clamp(2.2rem, 2.8vw, 3.4rem);
+  padding: clamp(0.85rem, 1.05vw, 1.15rem) clamp(2.4rem, 3vw, 3.6rem);
   border-radius: var(--radius-full);
-  font-size: clamp(0.9rem, 1.02vw, 1.1rem);
+  font-size: clamp(0.92rem, 1.02vw, 1.12rem);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 10px 28px rgba(21, 56, 212, 0.42);
-  transition: all 0.25s ease;
+  box-shadow: 0 12px 30px -4px rgba(29, 78, 216, 0.48), 0 4px 12px rgba(29, 78, 216, 0.22);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.btn-et-join::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transition: left 0.6s ease;
+}
+
+.btn-et-join:hover::before {
+  left: 100%;
 }
 
 .btn-et-join:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 36px rgba(21, 56, 212, 0.55);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 18px 40px -4px rgba(29, 78, 216, 0.62), 0 6px 16px rgba(29, 78, 216, 0.35);
 }
 
 .btn-et-signup {
-  background: #FFFFFF;
-  border: 2px solid #1E44D8;
-  color: #1E44D8;
-  padding: clamp(0.75rem, 0.95vw, 1.05rem) clamp(2.2rem, 2.8vw, 3.4rem);
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #2563EB;
+  color: #1D4ED8;
+  padding: clamp(0.8rem, 1vw, 1.1rem) clamp(2.4rem, 3vw, 3.6rem);
   border-radius: var(--radius-full);
-  font-size: clamp(0.9rem, 1.02vw, 1.1rem);
+  font-size: clamp(0.92rem, 1.02vw, 1.12rem);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
 }
 
 .btn-et-signup:hover {
-  background: #EFF4FF;
-  border-color: #1538D4;
-  color: #1538D4;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(30, 68, 216, 0.2);
-}
-
-/* Three dots at bottom center */
-.exact-dots-row {
-  position: absolute;
-  bottom: clamp(1.8rem, 3.5%, 2.8rem);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  z-index: 20;
-}
-
-.e-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #A0A8C7;
-  transition: all 0.25s ease;
-  cursor: pointer;
-  opacity: 0.7;
-}
-
-.e-dot.active {
-  background: #141A38;
-  width: 9px;
-  height: 9px;
-  opacity: 1;
-  transform: scale(1.1);
+  background: #2563EB;
+  color: #FFFFFF;
+  border-color: #2563EB;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.35);
 }
 
 /* Responsive Breakpoints for Hero Section */
@@ -603,10 +674,6 @@
     left: auto;
     width: 100%;
     padding: clamp(340px, 45vh, 440px) 2rem 5rem;
-  }
-
-  .exact-dots-row {
-    bottom: 1.5rem;
   }
 }
 
@@ -3009,13 +3076,6 @@
     left: auto;
     width: 100%;
     padding: 2rem 1.5rem;
-    background: #FFFFFF;
-  }
-
-  .exact-dots-row {
-    position: relative;
-    bottom: auto;
-    padding: 1rem 0;
     background: #FFFFFF;
   }
 
