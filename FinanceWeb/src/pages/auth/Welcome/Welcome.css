@@ -161,18 +161,20 @@
 .exact-liquid-screen {
   position: relative;
   width: 100%;
-  aspect-ratio: 1536 / 776;   /* same ratio as the SVG viewBox */
-  height: auto;
-  min-height: 0;
-  max-height: none;
-  background: #F9F9F9;
+  height: 100vh;
+  min-height: 680px;
+  max-height: 940px;
+  background: #FFFFFF;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .exact-liquid-frame {
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 .exact-liquid-code-wrapper {
@@ -182,110 +184,255 @@
   width: 100%;
   height: 100%;
   z-index: 1;
+  pointer-events: none;
 }
 
-.exact-code-svg {
+/* ==========================================================================
+   EXACT LIQUID FLUID HERO STAGE (BUILT FROM HERO-SPRITES & MATCHING REFERENCE)
+   ========================================================================== */
+.liquid-hero-stage {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  background: #FFFFFF;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 1. Midnight Navy to Royal Violet Organic Wave Backdrop (behind top waves only) */
+.liquid-top-backdrop-svg {
+  position: absolute;
+  top: 0;
+  left: -1%;
+  width: 102%;
+  height: clamp(345px, 46vh, 460px);
+  pointer-events: none;
+  z-index: 1;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* 2. Official Single Hero Liquid Wave Artwork Layer */
+.single-hero-flow {
+  position: absolute;
+  top: -24px;
+  left: -0.5%;
+  width: 102.5%;
+  height: clamp(345px, 46vh, 460px);
+  pointer-events: none;
+  z-index: 4;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.single-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
   display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 14px 26px rgba(4, 7, 50, 0.22));
 }
 
-/* 3D Sphere gentle floating micro-animations */
-@keyframes sphereGentleFloat1 {
+/* 3. Official Single Bottom Hero Artwork (Left Side Bottom) */
+.single-bottom-hero-flow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: clamp(620px, 66vw, 1100px);
+  height: clamp(280px, 39vh, 410px);
+  pointer-events: none;
+  z-index: 3;
+  user-select: none;
+  -webkit-user-drag: none;
+}
 
-  0%,
-  100% {
+.single-bottom-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ==========================================================================
+   AUTHENTIC FLOATING 3D SPHERES / BALLS (MATCHING REFERENCE PLACEMENT)
+   ========================================================================== */
+.hero-spheres-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.hero-sphere-item {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+  transform-origin: center center;
+}
+
+.hero-sphere-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 1. Lower-Left Sphere: Floats in the open white space above bottom-left wave */
+.sphere-lower-left {
+  left: 5.7%;
+  top: clamp(250px, 53vh, 380px);
+  width: clamp(38px, 4.5vw, 50px);
+  height: clamp(38px, 4.5vw, 50px);
+  z-index: 6;
+  filter: drop-shadow(0 14px 22px rgba(5, 12, 70, 0.42));
+}
+
+/* 2. Mid-Left Pair: Left Sphere tucked under the first wave lobe */
+.sphere-pair-left {
+  left: 24.8%;
+  top: clamp(170px, 39.8vh, 275px);
+  width: clamp(42px, 5vw, 54px);
+  height: clamp(42px, 5vw, 54px);
+  z-index: 6;
+  filter: drop-shadow(0 14px 24px rgba(2, 6, 60, 0.45));
+}
+
+/* 3. Mid-Left Pair: Right Sphere (Largest) nestled under second lobe */
+.sphere-pair-right {
+  left: 31%;
+  top: clamp(150px, 35.2vh, 245px);
+  width: clamp(54px, 6.3vw, 70px);
+  height: clamp(54px, 6.3vw, 70px);
+  z-index: 7;
+  filter: drop-shadow(0 18px 28px rgba(2, 6, 60, 0.52));
+}
+
+/* 4. Center Valley Sphere: Inside central dark navy valley dip */
+.sphere-center-valley {
+  left: 49.6%;
+  top: clamp(112px, 27vh, 185px);
+  width: clamp(24px, 2.8vw, 32px);
+  height: clamp(24px, 2.8vw, 32px);
+  z-index: 6;
+  filter: drop-shadow(0 8px 16px rgba(2, 6, 60, 0.45));
+}
+
+/* 5. Right Wave Sphere: Overlapping the lower-right wave curve */
+.sphere-right-wave {
+  left: 92.5%;
+  top: clamp(126px, 29.5vh, 205px);
+  width: clamp(28px, 3.2vw, 38px);
+  height: clamp(28px, 3.2vw, 38px);
+  z-index: 6;
+  filter: drop-shadow(0 10px 20px rgba(2, 6, 60, 0.45));
+}
+
+/* 6. Far-Right Ambient Edge Sphere: Soft floating depth near viewport border */
+.sphere-far-right-ambient {
+  left: 97%;
+  top: clamp(142px, 33vh, 228px);
+  width: clamp(30px, 3.5vw, 42px);
+  height: clamp(30px, 3.5vw, 42px);
+  z-index: 5;
+  opacity: 0.72;
+  filter: blur(1.2px) drop-shadow(0 8px 16px rgba(2, 6, 60, 0.35));
+}
+
+/* Gentle floating micro-animations */
+@keyframes sphereFloatSlow {
+  0%, 100% {
     transform: translateY(0px);
   }
-
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-6px);
   }
 }
 
-@keyframes sphereGentleFloat2 {
-
-  0%,
-  100% {
+@keyframes sphereFloatMedium {
+  0%, 100% {
     transform: translateY(0px);
   }
-
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-5px);
   }
 }
 
-@keyframes sphereGentleFloat3 {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-12px);
-  }
+.float-anim-1 {
+  animation: sphereFloatSlow 6.2s ease-in-out infinite;
+}
+.float-anim-2 {
+  animation: sphereFloatMedium 5.4s ease-in-out infinite 0.9s;
+}
+.float-anim-3 {
+  animation: sphereFloatSlow 5.8s ease-in-out infinite 1.7s;
+}
+.float-anim-4 {
+  animation: sphereFloatMedium 4.8s ease-in-out infinite 2.3s;
+}
+.float-anim-5 {
+  animation: sphereFloatSlow 5.6s ease-in-out infinite 1.3s;
+}
+.float-anim-6 {
+  animation: sphereFloatMedium 6.5s ease-in-out infinite 0.5s;
 }
 
-.floating-sphere-1, .floating-sphere-2, .floating-sphere-3,
-.floating-sphere-4, .floating-sphere-5 {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.floating-sphere-1 {
-  animation: sphereGentleFloat1 5s ease-in-out infinite;
-}
-
-.floating-sphere-2 {
-  animation: sphereGentleFloat2 6.5s ease-in-out infinite;
-}
-
-.floating-sphere-3 {
-  animation: sphereGentleFloat3 7.5s ease-in-out infinite;
-}
-
-.floating-sphere-4 {
-  animation: sphereGentleFloat1 5.8s ease-in-out infinite 0.5s;
-}
-
-.floating-sphere-5 {
-  animation: sphereGentleFloat2 6.2s ease-in-out infinite 1s;
-}
-
-/* Navigation directly mapped to the top bar */
+/* Navigation directly mapped to the top bar inside the dark navy header */
 .exact-top-nav {
   position: absolute;
-  top: 2.8%;
+  top: clamp(1.2rem, 2.5%, 2.2rem);
   left: 0;
   width: 100%;
-  padding: 0 6.5%;
+  padding: 0 clamp(2rem, 6.5%, 6rem);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 20;
+  z-index: 25;
 }
 
 .et-links {
   display: flex;
   align-items: center;
-  gap: clamp(2.2rem, 3.8vw, 5rem);
+  gap: clamp(2rem, 3.8vw, 4.5rem);
+  user-select: none;
 }
 
 .et-link {
-  color: #9DA3D6;
+  color: #8E9BC8;
   text-decoration: none;
-  font-size: clamp(1rem, 1.15vw, 1.25rem);
+  font-size: clamp(0.95rem, 1.1vw, 1.2rem);
   font-weight: 500;
   letter-spacing: 0.02em;
   transition: all 0.25s ease;
+  user-select: none;
+  outline: none;
 }
 
-.et-link:hover,
+.et-link:focus {
+  outline: none;
+}
+
+.et-link:hover {
+  color: #FFFFFF;
+}
+
 .et-link.active {
   color: #FFFFFF;
-  font-weight: 600;
-  text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
 }
 
 .et-right-tools {
@@ -297,7 +444,7 @@
 .et-tool-btn {
   background: transparent;
   border: none;
-  color: #9DA3D6;
+  color: #8E9BC8;
   cursor: pointer;
   padding: 0.45rem;
   display: flex;
@@ -305,122 +452,162 @@
   justify-content: center;
   transition: all 0.25s ease;
   border-radius: 6px;
+  outline: none;
+  user-select: none;
 }
 
 .et-tool-btn:hover {
   color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   transform: scale(1.08);
 }
 
 /* Content Box directly mapped to the right white region */
 .exact-content-overlay {
   position: absolute;
-  top: 52%;
-  left: 56%;
-  width: 40%;
+  top: clamp(265px, 35vh, 335px);
+  right: clamp(4%, 7vw, 10%);
+  width: clamp(380px, 38vw, 530px);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  z-index: 15;
+  align-items: center;
+  text-align: center;
+  z-index: 20;
 }
 
 .et-main-title {
-  font-size: clamp(2rem, 3.2vw, 3.8rem);
+  font-size: clamp(2rem, 2.8vw, 3.4rem);
   font-weight: 900;
-  color: #141A35;
-  letter-spacing: 0.02em;
+  color: #121835;
+  letter-spacing: -0.01em;
   margin: 0;
-  line-height: 1.04;
+  line-height: 1.05;
+  text-align: center;
 }
 
 .et-sub-title {
-  font-size: clamp(0.9rem, 1.2vw, 1.4rem);
-  font-weight: 500;
-  color: #727B9E;
+  font-size: clamp(0.9rem, 1.1vw, 1.25rem);
+  font-weight: 600;
+  color: #6B779E;
   letter-spacing: 0.22em;
-  margin: 0.4rem 0 1rem;
+  margin: 0.4rem 0 1.1rem;
+  text-transform: uppercase;
+  text-align: center;
 }
 
 .et-desc {
-  font-size: clamp(0.75rem, 0.95vw, 1.05rem);
+  font-size: clamp(0.84rem, 0.96vw, 1rem);
   line-height: 1.7;
-  margin: 0 0 1.4rem;
+  color: #596587;
+  margin: 0 0 1.75rem;
+  max-width: 440px;
+  text-align: center;
 }
 
 .et-actions {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: center;
+  gap: 1.25rem;
 }
 
 .btn-et-join {
-  background: linear-gradient(135deg, #0062FF 0%, #153ADB 50%, #2E1088 100%);
+  background: linear-gradient(135deg, #0056F6 0%, #1538D4 55%, #2B1280 100%);
   color: #FFFFFF;
   border: none;
-  padding: clamp(0.85rem, 1vw, 1.15rem) clamp(2.5rem, 3.2vw, 3.8rem);
+  padding: clamp(0.8rem, 1vw, 1.1rem) clamp(2.2rem, 2.8vw, 3.4rem);
   border-radius: var(--radius-full);
-  font-size: clamp(0.95rem, 1.08vw, 1.2rem);
+  font-size: clamp(0.9rem, 1.02vw, 1.1rem);
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 12px 32px rgba(0, 98, 255, 0.42);
+  box-shadow: 0 10px 28px rgba(21, 56, 212, 0.42);
   transition: all 0.25s ease;
 }
 
 .btn-et-join:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 40px rgba(0, 98, 255, 0.55);
+  box-shadow: 0 16px 36px rgba(21, 56, 212, 0.55);
 }
 
 .btn-et-signup {
   background: #FFFFFF;
-  border: 2.5px solid #2045D8;
-  color: #2045D8;
-  padding: clamp(0.8rem, 0.95vw, 1.1rem) clamp(2.5rem, 3.2vw, 3.8rem);
+  border: 2px solid #1E44D8;
+  color: #1E44D8;
+  padding: clamp(0.75rem, 0.95vw, 1.05rem) clamp(2.2rem, 2.8vw, 3.4rem);
   border-radius: var(--radius-full);
-  font-size: clamp(0.95rem, 1.08vw, 1.2rem);
+  font-size: clamp(0.9rem, 1.02vw, 1.1rem);
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.25s ease;
 }
 
 .btn-et-signup:hover {
-  background: #EEF2FF;
-  border-color: #153ADB;
-  color: #153ADB;
+  background: #EFF4FF;
+  border-color: #1538D4;
+  color: #1538D4;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(32, 69, 216, 0.2);
+  box-shadow: 0 8px 24px rgba(30, 68, 216, 0.2);
 }
 
 /* Three dots at bottom center */
 .exact-dots-row {
   position: absolute;
-  bottom: 4.8%;
+  bottom: clamp(1.8rem, 3.5%, 2.8rem);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  z-index: 15;
+  z-index: 20;
 }
 
 .e-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #1C1258;
+  background: #A0A8C7;
   transition: all 0.25s ease;
   cursor: pointer;
+  opacity: 0.7;
 }
 
 .e-dot.active {
-  width: 11px;
-  height: 11px;
-  background: #140A44;
+  background: #141A38;
+  width: 9px;
+  height: 9px;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Responsive Breakpoints for Hero Section */
+@media (max-width: 960px) {
+  .exact-liquid-screen {
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+  }
+
+  .liquid-top-backdrop {
+    height: 45vh;
+  }
+
+  .exact-content-overlay {
+    position: relative;
+    top: auto;
+    transform: none;
+    right: auto;
+    left: auto;
+    width: 100%;
+    padding: clamp(340px, 45vh, 440px) 2rem 5rem;
+  }
+
+  .exact-dots-row {
+    bottom: 1.5rem;
+  }
 }
 
 .workspace-showcase-section {

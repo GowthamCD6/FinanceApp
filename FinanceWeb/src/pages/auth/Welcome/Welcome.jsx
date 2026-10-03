@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
 import logoImg from '../../../assets/logo-tight.png';
 import { LiquidHeroArtwork } from './LiquidHeroArtwork';
 import {
@@ -14,22 +13,10 @@ import {
   Key,
   Shield,
   Smartphone,
-  Sparkles,
-  TrendingUp,
-  Zap,
   Users,
-  BarChart3,
-  Globe,
-  Clock,
   Layers,
   Receipt,
-  Printer,
-  QrCode,
   Check,
-  RefreshCw,
-  Star,
-  ChevronRight,
-  FileCheck2,
   Percent,
   Wallet,
   Activity,
@@ -37,10 +24,7 @@ import {
   Eye,
   EyeOff,
   Database,
-  Cpu,
   Fingerprint,
-  Sliders,
-  Network,
   Save,
   Search,
   Menu,
@@ -49,7 +33,6 @@ import './Welcome.css';
 
 export const WelcomePage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
 
   // Scroll Header state
   const [isScrolled, setIsScrolled] = useState(false);
@@ -234,7 +217,7 @@ export const WelcomePage = () => {
           ================================================================ */}
       <section className="exact-liquid-screen" id="hero">
         <div className="exact-liquid-frame">
-          {/* 100% Pure Vector Code Liquid Artwork (No Images) */}
+          {/* Authentic Fluid Liquid Hero Artwork */}
           <div className="exact-liquid-code-wrapper">
             <LiquidHeroArtwork />
           </div>
@@ -274,7 +257,7 @@ export const WelcomePage = () => {
             <h1 className="et-main-title">FINANCE PORTAL</h1>
             <h2 className="et-sub-title">SAAS LENDING PLATFORM</h2>
             <p className="et-desc">
-              Enterprise multi-tenant cloud infrastructure for daily retail merchant advances (100-day), weekly chit fund administration, and centralized double-entry branch vaults. Configure custom interest rates, delegate role-based staff, and settle at maturity with zero credential leakage.
+              Enterprise multi-tenant cloud infrastructure for daily 100-day merchant advances, weekly chit fund administration, and centralized double-entry branch vaults with zero credential leakage.
             </p>
             <div className="et-actions">
               <button
