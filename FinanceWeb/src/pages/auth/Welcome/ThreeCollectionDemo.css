@@ -1,0 +1,362 @@
+/* ==========================================================================
+   REALISTIC FINANCIAL SETTLEMENT FACILITY (ARCHITECTURAL 3D STAGE)
+   ========================================================================== */
+.collection-stage-3d-wrapper {
+  position: relative;
+  width: 100%;
+  height: 620px;
+  background: radial-gradient(circle at 50% 25%, #FFFFFF 0%, #F8FAFC 70%, #EFF6FF 100%);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 20px 48px -16px rgba(8, 13, 43, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.95) inset;
+  user-select: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.collection-stage-canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: grab;
+  outline: none;
+}
+
+.collection-stage-canvas:active {
+  cursor: grabbing;
+}
+
+/* Top Live Status HUD */
+.collection-hud-overlay {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 10;
+  gap: 1rem;
+}
+
+.collection-hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px rgba(8, 13, 43, 0.06);
+  pointer-events: auto;
+}
+
+.collection-hud-led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 10px #10B981;
+  animation: hudPulse 2.2s infinite ease-in-out;
+}
+
+.collection-hud-led.purple {
+  background: #8B5CF6;
+  box-shadow: 0 0 10px #8B5CF6;
+}
+
+@keyframes hudPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.7; }
+}
+
+.collection-hud-text {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: 0.02em;
+}
+
+.collection-hud-subtext {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748B;
+  margin-left: 0.25rem;
+}
+
+/* Mode Switcher Group */
+.collection-mode-switcher-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  padding: 0.3rem 0.4rem;
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px rgba(8, 13, 43, 0.06);
+  pointer-events: auto;
+}
+
+.mode-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: transparent;
+  border: none;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.42rem 0.9rem;
+  border-radius: 9999px;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mode-switch-btn:hover {
+  color: #0F172A;
+  background: rgba(241, 245, 249, 0.6);
+}
+
+.mode-switch-btn.active {
+  background: #1D4ED8;
+  color: #FFFFFF;
+  box-shadow: 0 2px 10px rgba(29, 78, 216, 0.32);
+}
+
+.mode-switch-btn.active.purple-mode {
+  background: #7C3AED;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35);
+}
+
+/* Unified Floating Master Console Dock (Bottom Center) */
+.collection-master-dock {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  padding: 0.4rem 0.65rem;
+  border-radius: 9999px;
+  box-shadow: 0 12px 36px -8px rgba(8, 13, 43, 0.12), 0 2px 8px rgba(0, 0, 0, 0.03);
+  z-index: 10;
+  pointer-events: auto;
+  max-width: 94%;
+}
+
+/* View Switcher Segment */
+.dock-views-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.coll-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.38rem 0.75rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.coll-view-btn:hover {
+  background: rgba(241, 245, 249, 0.9);
+  color: #0F172A;
+}
+
+.coll-view-btn.active {
+  background: #0F172A;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
+}
+
+.dock-divider {
+  width: 1px;
+  height: 22px;
+  background: #E2E8F0;
+  margin: 0 0.15rem;
+}
+
+/* Simulation Controls Segment */
+.dock-sim-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.sim-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #0F172A;
+  border: none;
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sim-play-btn:hover {
+  background: #1E293B;
+}
+
+.sim-play-btn.playing {
+  background: #DC2626;
+}
+
+.sim-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sim-day-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 5px;
+  border-radius: 3px;
+  background: #E2E8F0;
+  outline: none;
+  cursor: pointer;
+}
+
+.sim-day-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #1D4ED8;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.sim-day-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #1D4ED8;
+  font-family: monospace;
+  min-width: 52px;
+}
+
+.sim-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #F1F5F9;
+  border: none;
+  border-radius: 50%;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sim-reset-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.sim-amount-badge {
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.coll-orbit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.coll-orbit-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.coll-orbit-btn.active {
+  color: #1D4ED8;
+  background: #EFF6FF;
+}
+
+/* Hover Tooltip */
+.collection-node-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.94);
+  color: #FFFFFF;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transform: translate(-50%, -125%);
+  z-index: 20;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .collection-stage-3d-wrapper {
+    height: 540px;
+  }
+
+  .collection-hud-overlay {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+    left: 1rem;
+    right: 1rem;
+    top: 1rem;
+  }
+
+  .collection-master-dock {
+    flex-direction: column;
+    bottom: 0.75rem;
+    border-radius: 16px;
+    padding: 0.5rem;
+    gap: 0.4rem;
+  }
+
+  .dock-divider {
+    display: none;
+  }
+
+  .sim-day-slider {
+    width: 80px;
+  }
+}

@@ -3390,16 +3390,22 @@
   border-top: 1px solid var(--border-light);
 }
 
-.repayment-modes-card {
-  background: #FFFFFF;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: 2.5rem;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+.rm-split-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 2.5rem;
+  align-items: start;
+  margin-top: 2.5rem;
+}
+
+.rm-left-visual {
+  width: 100%;
+}
+
+.rm-right-content {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  margin-top: 2rem;
+  gap: 1.5rem;
 }
 
 .rm-mode-selector {
@@ -3453,10 +3459,9 @@
 }
 
 .rm-mode-details {
-  display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  gap: 2.5rem;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
 }
 
 .rm-explanation h4 {
@@ -3489,10 +3494,11 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-dark);
-  background: #F8FAFC;
-  padding: 0.5rem 0.85rem;
-  border-radius: 6px;
+  background: #FFFFFF;
+  padding: 0.55rem 0.95rem;
+  border-radius: 8px;
   border: 1px solid var(--border-light);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
 }
 
 .rm-schedule-box {
@@ -3619,6 +3625,11 @@
   .calculator-container {
     grid-template-columns: 1fr;
     gap: 2.5rem;
+  }
+
+  .rm-split-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
 
   .metrics-banner-inner {

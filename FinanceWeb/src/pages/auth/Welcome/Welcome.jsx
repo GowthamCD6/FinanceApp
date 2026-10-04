@@ -24,10 +24,7 @@ import {
   Wallet,
   Activity,
   Calendar,
-  Eye,
-  EyeOff,
   Database,
-  Fingerprint,
   Save,
   Search,
   Menu,
@@ -200,20 +197,6 @@ export const WelcomePage = () => {
     setTimeout(() => setStaffAddedToast(false), 3000);
   };
 
-  // Borrower Information Security Enclave State
-  const [borrowerPrivacyMode, setBorrowerPrivacyMode] = useState(true); // true = Zero-Knowledge Masked
-  const [breachSimulationState, setBreachSimulationState] = useState('idle'); // 'idle' | 'testing' | 'blocked'
-
-  const runBreachSimulation = () => {
-    if (breachSimulationState !== 'idle') return;
-    setBreachSimulationState('testing');
-    setTimeout(() => {
-      setBreachSimulationState('blocked');
-      setTimeout(() => {
-        setBreachSimulationState('idle');
-      }, 5000);
-    }, 1200);
-  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -290,7 +273,7 @@ export const WelcomePage = () => {
               <a href="#multi-tenancy" onClick={(e) => scrollToSection(e, 'multi-tenancy')} className="et-link">Service</a>
               <a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')} className="et-link">Products</a>
               <a href="#admin-powers" onClick={(e) => scrollToSection(e, 'admin-powers')} className="et-link">About Us</a>
-              <a href="#privacy" onClick={(e) => scrollToSection(e, 'privacy')} className="et-link">Contact</a>
+              <a href="#footer" onClick={(e) => scrollToSection(e, 'footer')} className="et-link">Contact</a>
             </div>
 
             <div className="et-right-tools">
@@ -812,255 +795,110 @@ export const WelcomePage = () => {
           </p>
         </div>
 
-        <div className="repayment-modes-card">
-          <div className="rm-mode-selector">
-            <button
-              type="button"
-              className={`rm-toggle-btn ${repaymentDemoMode === 'NORMAL' ? 'active' : ''}`}
-              onClick={() => setRepaymentDemoMode('NORMAL')}
-            >
-              <Calendar size={18} />
-              <div>
-                <strong>NORMAL Collection Mode</strong>
-                <span>Equal daily/weekly cycle installments</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={`rm-toggle-btn ${repaymentDemoMode === 'LUMP_SUM_END' ? 'active' : ''}`}
-              onClick={() => setRepaymentDemoMode('LUMP_SUM_END')}
-            >
-              <Wallet size={18} />
-              <div>
-                <strong>LUMP_SUM_END Mode (Get Amount at Last Date)</strong>
-                <span>Zero daily dues during tenure · Settle full amount on last day</span>
-              </div>
-            </button>
+        {/* Repayment Modes Split Presentation: Independent 3D Visual & Right Content */}
+        <div className="rm-split-layout">
+          {/* Left Column: Realistic 3D Architectural Animation (Fixed & Clock Based) */}
+          <div className="rm-left-visual">
+            <ThreeCollectionDemo mode={repaymentDemoMode} onModeChange={setRepaymentDemoMode} />
           </div>
 
-          <div className="rm-demo-display">
-            {repaymentDemoMode === 'NORMAL' ? (
-              <div className="rm-mode-details">
-                <div className="rm-explanation">
-                  <h4>Standard Installment Recovery</h4>
-                  <p>
-                    Borrower receives principal (e.g. ₹10,000) and repays an exact equal installment (₹125.00) every single operating day for 100 days until ₹12,500 is recovered.
-                  </p>
-                  <ul className="rm-tags">
-                    <li><Check size={14} /> Fixed daily collections</li>
-                    <li><Check size={14} /> WhatsApp confirmation per installment</li>
-                    <li><Check size={14} /> Automated overdue flags if day is missed</li>
-                  </ul>
+          {/* Right Column: Mode Selector, Explanation & Live Schedule Preview */}
+          <div className="rm-right-content">
+            <div className="rm-mode-selector">
+              <button
+                type="button"
+                className={`rm-toggle-btn ${repaymentDemoMode === 'NORMAL' ? 'active' : ''}`}
+                onClick={() => setRepaymentDemoMode('NORMAL')}
+              >
+                <Calendar size={18} />
+                <div>
+                  <strong>NORMAL Collection Mode</strong>
+                  <span>Equal daily/weekly cycle installments</span>
                 </div>
-                <div className="rm-schedule-box">
-                  <div className="rm-sched-header">
-                    <span>100-Day Schedule Preview (NORMAL)</span>
-                    <span className="sched-tag">Daily Dues</span>
-                  </div>
-                  <div className="sched-rows">
-                    <div className="s-row"><span className="s-day">Day 01</span><span className="s-amt">₹125.00</span><span className="status-tag green">Paid</span></div>
-                    <div className="s-row"><span className="s-day">Day 02</span><span className="s-amt">₹125.00</span><span className="status-tag green">Paid</span></div>
-                    <div className="s-row"><span className="s-day">Day ...</span><span className="s-amt">₹125.00 / day</span><span className="status-tag green">In Progress</span></div>
-                    <div className="s-row"><span className="s-day">Day 100</span><span className="s-amt">₹125.00</span><span className="status-tag green">Final Day Cleared</span></div>
-                  </div>
-                  <div className="sched-footer">Total Recovered: <strong>₹12,500.00</strong></div>
+              </button>
+
+              <button
+                type="button"
+                className={`rm-toggle-btn ${repaymentDemoMode === 'LUMP_SUM_END' ? 'active' : ''}`}
+                onClick={() => setRepaymentDemoMode('LUMP_SUM_END')}
+              >
+                <Wallet size={18} />
+                <div>
+                  <strong>LUMP_SUM_END Mode (Get Amount at Last Date)</strong>
+                  <span>Zero daily dues during tenure · Settle full amount on last day</span>
                 </div>
-              </div>
-            ) : (
-              <div className="rm-mode-details">
-                <div className="rm-explanation">
-                  <h4>Settle Fixed Amount at Last Date (`LUMP_SUM_END`)</h4>
-                  <p>
-                    Specially designed for seasonal bazaar merchants, wholesale inventory purchases, and harvest traders. During days 1 to 99, daily dues are deferred (<code>DUE_AT_END</code>). On the final 100th date, the borrower repays the complete fixed amount (₹12,500.00).
-                  </p>
-                  <ul className="rm-tags">
-                    <li><Check size={14} /> Zero daily pressure during active sales cycle</li>
-                    <li><Check size={14} /> Settle full balance at last date with 1 click</li>
-                    <li><Check size={14} /> Early settlement interest waiver auto-calculated</li>
-                  </ul>
-                </div>
-                <div className="rm-schedule-box highlight">
-                  <div className="rm-sched-header">
-                    <span>100-Day Schedule Preview (LUMP_SUM_END)</span>
-                    <span className="sched-tag purple">Bullet Repayment</span>
+              </button>
+            </div>
+
+            <div className="rm-demo-display">
+              {repaymentDemoMode === 'NORMAL' ? (
+                <div className="rm-mode-details">
+                  <div className="rm-explanation">
+                    <h4>Standard Installment Recovery</h4>
+                    <p>
+                      Borrower receives principal (e.g. ₹10,000) and repays an exact equal installment (₹125.00) every single operating day for 100 days until ₹12,500 is recovered.
+                    </p>
+                    <ul className="rm-tags">
+                      <li><Check size={14} /> Fixed daily collections</li>
+                      <li><Check size={14} /> WhatsApp confirmation per installment</li>
+                      <li><Check size={14} /> Automated overdue flags if day is missed</li>
+                    </ul>
                   </div>
-                  <div className="sched-rows">
-                    <div className="s-row"><span className="s-day">Day 01 - 99</span><span className="s-amt">₹0.00 / day</span><span className="status-tag purple">DUE_AT_END</span></div>
-                    <div className="s-row highlight-final">
-                      <div>
-                        <span className="s-day">Day 100 (Final Maturity Date)</span>
-                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>Zero-Dues Certificate Issued Upon Settle</div>
+                  <div className="rm-schedule-box">
+                    <div className="rm-sched-header">
+                      <span>100-Day Schedule Preview (NORMAL)</span>
+                      <span className="sched-tag">Daily Dues</span>
+                    </div>
+                    <div className="sched-rows">
+                      <div className="s-row"><span className="s-day">Day 01</span><span className="s-amt">₹125.00</span><span className="status-tag green">Paid</span></div>
+                      <div className="s-row"><span className="s-day">Day 02</span><span className="s-amt">₹125.00</span><span className="status-tag green">Paid</span></div>
+                      <div className="s-row"><span className="s-day">Day ...</span><span className="s-amt">₹125.00 / day</span><span className="status-tag green">In Progress</span></div>
+                      <div className="s-row"><span className="s-day">Day 100</span><span className="s-amt">₹125.00</span><span className="status-tag green">Final Day Cleared</span></div>
+                    </div>
+                    <div className="sched-footer">Total Recovered: <strong>₹12,500.00</strong></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rm-mode-details">
+                  <div className="rm-explanation">
+                    <h4>Settle Fixed Amount at Last Date (`LUMP_SUM_END`)</h4>
+                    <p>
+                      Specially designed for seasonal bazaar merchants, wholesale inventory purchases, and harvest traders. During days 1 to 99, daily dues are deferred (<code>DUE_AT_END</code>). On the final 100th date, the borrower repays the complete fixed amount (₹12,500.00).
+                    </p>
+                    <ul className="rm-tags">
+                      <li><Check size={14} /> Zero daily pressure during active sales cycle</li>
+                      <li><Check size={14} /> Settle full balance at last date with 1 click</li>
+                      <li><Check size={14} /> Early settlement interest waiver auto-calculated</li>
+                    </ul>
+                  </div>
+                  <div className="rm-schedule-box highlight">
+                    <div className="rm-sched-header">
+                      <span>100-Day Schedule Preview (LUMP_SUM_END)</span>
+                      <span className="sched-tag purple">Bullet Repayment</span>
+                    </div>
+                    <div className="sched-rows">
+                      <div className="s-row"><span className="s-day">Day 01 - 99</span><span className="s-amt">₹0.00 / day</span><span className="status-tag purple">DUE_AT_END</span></div>
+                      <div className="s-row highlight-final">
+                        <div>
+                          <span className="s-day">Day 100 (Final Maturity Date)</span>
+                          <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>Zero-Dues Certificate Issued Upon Settle</div>
+                        </div>
+                        <span className="s-amt highlight">₹12,500.00</span>
+                        <span className="status-tag green">Settle Full Balance</span>
                       </div>
-                      <span className="s-amt highlight">₹12,500.00</span>
-                      <span className="status-tag green">Settle Full Balance</span>
+                    </div>
+                    <div className="sched-footer">
+                      <span>Total Settle at Last Date: <strong style={{ color: '#4F46E5', fontSize: '1.05rem' }}>₹12,500.00</strong></span>
                     </div>
                   </div>
-                  <div className="sched-footer">
-                    <span>Total Settle at Last Date: <strong style={{ color: '#4F46E5', fontSize: '1.05rem' }}>₹12,500.00</strong></span>
-                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-          
-          <div style={{ marginTop: '3rem' }}>
-            <ThreeCollectionDemo mode={repaymentDemoMode} />
-          </div>
-        </div>
-        </div>
-      </section>
-
-      {/* ================================================================
-          4. CONFIDENTIALITY & PRIVACY SHIELD: BORROWER INFORMATION SECURITY ENCLAVE
-          ================================================================ */}
-      <section className="privacy-section" id="privacy">
-        <div className="standard-container">
-          <div className="privacy-stage-grid">
-          {/* Left Column: Narrative & Security Architecture */}
-          <div className="privacy-copy-column">
-            <div className="privacy-pill">
-              <ShieldCheck size={16} />
-              <span>BORROWER INFORMATION SECURITY ENCLAVE</span>
-            </div>
-            <h2 className="privacy-heading">Zero-knowledge borrower privacy & cryptographic isolation</h2>
-            <p className="privacy-sub">
-              Borrower contact credentials, national IDs, and daily ledger balances are encrypted at rest with tenant-isolated salt keys. Multi-tenant Row-Level Security (RLS) guarantees that external tenants, unauthorized branch officers, or network sniffers can never inspect or query borrower data.
-            </p>
-
-            <div className="privacy-pillars-list">
-              <div className="privacy-pillar-item">
-                <div className="pillar-icon"><Lock size={18} color="#1D4ED8" /></div>
-                <div className="pillar-info">
-                  <h4>AES-256 Storage & TLS 1.3 Transport</h4>
-                  <p>Personally Identifiable Information (PII) is encrypted on disk before commit with tenant-unique salt signatures.</p>
-                </div>
-              </div>
-
-              <div className="privacy-pillar-item">
-                <div className="pillar-icon"><Database size={18} color="#059669" /></div>
-                <div className="pillar-info">
-                  <h4>PostgreSQL Row-Level Security (RLS)</h4>
-                  <p>Database queries execute with session tenant UUIDs. Cross-tenant leakage is physically blocked at the database engine kernel.</p>
-                </div>
-              </div>
-
-              <div className="privacy-pillar-item">
-                <div className="pillar-icon"><Fingerprint size={18} color="#0891B2" /></div>
-                <div className="pillar-info">
-                  <h4>Hardware Biometric Terminal Lock</h4>
-                  <p>Field agent SQLite mobile apps bind exclusively to registered device hardware IDs with auto-wipe upon 3 invalid attempts.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Live Interactive Borrower Data Privacy Inspector & Breach Simulator */}
-          <div className="privacy-interactive-column">
-            <div className="enclave-inspector-card">
-              <div className="enclave-card-header">
-                <div className="enclave-status-indicator">
-                  <div className="pulse-security-led" />
-                  <span>POSTGRESQL RLS ENCLAVE ACTIVE</span>
-                </div>
-                
-                {/* Live Data Masking Toggle Functionality */}
-                <button
-                  type="button"
-                  className={`btn-enclave-toggle ${borrowerPrivacyMode ? 'masked' : 'audit'}`}
-                  onClick={() => setBorrowerPrivacyMode(!borrowerPrivacyMode)}
-                  title="Toggle Zero-Knowledge Privacy Mode"
-                >
-                  {borrowerPrivacyMode ? <Lock size={14} /> : <Eye size={14} />}
-                  <span>{borrowerPrivacyMode ? 'Zero-Knowledge (Masked)' : 'Audit Cleartext (RBAC)'}</span>
-                </button>
-              </div>
-
-              {/* Dynamic Borrower Record Inspector */}
-              <div className="borrower-vault-box">
-                <div className="vault-field-row">
-                  <span className="vf-label">Borrower Identity</span>
-                  <div className="vf-val-group">
-                    <span className="vf-val">{borrowerPrivacyMode ? 'R•••••• V•••• (ID: BRW-8821)' : 'Rajesh Varma (Shop #104)'}</span>
-                    <span className="vf-chip blue">SHA-256 SALT</span>
-                  </div>
-                </div>
-
-                <div className="vault-field-row">
-                  <span className="vf-label">Contact / Phone</span>
-                  <div className="vf-val-group">
-                    <span className="vf-val">{borrowerPrivacyMode ? '+91 98451 •••••' : '+91 98451 22904'}</span>
-                    <span className="vf-chip green">OTP GATEWAY</span>
-                  </div>
-                </div>
-
-                <div className="vault-field-row">
-                  <span className="vf-label">National ID / KYC</span>
-                  <div className="vf-val-group">
-                    <span className="vf-val">{borrowerPrivacyMode ? '•••• •••• 9012' : '4589 1204 9012'}</span>
-                    <span className="vf-chip purple">AES-256 VAULT</span>
-                  </div>
-                </div>
-
-                <div className="vault-field-row">
-                  <span className="vf-label">Daily 100-Day Due</span>
-                  <div className="vf-val-group">
-                    <span className="vf-val">{borrowerPrivacyMode ? '₹ • • • / day' : '₹125.00 / day (Cycle 42)'}</span>
-                    <span className="vf-chip indigo">RLS BOUND</span>
-                  </div>
-                </div>
-
-                <div className="vault-field-row">
-                  <span className="vf-label">Agent Device Token</span>
-                  <div className="vf-val-group">
-                    <span className="vf-val font-mono">DEV-HW-9082-SEC (Locked)</span>
-                    <span className="vf-chip cyan">BIOMETRIC OK</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Live Cross-Tenant Breach Simulation Functionality */}
-              <div className="breach-simulation-section">
-                <div className="sim-action-row">
-                  <button
-                    type="button"
-                    className={`btn-breach-sim ${breachSimulationState === 'testing' ? 'running' : breachSimulationState === 'blocked' ? 'blocked' : ''}`}
-                    onClick={runBreachSimulation}
-                    disabled={breachSimulationState === 'testing'}
-                  >
-                    <Key size={15} />
-                    <span>
-                      {breachSimulationState === 'testing'
-                        ? 'Simulating Cross-Tenant Query Attack...'
-                        : breachSimulationState === 'blocked'
-                        ? '🛡️ Attack Blocked: 403 Forbidden'
-                        : 'Simulate Cross-Tenant Data Breach Test'}
-                    </span>
-                  </button>
-                  <span className="sim-hint">Simulates unauthorized SQL query from external tenant</span>
-                </div>
-
-                {breachSimulationState !== 'idle' && (
-                  <div className="breach-console-output">
-                    <div className="console-line"><span className="c-dim">[0.01ms]</span> <span className="c-blue">POST /api/v1/tenant/borrowers/BRW-8821</span></div>
-                    <div className="console-line"><span className="c-dim">[0.02ms]</span> Header: <span className="c-amber">x-tenant-id: ORG-9214 (Attacker Sandbox)</span></div>
-                    <div className="console-line"><span className="c-dim">[0.04ms]</span> Target Record: <span className="c-dim">tenant_id: ORG-8041</span></div>
-                    {breachSimulationState === 'testing' ? (
-                      <div className="console-line c-amber">Evaluating kernel security signature & RLS policies...</div>
-                    ) : (
-                      <>
-                        <div className="console-line c-green font-bold">🛡️ ENCLAVE SHIELD ACTIVATED: Cryptographic Signature Mismatch</div>
-                        <div className="console-line c-red">HTTP 403 FORBIDDEN · Zero Borrower Credential Leakage Verified ✓</div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>
         </div>
       </section>
+
 
       {/* ================================================================
           5. SOLUTIONS: TAILORED FOR DAILY, WEEKLY & MONTHLY LENDING
@@ -1583,7 +1421,7 @@ export const WelcomePage = () => {
       {/* ================================================================
           10. CORPORATE FOOTER
           ================================================================ */}
-      <footer className="landing-footer">
+      <footer className="landing-footer" id="footer">
         <div className="standard-container">
           <div className="footer-top-grid">
           <div className="footer-brand-column">
@@ -1611,7 +1449,7 @@ export const WelcomePage = () => {
             <ul>
               <li><a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>Daily Merchant 100-Day</a></li>
               <li><a href="#solutions" onClick={(e) => scrollToSection(e, 'solutions')}>Weekly Chit Funds</a></li>
-              <li><a href="#privacy" onClick={(e) => scrollToSection(e, 'privacy')}>Data Confidentiality Shield</a></li>
+              <li><a href="#repayment-modes" onClick={(e) => scrollToSection(e, 'repayment-modes')}>Repayment Cycles & Settlement</a></li>
               <li><a href="#calculator" onClick={(e) => scrollToSection(e, 'calculator')}>Loan Engine Simulator</a></li>
             </ul>
           </div>
