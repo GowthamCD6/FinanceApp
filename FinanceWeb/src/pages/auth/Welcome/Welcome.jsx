@@ -156,6 +156,48 @@ export const WelcomePage = () => {
   const [calcScheme, setCalcScheme] = useState('DAILY');
   const [calcTenure, setCalcTenure] = useState(100);
 
+  // Dynamic Staff Delegation Roster State
+  const [staffList, setStaffList] = useState([
+    { id: 1, name: 'Sovereign Org Admin', role: 'Tenant Corporate Control · All Branches', tier: 'FULL ACCESS', avatar: 'OA', type: 'org' },
+    { id: 2, name: 'Branch Officer (South Hub)', role: 'Branch Vault Safe · Daily Loan Approval', tier: 'BRANCH BOUND', avatar: 'BA', type: 'branch' },
+    { id: 3, name: 'Cashier & Counter Desk', role: 'End-of-Day Agent Cash Handover', tier: 'CASH DESK', avatar: 'CS', type: 'cashier' },
+    { id: 4, name: 'Bazaar Route Field Agent', role: 'Mobile SQLite App · Bluetooth Thermal', tier: 'ROUTE FLEET', avatar: 'FA', type: 'agent' },
+  ]);
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState('BRANCH_OFFICER');
+  const [newStaffBranch, setNewStaffBranch] = useState('Central Commercial Branch');
+  const [staffAddedToast, setStaffAddedToast] = useState(false);
+
+  const handleAddStaff = (e) => {
+    e.preventDefault();
+    if (!newStaffName.trim()) return;
+
+    const roleMap = {
+      BRANCH_OFFICER: { role: `Branch Officer (${newStaffBranch})`, tier: 'BRANCH BOUND', avatar: 'BO', type: 'branch' },
+      CASHIER: { role: `Cashier Counter (${newStaffBranch})`, tier: 'CASH DESK', avatar: 'CS', type: 'cashier' },
+      FIELD_AGENT: { role: 'Bazaar Route Collection Fleet', tier: 'ROUTE FLEET', avatar: 'FA', type: 'agent' },
+      SUPERVISOR: { role: 'Cluster Route Supervisor', tier: 'SUPERVISOR', avatar: 'SV', type: 'org' },
+    };
+
+    const roleConfig = roleMap[newStaffRole] || roleMap.BRANCH_OFFICER;
+
+    const newMember = {
+      id: Date.now(),
+      name: newStaffName.trim(),
+      role: roleConfig.role,
+      tier: roleConfig.tier,
+      avatar: roleConfig.avatar,
+      type: roleConfig.type,
+    };
+
+    setStaffList([newMember, ...staffList]);
+    setNewStaffName('');
+    setIsAddingStaff(false);
+    setStaffAddedToast(true);
+    setTimeout(() => setStaffAddedToast(false), 3000);
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -561,6 +603,29 @@ export const WelcomePage = () => {
                   </div>
                 </div>
 
+                {/* Real-Time Formula Simulation Preview */}
+                <div className="ap-live-formula">
+                  <div className="ap-formula-col">
+                    <span className="ap-f-lbl">Sample Principal</span>
+                    <span className="ap-f-val">₹10,000</span>
+                  </div>
+                  <div className="ap-formula-sign">+</div>
+                  <div className="ap-formula-col">
+                    <span className="ap-f-lbl">Interest Yield ({adminDailyRate.toFixed(1)}%)</span>
+                    <span className="ap-f-val highlight-green">+₹{(10000 * (adminDailyRate / 100)).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="ap-formula-sign">=</div>
+                  <div className="ap-formula-col">
+                    <span className="ap-f-lbl">Total Recovery</span>
+                    <span className="ap-f-val highlight-blue">₹{(10000 + 10000 * (adminDailyRate / 100)).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="ap-formula-divider" />
+                  <div className="ap-formula-col">
+                    <span className="ap-f-lbl">Due Per {adminConfigScheme === 'DAILY' ? 'Day' : adminConfigScheme === 'WEEKLY' ? 'Week' : 'Month'}</span>
+                    <span className="ap-f-val highlight-navy">₹{((10000 + 10000 * (adminDailyRate / 100)) / adminDailyTenure).toFixed(0)}</span>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   className="btn-ap-save"
@@ -589,46 +654,76 @@ export const WelcomePage = () => {
 
             <div className="ap-staff-directory-card">
               <div className="staff-header-row">
-                <span className="sh-title">Tenant Administrative Roster</span>
-                <span className="sh-badge">+ Add New Admin</span>
+                <span className="sh-title">Tenant Administrative Roster ({staffList.length} Active)</span>
+                <button
+                  type="button"
+                  className="sh-badge"
+                  onClick={() => setIsAddingStaff(!isAddingStaff)}
+                >
+                  {isAddingStaff ? '✕ Cancel' : '+ Add New Admin'}
+                </button>
               </div>
 
+              {/* Dynamic Inline Staff Provisioning Form */}
+              {isAddingStaff && (
+                <form className="staff-add-form" onSubmit={handleAddStaff}>
+                  <div className="form-row-compact">
+                    <input
+                      type="text"
+                      className="staff-input-field"
+                      placeholder="Staff Member Name (e.g. Rajesh Kumar)"
+                      value={newStaffName}
+                      onChange={(e) => setNewStaffName(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                    <select
+                      className="staff-select-field"
+                      value={newStaffRole}
+                      onChange={(e) => setNewStaffRole(e.target.value)}
+                    >
+                      <option value="BRANCH_OFFICER">Branch Officer / Safe Manager</option>
+                      <option value="CASHIER">Cash Desk Cashier</option>
+                      <option value="FIELD_AGENT">Route Field Agent</option>
+                      <option value="SUPERVISOR">Cluster Supervisor</option>
+                    </select>
+                  </div>
+                  <div className="form-row-compact">
+                    <input
+                      type="text"
+                      className="staff-input-field"
+                      placeholder="Assigned Physical Branch"
+                      value={newStaffBranch}
+                      onChange={(e) => setNewStaffBranch(e.target.value)}
+                    />
+                    <button type="submit" className="btn-provision-staff">
+                      <ShieldCheck size={14} />
+                      <span>Provision Staff</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {staffAddedToast && (
+                <div className="staff-toast-inline">
+                  <CheckCircle2 size={15} color="#059669" />
+                  <span>New staff member cryptographically provisioned and bound to branch!</span>
+                </div>
+              )}
+
               <div className="staff-roster-list">
-                <div className="staff-member-item">
-                  <div className="sm-avatar org">OA</div>
-                  <div className="sm-info">
-                    <span className="sm-name">Organization Admin</span>
-                    <span className="sm-role">Tenant Corporate Control · All Branches</span>
+                {staffList.map((member) => (
+                  <div key={member.id} className="staff-member-item">
+                    <div className={`sm-avatar ${member.type}`}>{member.avatar}</div>
+                    <div className="sm-info">
+                      <span className="sm-name">{member.name}</span>
+                      <span className="sm-role">{member.role}</span>
+                    </div>
+                    <span className={`sm-pill ${member.type === 'org' ? 'primary' : member.type === 'branch' ? 'emerald' : member.type === 'cashier' ? 'amber' : 'cyan'}`}>
+                      {member.tier}
+                    </span>
                   </div>
-                  <span className="sm-pill primary">FULL ACCESS</span>
-                </div>
-
-                <div className="staff-member-item">
-                  <div className="sm-avatar branch">BA</div>
-                  <div className="sm-info">
-                    <span className="sm-name">Branch Manager (South Hub)</span>
-                    <span className="sm-role">Branch Vault Safe · Daily Loan Approval</span>
-                  </div>
-                  <span className="sm-pill emerald">BRANCH BOUND</span>
-                </div>
-
-                <div className="staff-member-item">
-                  <div className="sm-avatar cashier">CS</div>
-                  <div className="sm-info">
-                    <span className="sm-name">Cashier & Counter Desk</span>
-                    <span className="sm-role">End-of-Day Agent Cash Handover</span>
-                  </div>
-                  <span className="sm-pill amber">CASH DESK</span>
-                </div>
-
-                <div className="staff-member-item">
-                  <div className="sm-avatar agent">FA</div>
-                  <div className="sm-info">
-                    <span className="sm-name">Route Collection Agent</span>
-                    <span className="sm-role">Mobile SQLite App · Bluetooth Thermal</span>
-                  </div>
-                  <span className="sm-pill cyan">ROUTE FLEET</span>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -845,53 +940,53 @@ export const WelcomePage = () => {
               <div className="solution-preview-box">
                 <div className="mini-ledger-card">
                   <div className="ml-header">
-                    <span>100-Day Collection Ledger · Tenant Enclave #ORG-8041</span>
-                    <span className="ml-status">Encrypted Sandbox</span>
+                    <span>100-Day Collection Route Ledger · Tenant Enclave</span>
+                    <span className="ml-status">Reconciled Batch</span>
                   </div>
                   <table className="ml-table">
                     <thead>
                       <tr>
-                        <th>Account ID</th>
-                        <th>Cycle</th>
-                        <th>Per Day</th>
-                        <th>Repaid / Target</th>
-                        <th>Status</th>
+                        <th>Collection Route</th>
+                        <th>Cycle Progress</th>
+                        <th>Installment Rate</th>
+                        <th>Recovery SLA</th>
+                        <th>Reconciliation</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td><strong>Merchant #M-8821</strong></td>
+                        <td><strong>Sector 04 · Mandi Cluster</strong></td>
                         <td>Day 42/100</td>
-                        <td>₹125.00</td>
-                        <td>₹5,250 / ₹12,500</td>
-                        <td><span className="status-tag green">Paid</span></td>
+                        <td>₹125.00 / day</td>
+                        <td><span className="status-tag green">99.4% On-Time</span></td>
+                        <td><span className="status-tag green">Thermal Verified</span></td>
                       </tr>
                       <tr>
-                        <td><strong>Merchant #M-4412</strong></td>
+                        <td><strong>Sector 12 · Wholesale Hub</strong></td>
                         <td>Day 78/100</td>
-                        <td>₹125.00</td>
-                        <td>₹9,750 / ₹12,500</td>
-                        <td><span className="status-tag green">Paid</span></td>
+                        <td>₹250.00 / day</td>
+                        <td><span className="status-tag green">100.0% On-Time</span></td>
+                        <td><span className="status-tag green">Thermal Verified</span></td>
                       </tr>
                       <tr>
-                        <td><strong>Merchant #M-3190</strong></td>
+                        <td><strong>Sector 08 · Bazaar Retail Route</strong></td>
                         <td>Day 12/100</td>
-                        <td>₹250.00</td>
-                        <td>₹3,000 / ₹25,000</td>
-                        <td><span className="status-tag orange">Pending</span></td>
+                        <td>₹125.00 / day</td>
+                        <td><span className="status-tag green">98.2% On-Time</span></td>
+                        <td><span className="status-tag orange">Afternoon Sweep</span></td>
                       </tr>
                       <tr>
-                        <td><strong>Merchant #M-9024</strong></td>
+                        <td><strong>Sector 02 · Commerce Corridor</strong></td>
                         <td>Day 95/100</td>
-                        <td>₹375.00</td>
-                        <td>₹35,625 / ₹37,500</td>
-                        <td><span className="status-tag green">Paid</span></td>
+                        <td>₹375.00 / day</td>
+                        <td><span className="status-tag green">99.8% On-Time</span></td>
+                        <td><span className="status-tag green">Thermal Verified</span></td>
                       </tr>
                     </tbody>
                   </table>
                   <div className="ml-footer">
-                    <span>Route Completion: <strong>92.5%</strong></span>
-                    <span>Collected Today: <strong style={{ color: '#059669' }}>₹14,250.00</strong></span>
+                    <span>Route Sweep Completion: <strong>98.6%</strong></span>
+                    <span>Offline Bluetooth Sync: <strong style={{ color: '#059669' }}>100% Cleared</strong></span>
                   </div>
                 </div>
               </div>
@@ -929,46 +1024,46 @@ export const WelcomePage = () => {
               <div className="solution-preview-box">
                 <div className="mini-ledger-card">
                   <div className="ml-header">
-                    <span>Weekly Chit Batch #W-20 · Tenant #ORG-9214</span>
-                    <span className="ml-status">Week 04</span>
+                    <span>Weekly Chit Batch #W-20 · Syndicate Pool</span>
+                    <span className="ml-status">Auction Cycle 04</span>
                   </div>
                   <table className="ml-table">
                     <thead>
                       <tr>
-                        <th>Member Code</th>
-                        <th>Chit Value</th>
+                        <th>Subscriber Slot</th>
+                        <th>Chit Capital Pool</th>
                         <th>Weekly Due</th>
-                        <th>Auction Taken</th>
+                        <th>Auction Award</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td><strong>Member #CH-102</strong></td>
+                        <td><strong>Subscriber Slot #01</strong></td>
                         <td>₹1,00,000</td>
-                        <td>₹10,000</td>
-                        <td>No (Investor)</td>
+                        <td>₹10,000 / week</td>
+                        <td>Investor (Dividend Earning)</td>
                         <td><span className="status-tag green">Cleared</span></td>
                       </tr>
                       <tr>
-                        <td><strong>Member #CH-205</strong></td>
+                        <td><strong>Subscriber Slot #02</strong></td>
                         <td>₹1,00,000</td>
-                        <td>₹10,000</td>
-                        <td>Yes (Week 02)</td>
+                        <td>₹10,000 / week</td>
+                        <td>Prize Awarded (Cycle 02)</td>
                         <td><span className="status-tag green">Cleared</span></td>
                       </tr>
                       <tr>
-                        <td><strong>Member #CH-319</strong></td>
+                        <td><strong>Subscriber Slot #03</strong></td>
                         <td>₹1,00,000</td>
-                        <td>₹10,000</td>
-                        <td>No (Investor)</td>
+                        <td>₹10,000 / week</td>
+                        <td>Investor (Dividend Earning)</td>
                         <td><span className="status-tag green">Cleared</span></td>
                       </tr>
                     </tbody>
                   </table>
                   <div className="ml-footer">
-                    <span>Group Total: <strong>₹10,00,000</strong></span>
-                    <span>Pool Cleared: <strong style={{ color: '#4F46E5' }}>100%</strong></span>
+                    <span>Total Syndicate Capital Pool: <strong>₹10,00,000</strong></span>
+                    <span>Auction Disbursement: <strong style={{ color: '#1D4ED8' }}>Double-Entry Verified</strong></span>
                   </div>
                 </div>
               </div>
@@ -1054,6 +1149,20 @@ export const WelcomePage = () => {
                 <span className="calc-label">Principal Disbursal Amount</span>
                 <span className="calc-value-display">₹{calcAmount.toLocaleString('en-IN')}</span>
               </div>
+              
+              <div className="calc-quick-chips">
+                {[10000, 25000, 50000, 100000, 250000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    className={`calc-chip ${calcAmount === amt ? 'active' : ''}`}
+                    onClick={() => setCalcAmount(amt)}
+                  >
+                    ₹{amt >= 100000 ? `${amt / 100000} Lakh` : `${amt / 1000}k`}
+                  </button>
+                ))}
+              </div>
+
               <input
                 type="range"
                 min="5000"
@@ -1064,8 +1173,8 @@ export const WelcomePage = () => {
                 className="clean-slider"
               />
               <div className="slider-limits">
-                <span>₹5,000</span>
-                <span>₹5,00,000</span>
+                <span>Min: ₹5,000</span>
+                <span>Max: ₹5,00,000</span>
               </div>
             </div>
 
@@ -1131,34 +1240,42 @@ export const WelcomePage = () => {
               </div>
 
               <div className="summary-stat-row">
-                <span className="stat-label">Principal Amount</span>
+                <span className="stat-label">Principal Disbursed</span>
                 <span className="stat-val">₹{calcAmount.toLocaleString('en-IN')}</span>
               </div>
 
               <div className="summary-stat-row">
                 <span className="stat-label">Total Fee / Interest</span>
-                <span className="stat-val" style={{ color: '#059669' }}>+₹{totalInterest.toLocaleString('en-IN')}</span>
+                <span className="stat-val text-emerald">+₹{totalInterest.toLocaleString('en-IN')}</span>
               </div>
 
               <div className="summary-stat-row">
                 <span className="stat-label">Total Repayable</span>
-                <span className="stat-val">₹{totalRepayable.toLocaleString('en-IN')}</span>
+                <span className="stat-val highlight-blue">₹{totalRepayable.toLocaleString('en-IN')}</span>
               </div>
 
               <div className="installment-box">
                 <span className="inst-sub">Each Installment ({calcScheme.toLowerCase()})</span>
                 <div className="inst-amount">₹{cycleInstallment.toLocaleString('en-IN')}</div>
-                <span className="inst-note">For {calcTenure} scheduled {calcScheme === 'DAILY' ? 'days' : calcScheme === 'WEEKLY' ? 'weeks' : 'months'}</span>
+                <span className="inst-note">For {calcTenure} scheduled {calcScheme === 'DAILY' ? 'operating days' : calcScheme === 'WEEKLY' ? 'weekly batches' : 'monthly cycles'}</span>
               </div>
 
-              <div className="yield-progress-track">
-                <div className="track-bar fill-principal" style={{ width: '80%' }} />
-                <div className="track-bar fill-yield" style={{ width: '20%' }} />
-              </div>
-              <div className="track-labels">
-                <span>Principal 80%</span>
-                <span>Yield 20%</span>
-              </div>
+              {(() => {
+                const pPct = Math.round((calcAmount / totalRepayable) * 100) || 80;
+                const yPct = 100 - pPct;
+                return (
+                  <>
+                    <div className="yield-progress-track">
+                      <div className="track-bar fill-principal" style={{ width: `${pPct}%` }} />
+                      <div className="track-bar fill-yield" style={{ width: `${yPct}%` }} />
+                    </div>
+                    <div className="track-labels">
+                      <span>Principal {pPct}%</span>
+                      <span>Yield / Fee {yPct}%</span>
+                    </div>
+                  </>
+                );
+              })()}
 
               <button
                 type="button"

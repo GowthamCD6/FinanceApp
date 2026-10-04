@@ -1941,13 +1941,48 @@
 .calc-value-display {
   font-size: 1.25rem;
   font-weight: 800;
-  color: var(--primary);
+  color: #1D4ED8;
+}
+
+/* Calculator Quick Chips */
+.calc-quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.calc-chip {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.calc-chip:hover {
+  border-color: #1D4ED8;
+  color: #1D4ED8;
+  background: #EFF6FF;
+}
+
+.calc-chip.active {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25);
 }
 
 .clean-slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 6px;
+  height: 7px;
   border-radius: var(--radius-full);
   background: #E2E8F0;
   outline: none;
@@ -2142,7 +2177,7 @@
 }
 
 /* ==========================================================================
-   7. METRICS BANNER
+   7. METRICS BANNER (DAYLIGHT SHOWCASE MATCHING HOME SCREEN THEME)
    ========================================================================== */
 .metrics-banner-section {
   padding: 0 1.5rem 6rem;
@@ -2151,37 +2186,40 @@
 }
 
 .metrics-banner-inner {
-  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  background: radial-gradient(circle at 50% 30%, #FFFFFF 0%, #F8FAFC 70%, #EFF6FF 100%);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: var(--radius-xl);
   padding: 3.5rem 3rem;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 2rem;
   text-align: center;
-  color: #FFFFFF;
-  box-shadow: var(--shadow-lg);
+  color: #080D2B;
+  box-shadow: 0 20px 45px -15px rgba(8, 13, 43, 0.07), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
 }
 
 .metric-box {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  align-items: center;
 }
 
 .metric-big-num {
-  font-size: 2.8rem;
-  font-weight: 800;
+  font-size: 3.2rem;
+  font-weight: 900;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #FFFFFF 0%, #93C5FD 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #080D2B;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  line-height: 1;
 }
 
 .metric-small-label {
-  font-size: 0.86rem;
-  color: #94A3B8;
+  font-size: 0.88rem;
+  color: #475569;
   font-weight: 600;
+  max-width: 200px;
+  line-height: 1.45;
 }
 
 /* ==========================================================================
@@ -2653,29 +2691,90 @@
   color: #1D4ED8;
 }
 
-.btn-ap-save {
-  margin-top: 0.5rem;
-  background: var(--primary);
-  color: #FFFFFF;
-  border: none;
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
+/* Real-Time Formula Simulator Preview */
+.ap-live-formula {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 12px;
+  padding: 0.85rem 1.15rem;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.ap-formula-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ap-f-lbl {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ap-f-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #080D2B;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.ap-f-val.highlight-green {
+  color: #059669;
+}
+
+.ap-f-val.highlight-blue {
+  color: #1D4ED8;
+}
+
+.ap-f-val.highlight-navy {
+  color: #0F172A;
+}
+
+.ap-formula-sign {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #94A3B8;
+}
+
+.ap-formula-divider {
+  width: 1px;
+  height: 28px;
+  background: #CBD5E1;
+}
+
+.btn-ap-save {
+  margin-top: 0.5rem;
+  background: #1D4ED8;
+  color: #FFFFFF;
+  border: none;
+  padding: 0.85rem 1.4rem;
+  border-radius: var(--radius-full);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);
 }
 
 .btn-ap-save:hover {
-  background: #000000;
+  background: #1E40AF;
   transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(29, 78, 216, 0.35);
 }
 
-/* Staff Directory Mock */
+/* Staff Directory Card & Add Form */
 .staff-header-row {
   display: flex;
   align-items: center;
@@ -2687,25 +2786,115 @@
 .sh-title {
   font-size: 0.78rem;
   font-weight: 800;
-  color: var(--text-muted);
+  color: #080D2B;
   letter-spacing: 0.05em;
 }
 
 .sh-badge {
   background: #FFFFFF;
   border: 1px solid var(--border-light);
-  padding: 0.3rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   border-radius: var(--radius-full);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: var(--primary);
+  color: #1D4ED8;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .sh-badge:hover {
-  border-color: var(--primary);
-  background: var(--primary-subtle);
+  border-color: #1D4ED8;
+  background: #EFF6FF;
+}
+
+/* Dynamic Inline Staff Provisioning Form */
+.staff-add-form {
+  background: #FFFFFF;
+  border: 1px solid #BFDBFE;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  box-shadow: 0 6px 18px rgba(29, 78, 216, 0.08);
+  animation: slideDownStaff 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDownStaff {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.form-row-compact {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.staff-input-field {
+  flex: 1.2;
+  min-width: 140px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: #080D2B;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.staff-input-field:focus {
+  border-color: #1D4ED8;
+  background: #FFFFFF;
+}
+
+.staff-select-field {
+  flex: 1;
+  min-width: 140px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: #080D2B;
+  font-weight: 600;
+  outline: none;
+}
+
+.btn-provision-staff {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #1D4ED8;
+  color: #FFFFFF;
+  border: none;
+  padding: 0.55rem 1.15rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-provision-staff:hover {
+  background: #1E40AF;
+}
+
+.staff-toast-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
 }
 
 .staff-roster-list {
