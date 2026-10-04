@@ -38,37 +38,93 @@ export const ThreeVaultEnclave = ({
   const [activeCamPreset, setActiveCamPreset] = useState('all'); // 'all', 'vault', 'merchants', 'branches'
   const [isAutoRotate, setIsAutoRotate] = useState(true);
 
-  // Sharp text canvas generator for 3D architectural signage
-  const makeTextTexture = (title, subtitle = '') => {
+  // Ultra-crisp high-DPI text canvas generator for 3D architectural signage
+  const makeTextTexture = (title, subtitle = '', tag = 'ENTERPRISE SYSTEM') => {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 240;
+    canvas.width = 1280;
+    canvas.height = 520;
     const ctx = canvas.getContext('2d');
 
-    // Clean white card background with soft border
+    // Enable maximum text rasterization quality
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // Deep realistic drop shadow around card
+    ctx.shadowColor = 'rgba(8, 13, 43, 0.18)';
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 14;
+
+    // Crisp white card background
     ctx.fillStyle = '#FFFFFF';
-    ctx.roundRect(8, 8, 496, 224, 20);
+    ctx.beginPath();
+    ctx.roundRect(24, 24, 1232, 472, 48);
     ctx.fill();
-    ctx.lineWidth = 4;
+
+    // Reset shadow for crisp text & stroke rendering
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 6;
     ctx.strokeStyle = '#E2E8F0';
     ctx.stroke();
 
-    // Title
+    // Subtle inner hairline border for high-end polish
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#F1F5F9';
+    ctx.strokeRect(34, 34, 1212, 452);
+
+    // Top Category / Status Badge Pill
+    const tagWidth = 340;
+    const tagX = (1280 - tagWidth) / 2;
+    ctx.fillStyle = '#F8FAFC';
+    ctx.beginPath();
+    ctx.roundRect(tagX, 48, tagWidth, 54, 27);
+    ctx.fill();
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Status Indicator Dot (Emerald Green)
+    ctx.fillStyle = '#10B981';
+    ctx.beginPath();
+    ctx.arc(tagX + 32, 75, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tag Text
+    ctx.fillStyle = '#475569';
+    ctx.font = 'bold 26px "Plus Jakarta Sans", "Inter", -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tag.toUpperCase(), tagX + 52, 76);
+
+    // Main Architectural Signage Title (Deep navy, maximum contrast)
     ctx.fillStyle = '#080D2B';
-    ctx.font = 'bold 36px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '800 64px "Plus Jakarta Sans", "Inter", -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(title, 256, subtitle ? 95 : 120);
+    ctx.fillText(title, 640, 200);
 
-    // Subtitle
+    // Subtitle in Dedicated Pill Container (Legible & comfortable from any angle)
     if (subtitle) {
+      const subWidth = 720;
+      const subX = (1280 - subWidth) / 2;
+      ctx.fillStyle = '#EFF6FF';
+      ctx.beginPath();
+      ctx.roundRect(subX, 300, subWidth, 76, 38);
+      ctx.fill();
+      ctx.strokeStyle = '#BFDBFE';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
       ctx.fillStyle = '#1D4ED8';
-      ctx.font = '600 24px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(subtitle, 256, 155);
+      ctx.font = '700 36px "Plus Jakarta Sans", "Inter", -apple-system, sans-serif';
+      ctx.fillText(subtitle, 640, 339);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
+    // CRITICAL: Disable mipmaps to eliminate distance/tilt blur in WebGL
+    tex.generateMipmaps = false;
     tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
     return tex;
   };
 
@@ -358,14 +414,23 @@ export const ThreeVaultEnclave = ({
       rotundaGroup.add(ingot);
     });
 
-    // Rotunda Signage
-    const vaultLabelTex = makeTextTexture('CENTRAL BANK ROTUNDA', 'Double-Entry Vault Core');
-    const labelMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(6.4, 3.0),
-      new THREE.MeshBasicMaterial({ map: vaultLabelTex, transparent: true, side: THREE.DoubleSide })
+    // Rotunda Camera-Facing 3D Billboard Sprite (Readable at any angle)
+    const vaultLabelTex = makeTextTexture('CENTRAL BANK ROTUNDA', 'Double-Entry Vault Core', 'Core Treasury');
+    const pinMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+
+    // Architectural Mounting Stanchion Pin
+    const rotundaPinGeo = new THREE.CylinderGeometry(0.08, 0.08, 3.4, 16);
+    const rotundaPin = new THREE.Mesh(rotundaPinGeo, pinMat);
+    rotundaPin.position.set(0, 12.5, 0);
+    rotundaGroup.add(rotundaPin);
+
+    const labelSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: vaultLabelTex, transparent: true, depthWrite: false })
     );
-    labelMesh.position.set(0, 12.2, 0);
-    rotundaGroup.add(labelMesh);
+    labelSprite.scale.set(9.6, 3.9, 1);
+    labelSprite.position.set(0, 14.4, 0);
+    labelSprite.renderOrder = 999;
+    rotundaGroup.add(labelSprite);
 
     // ================================================================
     // 7. REALISTIC ARCHITECTURAL FINANCIAL STATIONS (HIGH CURVATURE DESIGN)
@@ -376,20 +441,32 @@ export const ThreeVaultEnclave = ({
       {
         name: 'Merchant Route Terminal',
         sub: 'Automated Daily Sweep',
+        tag: 'Daily 100-Day Route',
         pos: new THREE.Vector3(-25, 0, 10),
         type: 'route',
+        pinHeight: 4.6,
+        pinY: 6.8,
+        labelY: 9.3,
       },
       {
         name: 'Branch Cash Pavilion',
         sub: 'Cash Drawer Safe Alcove',
+        tag: 'Branch Liquidity',
         pos: new THREE.Vector3(25, 0, 10),
         type: 'branch',
+        pinHeight: 4.6,
+        pinY: 6.8,
+        labelY: 9.3,
       },
       {
         name: 'Chit Syndicate Tower',
         sub: 'Syndicate Treasury Core',
+        tag: 'Auction Pool Vault',
         pos: new THREE.Vector3(0, 0, -23),
         type: 'chit',
+        pinHeight: 3.6,
+        pinY: 8.2,
+        labelY: 10.3,
       },
     ];
 
@@ -511,14 +588,21 @@ export const ThreeVaultEnclave = ({
         sGroup.add(tRing);
       }
 
-      // Station Architectural Signboard
-      const signTex = makeTextTexture(st.name, st.sub);
-      const signMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(6.4, 3.0),
-        new THREE.MeshBasicMaterial({ map: signTex, transparent: true, side: THREE.DoubleSide })
+      // Station Architectural Mounting Stanchion Pin
+      const sPinGeo = new THREE.CylinderGeometry(0.08, 0.08, st.pinHeight, 16);
+      const sPin = new THREE.Mesh(sPinGeo, pinMat);
+      sPin.position.set(0, st.pinY, 0);
+      sGroup.add(sPin);
+
+      // Station Architectural Camera-Facing Billboard Sprite (Clear & Readable at any angle)
+      const signTex = makeTextTexture(st.name, st.sub, st.tag);
+      const signSprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({ map: signTex, transparent: true, depthWrite: false })
       );
-      signMesh.position.set(0, 7.8, 0);
-      sGroup.add(signMesh);
+      signSprite.scale.set(9.6, 3.9, 1);
+      signSprite.position.set(0, st.labelY, 0);
+      signSprite.renderOrder = 999;
+      sGroup.add(signSprite);
 
       scene.add(sGroup);
 
@@ -616,13 +700,21 @@ export const ThreeVaultEnclave = ({
     yPodium.receiveShadow = true;
     yieldGroup.add(yPodium);
 
-    const yLabelTex = makeTextTexture('AMORTIZATION ENGINE', 'Mathematical Yield Model');
-    const yLabelMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.4, 2.5),
-      new THREE.MeshBasicMaterial({ map: yLabelTex, transparent: true, side: THREE.DoubleSide })
+    // Amortization Mounting Stanchion Pin
+    const yPinGeo = new THREE.CylinderGeometry(0.08, 0.08, 3.8, 16);
+    const yPin = new THREE.Mesh(yPinGeo, pinMat);
+    yPin.position.set(0, 5.9, 0);
+    yieldGroup.add(yPin);
+
+    // Amortization Camera-Facing Billboard Sprite (Clear at any angle)
+    const yLabelTex = makeTextTexture('AMORTIZATION ENGINE', 'Mathematical Yield Model', 'Ledger Analytics');
+    const yLabelSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: yLabelTex, transparent: true, depthWrite: false })
     );
-    yLabelMesh.position.set(0, 6.4, 0);
-    yieldGroup.add(yLabelMesh);
+    yLabelSprite.scale.set(9.6, 3.9, 1);
+    yLabelSprite.position.set(0, 8.0, 0);
+    yLabelSprite.renderOrder = 999;
+    yieldGroup.add(yLabelSprite);
 
     // Principal Column
     const b1Geo = new THREE.CylinderGeometry(0.8, 0.8, 4.0, 24);
