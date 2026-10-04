@@ -10,10 +10,13 @@ import {
 import './ThreeVaultEnclave.css';
 
 /**
- * ThreeVaultEnclave: Radiant 3D Financial Treasury & Flow Engine
- * Clean, high-brightness studio stage matching the Home Screen aesthetic.
- * Focuses strictly on architecture, central banking vaults, branch safes,
- * and cash pipelines with zero personal or sensitive monetary data.
+ * ThreeVaultEnclave: Realistic Architectural Financial Campus with Curved Structures
+ * Featuring:
+ * 1. Central Banking Rotunda: Curved colonnade, tiered marble terrace, glass atrium & dome, precision steel vault safe.
+ * 2. Branch Banking Pavilion: Sweeping curved glass facade, cantilevered canopy, teller desk, and branch safe alcove.
+ * 3. Merchant Route Terminal: Curved architectural wing canopy, circular sweep kiosk pods.
+ * 4. Chit Syndicate Treasury Tower: Tiered curved cylindrical tower with glass observation decks.
+ * 5. Curved Architectural Glass Sky-Bridges with flowing cash disbursals & recovery tokens.
  */
 export const ThreeVaultEnclave = ({
   selectedScheme = 'DAILY',
@@ -29,13 +32,13 @@ export const ThreeVaultEnclave = ({
   const vaultWheelRef = useRef(null);
   const cashPacketsRef = useRef([]);
   const yieldBarsRef = useRef({ principal: null, yield: null });
-  const targetCamPosRef = useRef(new THREE.Vector3(0, 18, 46));
+  const targetCamPosRef = useRef(new THREE.Vector3(0, 20, 48));
 
   // Interactive controls
   const [activeCamPreset, setActiveCamPreset] = useState('all'); // 'all', 'vault', 'merchants', 'branches'
   const [isAutoRotate, setIsAutoRotate] = useState(true);
 
-  // Sharp text canvas generator for 3D signage (Architecture labels only, zero personal data)
+  // Sharp text canvas generator for 3D architectural signage
   const makeTextTexture = (title, subtitle = '') => {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -52,7 +55,7 @@ export const ThreeVaultEnclave = ({
 
     // Title
     ctx.fillStyle = '#080D2B';
-    ctx.font = 'bold 38px "Plus Jakarta Sans", sans-serif';
+    ctx.font = 'bold 36px "Plus Jakarta Sans", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(title, 256, subtitle ? 95 : 120);
@@ -74,9 +77,9 @@ export const ThreeVaultEnclave = ({
     if (!container) return;
 
     const width = container.clientWidth || 700;
-    const height = container.clientHeight || 520;
+    const height = container.clientHeight || 540;
 
-    // 1. Scene setup: High-brightness radiant white studio
+    // 1. Scene setup: Radiant white daylight atmosphere
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     scene.background = new THREE.Color(0xffffff);
@@ -84,11 +87,11 @@ export const ThreeVaultEnclave = ({
 
     // 2. Camera setup
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 1000);
-    camera.position.set(0, 18, 46);
-    camera.lookAt(0, 2, 0);
+    camera.position.set(0, 20, 48);
+    camera.lookAt(0, 3, 0);
     cameraRef.current = camera;
 
-    // 3. WebGL Renderer
+    // 3. WebGL Renderer with soft realistic shadows
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
@@ -102,36 +105,31 @@ export const ThreeVaultEnclave = ({
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // 4. Radiant High-Brightness Studio Lighting Rig
-    // 4a. Ambient light - High illumination for clear visibility
+    // 4. Radiant Daylight Studio Lighting Rig
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.85);
     scene.add(ambientLight);
 
-    // 4b. Primary Daylight Sun Key Light (Direct, bright, warm-white)
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.5);
-    sunLight.position.set(26, 42, 24);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.6);
+    sunLight.position.set(28, 44, 26);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 1024;
     sunLight.shadow.mapSize.height = 1024;
     sunLight.shadow.bias = -0.0005;
     scene.add(sunLight);
 
-    // 4c. Secondary Sky Fill Light (Eliminates harsh shadows)
     const skyFillLight = new THREE.DirectionalLight(0xe0f2fe, 1.4);
-    skyFillLight.position.set(-26, 24, -20);
+    skyFillLight.position.set(-28, 25, -22);
     scene.add(skyFillLight);
 
-    // 4d. Top Overhead Downlight (Direct beam on central vault)
-    const topLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    topLight.position.set(0, 45, 0);
-    scene.add(topLight);
+    const topDownLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    topDownLight.position.set(0, 48, 0);
+    scene.add(topDownLight);
 
-    // 4e. Luminous Cyan Accent Point Light inside Safe
-    const safeGlow = new THREE.PointLight(0x38bdf8, 2.8, 36);
-    safeGlow.position.set(0, 6.5, 0);
-    scene.add(safeGlow);
+    const vaultAccentLight = new THREE.PointLight(0x38bdf8, 2.8, 36);
+    vaultAccentLight.position.set(0, 6.5, 0);
+    scene.add(vaultAccentLight);
 
-    // 5. Floor Studio Pedestal: Luminous clean white with soft reflections
+    // 5. Floor Studio Pedestal
     const floorGeo = new THREE.PlaneGeometry(160, 160);
     const floorMat = new THREE.MeshStandardMaterial({
       color: 0xfcfdff,
@@ -144,7 +142,7 @@ export const ThreeVaultEnclave = ({
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // Floor architectural rings
+    // Architectural curved concentric paving rings
     const ringGeo1 = new THREE.RingGeometry(18, 18.3, 64);
     const ringMat1 = new THREE.MeshBasicMaterial({ color: 0x93c5fd, side: THREE.DoubleSide });
     const floorRing1 = new THREE.Mesh(ringGeo1, ringMat1);
@@ -160,67 +158,152 @@ export const ThreeVaultEnclave = ({
     scene.add(floorRing2);
 
     // ================================================================
-    // 6. CENTRAL OBJECT: GLEAMING SILVER & 24K GOLD BANK VAULT SAFE
+    // 6. CENTRAL OBJECT: ARCHITECTURAL BANKING ROTUNDA WITH CURVED COLONNADE & DOME
     // ================================================================
-    const vaultGroup = new THREE.Group();
-    vaultSafeGroupRef.current = vaultGroup;
-    scene.add(vaultGroup);
+    const rotundaGroup = new THREE.Group();
+    vaultSafeGroupRef.current = rotundaGroup;
+    scene.add(rotundaGroup);
 
-    // 6a. Safe Marble Base Pedestal (Pure Bright White)
-    const baseGeo = new THREE.CylinderGeometry(8.5, 9.2, 1.4, 36);
-    const baseMat = new THREE.MeshStandardMaterial({
-      color: 0xf1f5f9,
-      roughness: 0.25,
-      metalness: 0.35,
+    // 6a. Curved Terraced Marble Steps (Classical Modern Plinth)
+    const step1Geo = new THREE.CylinderGeometry(11.4, 11.8, 0.4, 48);
+    const marbleMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.25, metalness: 0.25 });
+    const step1 = new THREE.Mesh(step1Geo, marbleMat);
+    step1.position.y = 0.2;
+    step1.receiveShadow = true;
+    rotundaGroup.add(step1);
+
+    const step2Geo = new THREE.CylinderGeometry(10.0, 10.4, 0.4, 48);
+    const step2 = new THREE.Mesh(step2Geo, marbleMat);
+    step2.position.y = 0.6;
+    step2.receiveShadow = true;
+    rotundaGroup.add(step2);
+
+    const step3Geo = new THREE.CylinderGeometry(8.8, 9.2, 0.5, 48);
+    const step3 = new THREE.Mesh(step3Geo, marbleMat);
+    step3.position.y = 1.05;
+    step3.receiveShadow = true;
+    step3.castShadow = true;
+    rotundaGroup.add(step3);
+
+    // 6b. Curved Cylindrical Glass Atrium Wall
+    const glassGeo = new THREE.CylinderGeometry(6.8, 6.8, 6.4, 48, 1, true);
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0xe0f2fe,
+      transparent: true,
+      opacity: 0.28,
+      roughness: 0.05,
+      metalness: 0.85,
+      side: THREE.DoubleSide,
     });
-    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-    baseMesh.position.y = 0.7;
-    baseMesh.receiveShadow = true;
-    baseMesh.castShadow = true;
-    vaultGroup.add(baseMesh);
+    const glassAtrium = new THREE.Mesh(glassGeo, glassMat);
+    glassAtrium.position.y = 4.4;
+    rotundaGroup.add(glassAtrium);
 
-    // 6b. Silver Titanium Vault Body (Reflective & Bright)
-    const vaultBodyGeo = new THREE.CylinderGeometry(6.2, 6.2, 4.2, 36);
+    // 6c. Curved Architectural Colonnade (8 Majestic Curved Marble Pillars)
+    const columnCount = 8;
+    const colRadius = 7.6;
+    const colGeo = new THREE.CylinderGeometry(0.3, 0.3, 6.4, 16);
+    const colCapGeo = new THREE.TorusGeometry(0.38, 0.08, 12, 24);
+
+    for (let c = 0; c < columnCount; c++) {
+      const angle = (c / columnCount) * Math.PI * 2;
+      const cx = Math.cos(angle) * colRadius;
+      const cz = Math.sin(angle) * colRadius;
+
+      const column = new THREE.Mesh(colGeo, marbleMat);
+      column.position.set(cx, 4.4, cz);
+      column.castShadow = true;
+      rotundaGroup.add(column);
+
+      // Base cap
+      const baseCap = new THREE.Mesh(colCapGeo, marbleMat);
+      baseCap.rotation.x = Math.PI / 2;
+      baseCap.position.set(cx, 1.3, cz);
+      rotundaGroup.add(baseCap);
+
+      // Top capital
+      const topCap = new THREE.Mesh(colCapGeo, marbleMat);
+      topCap.rotation.x = Math.PI / 2;
+      topCap.position.set(cx, 7.5, cz);
+      rotundaGroup.add(topCap);
+    }
+
+    // 6d. Overhanging Curved Cornice & Entablature Ring
+    const corniceGeo = new THREE.TorusGeometry(7.8, 0.42, 16, 48);
+    const corniceMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.5, roughness: 0.2 });
+    const cornice = new THREE.Mesh(corniceGeo, corniceMat);
+    cornice.rotation.x = Math.PI / 2;
+    cornice.position.y = 7.6;
+    cornice.castShadow = true;
+    rotundaGroup.add(cornice);
+
+    // Upper Roof Ring
+    const roofRingGeo = new THREE.CylinderGeometry(7.2, 7.8, 0.6, 48);
+    const roofRing = new THREE.Mesh(roofRingGeo, marbleMat);
+    roofRing.position.y = 8.0;
+    roofRing.castShadow = true;
+    rotundaGroup.add(roofRing);
+
+    // 6e. Curved Transparent Glass Skylight Dome
+    const domeGeo = new THREE.SphereGeometry(6.6, 36, 18, 0, Math.PI * 2, 0, Math.PI * 0.42);
+    const domeMat = new THREE.MeshStandardMaterial({
+      color: 0x93c5fd,
+      transparent: true,
+      opacity: 0.35,
+      roughness: 0.08,
+      metalness: 0.9,
+      side: THREE.DoubleSide,
+    });
+    const dome = new THREE.Mesh(domeGeo, domeMat);
+    dome.position.y = 8.0;
+    rotundaGroup.add(dome);
+
+    // Crown Finial Ring atop Dome
+    const crownGeo = new THREE.TorusGeometry(1.4, 0.16, 16, 32);
+    const crownMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.95, roughness: 0.1 });
+    const crown = new THREE.Mesh(crownGeo, crownMat);
+    crown.rotation.x = Math.PI / 2;
+    crown.position.y = 10.8;
+    rotundaGroup.add(crown);
+
+    // 6f. Central Bank Vault Safe (Inside Rotunda)
+    const vaultBodyGeo = new THREE.CylinderGeometry(4.2, 4.2, 3.4, 36);
     const vaultBodyMat = new THREE.MeshStandardMaterial({
       color: 0x94a3b8,
       roughness: 0.16,
       metalness: 0.88,
     });
     const vaultBody = new THREE.Mesh(vaultBodyGeo, vaultBodyMat);
-    vaultBody.position.y = 3.5;
+    vaultBody.position.y = 3.0;
     vaultBody.castShadow = true;
-    vaultGroup.add(vaultBody);
+    rotundaGroup.add(vaultBody);
 
-    // 6c. Heavy Chrome Vault Rim
-    const rimGeo = new THREE.TorusGeometry(5.8, 0.42, 16, 36);
-    const rimMat = new THREE.MeshStandardMaterial({
-      color: 0xcfd8e3,
-      roughness: 0.1,
-      metalness: 0.95,
-    });
+    // Heavy Chrome Vault Rim
+    const rimGeo = new THREE.TorusGeometry(4.0, 0.35, 16, 36);
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xcfd8e3, roughness: 0.1, metalness: 0.95 });
     const vaultRim = new THREE.Mesh(rimGeo, rimMat);
     vaultRim.rotation.x = Math.PI / 2;
-    vaultRim.position.y = 5.6;
-    vaultGroup.add(vaultRim);
+    vaultRim.position.y = 4.7;
+    rotundaGroup.add(vaultRim);
 
-    // Chrome locking perimeter bolts
-    const boltCount = 12;
+    // Perimeter locking bolts
+    const boltCount = 10;
     for (let b = 0; b < boltCount; b++) {
       const angle = (b / boltCount) * Math.PI * 2;
-      const boltGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.6, 12);
+      const boltGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.5, 12);
       const boltMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.98, roughness: 0.08 });
       const bolt = new THREE.Mesh(boltGeo, boltMat);
-      bolt.position.set(Math.cos(angle) * 5.8, 5.8, Math.sin(angle) * 5.8);
-      vaultGroup.add(bolt);
+      bolt.position.set(Math.cos(angle) * 4.0, 4.8, Math.sin(angle) * 4.0);
+      rotundaGroup.add(bolt);
     }
 
-    // 6d. Precision Gleaming Gold Combination Wheel
+    // Precision Gold Combination Wheel
     const wheelGroup = new THREE.Group();
     vaultWheelRef.current = wheelGroup;
-    wheelGroup.position.set(0, 5.7, 0);
-    vaultGroup.add(wheelGroup);
+    wheelGroup.position.set(0, 4.8, 0);
+    rotundaGroup.add(wheelGroup);
 
-    const wheelRimGeo = new THREE.TorusGeometry(3.0, 0.28, 16, 32);
+    const wheelRimGeo = new THREE.TorusGeometry(2.2, 0.22, 16, 32);
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xfbbf24,
       emissive: 0xd97706,
@@ -232,9 +315,8 @@ export const ThreeVaultEnclave = ({
     wheelRim.rotation.x = Math.PI / 2;
     wheelGroup.add(wheelRim);
 
-    // Wheel spokes
     for (let s = 0; s < 4; s++) {
-      const spokeGeo = new THREE.CylinderGeometry(0.12, 0.12, 5.6, 8);
+      const spokeGeo = new THREE.CylinderGeometry(0.1, 0.1, 4.2, 8);
       const spoke = new THREE.Mesh(spokeGeo, goldMat);
       spoke.rotation.z = Math.PI / 2;
       spoke.rotation.y = (s * Math.PI) / 4;
@@ -242,13 +324,13 @@ export const ThreeVaultEnclave = ({
     }
 
     // Center Spindle with Luminous Emerald LED
-    const spindleGeo = new THREE.CylinderGeometry(1.0, 1.0, 0.6, 24);
+    const spindleGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.5, 24);
     const spindleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85, roughness: 0.2 });
     const spindle = new THREE.Mesh(spindleGeo, spindleMat);
-    spindle.position.y = 0.2;
+    spindle.position.y = 0.18;
     wheelGroup.add(spindle);
 
-    const ledGeo = new THREE.SphereGeometry(0.35, 16, 16);
+    const ledGeo = new THREE.SphereGeometry(0.28, 16, 16);
     const ledMat = new THREE.MeshStandardMaterial({
       color: 0x10b981,
       emissive: 0x10b981,
@@ -256,57 +338,57 @@ export const ThreeVaultEnclave = ({
       roughness: 0.1,
     });
     const statusLed = new THREE.Mesh(ledGeo, ledMat);
-    statusLed.position.y = 0.55;
+    statusLed.position.y = 0.48;
     wheelGroup.add(statusLed);
 
-    // 6e. Gleaming 24K Gold Bullion Ingot Stacks
-    const ingotGeo = new THREE.BoxGeometry(1.8, 0.55, 0.85);
+    // Gleaming Gold Bullion Ingot Stacks
+    const ingotGeo = new THREE.BoxGeometry(1.6, 0.45, 0.75);
     const ingotPositions = [
-      { x: -3.8, y: 1.6, z: 2.2, r: 0.2 },
-      { x: -3.8, y: 2.15, z: 2.2, r: 0.2 },
-      { x: -3.2, y: 1.6, z: 3.2, r: -0.4 },
-      { x: 3.5, y: 1.6, z: 2.5, r: 0.5 },
-      { x: 3.5, y: 2.15, z: 2.5, r: 0.5 },
+      { x: -2.6, y: 1.5, z: 1.8, r: 0.2 },
+      { x: -2.6, y: 1.95, z: 1.8, r: 0.2 },
+      { x: -2.0, y: 1.5, z: 2.6, r: -0.4 },
+      { x: 2.4, y: 1.5, z: 2.0, r: 0.5 },
+      { x: 2.4, y: 1.95, z: 2.0, r: 0.5 },
     ];
     ingotPositions.forEach((pos) => {
       const ingot = new THREE.Mesh(ingotGeo, goldMat);
       ingot.position.set(pos.x, pos.y, pos.z);
       ingot.rotation.y = pos.r;
       ingot.castShadow = true;
-      vaultGroup.add(ingot);
+      rotundaGroup.add(ingot);
     });
 
-    // Vault Signage
-    const vaultLabelTex = makeTextTexture('CENTRAL VAULT SAFE', 'Double-Entry Verified');
+    // Rotunda Signage
+    const vaultLabelTex = makeTextTexture('CENTRAL BANK ROTUNDA', 'Double-Entry Vault Core');
     const labelMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(6.4, 3.0),
       new THREE.MeshBasicMaterial({ map: vaultLabelTex, transparent: true, side: THREE.DoubleSide })
     );
-    labelMesh.position.set(0, 9.2, 0);
-    vaultGroup.add(labelMesh);
+    labelMesh.position.set(0, 12.2, 0);
+    rotundaGroup.add(labelMesh);
 
     // ================================================================
-    // 7. FINANCIAL OPERATION STATIONS & PIPELINES (Proper Architecture)
+    // 7. REALISTIC ARCHITECTURAL FINANCIAL STATIONS (HIGH CURVATURE DESIGN)
     // ================================================================
     const pipelines = [];
 
     const stationConfigs = [
       {
-        name: 'Daily 100-Day Route',
-        sub: 'Automated Merchant Sweep',
-        pos: new THREE.Vector3(-24, 0, 10),
+        name: 'Merchant Route Terminal',
+        sub: 'Automated Daily Sweep',
+        pos: new THREE.Vector3(-25, 0, 10),
         type: 'route',
       },
       {
-        name: 'Branch Cash Safes',
-        sub: 'Counter Reconciliation',
-        pos: new THREE.Vector3(24, 0, 10),
+        name: 'Branch Cash Pavilion',
+        sub: 'Cash Drawer Safe Alcove',
+        pos: new THREE.Vector3(25, 0, 10),
         type: 'branch',
       },
       {
-        name: 'Weekly Chit Syndicate',
-        sub: 'Syndicate Liquidity Pool',
-        pos: new THREE.Vector3(0, 0, -22),
+        name: 'Chit Syndicate Tower',
+        sub: 'Syndicate Treasury Core',
+        pos: new THREE.Vector3(0, 0, -23),
         type: 'chit',
       },
     ];
@@ -315,78 +397,162 @@ export const ThreeVaultEnclave = ({
       const sGroup = new THREE.Group();
       sGroup.position.copy(st.pos);
 
-      // Station Base Platform
-      const pGeo = new THREE.CylinderGeometry(5.2, 5.6, 1.0, 28);
-      const pMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.35, metalness: 0.35 });
-      const platform = new THREE.Mesh(pGeo, pMat);
-      platform.position.y = 0.5;
-      platform.castShadow = true;
-      platform.receiveShadow = true;
-      sGroup.add(platform);
+      // Station Curved Stepped Base Plinth
+      const p1Geo = new THREE.CylinderGeometry(6.4, 6.8, 0.45, 36);
+      const p1Mesh = new THREE.Mesh(p1Geo, marbleMat);
+      p1Mesh.position.y = 0.22;
+      p1Mesh.receiveShadow = true;
+      sGroup.add(p1Mesh);
+
+      const p2Geo = new THREE.CylinderGeometry(5.4, 5.8, 0.45, 36);
+      const p2Mesh = new THREE.Mesh(p2Geo, marbleMat);
+      p2Mesh.position.y = 0.65;
+      p2Mesh.receiveShadow = true;
+      p2Mesh.castShadow = true;
+      sGroup.add(p2Mesh);
 
       if (st.type === 'route') {
-        // Merchant Terminal Box
-        const tGeo = new THREE.BoxGeometry(3.4, 2.2, 2.8);
-        const tMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.25, metalness: 0.7 });
-        const terminal = new THREE.Mesh(tGeo, tMat);
-        terminal.position.y = 2.1;
-        sGroup.add(terminal);
+        // --- 1. MERCHANT TERMINAL: Curved Airfoil / Wing Canopy Architecture ---
+        // Semicircular Curved Service Counter
+        const counterGeo = new THREE.CylinderGeometry(3.6, 3.6, 1.8, 36, 1, false, -Math.PI * 0.4, Math.PI * 1.8);
+        const counterMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.25, metalness: 0.6 });
+        const counter = new THREE.Mesh(counterGeo, counterMat);
+        counter.position.y = 1.7;
+        counter.castShadow = true;
+        sGroup.add(counter);
 
-        // Orbiting route points
+        // Curved Cantilevered Roof Wing
+        const canopyGeo = new THREE.TorusGeometry(4.4, 0.35, 16, 36, Math.PI * 1.5);
+        const canopyMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.8, roughness: 0.2 });
+        const canopy = new THREE.Mesh(canopyGeo, canopyMat);
+        canopy.rotation.x = Math.PI / 2;
+        canopy.position.set(0, 4.2, 0);
+        canopy.castShadow = true;
+        sGroup.add(canopy);
+
+        // Curved Tensile Glass Shade
+        const shadeGeo = new THREE.CylinderGeometry(4.0, 4.0, 0.2, 36, 1, false);
+        const shade = new THREE.Mesh(shadeGeo, glassMat);
+        shade.position.y = 4.3;
+        sGroup.add(shade);
+
+        // Orbiting Curved Kiosk Pods
         for (let m = 0; m < 4; m++) {
-          const mGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
-          const mMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.2 });
-          const mMesh = new THREE.Mesh(mGeo, mMat);
           const a = (m / 4) * Math.PI * 2;
-          mMesh.position.set(Math.cos(a) * 4.2, 1.8, Math.sin(a) * 4.2);
-          sGroup.add(mMesh);
+          const kGeo = new THREE.CylinderGeometry(0.7, 0.8, 1.2, 16);
+          const kMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.2, metalness: 0.5 });
+          const kiosk = new THREE.Mesh(kGeo, kMat);
+          kiosk.position.set(Math.cos(a) * 4.6, 1.5, Math.sin(a) * 4.6);
+          sGroup.add(kiosk);
         }
       } else if (st.type === 'branch') {
-        // Branch Cash Drawers
-        for (let b = 0; b < 3; b++) {
-          const dGeo = new THREE.BoxGeometry(3.6, 0.8, 2.6);
-          const dMat = new THREE.MeshStandardMaterial({ color: 0x059669, roughness: 0.25, metalness: 0.75 });
-          const drawer = new THREE.Mesh(dGeo, dMat);
-          drawer.position.set(0, 1.4 + b * 0.95, 0);
-          sGroup.add(drawer);
-        }
+        // --- 2. BRANCH CASH PAVILION: Sweeping Curved Glass Facade & Safe Alcove ---
+        // Semicircular Curved Glass Rotunda Wall
+        const bGlassGeo = new THREE.CylinderGeometry(4.2, 4.2, 3.8, 36, 1, true, -Math.PI * 0.2, Math.PI * 1.4);
+        const bGlass = new THREE.Mesh(bGlassGeo, glassMat);
+        bGlass.position.y = 2.8;
+        sGroup.add(bGlass);
+
+        // Curved Cantilevered Floating Roof Disc with Emerald Ring
+        const bRoofGeo = new THREE.CylinderGeometry(4.8, 5.0, 0.5, 36);
+        const bRoof = new THREE.Mesh(bRoofGeo, marbleMat);
+        bRoof.position.y = 4.8;
+        bRoof.castShadow = true;
+        sGroup.add(bRoof);
+
+        const bTrimGeo = new THREE.TorusGeometry(4.9, 0.12, 16, 36);
+        const bTrimMat = new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.9, roughness: 0.2 });
+        const bTrim = new THREE.Mesh(bTrimGeo, bTrimMat);
+        bTrim.rotation.x = Math.PI / 2;
+        bTrim.position.y = 4.8;
+        sGroup.add(bTrim);
+
+        // Physical Branch Safe Alcove inside pavilion
+        const bSafeGeo = new THREE.CylinderGeometry(1.8, 1.8, 2.4, 24);
+        const bSafeMat = new THREE.MeshStandardMaterial({ color: 0x059669, roughness: 0.2, metalness: 0.8 });
+        const bSafe = new THREE.Mesh(bSafeGeo, bSafeMat);
+        bSafe.position.set(0, 2.1, 0.4);
+        bSafe.castShadow = true;
+        sGroup.add(bSafe);
+
+        // Branch Safe Chrome Wheel
+        const bWheelGeo = new THREE.TorusGeometry(0.7, 0.08, 12, 24);
+        const bWheelMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.95 });
+        const bWheel = new THREE.Mesh(bWheelGeo, bWheelMat);
+        bWheel.position.set(0, 2.2, 2.2);
+        sGroup.add(bWheel);
       } else {
-        // Chit Syndicate Pod
-        const podGeo = new THREE.CylinderGeometry(2.4, 2.8, 3.0, 16);
-        const podMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.25, metalness: 0.7 });
-        const pod = new THREE.Mesh(podGeo, podMat);
-        pod.position.y = 2.4;
-        sGroup.add(pod);
+        // --- 3. CHIT SYNDICATE: Tiered Cylindrical Curved Tower ---
+        const t1Geo = new THREE.CylinderGeometry(3.6, 4.0, 2.2, 32);
+        const t1Mat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.25, metalness: 0.6 });
+        const t1 = new THREE.Mesh(t1Geo, t1Mat);
+        t1.position.y = 2.0;
+        t1.castShadow = true;
+        sGroup.add(t1);
+
+        // Mid Curved Glass Atrium Collar
+        const tGlassGeo = new THREE.CylinderGeometry(3.2, 3.2, 1.8, 32, 1, true);
+        const tGlass = new THREE.Mesh(tGlassGeo, glassMat);
+        tGlass.position.y = 4.0;
+        sGroup.add(tGlass);
+
+        // Upper Observatory Curved Tier
+        const t2Geo = new THREE.CylinderGeometry(2.4, 3.4, 1.6, 32);
+        const t2 = new THREE.Mesh(t2Geo, marbleMat);
+        t2.position.y = 5.6;
+        t2.castShadow = true;
+        sGroup.add(t2);
+
+        // Golden Curved Spire Ring atop tower
+        const tRingGeo = new THREE.TorusGeometry(2.6, 0.16, 16, 32);
+        const tRing = new THREE.Mesh(tRingGeo, goldMat);
+        tRing.rotation.x = Math.PI / 2;
+        tRing.position.y = 6.4;
+        sGroup.add(tRing);
       }
 
-      // Station Signboard
+      // Station Architectural Signboard
       const signTex = makeTextTexture(st.name, st.sub);
       const signMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(6.4, 3.0),
         new THREE.MeshBasicMaterial({ map: signTex, transparent: true, side: THREE.DoubleSide })
       );
-      signMesh.position.set(0, 6.2, 0);
+      signMesh.position.set(0, 7.8, 0);
       sGroup.add(signMesh);
 
       scene.add(sGroup);
 
-      // Connecting conduit
-      const midPoint = new THREE.Vector3(st.pos.x * 0.5, 3.8, st.pos.z * 0.5);
+      // --- 8. CURVED ARCHITECTURAL GLASS SKY-BRIDGES ---
+      // Elevated curved conduit bridge connecting central rotunda to station
+      const midPoint = new THREE.Vector3(st.pos.x * 0.5, 5.2, st.pos.z * 0.5);
       const curve = new THREE.QuadraticBezierCurve3(
-        new THREE.Vector3(0, 2.5, 0),
+        new THREE.Vector3(0, 4.6, 0),
         midPoint,
-        new THREE.Vector3(st.pos.x, 1.2, st.pos.z)
+        new THREE.Vector3(st.pos.x, 3.2, st.pos.z)
       );
       pipelines.push(curve);
 
-      const tubeGeo = new THREE.TubeGeometry(curve, 28, 0.16, 8, false);
-      const tubeMat = new THREE.MeshStandardMaterial({ color: 0xa0aec0, roughness: 0.25, metalness: 0.7 });
+      // Outer transparent curved glass sleeve
+      const tubeGeo = new THREE.TubeGeometry(curve, 36, 0.35, 12, false);
+      const tubeMat = new THREE.MeshStandardMaterial({
+        color: 0x93c5fd,
+        transparent: true,
+        opacity: 0.35,
+        roughness: 0.08,
+        metalness: 0.85,
+      });
       const tube = new THREE.Mesh(tubeGeo, tubeMat);
       scene.add(tube);
+
+      // Inner silver transit rail
+      const railGeo = new THREE.TubeGeometry(curve, 36, 0.08, 8, false);
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.9, roughness: 0.15 });
+      const rail = new THREE.Mesh(railGeo, railMat);
+      scene.add(rail);
     });
 
     // ================================================================
-    // 8. FLOWING CASH PACKETS (Blue Disbursals & Green Recoveries)
+    // 9. FLOWING CASH DISBURSAL BLOCKS & RECOVERY TOKENS (Riding Inside Sky-Bridges)
     // ================================================================
     const cashPackets = [];
     const packetGroup = new THREE.Group();
@@ -409,7 +575,7 @@ export const ThreeVaultEnclave = ({
           curve,
           t: p / 3,
           speed: 0.0036,
-          dir: 1, // Vault -> Station
+          dir: 1, // Central Rotunda -> Station
         });
       }
 
@@ -430,7 +596,7 @@ export const ThreeVaultEnclave = ({
           curve,
           t: 1 - r / 3,
           speed: 0.004,
-          dir: -1, // Station -> Vault
+          dir: -1, // Station -> Central Rotunda
         });
       }
     });
@@ -438,17 +604,16 @@ export const ThreeVaultEnclave = ({
     cashPacketsRef.current = cashPackets;
 
     // ================================================================
-    // 9. DYNAMIC 3D AMORTIZATION COLUMNS
+    // 10. CURVED AMORTIZATION YIELD PODIUM
     // ================================================================
     const yieldGroup = new THREE.Group();
     yieldGroup.position.set(-18, 0, -18);
     scene.add(yieldGroup);
 
-    const yPodium = new THREE.Mesh(
-      new THREE.CylinderGeometry(5.2, 5.6, 0.8, 24),
-      new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.35 })
-    );
+    const yPodiumGeo = new THREE.CylinderGeometry(5.4, 5.8, 0.8, 32);
+    const yPodium = new THREE.Mesh(yPodiumGeo, marbleMat);
     yPodium.position.y = 0.4;
+    yPodium.receiveShadow = true;
     yieldGroup.add(yPodium);
 
     const yLabelTex = makeTextTexture('AMORTIZATION ENGINE', 'Mathematical Yield Model');
@@ -456,18 +621,18 @@ export const ThreeVaultEnclave = ({
       new THREE.PlaneGeometry(5.4, 2.5),
       new THREE.MeshBasicMaterial({ map: yLabelTex, transparent: true, side: THREE.DoubleSide })
     );
-    yLabelMesh.position.set(0, 6.2, 0);
+    yLabelMesh.position.set(0, 6.4, 0);
     yieldGroup.add(yLabelMesh);
 
     // Principal Column
-    const b1Geo = new THREE.CylinderGeometry(0.8, 0.8, 4.0, 16);
+    const b1Geo = new THREE.CylinderGeometry(0.8, 0.8, 4.0, 24);
     const b1Mat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, metalness: 0.7, roughness: 0.2 });
     const b1Mesh = new THREE.Mesh(b1Geo, b1Mat);
     b1Mesh.position.set(-1.8, 2.4, 0);
     yieldGroup.add(b1Mesh);
 
     // Interest Fee Column
-    const b2Geo = new THREE.CylinderGeometry(0.8, 0.8, 2.2, 16);
+    const b2Geo = new THREE.CylinderGeometry(0.8, 0.8, 2.2, 24);
     const b2Mat = new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.8, roughness: 0.15 });
     const b2Mesh = new THREE.Mesh(b2Geo, b2Mat);
     b2Mesh.position.set(1.8, 1.5, 0);
@@ -476,11 +641,11 @@ export const ThreeVaultEnclave = ({
     yieldBarsRef.current = { principal: b1Mesh, yield: b2Mesh };
 
     // ================================================================
-    // 10. MOUSE INTERACTION & DRAG
+    // 11. MOUSE INTERACTION & DRAG ORBIT
     // ================================================================
     let isDragging = false;
     let prevMouse = { x: 0, y: 0 };
-    let spherical = { theta: 0.35, phi: Math.PI / 2.65, radius: 50 };
+    let spherical = { theta: 0.35, phi: Math.PI / 2.65, radius: 52 };
 
     const handlePointerDown = (e) => {
       isDragging = true;
@@ -524,7 +689,7 @@ export const ThreeVaultEnclave = ({
     resizeObserver.observe(container);
 
     // ================================================================
-    // 11. MAIN ANIMATION LOOP
+    // 12. ANIMATION LOOP
     // ================================================================
     let clock = new THREE.Clock();
 
@@ -533,18 +698,21 @@ export const ThreeVaultEnclave = ({
       const delta = clock.getDelta();
 
       camera.position.lerp(targetCamPosRef.current, 0.06);
-      camera.lookAt(0, 3, 0);
+      camera.lookAt(0, 3.5, 0);
 
+      // Rotunda vault combination wheel rotation
       if (vaultWheelRef.current) {
         vaultWheelRef.current.rotation.y += delta * 0.45;
       }
 
+      // Smooth auto-orbit camera
       if (isAutoRotate && !isDragging && activeCamPreset === 'all') {
         spherical.theta += delta * 0.07;
         targetCamPosRef.current.x = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
         targetCamPosRef.current.z = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
       }
 
+      // Advance flowing cash packets inside sky-bridges
       cashPackets.forEach((pkt) => {
         if (pkt.dir === 1) {
           pkt.t = (pkt.t + pkt.speed) % 1;
@@ -597,13 +765,13 @@ export const ThreeVaultEnclave = ({
   const setCamPreset = (preset) => {
     setActiveCamPreset(preset);
     if (preset === 'all') {
-      targetCamPosRef.current.set(0, 18, 46);
+      targetCamPosRef.current.set(0, 20, 48);
     } else if (preset === 'vault') {
-      targetCamPosRef.current.set(0, 10, 18);
+      targetCamPosRef.current.set(0, 11, 20);
     } else if (preset === 'merchants') {
-      targetCamPosRef.current.set(-24, 12, 28);
+      targetCamPosRef.current.set(-25, 13, 28);
     } else if (preset === 'branches') {
-      targetCamPosRef.current.set(24, 12, 28);
+      targetCamPosRef.current.set(25, 13, 28);
     }
   };
 
@@ -620,7 +788,7 @@ export const ThreeVaultEnclave = ({
           onClick={() => setCamPreset('all')}
         >
           <Layers size={13} />
-          <span>Full Flow</span>
+          <span>Full Campus</span>
         </button>
 
         <button
@@ -629,7 +797,7 @@ export const ThreeVaultEnclave = ({
           onClick={() => setCamPreset('vault')}
         >
           <Lock size={13} />
-          <span>Central Safe</span>
+          <span>Central Rotunda</span>
         </button>
 
         <button
@@ -638,7 +806,7 @@ export const ThreeVaultEnclave = ({
           onClick={() => setCamPreset('merchants')}
         >
           <Building2 size={13} />
-          <span>100-Day Route</span>
+          <span>Merchant Terminal</span>
         </button>
 
         <button
@@ -647,7 +815,7 @@ export const ThreeVaultEnclave = ({
           onClick={() => setCamPreset('branches')}
         >
           <Wallet size={13} />
-          <span>Branch Safes</span>
+          <span>Branch Pavilion</span>
         </button>
 
         <button
@@ -661,7 +829,7 @@ export const ThreeVaultEnclave = ({
       </div>
 
       <div className="open-stage-hint">
-        <span>Drag 360° to inspect cash routes & vault mechanisms</span>
+        <span>Curved Architectural Banking Campus · Drag 360° to Explore</span>
       </div>
     </div>
   );
