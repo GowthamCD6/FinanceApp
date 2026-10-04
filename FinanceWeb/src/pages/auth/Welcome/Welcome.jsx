@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logoImg from '../../../assets/logo-tight.png';
 import { LiquidHeroArtwork } from './LiquidHeroArtwork';
+import { ThreeVaultEnclave } from './ThreeVaultEnclave';
 import {
   ArrowRight,
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
   Save,
   Search,
   Menu,
+  Sparkles,
 } from 'lucide-react';
 import './Welcome.css';
 
@@ -40,7 +42,7 @@ export const WelcomePage = () => {
   // Multi-Tenant Interactive Hero State
   const [selectedTenantIdx, setSelectedTenantIdx] = useState(0);
   const [isConfidentialMode, setIsConfidentialMode] = useState(true);
-  const [heroActiveView, setHeroActiveView] = useState('overview'); // 'overview', 'branches', 'enclave'
+  const [heroActiveView, setHeroActiveView] = useState('3d-matrix'); // '3d-matrix', 'overview', 'branches', 'enclave'
   const [activeTab, setActiveTab] = useState('daily');
   const [openFaq, setOpenFaq] = useState(0);
 
@@ -289,7 +291,6 @@ export const WelcomePage = () => {
                 <CheckCircle2 size={16} className="et-check-icon" />
                 <span>Multi-Tenant Vaults</span>
               </div>
-              <span className="et-trust-dot">•</span>
               <div className="et-trust-item">
                 <CheckCircle2 size={16} className="et-check-icon" />
                 <span>Automated Daily Settlement</span>
@@ -300,305 +301,99 @@ export const WelcomePage = () => {
       </section>
 
       {/* ================================================================
-          2. WORKSPACE SHOWCASE (Live Multi-Tenant Enclave & Branch Safes)
+          2. PLAIN FINANCE STAGE: 3D TREASURY & LIQUIDITY MATRIX (THEMED AS HOME SCREEN)
           ================================================================ */}
-      <section className="workspace-showcase-section" id="workspace-preview">
-        <div className="section-header">
-          <div className="section-pill">LIVE CLOUD WORKSPACE DEMO</div>
-          <h2 className="section-title">Isolated multi-tenant execution with row-level security</h2>
-          <p className="section-subtitle">
-            Switch between demo organizations to see real-time ledger isolation and credential masking in action.
-          </p>
-        </div>
+      <section className="plain-finance-stage-section" id="workspace-preview">
+        <div className="plain-stage-container">
+          {/* Left Column: Arranged Text, Scheme Engine & Live Metrics */}
+          <div className="plain-stage-copy">
+            <div className="stage-tag-pill">
+              <Sparkles size={14} className="tag-sparkle" />
+              <span>3D TREASURY & ROUTE MATRIX</span>
+            </div>
 
-        <div className="hero-container" style={{ paddingTop: '1rem' }}>
+            <h2 className="stage-headline">
+              Central safe liquidity with automated 100-day collection routes
+            </h2>
 
-          {/* ============================================================
-              HERO SAAS WORKSPACE SHOWCASE (Interactive Multi-Tenant Switcher)
-              ============================================================ */}
-          <div className="hero-app-mockup">
-            <div className="app-window-frame">
-              {/* Window Top Controls */}
-              <div className="window-header">
-                <div className="window-dots">
-                  <span className="dot red" />
-                  <span className="dot yellow" />
-                  <span className="dot green" />
-                </div>
+            <p className="stage-description">
+              High-throughput cloud infrastructure engineered for automated 100-day daily merchant advances, weekly chit fund syndicates, and centralized double-entry branch safe reconciliation.
+            </p>
 
-                <div className="window-tenant-selector">
-                  <span className="selector-label">ACTIVE TENANT WORKSPACE:</span>
-                  <div className="tenant-pills">
-                    {tenantProfiles.map((t, idx) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className={`tenant-pill-btn ${selectedTenantIdx === idx ? 'active' : ''}`}
-                        onClick={() => setSelectedTenantIdx(idx)}
-                      >
-                        <Building2 size={13} />
-                        <span>{t.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Confidentiality Privacy Mask Toggle */}
-                <div className="window-privacy-toggle">
-                  <button
-                    type="button"
-                    className={`privacy-btn ${isConfidentialMode ? 'is-masked' : ''}`}
-                    onClick={() => setIsConfidentialMode(!isConfidentialMode)}
-                    title="Toggle Confidentiality Protection Mode"
-                  >
-                    {isConfidentialMode ? <EyeOff size={14} /> : <Eye size={14} />}
-                    <span>{isConfidentialMode ? 'Confidential Shield: ON' : 'Confidential Shield: OFF'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Sub-Header: Subdomain & Navigation */}
-              <div className="window-sub-bar">
-                <div className="sub-bar-domain">
-                  <Lock size={13} className="lock-icon" />
-                  <span className="domain-text">https://{currentTenant.subdomain}</span>
-                  <span className="tenant-id-tag">ID: {currentTenant.id}</span>
-                </div>
-                <div className="sub-bar-tabs">
-                  <button
-                    type="button"
-                    className={`sub-tab ${heroActiveView === 'overview' ? 'active' : ''}`}
-                    onClick={() => setHeroActiveView('overview')}
-                  >
-                    Tenant Overview
-                  </button>
-                  <button
-                    type="button"
-                    className={`sub-tab ${heroActiveView === 'branches' ? 'active' : ''}`}
-                    onClick={() => setHeroActiveView('branches')}
-                  >
-                    Branch Network ({currentTenant.branchesCount})
-                  </button>
-                  <button
-                    type="button"
-                    className={`sub-tab ${heroActiveView === 'enclave' ? 'active' : ''}`}
-                    onClick={() => setHeroActiveView('enclave')}
-                  >
-                    Security Enclave
-                  </button>
-                </div>
-              </div>
-
-              {/* Window Body: Interactive Multi-Tenant Views */}
-              <div className="window-body">
-                {heroActiveView === 'overview' && (
-                  <>
-                    {/* KPI Grid */}
-                    <div className="mockup-kpi-grid">
-                      <div className="kpi-card">
-                        <div className="kpi-header">
-                          <span className="kpi-label">Active Portfolio</span>
-                          <span className="kpi-badge green">+18.4% MoM</span>
-                        </div>
-                        <div className="kpi-val">
-                          {isConfidentialMode ? currentTenant.stats.portfolioMasked : currentTenant.stats.portfolio}
-                        </div>
-                        <span className="kpi-sub">{currentTenant.stats.borrowersCount}</span>
-                      </div>
-
-                      <div className="kpi-card">
-                        <div className="kpi-header">
-                          <span className="kpi-label">Today's Collections</span>
-                          <span className="kpi-badge blue">99.4% on-time</span>
-                        </div>
-                        <div className="kpi-val" style={{ color: '#059669' }}>
-                          {isConfidentialMode ? currentTenant.stats.todayCollectionsMasked : currentTenant.stats.todayCollections}
-                        </div>
-                        <span className="kpi-sub">Across {currentTenant.agentsCount} field routes</span>
-                      </div>
-
-                      <div className="kpi-card">
-                        <div className="kpi-header">
-                          <span className="kpi-label">Central Vault Balance</span>
-                          <span className="kpi-badge purple">Double-Entry Verified</span>
-                        </div>
-                        <div className="kpi-val">
-                          {isConfidentialMode ? currentTenant.stats.vaultBalanceMasked : currentTenant.stats.vaultBalance}
-                        </div>
-                        <span className="kpi-sub">{currentTenant.branchesCount} physical branches</span>
-                      </div>
-
-                      <div className="kpi-card">
-                        <div className="kpi-header">
-                          <span className="kpi-label">Tenant Isolation</span>
-                          <span className="kpi-badge green">AES-256</span>
-                        </div>
-                        <div className="kpi-val" style={{ color: '#4F46E5', fontSize: '1.25rem' }}>
-                          Partitioned
-                        </div>
-                        <span className="kpi-sub">Zero credential cross-exposure</span>
-                      </div>
-                    </div>
-
-                    {/* Chart & Stream Split */}
-                    <div className="mockup-split-view">
-                      <div className="mockup-chart-panel">
-                        <div className="panel-title-row">
-                          <div>
-                            <h4 className="panel-title">{currentTenant.name} · Recovery Curve</h4>
-                            <p className="panel-sub">{currentTenant.scheme}</p>
-                          </div>
-                          <span className="badge-live-stream">● ENCRYPTED TENANT FEED</span>
-                        </div>
-
-                        <div className="chart-canvas-mock">
-                          <svg viewBox="0 0 540 130" className="chart-mock-svg">
-                            <defs>
-                              <linearGradient id="tenantAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.18" />
-                                <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.0" />
-                              </linearGradient>
-                            </defs>
-                            <path
-                              d="M0,100 Q70,35 140,65 T280,25 T420,45 T540,15 L540,130 L0,130 Z"
-                              fill="url(#tenantAreaGrad)"
-                            />
-                            <path
-                              d="M0,90 L540,25"
-                              stroke="#E2E8F0"
-                              strokeWidth="2"
-                              strokeDasharray="6 6"
-                              fill="none"
-                            />
-                            <path
-                              d="M0,100 Q70,35 140,65 T280,25 T420,45 T540,15"
-                              stroke="#4F46E5"
-                              strokeWidth="3.5"
-                              fill="none"
-                            />
-                            <circle cx="420" cy="45" r="5" fill="#FFFFFF" stroke="#4F46E5" strokeWidth="3" />
-                          </svg>
-                          <div className="chart-legend-row">
-                            <div className="legend-item"><span className="legend-dot indigo" />Recovered Cashflow</div>
-                            <div className="legend-item"><span className="legend-dot gray" />Target Forecast</div>
-                            <div className="legend-item" style={{ marginLeft: 'auto' }}>
-                              <Shield size={12} color="#059669" />
-                              <span>Row-Level Security Active</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Anonymized / Confidential Incoming Ledger Stream */}
-                      <div className="mockup-feed-panel">
-                        <div className="panel-title-row">
-                          <h4 className="panel-title">Real-Time Ingestion</h4>
-                          <span className="feed-counter">Encrypted Stream</span>
-                        </div>
-
-                        <div className="live-feed-list">
-                          {currentTenant.stream.map((item) => (
-                            <div key={item.id} className="feed-item-card">
-                              <div className="feed-avatar">
-                                <Receipt size={16} color="#4F46E5" />
-                              </div>
-                              <div className="feed-details">
-                                <div className="feed-row-top">
-                                  <span className="feed-borrower">
-                                    {isConfidentialMode ? `[CONFIDENTIAL ${item.id}]` : item.shop}
-                                  </span>
-                                  <span className="feed-amount">
-                                    {isConfidentialMode ? '₹ • • •' : item.amount}
-                                  </span>
-                                </div>
-                                <div className="feed-row-bot">
-                                  <span className="feed-route">{item.route}</span>
-                                  <span className="feed-tag">{item.status}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {heroActiveView === 'branches' && (
-                  <div className="tenant-branches-view">
-                    <div className="branch-view-header">
-                      <div>
-                        <h4>Configured Branch Units for {currentTenant.name}</h4>
-                        <p>Each branch operates with an independent physical cash safe, staff fleet, and route schedule.</p>
-                      </div>
-                      <span className="badge-branches">{currentTenant.branchesCount} Total Branches</span>
-                    </div>
-
-                    <div className="branches-grid-mock">
-                      {currentTenant.branches.map((b, i) => (
-                        <div key={i} className="branch-card-mock">
-                          <div className="b-head">
-                            <Building2 size={18} color="#4F46E5" />
-                            <span className="b-name">{b.name}</span>
-                          </div>
-                          <div className="b-meta">
-                            <span>Field Fleet: <strong>{b.collectors} Collectors</strong></span>
-                            <span>Safe Vault: <strong style={{ color: '#059669' }}>{b.status}</strong></span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {heroActiveView === 'enclave' && (
-                  <div className="tenant-enclave-view">
-                    <div className="enclave-banner">
-                      <ShieldCheck size={28} color="#059669" />
-                      <div>
-                        <h4>Cryptographic Multi-Tenant Enclave Active</h4>
-                        <p>Tenant ID <code>{currentTenant.id}</code> is strictly partitioned. Database queries enforce hard row-level tenant filtering.</p>
-                      </div>
-                    </div>
-                    <div className="enclave-features-row">
-                      <div className="enclave-chip">
-                        <Lock size={14} color="#4F46E5" />
-                        <span>AES-256 Storage Encryption</span>
-                      </div>
-                      <div className="enclave-chip">
-                        <Key size={14} color="#D97706" />
-                        <span>RBAC Token Enforcement</span>
-                      </div>
-                      <div className="enclave-chip">
-                        <Database size={14} color="#0891B2" />
-                        <span>Zero Cross-Tenant Leakage</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+            {/* Clean Scheme Switcher */}
+            <div className="stage-scheme-selector">
+              <span className="scheme-select-label">SELECT LENDING ENGINE:</span>
+              <div className="scheme-pills-row">
+                <button
+                  type="button"
+                  className={`stage-scheme-pill ${adminConfigScheme === 'DAILY' ? 'active' : ''}`}
+                  onClick={() => setAdminConfigScheme('DAILY')}
+                >
+                  <Activity size={14} />
+                  <span>100-Day Daily Advance</span>
+                </button>
+                <button
+                  type="button"
+                  className={`stage-scheme-pill ${adminConfigScheme === 'WEEKLY' ? 'active' : ''}`}
+                  onClick={() => setAdminConfigScheme('WEEKLY')}
+                >
+                  <Calendar size={14} />
+                  <span>Weekly Chit Syndicate</span>
+                </button>
+                <button
+                  type="button"
+                  className={`stage-scheme-pill ${adminConfigScheme === 'MONTHLY' ? 'active' : ''}`}
+                  onClick={() => setAdminConfigScheme('MONTHLY')}
+                >
+                  <Wallet size={14} />
+                  <span>Monthly SME Term Loan</span>
+                </button>
               </div>
             </div>
 
-            {/* Context Floating Pills */}
-            <div className="floating-context-badge badge-top-left">
-              <div className="f-icon-circle green">
-                <Check size={14} />
+            {/* Financial Capabilities Grid */}
+            <div className="stage-metrics-grid">
+              <div className="stage-metric-card">
+                <span className="sm-label">Tenant Isolation</span>
+                <div className="sm-val">Cryptographic</div>
+                <span className="sm-sub">Row-Level Security Hardened</span>
               </div>
-              <div>
-                <div className="f-title">Zero Credential Exposure</div>
-                <div className="f-desc">End-to-End Encrypted Tenant Enclave</div>
+              <div className="stage-metric-card">
+                <span className="sm-label">Collection Recovery</span>
+                <div className="sm-val highlight-green">99.4% On-Time</div>
+                <span className="sm-sub">Automated Daily Sweep</span>
+              </div>
+              <div className="stage-metric-card">
+                <span className="sm-label">Treasury Balancing</span>
+                <div className="sm-val">Double-Entry</div>
+                <span className="sm-sub">Zero Cash Discrepancy</span>
               </div>
             </div>
 
-            <div className="floating-context-badge badge-bottom-right">
-              <div className="f-icon-circle indigo">
-                <Building2 size={14} />
-              </div>
-              <div>
-                <div className="f-title">Multi-Branch Architecture</div>
-                <div className="f-desc">Independent Branch Safes & Rosters</div>
+            {/* Call to action & trust bar */}
+            <div className="stage-actions">
+              <button
+                type="button"
+                className="btn-stage-deploy"
+                onClick={() => navigate('/login')}
+              >
+                <span>Deploy Lending Engine</span>
+                <ArrowRight size={17} />
+              </button>
+              <div className="stage-trust-inline">
+                <CheckCircle2 size={16} className="text-emerald" />
+                <span>Zero Cash Discrepancy Verified</span>
               </div>
             </div>
+          </div>
+
+          {/* Right Column: Open 3D Visualizer matching Home Screen */}
+          <div className="plain-stage-visual">
+            <ThreeVaultEnclave
+              selectedScheme={adminConfigScheme}
+              onSelectScheme={(s) => setAdminConfigScheme(s)}
+              isConfidentialMode={false}
+            />
           </div>
         </div>
       </section>

@@ -1,0 +1,129 @@
+/* ==========================================================================
+   OPEN STAGE 3D FINANCIAL ENGINE (MATCHING HOME SCREEN THEME)
+   ========================================================================== */
+.open-stage-3d-wrapper {
+  position: relative;
+  width: 100%;
+  height: 560px;
+  background: radial-gradient(circle at 50% 35%, #FFFFFF 0%, #F8FAFC 75%, #EFF6FF 100%);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 20px 45px -15px rgba(8, 13, 43, 0.07), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  user-select: none;
+}
+
+.open-stage-canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: grab;
+  outline: none;
+}
+
+.open-stage-canvas:active {
+  cursor: grabbing;
+}
+
+/* Bottom View Control Bar */
+.open-stage-view-bar {
+  position: absolute;
+  bottom: 2.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  padding: 0.3rem 0.45rem;
+  border-radius: var(--radius-full, 9999px);
+  box-shadow: 0 10px 28px -6px rgba(8, 13, 43, 0.1), 0 2px 8px rgba(0, 0, 0, 0.03);
+  z-index: 10;
+}
+
+.open-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.42rem 0.85rem;
+  border-radius: var(--radius-full, 9999px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.open-view-btn:hover {
+  background: rgba(29, 78, 216, 0.06);
+  color: #1D4ED8;
+}
+
+.open-view-btn.active {
+  background: #1D4ED8;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.28);
+}
+
+.open-icon-btn {
+  background: transparent;
+  border: none;
+  color: #64748B;
+  padding: 0.42rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.open-icon-btn:hover {
+  color: #1D4ED8;
+  background: rgba(29, 78, 216, 0.08);
+}
+
+.open-icon-btn.active {
+  color: #1D4ED8;
+}
+
+.spin-anim {
+  animation: spinSlow 10s linear infinite;
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.open-stage-hint {
+  position: absolute;
+  bottom: 0.65rem;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94A3B8;
+  pointer-events: none;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 768px) {
+  .open-stage-3d-wrapper {
+    height: 480px;
+  }
+  .open-stage-view-bar {
+    max-width: 92%;
+    overflow-x: auto;
+  }
+}
