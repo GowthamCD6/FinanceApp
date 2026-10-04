@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import logoImg from '../../../assets/logo-tight.png';
 import { LiquidHeroArtwork } from './LiquidHeroArtwork';
 import { ThreeVaultEnclave } from './ThreeVaultEnclave';
+import { ThreeCollectionDemo } from './ThreeCollectionDemo';
+import singleBottomHeroImg from '../../../assets/singleBottomhero.png';
 import {
   ArrowRight,
   CheckCircle2,
@@ -196,6 +198,21 @@ export const WelcomePage = () => {
     setIsAddingStaff(false);
     setStaffAddedToast(true);
     setTimeout(() => setStaffAddedToast(false), 3000);
+  };
+
+  // Borrower Information Security Enclave State
+  const [borrowerPrivacyMode, setBorrowerPrivacyMode] = useState(true); // true = Zero-Knowledge Masked
+  const [breachSimulationState, setBreachSimulationState] = useState('idle'); // 'idle' | 'testing' | 'blocked'
+
+  const runBreachSimulation = () => {
+    if (breachSimulationState !== 'idle') return;
+    setBreachSimulationState('testing');
+    setTimeout(() => {
+      setBreachSimulationState('blocked');
+      setTimeout(() => {
+        setBreachSimulationState('idle');
+      }, 5000);
+    }, 1200);
   };
 
   useEffect(() => {
@@ -444,7 +461,8 @@ export const WelcomePage = () => {
           3. MULTI-TENANT ARCHITECTURE: 4-TIER GOVERNANCE
           ================================================================ */}
       <section className="architecture-section" id="multi-tenancy">
-        <div className="section-header">
+        <div className="standard-container">
+          <div className="section-header">
           <div className="section-pill">ENTERPRISE SAAS INFRASTRUCTURE</div>
           <h2 className="section-title">Engineered from the ground up for multi-tenancy</h2>
           <p className="section-subtitle">
@@ -452,12 +470,57 @@ export const WelcomePage = () => {
           </p>
         </div>
 
+        {/* Animated Interactive 4-Tier Cloud Flow Pipeline */}
+        <div className="arch-flow-tracker">
+          <div className="flow-step">
+            <div className="flow-icon superadmin"><Server size={18} /></div>
+            <div className="flow-text">
+              <span className="flow-title">1. SuperAdmin Cloud</span>
+              <span className="flow-meta">Cluster Provisioning · 12ms</span>
+            </div>
+          </div>
+          <div className="flow-connector">
+            <div className="flow-line" />
+            <div className="flow-pulse-dot" />
+          </div>
+          <div className="flow-step">
+            <div className="flow-icon org"><Building2 size={18} /></div>
+            <div className="flow-text">
+              <span className="flow-title">2. Tenant Org Enclave</span>
+              <span className="flow-meta">100-Day Scheme Rules</span>
+            </div>
+          </div>
+          <div className="flow-connector">
+            <div className="flow-line" />
+            <div className="flow-pulse-dot delay-1" />
+          </div>
+          <div className="flow-step">
+            <div className="flow-icon branch"><Layers size={18} /></div>
+            <div className="flow-text">
+              <span className="flow-title">3. Branch Safe Vault</span>
+              <span className="flow-meta">Cashier Reconciliation</span>
+            </div>
+          </div>
+          <div className="flow-connector">
+            <div className="flow-line" />
+            <div className="flow-pulse-dot delay-2" />
+          </div>
+          <div className="flow-step">
+            <div className="flow-icon agent"><Smartphone size={18} /></div>
+            <div className="flow-text">
+              <span className="flow-title">4. Mobile Field Fleet</span>
+              <span className="flow-meta">Offline SQLite & Bluetooth</span>
+            </div>
+          </div>
+        </div>
+
         <div className="architecture-grid">
           {/* Tier 1 */}
           <div className="arch-card tier-1">
+            <div className="arch-watermark">01</div>
             <div className="arch-tier-badge">TIER 1 · GLOBAL SAAS GOVERNANCE</div>
             <div className="arch-icon-box">
-              <Server size={24} color="#4F46E5" />
+              <Server size={24} color="#1D4ED8" />
             </div>
             <h3 className="arch-title">SuperAdmin Global Hub</h3>
             <p className="arch-desc">
@@ -472,6 +535,7 @@ export const WelcomePage = () => {
 
           {/* Tier 2 */}
           <div className="arch-card tier-2">
+            <div className="arch-watermark">02</div>
             <div className="arch-tier-badge">TIER 2 · TENANT ORGANIZATION</div>
             <div className="arch-icon-box">
               <Building2 size={24} color="#059669" />
@@ -489,9 +553,10 @@ export const WelcomePage = () => {
 
           {/* Tier 3 */}
           <div className="arch-card tier-3">
+            <div className="arch-watermark">03</div>
             <div className="arch-tier-badge">TIER 3 · PHYSICAL BRANCH</div>
             <div className="arch-icon-box">
-              <Layers size={24} color="#0891B2" />
+              <Layers size={24} color="#0284C7" />
             </div>
             <h3 className="arch-title">Branch Cashier Terminal</h3>
             <p className="arch-desc">
@@ -506,6 +571,7 @@ export const WelcomePage = () => {
 
           {/* Tier 4 */}
           <div className="arch-card tier-4">
+            <div className="arch-watermark">04</div>
             <div className="arch-tier-badge">TIER 4 · FIELD AGENT FLEET</div>
             <div className="arch-icon-box">
               <Smartphone size={24} color="#D97706" />
@@ -521,13 +587,15 @@ export const WelcomePage = () => {
             </ul>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ================================================================
           3B. ORG ADMIN POWERS: RATE CONFIGURATION & ADMIN DELEGATION
           ================================================================ */}
       <section className="admin-powers-section" id="admin-powers">
-        <div className="section-header">
+        <div className="standard-container">
+          <div className="section-header">
           <div className="section-pill">TENANT AUTONOMY & CONTROL</div>
           <h2 className="section-title">Complete power in the hands of the Org Admin</h2>
           <p className="section-subtitle">
@@ -728,13 +796,15 @@ export const WelcomePage = () => {
             </div>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ================================================================
           3C. DUAL REPAYMENT ENGINE: NORMAL VS. LUMP_SUM_END (SETTLE AT LAST DATE)
           ================================================================ */}
       <section className="repayment-modes-section" id="repayment-modes">
-        <div className="section-header">
+        <div className="standard-container">
+          <div className="section-header">
           <div className="section-pill">SPECIALIZED FINTECH WORKFLOW</div>
           <h2 className="section-title">Cycle installments or collect full amount at the last date</h2>
           <p className="section-subtitle">
@@ -833,39 +903,162 @@ export const WelcomePage = () => {
               </div>
             )}
           </div>
+          
+          <div style={{ marginTop: '3rem' }}>
+            <ThreeCollectionDemo mode={repaymentDemoMode} />
+          </div>
+        </div>
         </div>
       </section>
 
       {/* ================================================================
-          4. CONFIDENTIALITY & PRIVACY SHIELD
+          4. CONFIDENTIALITY & PRIVACY SHIELD: BORROWER INFORMATION SECURITY ENCLAVE
           ================================================================ */}
       <section className="privacy-section" id="privacy">
-        <div className="privacy-banner-box">
-          <div className="privacy-content">
+        <div className="standard-container">
+          <div className="privacy-stage-grid">
+          {/* Left Column: Narrative & Security Architecture */}
+          <div className="privacy-copy-column">
             <div className="privacy-pill">
               <ShieldCheck size={16} />
-              <span>TOTAL CREDENTIAL PRIVACY & ENCRYPTION</span>
+              <span>BORROWER INFORMATION SECURITY ENCLAVE</span>
             </div>
-            <h2 className="privacy-heading">Your borrowers, your ledgers. 100% confidential.</h2>
+            <h2 className="privacy-heading">Zero-knowledge borrower privacy & cryptographic isolation</h2>
             <p className="privacy-sub">
-              Unlike legacy lending software that bundles records together, our multi-tenant enclave guarantees that no competitor, external user, or third party can ever see your customer names, contact credentials, or loan amounts.
+              Borrower contact credentials, national IDs, and daily ledger balances are encrypted at rest with tenant-isolated salt keys. Multi-tenant Row-Level Security (RLS) guarantees that external tenants, unauthorized branch officers, or network sniffers can never inspect or query borrower data.
             </p>
 
-            <div className="privacy-badges-row">
-              <div className="p-badge">
-                <Lock size={15} color="#4F46E5" />
-                <span>AES-256 Storage & SSL In-Transit</span>
+            <div className="privacy-pillars-list">
+              <div className="privacy-pillar-item">
+                <div className="pillar-icon"><Lock size={18} color="#1D4ED8" /></div>
+                <div className="pillar-info">
+                  <h4>AES-256 Storage & TLS 1.3 Transport</h4>
+                  <p>Personally Identifiable Information (PII) is encrypted on disk before commit with tenant-unique salt signatures.</p>
+                </div>
               </div>
-              <div className="p-badge">
-                <Database size={15} color="#059669" />
-                <span>Tenant-Enforced Row Level Security</span>
+
+              <div className="privacy-pillar-item">
+                <div className="pillar-icon"><Database size={18} color="#059669" /></div>
+                <div className="pillar-info">
+                  <h4>PostgreSQL Row-Level Security (RLS)</h4>
+                  <p>Database queries execute with session tenant UUIDs. Cross-tenant leakage is physically blocked at the database engine kernel.</p>
+                </div>
               </div>
-              <div className="p-badge">
-                <Fingerprint size={15} color="#0891B2" />
-                <span>Hardware Biometric Terminal Lock</span>
+
+              <div className="privacy-pillar-item">
+                <div className="pillar-icon"><Fingerprint size={18} color="#0891B2" /></div>
+                <div className="pillar-info">
+                  <h4>Hardware Biometric Terminal Lock</h4>
+                  <p>Field agent SQLite mobile apps bind exclusively to registered device hardware IDs with auto-wipe upon 3 invalid attempts.</p>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Right Column: Live Interactive Borrower Data Privacy Inspector & Breach Simulator */}
+          <div className="privacy-interactive-column">
+            <div className="enclave-inspector-card">
+              <div className="enclave-card-header">
+                <div className="enclave-status-indicator">
+                  <div className="pulse-security-led" />
+                  <span>POSTGRESQL RLS ENCLAVE ACTIVE</span>
+                </div>
+                
+                {/* Live Data Masking Toggle Functionality */}
+                <button
+                  type="button"
+                  className={`btn-enclave-toggle ${borrowerPrivacyMode ? 'masked' : 'audit'}`}
+                  onClick={() => setBorrowerPrivacyMode(!borrowerPrivacyMode)}
+                  title="Toggle Zero-Knowledge Privacy Mode"
+                >
+                  {borrowerPrivacyMode ? <Lock size={14} /> : <Eye size={14} />}
+                  <span>{borrowerPrivacyMode ? 'Zero-Knowledge (Masked)' : 'Audit Cleartext (RBAC)'}</span>
+                </button>
+              </div>
+
+              {/* Dynamic Borrower Record Inspector */}
+              <div className="borrower-vault-box">
+                <div className="vault-field-row">
+                  <span className="vf-label">Borrower Identity</span>
+                  <div className="vf-val-group">
+                    <span className="vf-val">{borrowerPrivacyMode ? 'R•••••• V•••• (ID: BRW-8821)' : 'Rajesh Varma (Shop #104)'}</span>
+                    <span className="vf-chip blue">SHA-256 SALT</span>
+                  </div>
+                </div>
+
+                <div className="vault-field-row">
+                  <span className="vf-label">Contact / Phone</span>
+                  <div className="vf-val-group">
+                    <span className="vf-val">{borrowerPrivacyMode ? '+91 98451 •••••' : '+91 98451 22904'}</span>
+                    <span className="vf-chip green">OTP GATEWAY</span>
+                  </div>
+                </div>
+
+                <div className="vault-field-row">
+                  <span className="vf-label">National ID / KYC</span>
+                  <div className="vf-val-group">
+                    <span className="vf-val">{borrowerPrivacyMode ? '•••• •••• 9012' : '4589 1204 9012'}</span>
+                    <span className="vf-chip purple">AES-256 VAULT</span>
+                  </div>
+                </div>
+
+                <div className="vault-field-row">
+                  <span className="vf-label">Daily 100-Day Due</span>
+                  <div className="vf-val-group">
+                    <span className="vf-val">{borrowerPrivacyMode ? '₹ • • • / day' : '₹125.00 / day (Cycle 42)'}</span>
+                    <span className="vf-chip indigo">RLS BOUND</span>
+                  </div>
+                </div>
+
+                <div className="vault-field-row">
+                  <span className="vf-label">Agent Device Token</span>
+                  <div className="vf-val-group">
+                    <span className="vf-val font-mono">DEV-HW-9082-SEC (Locked)</span>
+                    <span className="vf-chip cyan">BIOMETRIC OK</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Cross-Tenant Breach Simulation Functionality */}
+              <div className="breach-simulation-section">
+                <div className="sim-action-row">
+                  <button
+                    type="button"
+                    className={`btn-breach-sim ${breachSimulationState === 'testing' ? 'running' : breachSimulationState === 'blocked' ? 'blocked' : ''}`}
+                    onClick={runBreachSimulation}
+                    disabled={breachSimulationState === 'testing'}
+                  >
+                    <Key size={15} />
+                    <span>
+                      {breachSimulationState === 'testing'
+                        ? 'Simulating Cross-Tenant Query Attack...'
+                        : breachSimulationState === 'blocked'
+                        ? '🛡️ Attack Blocked: 403 Forbidden'
+                        : 'Simulate Cross-Tenant Data Breach Test'}
+                    </span>
+                  </button>
+                  <span className="sim-hint">Simulates unauthorized SQL query from external tenant</span>
+                </div>
+
+                {breachSimulationState !== 'idle' && (
+                  <div className="breach-console-output">
+                    <div className="console-line"><span className="c-dim">[0.01ms]</span> <span className="c-blue">POST /api/v1/tenant/borrowers/BRW-8821</span></div>
+                    <div className="console-line"><span className="c-dim">[0.02ms]</span> Header: <span className="c-amber">x-tenant-id: ORG-9214 (Attacker Sandbox)</span></div>
+                    <div className="console-line"><span className="c-dim">[0.04ms]</span> Target Record: <span className="c-dim">tenant_id: ORG-8041</span></div>
+                    {breachSimulationState === 'testing' ? (
+                      <div className="console-line c-amber">Evaluating kernel security signature & RLS policies...</div>
+                    ) : (
+                      <>
+                        <div className="console-line c-green font-bold">🛡️ ENCLAVE SHIELD ACTIVATED: Cryptographic Signature Mismatch</div>
+                        <div className="console-line c-red">HTTP 403 FORBIDDEN · Zero Borrower Credential Leakage Verified ✓</div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
         </div>
       </section>
 
@@ -873,7 +1066,8 @@ export const WelcomePage = () => {
           5. SOLUTIONS: TAILORED FOR DAILY, WEEKLY & MONTHLY LENDING
           ================================================================ */}
       <section className="solutions-section" id="solutions">
-        <div className="section-header">
+        <div className="standard-container">
+          <div className="section-header">
           <div className="section-pill">FLEXIBLE TENANT SCHEMES</div>
           <h2 className="section-title">Support every financial model on your tenant workspace</h2>
           <p className="section-subtitle">
@@ -1127,13 +1321,15 @@ export const WelcomePage = () => {
             </div>
           )}
         </div>
+        </div>
       </section>
 
       {/* ================================================================
           6. INTERACTIVE LOAN CALCULATOR
           ================================================================ */}
       <section className="calculator-section" id="calculator">
-        <div className="section-header">
+        <div className="standard-container">
+          <div className="section-header">
           <div className="section-pill">INTERACTIVE AMORTIZATION ENGINE</div>
           <h2 className="section-title">Simulate any lending scheme in real time</h2>
           <p className="section-subtitle">
@@ -1288,13 +1484,15 @@ export const WelcomePage = () => {
             </div>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ================================================================
           7. METRICS BANNER
           ================================================================ */}
       <section className="metrics-banner-section">
-        <div className="metrics-banner-inner">
+        <div className="standard-container">
+          <div className="metrics-banner-inner">
           <div className="metric-box">
             <div className="metric-big-num">100+</div>
             <div className="metric-small-label">Finance Organizations Supported</div>
@@ -1312,13 +1510,15 @@ export const WelcomePage = () => {
             <div className="metric-small-label">Tenant Cryptographic Isolation</div>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ================================================================
           8. FAQ SECTION
           ================================================================ */}
       <section className="faq-section" id="faq">
-        <div className="section-header">
+        <div className="standard-container">
+          <div className="section-header">
           <div className="section-pill">FREQUENTLY ASKED QUESTIONS</div>
           <h2 className="section-title">Everything you need to know about the SaaS platform</h2>
           <p className="section-subtitle">
@@ -1348,13 +1548,15 @@ export const WelcomePage = () => {
             </div>
           ))}
         </div>
+        </div>
       </section>
 
       {/* ================================================================
           9. HIGH-CONVERSION BOTTOM CTA
           ================================================================ */}
       <section className="bottom-cta-banner">
-        <div className="cta-container">
+        <div className="standard-container">
+          <div className="cta-container">
           <div className="cta-pill">DEPLOY YOUR ORGANIZATION WORKSPACE</div>
           <h2 className="cta-heading">Ready to scale your finance organization?</h2>
           <p className="cta-subtitle">
@@ -1375,13 +1577,15 @@ export const WelcomePage = () => {
           </div>
           <span className="cta-footnote">Setup in under 60 seconds · Dedicated tenant encryption enclave</span>
         </div>
+        </div>
       </section>
 
       {/* ================================================================
           10. CORPORATE FOOTER
           ================================================================ */}
       <footer className="landing-footer">
-        <div className="footer-top-grid">
+        <div className="standard-container">
+          <div className="footer-top-grid">
           <div className="footer-brand-column">
             <div className="footer-brand-title">
               <img src={logoImg} alt="Finance Portal" className="footer-logo-img" />
@@ -1430,6 +1634,12 @@ export const WelcomePage = () => {
             <Link to="/login">Terms of Service</Link>
             <Link to="/login">Tenant Data Encryption Standard</Link>
           </div>
+        </div>
+        </div>
+        
+        {/* Decorative Graphic from Assets at the very bottom */}
+        <div className="footer-wave-graphic">
+          <img src={singleBottomHeroImg} alt="Finance Platform Wave" />
         </div>
       </footer>
     </div>
