@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logoImg from '../../../assets/logo-tight.png';
 import { LiquidHeroArtwork } from './LiquidHeroArtwork';
@@ -31,6 +31,17 @@ import {
   Search,
   Menu,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  MessageSquare,
+  CalendarCheck,
+  TrendingUp,
+  FileText,
+  CreditCard,
+  FileCheck,
+  RefreshCw,
+  PieChart,
 } from 'lucide-react';
 import './Welcome.css';
 
@@ -140,14 +151,95 @@ export const WelcomePage = () => {
 
   const currentTenant = tenantProfiles[selectedTenantIdx];
 
-  // Org Admin Interactive Configurator Demo State
+  // Screen 2 Lending Engine Scheme Selection ('DAILY', 'WEEKLY', 'MONTHLY')
   const [adminConfigScheme, setAdminConfigScheme] = useState('DAILY');
+
+  // Org Admin Seamless Infinite Carousel (Moves forward continuously in the same direction)
+  // Track has 5 positions: [0: Monthly clone, 1: Daily, 2: Weekly, 3: Monthly, 4: Daily clone]
+  const [adminTrackIndex, setAdminTrackIndex] = useState(1);
+  const [isAdminTransitioning, setIsAdminTransitioning] = useState(true);
+  const [isAdminSlidePaused, setIsAdminSlidePaused] = useState(false);
+  const isSlidingRef = useRef(false);
+
+  // Active slide indicator (0: Regular, 1: Weekly, 2: Monthly)
+  const activeAdminSlide =
+    adminTrackIndex === 0 ? 2 : adminTrackIndex === 4 ? 0 : adminTrackIndex - 1;
+
+  const nextAdminSlide = () => {
+    if (isSlidingRef.current) return;
+    isSlidingRef.current = true;
+    setIsAdminTransitioning(true);
+    setAdminTrackIndex((prev) => prev + 1);
+  };
+
+  const prevAdminSlide = () => {
+    if (isSlidingRef.current) return;
+    isSlidingRef.current = true;
+    setIsAdminTransitioning(true);
+    setAdminTrackIndex((prev) => prev - 1);
+  };
+
+  const handleAdminTransitionEnd = (e) => {
+    if (e && e.target !== e.currentTarget) return;
+    if (adminTrackIndex >= 4) {
+      setIsAdminTransitioning(false);
+      setAdminTrackIndex(1);
+    } else if (adminTrackIndex <= 0) {
+      setIsAdminTransitioning(false);
+      setAdminTrackIndex(3);
+    } else {
+      isSlidingRef.current = false;
+    }
+  };
+
+  // Re-enable smooth transition and clear lock on next animation frame after snap
+  useEffect(() => {
+    if (!isAdminTransitioning) {
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAdminTransitioning(true);
+          isSlidingRef.current = false;
+        });
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [isAdminTransitioning]);
+
+  const jumpToSlide = (idx) => {
+    if (isSlidingRef.current) return;
+    isSlidingRef.current = true;
+    setIsAdminTransitioning(true);
+    setAdminTrackIndex(idx + 1);
+  };
+
   const [adminDailyRate, setAdminDailyRate] = useState(10.0);
   const [adminDailyTenure, setAdminDailyTenure] = useState(100);
-  const [adminWeeklyRate, setAdminWeeklyRate] = useState(10.0);
+  const [adminDailyDays, setAdminDailyDays] = useState(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']);
+
+  const [adminWeeklyRate, setAdminWeeklyRate] = useState(12.0);
   const [adminWeeklyTenure, setAdminWeeklyTenure] = useState(10);
-  const [adminOperatingDays, setAdminOperatingDays] = useState(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']);
-  const [adminToast, setAdminToast] = useState(false);
+  const [adminWeeklyDays, setAdminWeeklyDays] = useState(['SUN']);
+
+  const [adminMonthlyRate, setAdminMonthlyRate] = useState(18.0);
+  const [adminMonthlyTenure, setAdminMonthlyTenure] = useState(12);
+  const [adminMonthlySchedule, setAdminMonthlySchedule] = useState('1ST_OF_MONTH');
+
+  const [savedSchemeToast, setSavedSchemeToast] = useState(null);
+  const [adminTouchStartX, setAdminTouchStartX] = useState(null);
+
+  // Auto-slide every 5.5 seconds forward when not paused
+  useEffect(() => {
+    if (isAdminSlidePaused) return;
+    const interval = setInterval(() => {
+      nextAdminSlide();
+    }, 5500);
+    return () => clearInterval(interval);
+  }, [isAdminSlidePaused, adminTrackIndex]);
+
+  const triggerSchemeSave = (schemeName) => {
+    setSavedSchemeToast(schemeName);
+    setTimeout(() => setSavedSchemeToast(null), 3000);
+  };
 
   // Repayment Mode Demo State ('NORMAL' vs 'LUMP_SUM_END')
   const [repaymentDemoMode, setRepaymentDemoMode] = useState('LUMP_SUM_END');
@@ -156,48 +248,6 @@ export const WelcomePage = () => {
   const [calcAmount, setCalcAmount] = useState(50000);
   const [calcScheme, setCalcScheme] = useState('DAILY');
   const [calcTenure, setCalcTenure] = useState(100);
-
-  // Dynamic Staff Delegation Roster State
-  const [staffList, setStaffList] = useState([
-    { id: 1, name: 'Sovereign Org Admin', role: 'Tenant Corporate Control · All Branches', tier: 'FULL ACCESS', avatar: 'OA', type: 'org' },
-    { id: 2, name: 'Branch Officer (South Hub)', role: 'Branch Vault Safe · Daily Loan Approval', tier: 'BRANCH BOUND', avatar: 'BA', type: 'branch' },
-    { id: 3, name: 'Cashier & Counter Desk', role: 'End-of-Day Agent Cash Handover', tier: 'CASH DESK', avatar: 'CS', type: 'cashier' },
-    { id: 4, name: 'Bazaar Route Field Agent', role: 'Mobile SQLite App · Bluetooth Thermal', tier: 'ROUTE FLEET', avatar: 'FA', type: 'agent' },
-  ]);
-  const [isAddingStaff, setIsAddingStaff] = useState(false);
-  const [newStaffName, setNewStaffName] = useState('');
-  const [newStaffRole, setNewStaffRole] = useState('BRANCH_OFFICER');
-  const [newStaffBranch, setNewStaffBranch] = useState('Central Commercial Branch');
-  const [staffAddedToast, setStaffAddedToast] = useState(false);
-
-  const handleAddStaff = (e) => {
-    e.preventDefault();
-    if (!newStaffName.trim()) return;
-
-    const roleMap = {
-      BRANCH_OFFICER: { role: `Branch Officer (${newStaffBranch})`, tier: 'BRANCH BOUND', avatar: 'BO', type: 'branch' },
-      CASHIER: { role: `Cashier Counter (${newStaffBranch})`, tier: 'CASH DESK', avatar: 'CS', type: 'cashier' },
-      FIELD_AGENT: { role: 'Bazaar Route Collection Fleet', tier: 'ROUTE FLEET', avatar: 'FA', type: 'agent' },
-      SUPERVISOR: { role: 'Cluster Route Supervisor', tier: 'SUPERVISOR', avatar: 'SV', type: 'org' },
-    };
-
-    const roleConfig = roleMap[newStaffRole] || roleMap.BRANCH_OFFICER;
-
-    const newMember = {
-      id: Date.now(),
-      name: newStaffName.trim(),
-      role: roleConfig.role,
-      tier: roleConfig.tier,
-      avatar: roleConfig.avatar,
-      type: roleConfig.type,
-    };
-
-    setStaffList([newMember, ...staffList]);
-    setNewStaffName('');
-    setIsAddingStaff(false);
-    setStaffAddedToast(true);
-    setTimeout(() => setStaffAddedToast(false), 3000);
-  };
 
 
   useEffect(() => {
@@ -255,6 +305,457 @@ export const WelcomePage = () => {
       a: 'Yes. Upon receiving an installment, an automated verified WhatsApp receipt with remaining balance and transaction token is dispatched directly to the borrower without exposing internal ledger credentials.',
     },
   ];
+
+  const renderDailyCard = (key) => (
+    <div key={key} className="admin-slider-card card-blue">
+      <div className="sc-card-layout">
+        {/* Left Column: Scheme Identity, Lifecycle Timeline & Operation Frequency */}
+        <div className="sc-card-left">
+          <div className="sc-header">
+            <div className="sc-badge blue">
+              <Activity size={13} className="sc-badge-icon" />
+              <span>REGULAR DAILY ADVANCE</span>
+            </div>
+            <span className="sc-tag-status blue">
+              <span className="sc-pulse-micro blue" />
+              Active Route Engine
+            </span>
+          </div>
+
+          <h3 className="sc-title">Doorstep Daily Merchant Advances</h3>
+          <p className="sc-desc">
+            Micro-installments collected every operating business day directly at the shop counter. Built for bazaar vendors and local retailers with automatic day-end ledger reconciliation.
+          </p>
+
+          {/* Professional Animated Lifecycle Visualizer */}
+          <div className="scheme-lifecycle-panel blue-theme">
+            <div className="sl-header">
+              <span className="sl-title">DAILY COLLECTION LIFECYCLE</span>
+              <span className="sl-badge blue">Automated Ledger Sync</span>
+            </div>
+            <div className="sl-track-wrapper">
+              <div className="sl-track-bar">
+                <div className="sl-fill-bar blue" style={{ width: '65%' }} />
+                <div className="sl-laser-pulse blue" />
+              </div>
+              <div className="sl-nodes-row">
+                <div className="sl-node done">
+                  <span className="sl-dot" />
+                  <span className="sl-node-name">Day 01 Disbursed</span>
+                  <span className="sl-node-detail">Principal Credited</span>
+                </div>
+                <div className="sl-node active-sweep">
+                  <span className="sl-dot-pulse blue" />
+                  <span className="sl-node-name">Daily Route Collection</span>
+                  <span className="sl-node-detail">Bluetooth Slip Issued</span>
+                </div>
+                <div className="sl-node target">
+                  <span className="sl-dot" />
+                  <span className="sl-node-name">Day 100 Cleared</span>
+                  <span className="sl-node-detail">Digital Clearance NOC</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="ap-meta-group">
+            <div className="ap-input-row">
+              <span className="ap-lbl">Repayment Frequency:</span>
+              <span className="ap-badge-tenure blue">
+                <Clock size={13} />
+                Equal Daily Installments (Operating Days)
+              </span>
+            </div>
+
+            <div className="ap-operating-days">
+              <span className="ap-lbl">Collection Operating Days:</span>
+              <div className="day-chips-row">
+                {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) => {
+                  const isActive = adminDailyDays.includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      className={`day-chip ${isActive ? 'active' : ''}`}
+                      onClick={() => {
+                        if (isActive) setAdminDailyDays(adminDailyDays.filter((d) => d !== day));
+                        else setAdminDailyDays([...adminDailyDays, day]);
+                      }}
+                    >
+                      {isActive && <span className="chip-indicator blue" />}
+                      <span>{day}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Clear Text Workflow Rules & Capabilities */}
+        <div className="sc-card-right">
+          <div className="wf-rules-header">
+            <div className="wf-title-group">
+              <span className="wf-badge-pill blue">OPERATIONAL CAPABILITIES</span>
+              <h4 className="wf-heading">How Daily Advances Work in Real Life</h4>
+            </div>
+          </div>
+
+          <div className="wf-capabilities-grid">
+            <div className="wf-capability-item">
+              <div className="wf-icon-box blue">
+                <Smartphone size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Doorstep Cash Collection by Field Agents</h5>
+                <p className="wf-cap-desc">Field agents visit shops daily, record payments in the mobile app, and issue immediate Bluetooth thermal slips.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box blue">
+                <MessageSquare size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Instant WhatsApp & SMS Confirmation</h5>
+                <p className="wf-cap-desc">The merchant immediately receives a digital receipt showing amount collected, remaining balance, and total days completed.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box blue">
+                <CalendarCheck size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Holiday & Emergency Pause Protection</h5>
+                <p className="wf-cap-desc">Sundays and festive holidays are automatically skipped without generating overdue flags or unexpected penalty fees.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box blue">
+                <CheckCircle2 size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Evening Cash Drawer & Vault Handover</h5>
+                <p className="wf-cap-desc">When agents return at end-of-day, total route cash is matched with the central safe before shifts can be closed.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="wf-footer-action">
+            <button
+              type="button"
+              className="btn-ap-save btn-blue"
+              onClick={() => triggerSchemeSave('REGULAR')}
+            >
+              <CheckCircle2 size={15} />
+              <span>{savedSchemeToast === 'REGULAR' ? '✓ Daily Advance Engine Active & Verified' : 'Enable Daily Advance Workflow'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderWeeklyCard = (key) => (
+    <div key={key} className="admin-slider-card card-green">
+      <div className="sc-card-layout">
+        {/* Left Column: Scheme Identity, Lifecycle Timeline & Operation Cycle */}
+        <div className="sc-card-left">
+          <div className="sc-header">
+            <div className="sc-badge green">
+              <Calendar size={13} className="sc-badge-icon" />
+              <span>WEEKLY CHIT SYNDICATE</span>
+            </div>
+            <span className="sc-tag-status green">
+              <span className="sc-pulse-micro green" />
+              Syndicate Ready
+            </span>
+          </div>
+
+          <h3 className="sc-title">Rotating Group Capital Syndicates</h3>
+          <p className="sc-desc">
+            Weekly pooled capital syndicates where verified community merchants save together and access lump-sum capital through transparent auctions.
+          </p>
+
+          {/* Professional Animated Lifecycle Visualizer */}
+          <div className="scheme-lifecycle-panel green-theme">
+            <div className="sl-header">
+              <span className="sl-title">WEEKLY SYNDICATE LIFECYCLE</span>
+              <span className="sl-badge green">Auction & Dividend Swarm</span>
+            </div>
+            <div className="sl-track-wrapper">
+              <div className="sl-track-bar">
+                <div className="sl-fill-bar green" style={{ width: '50%' }} />
+                <div className="sl-laser-pulse green" />
+              </div>
+              <div className="sl-nodes-row">
+                <div className="sl-node done green">
+                  <span className="sl-dot green" />
+                  <span className="sl-node-name">Group Formed</span>
+                  <span className="sl-node-detail">Subscribers Onboarded</span>
+                </div>
+                <div className="sl-node active-sweep green">
+                  <span className="sl-dot-pulse green" />
+                  <span className="sl-node-name">Weekly Auction</span>
+                  <span className="sl-node-detail">Dividend Sharing</span>
+                </div>
+                <div className="sl-node target green">
+                  <span className="sl-dot green" />
+                  <span className="sl-node-name">Syndicate Matured</span>
+                  <span className="sl-node-detail">Full Escrow Distributed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="ap-meta-group">
+            <div className="ap-input-row">
+              <span className="ap-lbl">Repayment Frequency:</span>
+              <span className="ap-badge-tenure green">
+                <Clock size={13} />
+                Weekly Recurring Installments
+              </span>
+            </div>
+
+            <div className="ap-operating-days">
+              <span className="ap-lbl">Collection Operating Cycle:</span>
+              <div className="day-chips-row">
+                {['SUN (Weekend)', 'SAT (Evening)', 'MON (Kickoff)'].map((cycle) => {
+                  const isActive = adminWeeklyDays.includes(cycle);
+                  return (
+                    <button
+                      key={cycle}
+                      type="button"
+                      className={`day-chip green ${isActive ? 'active' : ''}`}
+                      onClick={() => setAdminWeeklyDays([cycle])}
+                    >
+                      {isActive && <span className="chip-indicator green" />}
+                      <span>{cycle}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Clear Text Workflow Rules & Capabilities */}
+        <div className="sc-card-right">
+          <div className="wf-rules-header">
+            <div className="wf-title-group">
+              <span className="wf-badge-pill green">OPERATIONAL CAPABILITIES</span>
+              <h4 className="wf-heading">How Weekly Chit Funds Work in Real Life</h4>
+            </div>
+          </div>
+
+          <div className="wf-capabilities-grid">
+            <div className="wf-capability-item">
+              <div className="wf-icon-box green">
+                <Users size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Group Subscriber Capital Pooling</h5>
+                <p className="wf-cap-desc">Verified merchant members contribute their fixed weekly share into the syndicate escrow account on the scheduled cycle day.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box green">
+                <TrendingUp size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Transparent Reverse Auction Bidding</h5>
+                <p className="wf-cap-desc">Members bid for the pool lump sum. The winning bid discount is automatically redistributed as dividends to all other members.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box green">
+                <ShieldCheck size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Guaranteed Escrow Payout Protection</h5>
+                <p className="wf-cap-desc">Payouts require dual authorization by the Org Admin and Branch Officer before funds are transferred to the bid winner.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box green">
+                <FileText size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Automated Digital Chit Passbook</h5>
+                <p className="wf-cap-desc">Each member's digital passbook updates in real time with dividend credits, net payout history, and future cycle schedules.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="wf-footer-action">
+            <button
+              type="button"
+              className="btn-ap-save btn-green"
+              onClick={() => triggerSchemeSave('WEEKLY')}
+            >
+              <CheckCircle2 size={15} />
+              <span>{savedSchemeToast === 'WEEKLY' ? '✓ Weekly Syndicate Engine Active & Verified' : 'Enable Weekly Chit Workflow'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMonthlyCard = (key) => (
+    <div key={key} className="admin-slider-card card-cyan">
+      <div className="sc-card-layout">
+        {/* Left Column: Scheme Identity, Lifecycle Timeline & Schedule */}
+        <div className="sc-card-left">
+          <div className="sc-header">
+            <div className="sc-badge cyan">
+              <Wallet size={13} className="sc-badge-icon" />
+              <span>MONTHLY SME TERM LOAN</span>
+            </div>
+            <span className="sc-tag-status cyan">
+              <span className="sc-pulse-micro cyan" />
+              NACH Auto-Debit
+            </span>
+          </div>
+
+          <h3 className="sc-title">SME Business Growth Facilities</h3>
+          <p className="sc-desc">
+            Higher-ticket working capital facility for inventory procurement, equipment financing, and wholesale trade with scheduled direct bank debits.
+          </p>
+
+          {/* Professional Animated Lifecycle Visualizer */}
+          <div className="scheme-lifecycle-panel cyan-theme">
+            <div className="sl-header">
+              <span className="sl-title">MONTHLY SME LOAN LIFECYCLE</span>
+              <span className="sl-badge cyan">Direct Bank Auto-Debit</span>
+            </div>
+            <div className="sl-track-wrapper">
+              <div className="sl-track-bar">
+                <div className="sl-fill-bar cyan" style={{ width: '42%' }} />
+                <div className="sl-laser-pulse cyan" />
+              </div>
+              <div className="sl-nodes-row">
+                <div className="sl-node done cyan">
+                  <span className="sl-dot cyan" />
+                  <span className="sl-node-name">Bank Mandate</span>
+                  <span className="sl-node-detail">NACH e-Mandate Active</span>
+                </div>
+                <div className="sl-node active-sweep cyan">
+                  <span className="sl-dot-pulse cyan" />
+                  <span className="sl-node-name">Auto-Debit</span>
+                  <span className="sl-node-detail">Scheduled Bank Sweep</span>
+                </div>
+                <div className="sl-node target cyan">
+                  <span className="sl-dot cyan" />
+                  <span className="sl-node-name">Loan Retired</span>
+                  <span className="sl-node-detail">Digital NOC Issued</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="ap-meta-group">
+            <div className="ap-input-row">
+              <span className="ap-lbl">Repayment Frequency:</span>
+              <span className="ap-badge-tenure cyan">
+                <Clock size={13} />
+                Monthly Calendar Installments
+              </span>
+            </div>
+
+            <div className="ap-operating-days">
+              <span className="ap-lbl">Scheduled Auto-Debit Cycle:</span>
+              <div className="day-chips-row">
+                {['1ST_OF_MONTH', '10TH_OF_MONTH', '15TH_OF_MONTH'].map((sch) => {
+                  const label = sch === '1ST_OF_MONTH' ? '1st of Month' : sch === '10TH_OF_MONTH' ? '10th of Month' : '15th of Month';
+                  const isActive = adminMonthlySchedule === sch;
+                  return (
+                    <button
+                      key={sch}
+                      type="button"
+                      className={`day-chip cyan ${isActive ? 'active' : ''}`}
+                      onClick={() => setAdminMonthlySchedule(sch)}
+                    >
+                      {isActive && <span className="chip-indicator cyan" />}
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Clear Text Workflow Rules & Capabilities */}
+        <div className="sc-card-right">
+          <div className="wf-rules-header">
+            <div className="wf-title-group">
+              <span className="wf-badge-pill cyan">OPERATIONAL CAPABILITIES</span>
+              <h4 className="wf-heading">How Monthly SME Term Loans Work in Real Life</h4>
+            </div>
+          </div>
+
+          <div className="wf-capabilities-grid">
+            <div className="wf-capability-item">
+              <div className="wf-icon-box cyan">
+                <CreditCard size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Direct Bank NACH / e-Mandate Auto-Debit</h5>
+                <p className="wf-cap-desc">Monthly installments are automatically debited from the borrower's bank account on the chosen cycle date with zero manual follow-up.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box cyan">
+                <FileCheck size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Digital KYC & Collateral Document Vault</h5>
+                <p className="wf-cap-desc">Aadhaar, PAN, GST returns, property deeds, and security checks are securely encrypted with bank-grade storage.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box cyan">
+                <RefreshCw size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Prepayment & Foreclosure Recalculation</h5>
+                <p className="wf-cap-desc">Borrowers can make part-prepayments anytime to reduce their tenure or interest, followed by instant digital NOC generation.</p>
+              </div>
+            </div>
+
+            <div className="wf-capability-item">
+              <div className="wf-icon-box cyan">
+                <PieChart size={16} />
+              </div>
+              <div className="wf-content">
+                <h5 className="wf-cap-title">Multi-Branch Portfolio Risk & Aging Radar</h5>
+                <p className="wf-cap-desc">Central management tracks portfolio health, non-performing assets (NPAs), and monthly repayment yield across all branch locations.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="wf-footer-action">
+            <button
+              type="button"
+              className="btn-ap-save btn-cyan"
+              onClick={() => triggerSchemeSave('MONTHLY')}
+            >
+              <CheckCircle2 size={15} />
+              <span>{savedSchemeToast === 'MONTHLY' ? '✓ Monthly SME Facility Active & Verified' : 'Enable Monthly SME Workflow'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="landing-wrapper">
@@ -666,198 +1167,83 @@ export const WelcomePage = () => {
             </p>
           </div>
 
-          <div className="admin-powers-grid">
-            {/* Feature 1: Org Admin Sets Percentage Rates & Operating Days */}
-            <div className="admin-power-box">
-              <div className="ap-badge-top">
-                <Percent size={14} color="#4F46E5" />
-                <span>CUSTOM INTEREST RATE & TENURE ENGINE</span>
-              </div>
-              <h3 className="ap-title">Set Custom Interest Rates & Days</h3>
-              <p className="ap-desc">
-                Organization Admins have 100% control over lending parameters. Define exact interest percentages, tenure lengths, minimum/maximum amounts, and operating days for each scheme.
-              </p>
+          <div
+            className="admin-continuous-showcase"
+            onMouseEnter={() => setIsAdminSlidePaused(true)}
+            onMouseLeave={() => setIsAdminSlidePaused(false)}
+          >
+            {/* Carousel Stage with Floating Side Navigation Arrows */}
+            <div className="admin-slider-stage">
+              <button
+                type="button"
+                className="carousel-side-arrow arrow-prev"
+                onClick={prevAdminSlide}
+                title="Previous Scheme"
+                aria-label="Previous Scheme"
+              >
+                <ChevronLeft size={22} />
+              </button>
 
-              <div className="ap-configurator-card">
-                <div className="ap-scheme-selector">
-                  {['DAILY', 'WEEKLY', 'MONTHLY'].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`ap-scheme-btn ${adminConfigScheme === s ? 'active' : ''}`}
-                      onClick={() => {
-                        setAdminConfigScheme(s);
-                        if (s === 'DAILY') { setAdminDailyRate(10.0); setAdminDailyTenure(100); }
-                        else if (s === 'WEEKLY') { setAdminWeeklyRate(10.0); setAdminWeeklyTenure(10); }
-                        else { setAdminDailyRate(18.0); setAdminDailyTenure(12); }
-                      }}
-                    >
-                      {s === 'DAILY' ? '100-Day Daily' : s === 'WEEKLY' ? 'Weekly Chit' : 'Monthly SME'}
-                    </button>
-                  ))}
-                </div>
+              {/* Sliding Viewport & Continuous Track */}
+              <div
+                className="admin-slider-viewport"
+              onTouchStart={(e) => setAdminTouchStartX(e.touches[0].clientX)}
+              onTouchEnd={(e) => {
+                if (adminTouchStartX === null) return;
+                const diff = adminTouchStartX - e.changedTouches[0].clientX;
+                if (diff > 40) nextAdminSlide();
+                else if (diff < -40) prevAdminSlide();
+                setAdminTouchStartX(null);
+              }}
+            >
+              <div
+                className="admin-slider-track"
+                onTransitionEnd={handleAdminTransitionEnd}
+                style={{
+                  transform: `translateX(-${adminTrackIndex * 100}%)`,
+                  transition: isAdminTransitioning ? 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)' : 'none',
+                }}
+              >
+                {/* 0: Clone of Monthly Scheme (enables seamless backward wrap) */}
+                {renderMonthlyCard('pos-0-monthly-clone')}
 
-                <div className="ap-control-rows">
-                  <div className="ap-input-row">
-                    <span className="ap-lbl">Interest Percentage Rate (%):</span>
-                    <div className="ap-val-stepper">
-                      <button type="button" onClick={() => setAdminDailyRate(Math.max(1, adminDailyRate - 0.5))}>-</button>
-                      <span className="ap-num-val">{adminDailyRate.toFixed(1)}%</span>
-                      <button type="button" onClick={() => setAdminDailyRate(adminDailyRate + 0.5)}>+</button>
-                    </div>
-                  </div>
+                {/* 1: Regular Daily Advance */}
+                {renderDailyCard('pos-1-daily-real')}
 
-                  <div className="ap-input-row">
-                    <span className="ap-lbl">Standard Tenure Duration:</span>
-                    <span className="ap-badge-tenure">{adminDailyTenure} {adminConfigScheme === 'DAILY' ? 'Days' : adminConfigScheme === 'WEEKLY' ? 'Weeks' : 'Months'}</span>
-                  </div>
+                {/* 2: Weekly Chit Syndicate */}
+                {renderWeeklyCard('pos-2-weekly-real')}
 
-                  <div className="ap-operating-days">
-                    <span className="ap-lbl">Collection Operating Days:</span>
-                    <div className="day-chips-row">
-                      {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) => {
-                        const isActive = adminOperatingDays.includes(day);
-                        return (
-                          <button
-                            key={day}
-                            type="button"
-                            className={`day-chip ${isActive ? 'active' : ''}`}
-                            onClick={() => {
-                              if (isActive) setAdminOperatingDays(adminOperatingDays.filter(d => d !== day));
-                              else setAdminOperatingDays([...adminOperatingDays, day]);
-                            }}
-                          >
-                            {day}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                {/* 3: Monthly SME Term Loan */}
+                {renderMonthlyCard('pos-3-monthly-real')}
 
-                  {/* Real-Time Formula Simulation Preview */}
-                  <div className="ap-live-formula">
-                    <div className="ap-formula-col">
-                      <span className="ap-f-lbl">Sample Principal</span>
-                      <span className="ap-f-val">₹10,000</span>
-                    </div>
-                    <div className="ap-formula-sign">+</div>
-                    <div className="ap-formula-col">
-                      <span className="ap-f-lbl">Interest Yield ({adminDailyRate.toFixed(1)}%)</span>
-                      <span className="ap-f-val highlight-green">+₹{(10000 * (adminDailyRate / 100)).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="ap-formula-sign">=</div>
-                    <div className="ap-formula-col">
-                      <span className="ap-f-lbl">Total Recovery</span>
-                      <span className="ap-f-val highlight-blue">₹{(10000 + 10000 * (adminDailyRate / 100)).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="ap-formula-divider" />
-                    <div className="ap-formula-col">
-                      <span className="ap-f-lbl">Due Per {adminConfigScheme === 'DAILY' ? 'Day' : adminConfigScheme === 'WEEKLY' ? 'Week' : 'Month'}</span>
-                      <span className="ap-f-val highlight-navy">₹{((10000 + 10000 * (adminDailyRate / 100)) / adminDailyTenure).toFixed(0)}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-ap-save"
-                    onClick={() => {
-                      setAdminToast(true);
-                      setTimeout(() => setAdminToast(false), 3000);
-                    }}
-                  >
-                    <Save size={15} />
-                    <span>{adminToast ? '✓ Rates Saved to Tenant Enclave!' : 'Save Scheme Configuration'}</span>
-                  </button>
-                </div>
+                {/* 4: Clone of Daily Scheme (enables seamless forward wrap in the SAME direction) */}
+                {renderDailyCard('pos-4-daily-clone')}
               </div>
             </div>
 
-            {/* Feature 2: Multi-Tier Staff Delegation ("Add the Admin") */}
-            <div className="admin-power-box">
-              <div className="ap-badge-top">
-                <Users size={14} color="#059669" />
-                <span>ROLE-BASED STAFF DELEGATION</span>
-              </div>
-              <h3 className="ap-title">Add & Delegate Administrators</h3>
-              <p className="ap-desc">
-                SuperAdmins and Org Admins can provision new staff in seconds. Assign explicit permission tiers to branch managers, cashiers, and mobile field collectors with branch boundaries.
-              </p>
+            <button
+              type="button"
+              className="carousel-side-arrow arrow-next"
+              onClick={nextAdminSlide}
+              title="Next Scheme"
+              aria-label="Next Scheme"
+            >
+              <ChevronRight size={22} />
+            </button>
+          </div>
 
-              <div className="ap-staff-directory-card">
-                <div className="staff-header-row">
-                  <span className="sh-title">Tenant Administrative Roster ({staffList.length} Active)</span>
-                  <button
-                    type="button"
-                    className="sh-badge"
-                    onClick={() => setIsAddingStaff(!isAddingStaff)}
-                  >
-                    {isAddingStaff ? '✕ Cancel' : '+ Add New Admin'}
-                  </button>
-                </div>
-
-                {/* Dynamic Inline Staff Provisioning Form */}
-                {isAddingStaff && (
-                  <form className="staff-add-form" onSubmit={handleAddStaff}>
-                    <div className="form-row-compact">
-                      <input
-                        type="text"
-                        className="staff-input-field"
-                        placeholder="Staff Member Name (e.g. Rajesh Kumar)"
-                        value={newStaffName}
-                        onChange={(e) => setNewStaffName(e.target.value)}
-                        required
-                        autoFocus
-                      />
-                      <select
-                        className="staff-select-field"
-                        value={newStaffRole}
-                        onChange={(e) => setNewStaffRole(e.target.value)}
-                      >
-                        <option value="BRANCH_OFFICER">Branch Officer / Safe Manager</option>
-                        <option value="CASHIER">Cash Desk Cashier</option>
-                        <option value="FIELD_AGENT">Route Field Agent</option>
-                        <option value="SUPERVISOR">Cluster Supervisor</option>
-                      </select>
-                    </div>
-                    <div className="form-row-compact">
-                      <input
-                        type="text"
-                        className="staff-input-field"
-                        placeholder="Assigned Physical Branch"
-                        value={newStaffBranch}
-                        onChange={(e) => setNewStaffBranch(e.target.value)}
-                      />
-                      <button type="submit" className="btn-provision-staff">
-                        <ShieldCheck size={14} />
-                        <span>Provision Staff</span>
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {staffAddedToast && (
-                  <div className="staff-toast-inline">
-                    <CheckCircle2 size={15} color="#059669" />
-                    <span>New staff member cryptographically provisioned and bound to branch!</span>
-                  </div>
-                )}
-
-                <div className="staff-roster-list">
-                  {staffList.map((member) => (
-                    <div key={member.id} className="staff-member-item">
-                      <div className={`sm-avatar ${member.type}`}>{member.avatar}</div>
-                      <div className="sm-info">
-                        <span className="sm-name">{member.name}</span>
-                        <span className="sm-role">{member.role}</span>
-                      </div>
-                      <span className={`sm-pill ${member.type === 'org' ? 'primary' : member.type === 'branch' ? 'emerald' : member.type === 'cashier' ? 'amber' : 'cyan'}`}>
-                        {member.tier}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          {/* Bottom Morphing Indicator Dots */}
+          <div className="admin-slider-dots" data-active={activeAdminSlide}>
+            {[0, 1, 2].map((idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`admin-slider-dot ${activeAdminSlide === idx ? 'active' : ''}`}
+                onClick={() => jumpToSlide(idx)}
+                aria-label={`Jump to Card ${idx + 1}`}
+              />
+            ))}
+          </div>
           </div>
         </div>
       </section>
