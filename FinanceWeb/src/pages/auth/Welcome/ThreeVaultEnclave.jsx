@@ -135,11 +135,11 @@ export const ThreeVaultEnclave = ({
     const width = container.clientWidth || 700;
     const height = container.clientHeight || 540;
 
-    // 1. Scene setup: Radiant white daylight atmosphere
+    // 1. Scene setup: Transparent WebGL canvas to reveal rich CSS radial gradient
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    scene.background = new THREE.Color(0xffffff);
-    scene.fog = new THREE.FogExp2(0xffffff, 0.007);
+    scene.background = null;
+    scene.fog = new THREE.FogExp2(0xf0f4ff, 0.005);
 
     // 2. Camera setup
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 1000);
