@@ -1,17 +1,18 @@
 /* ==========================================================================
    REALISTIC FINANCIAL SETTLEMENT FACILITY (ARCHITECTURAL 3D STAGE)
    ========================================================================== */
+
 .collection-stage-3d-wrapper {
   position: relative;
   width: 100%;
-  height: 620px;
+  height: 640px;
   background: radial-gradient(circle at 50% 25%, #FFFFFF 0%, #F8FAFC 70%, #EFF6FF 100%);
   border-radius: 24px;
   overflow: hidden;
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   box-shadow: 0 20px 48px -16px rgba(8, 13, 43, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.95) inset;
   user-select: none;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .collection-stage-canvas {
@@ -28,8 +29,11 @@
   cursor: grabbing;
 }
 
-/* Top Live Status HUD */
-.collection-hud-overlay {
+/* ==========================================================================
+   TOP FLOATING ARCHITECTURAL STATUS BANNER (CRISP 2D OVERLAY)
+   ========================================================================== */
+
+.collection-stage-header {
   position: absolute;
   top: 1.25rem;
   left: 1.5rem;
@@ -37,105 +41,145 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  pointer-events: none;
+  gap: 1.25rem;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 18px;
+  padding: 0.9rem 1.35rem;
+  box-shadow: 0 10px 25px -5px rgba(8, 13, 43, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
   z-index: 10;
-  gap: 1rem;
-}
-
-.collection-hud-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  padding: 0.45rem 1rem;
-  border-radius: 9999px;
-  box-shadow: 0 4px 16px rgba(8, 13, 43, 0.06);
   pointer-events: auto;
 }
 
-.collection-hud-led {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #10B981;
-  box-shadow: 0 0 10px #10B981;
-  animation: hudPulse 2.2s infinite ease-in-out;
-}
-
-.collection-hud-led.purple {
-  background: #8B5CF6;
-  box-shadow: 0 0 10px #8B5CF6;
-}
-
-@keyframes hudPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.35); opacity: 0.7; }
-}
-
-.collection-hud-text {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: #0F172A;
-  letter-spacing: 0.02em;
-}
-
-.collection-hud-subtext {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #64748B;
-  margin-left: 0.25rem;
-}
-
-/* Mode Switcher Group */
-.collection-mode-switcher-pill {
+.csh-left {
   display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  padding: 0.3rem 0.4rem;
-  border-radius: 9999px;
-  box-shadow: 0 4px 16px rgba(8, 13, 43, 0.06);
-  pointer-events: auto;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
-.mode-switch-btn {
+.csh-badge {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: 0.45rem;
-  background: transparent;
-  border: none;
-  font-size: 0.74rem;
-  font-weight: 700;
-  padding: 0.42rem 0.9rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.22rem 0.65rem;
   border-radius: 9999px;
-  color: #64748B;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.mode-switch-btn:hover {
-  color: #0F172A;
-  background: rgba(241, 245, 249, 0.6);
+.csh-badge.blue {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
 }
 
-.mode-switch-btn.active {
+.csh-badge.purple {
+  background: #FAF5FF;
+  color: #7C3AED;
+  border: 1px solid #DDD6FE;
+}
+
+.csh-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: cshBlink 1.8s infinite ease-in-out;
+}
+
+.csh-badge.blue .csh-pulse {
   background: #1D4ED8;
-  color: #FFFFFF;
-  box-shadow: 0 2px 10px rgba(29, 78, 216, 0.32);
+  box-shadow: 0 0 6px #3B82F6;
 }
 
-.mode-switch-btn.active.purple-mode {
+.csh-badge.purple .csh-pulse {
   background: #7C3AED;
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 0 6px #A78BFA;
 }
 
-/* Unified Floating Master Console Dock (Bottom Center) */
+@keyframes cshBlink {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.csh-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #080D2B;
+  margin: 0;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.csh-desc {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.8rem;
+  color: #64748B;
+  margin: 0;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.csh-right {
+  flex-shrink: 0;
+}
+
+.csh-metric-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 0.45rem 0.85rem;
+  gap: 0.1rem;
+}
+
+.csh-metric-lbl {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #64748B;
+  letter-spacing: 0.05em;
+}
+
+.csh-metric-val {
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-family: 'Outfit', sans-serif;
+}
+
+.csh-metric-val.green {
+  color: #059669;
+}
+
+.csh-metric-val.purple {
+  color: #7C3AED;
+}
+
+.csh-metric-pct {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748B;
+}
+
+/* ==========================================================================
+   UNIFIED FLOATING MASTER CONSOLE DOCK (BOTTOM CENTER)
+   ========================================================================== */
+
 .collection-master-dock {
   position: absolute;
   bottom: 1.5rem;
@@ -148,7 +192,7 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(226, 232, 240, 0.95);
-  padding: 0.4rem 0.65rem;
+  padding: 0.42rem 0.75rem;
   border-radius: 9999px;
   box-shadow: 0 12px 36px -8px rgba(8, 13, 43, 0.12), 0 2px 8px rgba(0, 0, 0, 0.03);
   z-index: 10;
@@ -170,12 +214,13 @@
   background: transparent;
   border: none;
   color: #475569;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.38rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+  padding: 0.42rem 0.8rem;
   border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .coll-view-btn:hover {
@@ -206,20 +251,22 @@
 .sim-play-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   background: #0F172A;
   border: none;
   color: #FFFFFF;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+  padding: 0.42rem 0.85rem;
   border-radius: 9999px;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .sim-play-btn:hover {
   background: #1E293B;
+  transform: translateY(-1px);
 }
 
 .sim-play-btn.playing {
@@ -229,7 +276,7 @@
 .sim-slider-container {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
 .sim-day-slider {
@@ -246,19 +293,24 @@
 .sim-day-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #1D4ED8;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.sim-day-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
 }
 
 .sim-day-badge {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 800;
   color: #1D4ED8;
-  font-family: monospace;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   min-width: 52px;
 }
 
@@ -266,8 +318,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   background: #F1F5F9;
   border: none;
   border-radius: 50%;
@@ -279,12 +331,15 @@
 .sim-reset-btn:hover {
   background: #E2E8F0;
   color: #0F172A;
+  transform: scale(1.08);
 }
 
 .sim-amount-badge {
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .coll-orbit-btn {
@@ -328,6 +383,7 @@
   transform: translate(-50%, -125%);
   z-index: 20;
   white-space: nowrap;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 @media (max-width: 900px) {
@@ -335,13 +391,18 @@
     height: 540px;
   }
 
-  .collection-hud-overlay {
+  .collection-stage-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.6rem;
     left: 1rem;
     right: 1rem;
     top: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .csh-metric-pill {
+    align-items: flex-start;
   }
 
   .collection-master-dock {
