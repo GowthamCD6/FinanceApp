@@ -243,6 +243,80 @@
   margin: 0 0.15rem;
 }
 
+/* Scrubber Controller Segment */
+.dock-scrubber-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.dock-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #F1F5F9;
+  border: none;
+  border-radius: 50%;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dock-ctrl-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+  transform: scale(1.08);
+}
+
+.dock-ctrl-btn.active {
+  background: #0F172A;
+  color: #FFFFFF;
+}
+
+.scrubber-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.dock-day-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: #E2E8F0;
+  outline: none;
+  cursor: pointer;
+}
+
+.dock-day-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #1D4ED8;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.dock-day-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+.dock-day-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #1D4ED8;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+}
+
 .coll-orbit-btn {
   display: inline-flex;
   align-items: center;

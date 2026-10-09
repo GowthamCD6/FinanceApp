@@ -1,12 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { Eye, RotateCw, Sparkles, Building2, Store, Milestone, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Eye, RotateCw, Play, Pause, RotateCcw, Store, Milestone, Building2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import './ThreeCollectionDemo.css';
 
 /**
- * ThreeCollectionDemo: Realistic 3D Architectural Financial Settlement Campus
- * Features crafted merchant boutique, skyscraper vault HQ, 5-gate amortization viaduct,
- * dynamic mode visualizations (Daily ₹125/day flow vs. 99-day deferred shield + Day 100 maturity vault).
+ * ThreeCollectionDemo: Realistic Architectural Financial Settlement Campus
+ * - Detailed Merchant Retail Boutique (Glass storefront, awning, counter, POS terminal, wholesale crates)
+ * - Detailed Bank Corporate Headquarters (8-tier glass skyscraper, grand lobby, rooftop spire, rotating gear vault)
+ * - 100-Day Amortization Viaduct with 5 milestone archways
+ * - Interactive Day Scrubber / Simulation Pendulum & Rolling Settlement Engine
  */
 export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
   const mountRef = useRef(null);
@@ -15,19 +17,26 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
   const cameraRef = useRef(null);
   const animFrameRef = useRef(null);
 
-  // Dynamic mesh & node references
+  // Dynamic mesh references
   const vaultOuterWheelRef = useRef(null);
   const vaultInnerWheelRef = useRef(null);
+  const vaultSpokesGroupRef = useRef(null);
   const currencyFlowGroupRef = useRef(null);
   const deferralShieldRef = useRef(null);
   const maturityVaultRef = useRef(null);
   const maturityRingsRef = useRef(null);
   const day100BeamRef = useRef(null);
   const floatingCoinRef = useRef(null);
+  const beaconLightRef = useRef(null);
   const portalsRef = useRef([]);
   const merchantInventoryRef = useRef([]);
   const particlesRef = useRef(null);
-  const bulletPacketRef = useRef(null);
+
+  // Simulation day scrubber state (1 to 100)
+  const [simDay, setSimDay] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const isPlayingRef = useRef(true);
+  const simDayRef = useRef(1);
 
   // Mode reference (avoids re-creating WebGL scene on mode switch)
   const isNormalModeRef = useRef(mode === 'NORMAL' || mode === 'FIXED');
@@ -42,12 +51,12 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
   const isAutoOrbitRef = useRef(true);
 
   // Camera lerp targets
-  const targetCamPosRef = useRef(new THREE.Vector3(25, 17, 26));
-  const currentCamPosRef = useRef(new THREE.Vector3(25, 17, 26));
-  const targetLookAtRef = useRef(new THREE.Vector3(0, 1.6, 0));
-  const currentLookAtRef = useRef(new THREE.Vector3(0, 1.6, 0));
+  const targetCamPosRef = useRef(new THREE.Vector3(26, 18, 27));
+  const currentCamPosRef = useRef(new THREE.Vector3(26, 18, 27));
+  const targetLookAtRef = useRef(new THREE.Vector3(0, 1.8, 0));
+  const currentLookAtRef = useRef(new THREE.Vector3(0, 1.8, 0));
   const orbitAngleRef = useRef(0.76);
-  const orbitRadiusRef = useRef(31);
+  const orbitRadiusRef = useRef(32);
 
   // Pointer drag tracking
   const isDraggingRef = useRef(false);
@@ -57,24 +66,24 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
   const setCamView = useCallback((preset) => {
     setActiveCamPreset(preset);
     if (preset === 'all') {
-      targetCamPosRef.current.set(25, 17, 26);
-      targetLookAtRef.current.set(0, 1.6, 0);
-      orbitRadiusRef.current = 31;
+      targetCamPosRef.current.set(26, 18, 27);
+      targetLookAtRef.current.set(0, 1.8, 0);
+      orbitRadiusRef.current = 32;
       isAutoOrbitRef.current = true;
       setIsAutoOrbit(true);
     } else if (preset === 'merchant') {
-      targetCamPosRef.current.set(-10, 8, 13);
-      targetLookAtRef.current.set(-9.2, 2.2, 0);
+      targetCamPosRef.current.set(-11, 8.5, 14);
+      targetLookAtRef.current.set(-9.2, 2.4, 0);
       isAutoOrbitRef.current = false;
       setIsAutoOrbit(false);
     } else if (preset === 'track') {
-      targetCamPosRef.current.set(0, 12, 20);
-      targetLookAtRef.current.set(0, 1.5, 0);
+      targetCamPosRef.current.set(0, 13, 22);
+      targetLookAtRef.current.set(0, 1.6, 0);
       isAutoOrbitRef.current = false;
       setIsAutoOrbit(false);
     } else if (preset === 'vault') {
-      targetCamPosRef.current.set(11, 10, 14);
-      targetLookAtRef.current.set(9.2, 3.2, 0);
+      targetCamPosRef.current.set(12, 10, 15);
+      targetLookAtRef.current.set(9.2, 3.4, 0);
       isAutoOrbitRef.current = false;
       setIsAutoOrbit(false);
     }
@@ -84,6 +93,24 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     const nextVal = !isAutoOrbit;
     setIsAutoOrbit(nextVal);
     isAutoOrbitRef.current = nextVal;
+  };
+
+  const togglePlay = () => {
+    const nextVal = !isPlaying;
+    setIsPlaying(nextVal);
+    isPlayingRef.current = nextVal;
+  };
+
+  const handleDayChange = (newDay) => {
+    setSimDay(newDay);
+    simDayRef.current = newDay;
+  };
+
+  const resetSimulation = () => {
+    setSimDay(1);
+    simDayRef.current = 1;
+    setIsPlaying(true);
+    isPlayingRef.current = true;
   };
 
   /* ── Three.js Scene Setup ── */
@@ -102,8 +129,8 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
 
     /* ── 2. CAMERA ── */
     const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 500);
-    camera.position.set(25, 17, 26);
-    camera.lookAt(0, 1.6, 0);
+    camera.position.set(26, 18, 27);
+    camera.lookAt(0, 1.8, 0);
     cameraRef.current = camera;
     currentCamPosRef.current.copy(camera.position);
 
@@ -122,103 +149,115 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     container.appendChild(renderer.domElement);
 
     /* ── 4. RADIANT DAYLIGHT STUDIO LIGHTING RIG ── */
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.55);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdbeafe, 1.3);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdbeafe, 1.35);
     hemiLight.position.set(0, 45, 0);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.5);
-    sunLight.position.set(28, 40, 26);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.6);
+    sunLight.position.set(28, 42, 26);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(1024, 1024);
     sunLight.shadow.bias = -0.0004;
     sunLight.shadow.camera.near = 0.5;
     sunLight.shadow.camera.far = 100;
-    sunLight.shadow.camera.left = -24;
-    sunLight.shadow.camera.right = 24;
-    sunLight.shadow.camera.top = 24;
-    sunLight.shadow.camera.bottom = -24;
+    sunLight.shadow.camera.left = -25;
+    sunLight.shadow.camera.right = 25;
+    sunLight.shadow.camera.top = 25;
+    sunLight.shadow.camera.bottom = -25;
     scene.add(sunLight);
 
-    const skyFillLight = new THREE.DirectionalLight(0xE0F2FE, 1.2);
-    skyFillLight.position.set(-25, 22, -20);
+    const skyFillLight = new THREE.DirectionalLight(0xE0F2FE, 1.25);
+    skyFillLight.position.set(-26, 24, -20);
     scene.add(skyFillLight);
 
-    const centerWarmLight = new THREE.PointLight(0xF59E0B, 1.8, 32);
+    const centerWarmLight = new THREE.PointLight(0xF59E0B, 1.9, 32);
     centerWarmLight.position.set(0, 5, 2);
     scene.add(centerWarmLight);
 
     /* ── 5. CURATED ARCHITECTURAL MATERIALS ── */
     const plinthMat = new THREE.MeshStandardMaterial({
       color: 0xF8FAFC,
-      roughness: 0.18,
+      roughness: 0.16,
       metalness: 0.05,
     });
     const whiteFacadeMat = new THREE.MeshStandardMaterial({
       color: 0xFFFFFF,
       roughness: 0.12,
-      metalness: 0.06,
+      metalness: 0.08,
+    });
+    const warmLimestoneMat = new THREE.MeshStandardMaterial({
+      color: 0xF1F5F9,
+      roughness: 0.28,
+      metalness: 0.12,
     });
     const platinumBodyMat = new THREE.MeshStandardMaterial({
       color: 0xEEF2F6,
-      roughness: 0.2,
-      metalness: 0.28,
+      roughness: 0.18,
+      metalness: 0.3,
     });
     const navyBrandMat = new THREE.MeshStandardMaterial({
       color: 0x0F172A,
       roughness: 0.22,
-      metalness: 0.35,
+      metalness: 0.4,
     });
     const royalBlueMat = new THREE.MeshStandardMaterial({
       color: 0x1D4ED8,
-      roughness: 0.18,
-      metalness: 0.45,
+      roughness: 0.16,
+      metalness: 0.48,
     });
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xF59E0B,
       emissive: 0xD97706,
-      emissiveIntensity: 0.32,
-      roughness: 0.15,
-      metalness: 0.85,
+      emissiveIntensity: 0.35,
+      roughness: 0.14,
+      metalness: 0.88,
     });
-    const glassMat = new THREE.MeshStandardMaterial({
+    const darkGlassMat = new THREE.MeshStandardMaterial({
+      color: 0x0284C7,
+      transparent: true,
+      opacity: 0.65,
+      roughness: 0.05,
+      metalness: 0.6,
+    });
+    const windowGlassMat = new THREE.MeshStandardMaterial({
       color: 0xE0F2FE,
       transparent: true,
-      opacity: 0.48,
+      opacity: 0.45,
       roughness: 0.06,
-      metalness: 0.35,
+      metalness: 0.4,
     });
     const highwayDeckMat = new THREE.MeshStandardMaterial({
       color: 0x1E293B,
-      roughness: 0.32,
+      roughness: 0.3,
       metalness: 0.25,
     });
     const purpleShieldMat = new THREE.MeshStandardMaterial({
       color: 0x8B5CF6,
       emissive: 0x7C3AED,
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.55,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.36,
       roughness: 0.08,
     });
     const cashGreenMat = new THREE.MeshStandardMaterial({
       color: 0x059669,
       emissive: 0x047857,
-      emissiveIntensity: 0.38,
-      roughness: 0.22,
-      metalness: 0.18,
+      emissiveIntensity: 0.42,
+      roughness: 0.2,
+      metalness: 0.2,
     });
     const neonCyanMat = new THREE.MeshStandardMaterial({
       color: 0x38BDF8,
       emissive: 0x0284C7,
-      emissiveIntensity: 1.5,
+      emissiveIntensity: 1.6,
       roughness: 0.1,
     });
     const foliageMat = new THREE.MeshStandardMaterial({
       color: 0x10B981,
-      roughness: 0.6,
+      roughness: 0.65,
     });
 
     /* ── 6. CAMPUS ROOT GROUP ── */
@@ -228,128 +267,160 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     scene.add(campusGroup);
 
     // Main Ground Plinth (Structured Architectural Slab)
-    const groundPlinth = new THREE.Mesh(new THREE.BoxGeometry(30, 0.7, 19), plinthMat);
+    const groundPlinth = new THREE.Mesh(new THREE.BoxGeometry(30.4, 0.7, 19.4), plinthMat);
     groundPlinth.position.y = -0.35;
     groundPlinth.receiveShadow = true;
     campusGroup.add(groundPlinth);
 
     // Beveled Inlaid 18K Gold Perimeter Trim
-    const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(30.2, 0.12, 19.2), goldMat);
+    const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(30.6, 0.12, 19.6), goldMat);
     goldTrim.position.y = -0.7;
     campusGroup.add(goldTrim);
 
     // Decorative Ground Pavers & Glowing Neon Flow Tracks
-    const paverLine1 = new THREE.Mesh(new THREE.BoxGeometry(28.8, 0.02, 0.18), royalBlueMat);
+    const paverLine1 = new THREE.Mesh(new THREE.BoxGeometry(29, 0.02, 0.18), royalBlueMat);
     paverLine1.position.set(0, 0.01, -4.6);
     campusGroup.add(paverLine1);
 
-    const paverLine2 = new THREE.Mesh(new THREE.BoxGeometry(28.8, 0.02, 0.18), royalBlueMat);
+    const paverLine2 = new THREE.Mesh(new THREE.BoxGeometry(29, 0.02, 0.18), royalBlueMat);
     paverLine2.position.set(0, 0.01, 4.6);
     campusGroup.add(paverLine2);
 
     // Central Radiant Energy Circuit Line on Ground
-    const circuit = new THREE.Mesh(new THREE.BoxGeometry(22, 0.02, 0.1), neonCyanMat);
+    const circuit = new THREE.Mesh(new THREE.BoxGeometry(22.5, 0.02, 0.12), neonCyanMat);
     circuit.position.set(0, 0.02, 0);
     campusGroup.add(circuit);
 
-    // Landscaped Planters on Plinth Edges
-    const planterGeo = new THREE.BoxGeometry(3.5, 0.25, 0.6);
-    const hedgeGeo = new THREE.BoxGeometry(3.3, 0.4, 0.45);
+    // Landscaped Planters with Green Foliage along Plaza Edge
+    const planterGeo = new THREE.BoxGeometry(3.6, 0.28, 0.65);
+    const hedgeGeo = new THREE.BoxGeometry(3.4, 0.45, 0.5);
 
     const p1 = new THREE.Mesh(planterGeo, whiteFacadeMat);
-    p1.position.set(-10, 0.12, 6.2);
+    p1.position.set(-10, 0.14, 6.4);
     campusGroup.add(p1);
     const h1 = new THREE.Mesh(hedgeGeo, foliageMat);
-    h1.position.set(-10, 0.4, 6.2);
+    h1.position.set(-10, 0.45, 6.4);
     campusGroup.add(h1);
 
     const p2 = new THREE.Mesh(planterGeo, whiteFacadeMat);
-    p2.position.set(10, 0.12, 6.2);
+    p2.position.set(10, 0.14, 6.4);
     campusGroup.add(p2);
     const h2 = new THREE.Mesh(hedgeGeo, foliageMat);
-    h2.position.set(10, 0.4, 6.2);
+    h2.position.set(10, 0.45, 6.4);
     campusGroup.add(h2);
 
-    /* ── 7. LEFT SECTOR: MERCHANT STOREFRONT & SMART POS KIOSK ── */
+    /* ── 7. LEFT SECTOR: CRAFTED MERCHANT STOREFRONT & KIOSK ── */
     const merchantGroup = new THREE.Group();
     merchantGroup.position.set(-9.2, 0, 0);
     campusGroup.add(merchantGroup);
 
-    // Merchant Terrace Base with Steps
-    const mBase = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.35, 7.0), whiteFacadeMat);
+    // Merchant Terrace Base with Stepped Entrance
+    const mBase = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.35, 7.2), whiteFacadeMat);
     mBase.position.y = 0.18;
     mBase.receiveShadow = true;
     merchantGroup.add(mBase);
 
-    const mStep = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.15, 0.8), platinumBodyMat);
+    const mStep = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.15, 0.9), platinumBodyMat);
     mStep.position.set(0, 0.08, 3.8);
     merchantGroup.add(mStep);
 
-    // Store Building Body (Contemporary Commercial Retail Kiosk)
+    // Store Building Body (Contemporary Commercial Retail Pavilion)
     const mBuilding = new THREE.Mesh(new THREE.BoxGeometry(5.8, 4.6, 5.2), navyBrandMat);
     mBuilding.position.set(0, 2.6, -0.3);
     mBuilding.castShadow = true;
     mBuilding.receiveShadow = true;
     merchantGroup.add(mBuilding);
 
-    // Storefront Roof Fascia & Trim
-    const mRoofTrim = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.2, 5.4), royalBlueMat);
-    mRoofTrim.position.set(0, 4.9, -0.3);
+    // Architectural Limestone Portico Columns
+    const pColGeo = new THREE.BoxGeometry(0.35, 4.6, 0.35);
+    const pColL = new THREE.Mesh(pColGeo, warmLimestoneMat);
+    pColL.position.set(-2.6, 2.6, 2.3);
+    merchantGroup.add(pColL);
+
+    const pColR = new THREE.Mesh(pColGeo, warmLimestoneMat);
+    pColR.position.set(2.6, 2.6, 2.3);
+    merchantGroup.add(pColR);
+
+    // Storefront Roof Fascia & Architectural Parapet
+    const mRoofTrim = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.28, 5.6), royalBlueMat);
+    mRoofTrim.position.set(0, 4.95, -0.3);
     merchantGroup.add(mRoofTrim);
 
-    // Front Display Glass Window with Mullions
-    const mWindow = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.7, 0.15), glassMat);
+    // 3D Store Signboard with Gold Trim
+    const mSignboard = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.6, 0.18), navyBrandMat);
+    mSignboard.position.set(0, 4.25, 2.38);
+    merchantGroup.add(mSignboard);
+
+    const mSignText = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.4, 0.05), goldMat);
+    mSignText.position.set(0, 4.25, 2.48);
+    merchantGroup.add(mSignText);
+
+    // Storefront Display Glass Windows with Grid Mullions
+    const mWindow = new THREE.Mesh(new THREE.BoxGeometry(4.8, 2.7, 0.15), windowGlassMat);
     mWindow.position.set(0, 2.2, 2.32);
     merchantGroup.add(mWindow);
 
-    // Architectural Slanted Canopy / Awning with Striped Facets
-    const mCanopy = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.22, 2.4), royalBlueMat);
-    mCanopy.position.set(0, 3.8, 2.15);
-    mCanopy.rotation.x = 0.12;
+    // Window Mullion Dividers
+    const mullionV = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.7, 0.18), whiteFacadeMat);
+    mullionV.position.set(0, 2.2, 2.32);
+    merchantGroup.add(mullionV);
+
+    const mullionH = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.08, 0.18), whiteFacadeMat);
+    mullionH.position.set(0, 2.2, 2.32);
+    merchantGroup.add(mullionH);
+
+    // Fabric Awning with Navy and White Ribs
+    const mCanopy = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.22, 2.2), royalBlueMat);
+    mCanopy.position.set(0, 3.65, 2.2);
+    mCanopy.rotation.x = 0.15;
     mCanopy.castShadow = true;
     merchantGroup.add(mCanopy);
 
-    const canopyStripe = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.04, 0.25), whiteFacadeMat);
-    canopyStripe.position.set(0, 3.75, 3.25);
-    canopyStripe.rotation.x = 0.12;
-    merchantGroup.add(canopyStripe);
+    const canopyTrim = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.04, 0.25), whiteFacadeMat);
+    canopyTrim.position.set(0, 3.5, 3.25);
+    canopyTrim.rotation.x = 0.15;
+    merchantGroup.add(canopyTrim);
 
-    // Service Counter Table
+    // Service Counter Table with Marble Top
     const mCounter = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.1, 1.2), platinumBodyMat);
-    mCounter.position.set(0, 0.9, 2.5);
+    mCounter.position.set(0, 0.9, 2.6);
     mCounter.castShadow = true;
     merchantGroup.add(mCounter);
 
+    const mCounterTop = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.08, 1.3), whiteFacadeMat);
+    mCounterTop.position.set(0, 1.48, 2.6);
+    merchantGroup.add(mCounterTop);
+
     // Smart POS Terminal (Doorstep Agent Mobile Terminal)
     const posBase = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.5), navyBrandMat);
-    posBase.position.set(-0.7, 1.5, 2.5);
+    posBase.position.set(-0.7, 1.58, 2.6);
     merchantGroup.add(posBase);
 
     const posScreen = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.45, 0.08), neonCyanMat);
-    posScreen.position.set(-0.7, 1.75, 2.45);
+    posScreen.position.set(-0.7, 1.85, 2.55);
     posScreen.rotation.x = -0.35;
     merchantGroup.add(posScreen);
 
-    // Floating Glowing 3D Gold Currency Token over the POS Counter
+    // Floating 3D Gold Currency Token over the POS Counter
     const coinGroup = new THREE.Group();
-    coinGroup.position.set(-0.7, 2.55, 2.5);
+    coinGroup.position.set(-0.7, 2.65, 2.6);
     merchantGroup.add(coinGroup);
     floatingCoinRef.current = coinGroup;
 
     const coinMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.38, 0.38, 0.08, 28),
+      new THREE.CylinderGeometry(0.4, 0.4, 0.08, 28),
       goldMat
     );
     coinMesh.rotation.x = Math.PI / 2;
     coinGroup.add(coinMesh);
 
-    // Inventory Crates (Symbolizing wholesale stock funded by the advance)
+    // Wholesale Stock Inventory Boxes (Growth assets funded by loan)
     const inventoryBoxes = [];
-    const crateGeo = new THREE.BoxGeometry(0.78, 0.78, 0.78);
+    const crateGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
     const cratePositions = [
-      { x: 1.8, y: 0.72, z: 2.3, r: 0.1 },
-      { x: 1.8, y: 1.50, z: 2.3, r: -0.15 },
-      { x: 1.0, y: 0.72, z: 2.3, r: 0.25 },
+      { x: 1.8, y: 0.72, z: 2.4, r: 0.1 },
+      { x: 1.8, y: 1.52, z: 2.4, r: -0.15 },
+      { x: 1.0, y: 0.72, z: 2.4, r: 0.25 },
     ];
     cratePositions.forEach((pos) => {
       const crate = new THREE.Mesh(crateGeo, goldMat);
@@ -365,8 +436,8 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     const highwayGroup = new THREE.Group();
     campusGroup.add(highwayGroup);
 
-    // Viaduct Bridge Support Piers
-    const pierGeo = new THREE.BoxGeometry(0.4, 0.65, 3.0);
+    // Concrete Viaduct Bridge Support Piers
+    const pierGeo = new THREE.BoxGeometry(0.45, 0.65, 3.2);
     const pPier1 = new THREE.Mesh(pierGeo, platinumBodyMat);
     pPier1.position.set(-3.5, 0.32, 0);
     highwayGroup.add(pPier1);
@@ -375,7 +446,7 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     pPier2.position.set(3.5, 0.32, 0);
     highwayGroup.add(pPier2);
 
-    // Main Elevated Highway Deck (Grounded & Linear)
+    // Main Elevated Highway Deck
     const deckGeo = new THREE.BoxGeometry(11.8, 0.35, 3.4);
     const deck = new THREE.Mesh(deckGeo, highwayDeckMat);
     deck.position.set(0, 0.65, 0);
@@ -417,7 +488,7 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
       pGroup.add(lintel);
 
       // Milestone Status Jewel Beacon
-      const beaconGeo = new THREE.OctahedronGeometry(0.24);
+      const beaconGeo = new THREE.OctahedronGeometry(0.25);
       const beaconMat = new THREE.MeshStandardMaterial({
         color: 0x10B981,
         emissive: 0x059669,
@@ -433,6 +504,7 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
         dayNum: milestoneDays[idx],
         beacon,
         beaconMat,
+        px,
       });
     });
     portalsRef.current = portals;
@@ -516,98 +588,120 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     highwayGroup.add(day100Beam);
     day100BeamRef.current = day100Beam;
 
-    /* ── 9. RIGHT SECTOR: INSTITUTIONAL BANK HEADQUARTERS & CENTRAL VAULT ── */
+    /* ── 9. RIGHT SECTOR: CRAFTED INSTITUTIONAL BANK SKYSCRAPER & VAULT ── */
     const bankGroup = new THREE.Group();
     bankGroup.position.set(9.2, 0, 0);
     campusGroup.add(bankGroup);
 
     // Bank Terrace Base with Entrance Plaza
-    const bBase = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.35, 7.2), whiteFacadeMat);
+    const bBase = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.35, 7.4), whiteFacadeMat);
     bBase.position.y = 0.18;
     bBase.receiveShadow = true;
     bankGroup.add(bBase);
 
-    // Lower Corporate Banking Hall
-    const bLower = new THREE.Mesh(new THREE.BoxGeometry(6.2, 3.8, 5.8), platinumBodyMat);
+    // Lower Corporate Banking Podium
+    const bLower = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.8, 6.0), platinumBodyMat);
     bLower.position.set(0, 2.2, 0);
     bLower.castShadow = true;
     bLower.receiveShadow = true;
     bankGroup.add(bLower);
 
+    // Corporate Podium Front Colonnade Pillars
+    const bPillarGeo = new THREE.BoxGeometry(0.32, 3.8, 0.32);
+    [-2.8, -1.0, 1.0, 2.8].forEach((px) => {
+      const pMesh = new THREE.Mesh(bPillarGeo, warmLimestoneMat);
+      pMesh.position.set(px, 2.2, 3.1);
+      bankGroup.add(pMesh);
+    });
+
     // Entrance Glass Canopy
-    const bCanopy = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 3.2), royalBlueMat);
-    bCanopy.position.set(-3.2, 2.8, 0);
+    const bCanopy = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 3.4), royalBlueMat);
+    bCanopy.position.set(-3.3, 2.8, 0);
     bankGroup.add(bCanopy);
 
-    // Upper Executive Glass Skyscraper Tower with Mullions
-    const bTower = new THREE.Mesh(new THREE.BoxGeometry(4.8, 3.6, 4.6), glassMat);
-    bTower.position.set(0, 5.9, 0);
+    // Multi-tier Curtain Glass Skyscraper Tower (Executive Offices)
+    const bTower = new THREE.Mesh(new THREE.BoxGeometry(5.0, 4.2, 4.8), darkGlassMat);
+    bTower.position.set(0, 6.2, 0);
     bTower.castShadow = true;
     bankGroup.add(bTower);
 
-    // Skyscraper Corner Alloy Columns
-    const colGeo = new THREE.BoxGeometry(0.2, 3.6, 0.2);
+    // Floor-to-Floor Horizontal Aluminum Mullions (8 Storey Appearance)
+    const floorMullionGeo = new THREE.BoxGeometry(5.1, 0.08, 4.9);
+    for (let fl = 0; fl < 5; fl++) {
+      const flMesh = new THREE.Mesh(floorMullionGeo, platinumBodyMat);
+      flMesh.position.set(0, 4.5 + fl * 0.85, 0);
+      bankGroup.add(flMesh);
+    }
+
+    // Corner Structural Columns
+    const colGeo = new THREE.BoxGeometry(0.24, 4.2, 0.24);
     [
-      { x: -2.3, z: -2.2 },
-      { x: 2.3, z: -2.2 },
-      { x: -2.3, z: 2.2 },
-      { x: 2.3, z: 2.2 },
+      { x: -2.4, z: -2.3 },
+      { x: 2.4, z: -2.3 },
+      { x: -2.4, z: 2.3 },
+      { x: 2.4, z: 2.3 },
     ].forEach((pos) => {
       const col = new THREE.Mesh(colGeo, navyBrandMat);
-      col.position.set(pos.x, 5.9, pos.z);
+      col.position.set(pos.x, 6.2, pos.z);
       bankGroup.add(col);
     });
 
-    // Roof Cornice & Architectural Crest
-    const bRoof = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.3, 5.0), navyBrandMat);
-    bRoof.position.set(0, 7.85, 0);
+    // Rooftop Penthouse & Crest
+    const bRoof = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.35, 5.2), navyBrandMat);
+    bRoof.position.set(0, 8.4, 0);
     bankGroup.add(bRoof);
 
-    // Rooftop Spire / Finial
-    const bFinial = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, 1.2, 16), goldMat);
-    bFinial.position.set(0, 8.6, 0);
+    // Rooftop Penthouse Box
+    const bPenthouse = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.0, 3.4), platinumBodyMat);
+    bPenthouse.position.set(0, 9.0, 0);
+    bankGroup.add(bPenthouse);
+
+    // Rooftop Telecommunication Mast & Spire with Blinking Beacon
+    const bFinial = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, 1.8, 16), goldMat);
+    bFinial.position.set(0, 10.4, 0);
     bankGroup.add(bFinial);
 
-    const bBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), neonCyanMat);
-    bBeacon.position.set(0, 9.25, 0);
+    const bBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), neonCyanMat);
+    bBeacon.position.set(0, 11.35, 0);
     bankGroup.add(bBeacon);
+    beaconLightRef.current = bBeacon;
 
-    // Ground Floor Vault Safe Door with Counter-Rotating Gears
-    const vRim = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.14, 16, 36), goldMat);
-    vRim.position.set(-3.12, 1.8, 0);
+    // Ground Floor Vault Safe Door with Dual Counter-Rotating Gears
+    const vRim = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.15, 16, 36), goldMat);
+    vRim.position.set(-3.22, 1.8, 0);
     vRim.rotation.y = Math.PI / 2;
     bankGroup.add(vRim);
 
     const vWheelGroup = new THREE.Group();
-    vWheelGroup.position.set(-3.14, 1.8, 0);
+    vWheelGroup.position.set(-3.24, 1.8, 0);
     vWheelGroup.rotation.y = Math.PI / 2;
     bankGroup.add(vWheelGroup);
     vaultOuterWheelRef.current = vWheelGroup;
 
     for (let s = 0; s < 4; s++) {
-      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.3, 8), goldMat);
+      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 8), goldMat);
       spoke.rotation.z = (s * Math.PI) / 4;
       vWheelGroup.add(spoke);
     }
-    const vCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.22, 16), navyBrandMat);
+    const vCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.24, 16), navyBrandMat);
     vCenter.rotation.x = Math.PI / 2;
     vWheelGroup.add(vCenter);
 
-    // Inner counter-rotating gold disc
-    const vInner = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.12, 16), goldMat);
-    vInner.position.set(-3.16, 1.8, 0);
+    // Inner counter-rotating gold gear disc
+    const vInner = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.14, 16), goldMat);
+    vInner.position.set(-3.26, 1.8, 0);
     vInner.rotation.z = Math.PI / 2;
     bankGroup.add(vInner);
     vaultInnerWheelRef.current = vInner;
 
     /* ── 10. AMBIENT PARTICLE DUST SYSTEM ── */
-    const particleCount = 90;
+    const particleCount = 100;
     const particleGeo = new THREE.BufferGeometry();
     const particlePositions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount * 3; i += 3) {
-      particlePositions[i] = (Math.random() - 0.5) * 34;
-      particlePositions[i + 1] = Math.random() * 14 + 0.5;
-      particlePositions[i + 2] = (Math.random() - 0.5) * 22;
+      particlePositions[i] = (Math.random() - 0.5) * 36;
+      particlePositions[i + 1] = Math.random() * 15 + 0.5;
+      particlePositions[i + 2] = (Math.random() - 0.5) * 24;
     }
     particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
     const particleMat = new THREE.PointsMaterial({
@@ -680,10 +774,11 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     dom.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointerup', onPointerUp);
 
-    /* ── 12. ANIMATION LOOP (NATIVE PERFORMANCE DELTA) ── */
+    /* ── 12. ANIMATION LOOP (HARMONIC PENDULUM WAVE & SCRUBBER) ── */
     let lastTime = performance.now();
     let clock = 0;
     let isVisible = true;
+    let dayAccumulator = 1;
 
     const animate = () => {
       if (!isVisible) {
@@ -697,7 +792,21 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
       lastTime = now;
       clock += delta;
 
+      // Auto-advance day in simulation when playing
+      if (isPlayingRef.current) {
+        dayAccumulator += delta * 18; // ~5.5 seconds for full 100-day cycle
+        if (dayAccumulator > 100) dayAccumulator = 1;
+        const currentIntDay = Math.floor(dayAccumulator);
+        if (currentIntDay !== simDayRef.current) {
+          simDayRef.current = currentIntDay;
+          setSimDay(currentIntDay);
+        }
+      } else {
+        dayAccumulator = simDayRef.current;
+      }
+
       const isNormal = isNormalModeRef.current;
+      const progress01 = (simDayRef.current - 1) / 99; // 0 to 1
 
       // Vault wheels counter-rotate continuously
       if (vaultOuterWheelRef.current) {
@@ -707,10 +816,15 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
         vaultInnerWheelRef.current.rotation.x -= delta * 0.45;
       }
 
-      // Floating coin above merchant counter
+      // Spire beacon blinking
+      if (beaconLightRef.current) {
+        beaconLightRef.current.scale.setScalar(1 + Math.sin(clock * 6.0) * 0.2);
+      }
+
+      // Floating coin above merchant counter (Harmonic bobbing)
       if (floatingCoinRef.current) {
-        floatingCoinRef.current.rotation.y += delta * 2.0;
-        floatingCoinRef.current.position.y = 2.55 + Math.sin(clock * 3.0) * 0.08;
+        floatingCoinRef.current.rotation.y += delta * 2.2;
+        floatingCoinRef.current.position.y = 2.65 + Math.sin(clock * 3.2) * 0.08;
       }
 
       // Ambient particle gentle drift
@@ -718,17 +832,17 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
         particlesRef.current.rotation.y += delta * 0.03;
       }
 
-      // ── NORMAL MODE: Currency packets glide along highway in parabolic wave ──
+      // ── NORMAL MODE: Currency packets glide along highway in harmonic wave ──
       if (currencyFlowGroupRef.current) {
         currencyFlowGroupRef.current.visible = isNormal;
         if (isNormal) {
           packetMeshes.forEach((p, idx) => {
-            const speed = 0.55;
-            const cycleProgress = ((clock * speed + idx * 0.13) % 1);
+            const speed = 0.6;
+            // Harmonic wave offset
+            const cycleProgress = ((clock * speed + idx * 0.125) % 1);
             p.position.x = -4.6 + cycleProgress * 9.2;
-            // Parabolic bouncy wave
-            p.position.y = 0.95 + Math.sin(cycleProgress * Math.PI) * 0.38;
-            p.rotation.z = Math.sin(cycleProgress * Math.PI * 2) * 0.1;
+            p.position.y = 0.95 + Math.sin(cycleProgress * Math.PI) * 0.42;
+            p.rotation.z = Math.sin(cycleProgress * Math.PI * 2) * 0.12;
             p.visible = true;
           });
         }
@@ -738,7 +852,7 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
       if (deferralShieldRef.current) {
         deferralShieldRef.current.visible = !isNormal;
         if (!isNormal) {
-          deferralShieldRef.current.position.y = 1.85 + Math.sin(clock * 2.5) * 0.05;
+          deferralShieldRef.current.position.y = 1.85 + Math.sin(clock * 2.8) * 0.05;
         }
       }
       if (maturityVaultRef.current) {
@@ -748,35 +862,36 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
         }
       }
       if (maturityRingsRef.current) {
-        maturityRingsRef.current.rotation.y += delta * 1.5;
-        maturityRingsRef.current.rotation.x += delta * 0.8;
+        maturityRingsRef.current.rotation.y += delta * 1.6;
+        maturityRingsRef.current.rotation.x += delta * 0.9;
       }
       if (day100BeamRef.current) {
         day100BeamRef.current.visible = !isNormal;
         if (!isNormal) {
-          day100BeamRef.current.rotation.y += delta * 1.4;
+          day100BeamRef.current.rotation.y += delta * 1.5;
         }
       }
 
-      // Merchant inventory boxes glow and expand in BULLET MODE
+      // Merchant inventory crates dynamic vitality in BULLET MODE
       inventoryBoxes.forEach((crate, i) => {
         if (!isNormal) {
-          crate.position.y = cratePositions[i].y + Math.sin(clock * 3.0 + i) * 0.04;
+          crate.position.y = cratePositions[i].y + Math.sin(clock * 3.2 + i) * 0.04;
         } else {
           crate.position.y = cratePositions[i].y;
         }
       });
 
-      // Update 5 Milestone Portals based on mode
+      // Update 5 Milestone Portals based on day progress
       portals.forEach((p) => {
+        const isPastMilestone = simDayRef.current >= p.dayNum;
         if (isNormal) {
-          p.beaconMat.color.setHex(0x10B981);
-          p.beaconMat.emissive.setHex(0x059669);
-          p.beaconMat.emissiveIntensity = 1.2 + Math.sin(clock * 4.0 + p.dayNum) * 0.35;
+          p.beaconMat.color.setHex(isPastMilestone ? 0x10B981 : 0x64748B);
+          p.beaconMat.emissive.setHex(isPastMilestone ? 0x059669 : 0x334155);
+          p.beaconMat.emissiveIntensity = isPastMilestone ? 1.4 + Math.sin(clock * 4.0 + p.dayNum) * 0.35 : 0.2;
         } else {
-          p.beaconMat.color.setHex(p.dayNum === 100 ? 0xF59E0B : 0x8B5CF6);
-          p.beaconMat.emissive.setHex(p.dayNum === 100 ? 0xD97706 : 0x7C3AED);
-          p.beaconMat.emissiveIntensity = 1.4 + Math.sin(clock * 4.0 + p.dayNum) * 0.45;
+          p.beaconMat.color.setHex(p.dayNum === 100 ? 0xF59E0B : isPastMilestone ? 0x8B5CF6 : 0x64748B);
+          p.beaconMat.emissive.setHex(p.dayNum === 100 ? 0xD97706 : isPastMilestone ? 0x7C3AED : 0x334155);
+          p.beaconMat.emissiveIntensity = p.dayNum === 100 ? 1.8 + Math.sin(clock * 5.0) * 0.5 : 0.6;
         }
         p.beacon.rotation.y += delta * 1.6;
       });
@@ -847,13 +962,18 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
   }, [activeCamPreset]);
 
   const isNormal = mode === 'NORMAL' || mode === 'FIXED';
+  const recoveredAmount = isNormal
+    ? (simDay * 125).toLocaleString('en-IN')
+    : simDay === 100
+    ? '12,500'
+    : '0 (Deferred)';
 
   return (
     <div className="collection-stage-3d-wrapper">
       {/* 3D Canvas Mount */}
       <div ref={mountRef} className="collection-stage-canvas" />
 
-      {/* Top Floating Status Overlay */}
+      {/* Top Floating Architectural Status HUD */}
       <div className="collection-stage-header">
         <div className="csh-left">
           <span className={`csh-badge ${isNormal ? 'blue' : 'purple'}`}>
@@ -865,23 +985,27 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
           </h4>
           <p className="csh-desc">
             {isNormal
-              ? 'Real-time ₹125/day micro-repayment cycle from shop counter to central vault.'
-              : 'Zero daily pressure (Days 1–99) · Full settlement collected at Day 100 maturity.'}
+              ? `Day ${simDay}/100: Real-time ₹125/day micro-repayments flowing from shop to vault.`
+              : simDay < 100
+              ? `Day ${simDay}/100: ₹0.00 daily dues · Capital retained for merchant inventory.`
+              : 'Day 100: Final maturity reached · Full ₹12,500.00 settled with 1-click.'}
           </p>
         </div>
 
         <div className="csh-right">
           <div className="csh-metric-pill">
-            <span className="csh-metric-lbl">{isNormal ? 'DAILY DUES' : 'DAY 100 MATURITY'}</span>
+            <span className="csh-metric-lbl">{isNormal ? 'CUMULATIVE RECOVERED' : 'DAY 100 RECOVERY'}</span>
             <span className={`csh-metric-val ${isNormal ? 'green' : 'purple'}`}>
-              {isNormal ? '₹125.00 / day' : '₹12,500.00'}
+              ₹{recoveredAmount}
             </span>
-            <span className="csh-metric-pct">{isNormal ? '100 Operating Days' : 'Full Settle at Last Date'}</span>
+            <span className="csh-metric-pct">
+              {isNormal ? `Day ${simDay} of 100` : simDay === 100 ? 'Full Settle Cleared' : 'Deferred Days 1–99'}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Interactive Camera Dock */}
+      {/* Interactive Floating Master Console Dock (With Day Scrubber & Camera Presets) */}
       <div className="collection-master-dock">
         <div className="dock-views-group">
           <button
@@ -920,13 +1044,48 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
 
         <div className="dock-divider" />
 
+        {/* 100-Day Simulation Scrubber / Pendulum Controller */}
+        <div className="dock-scrubber-group">
+          <button
+            type="button"
+            className={`dock-ctrl-btn ${isPlaying ? 'active' : ''}`}
+            onClick={togglePlay}
+            title={isPlaying ? 'Pause Simulation' : 'Play Simulation'}
+          >
+            {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+          </button>
+
+          <div className="scrubber-slider-wrap">
+            <input
+              type="range"
+              min="1"
+              max="100"
+              value={simDay}
+              onChange={(e) => handleDayChange(Number(e.target.value))}
+              className="dock-day-slider"
+            />
+            <span className="dock-day-label">D-{String(simDay).padStart(2, '0')}</span>
+          </div>
+
+          <button
+            type="button"
+            className="dock-ctrl-btn"
+            onClick={resetSimulation}
+            title="Reset to Day 1"
+          >
+            <RotateCcw size={12} />
+          </button>
+        </div>
+
+        <div className="dock-divider" />
+
         <button
           type="button"
           className={`coll-orbit-btn ${isAutoOrbit ? 'active' : ''}`}
           onClick={toggleAutoOrbit}
           title={isAutoOrbit ? 'Pause Orbit' : 'Resume Auto Orbit'}
         >
-          <RotateCw size={14} className={isAutoOrbit ? 'spinning-slow' : ''} />
+          <RotateCw size={13} className={isAutoOrbit ? 'spinning-slow' : ''} />
         </button>
       </div>
 
