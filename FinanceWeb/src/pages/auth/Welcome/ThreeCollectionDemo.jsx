@@ -1,27 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import {
-  RotateCcw,
-  Play,
-  Pause,
-  Store,
-  Building2,
-  Lock,
-  Layers,
-  Sparkles,
-} from 'lucide-react';
+import { Eye, RotateCw, Sparkles, Building2, Store, Milestone } from 'lucide-react';
 import './ThreeCollectionDemo.css';
 
 /**
  * ThreeCollectionDemo: Realistic 3D Architectural Financial Settlement Campus
- * 
- * Replaces abstract cylinders with a structured, creative fintech campus:
- * 1. Left: Merchant Storefront & Smart POS Terminal (Borrower origin)
- * 2. Center: 100-Day Amortization Highway with 5 Milestone Portals (Days 1, 25, 50, 75, 100)
- *    - NORMAL Mode: Continuous daily currency flow & glowing emerald beacons (₹125/day)
- *    - LUMP_SUM_END Mode: Translucent purple capital deferral shield (Days 1–99), opening into
- *      the Grand Maturity Vault & Zero-Dues Certificate on Day 100.
- * 3. Right: Institutional Bank Headquarters & Central Vault Safe (Lender destination)
+ * Upgraded with radiant daylight rendering, ambient particle dust, glowing energy circuits,
+ * parabolic bouncing cash stream, interactive camera presets, and raycasting tooltips.
  */
 export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
   const mountRef = useRef(null);
@@ -30,70 +15,74 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
   const cameraRef = useRef(null);
   const animFrameRef = useRef(null);
 
-  // Dynamic mesh references
+  // Dynamic mesh & node references
   const vaultWheelRef = useRef(null);
+  const vaultInnerRingRef = useRef(null);
   const currencyFlowGroupRef = useRef(null);
   const deferralShieldRef = useRef(null);
   const maturityVaultRef = useRef(null);
   const day100BeamRef = useRef(null);
+  const floatingCoinRef = useRef(null);
   const portalsRef = useRef([]);
   const merchantInventoryRef = useRef([]);
+  const particlesRef = useRef(null);
 
-  // Interactive state
-  const isNormalMode = mode === 'NORMAL' || mode === 'FIXED';
-  const [activeCamView, setActiveCamView] = useState('overview'); // 'overview' | 'merchant' | 'highway' | 'bank'
-  const [isAutoOrbit, setIsAutoOrbit] = useState(true);
-  const [isPlayingSim, setIsPlayingSim] = useState(false);
-  const [simDay, setSimDay] = useState(100); // 1 to 100
+  // Mode reference (avoids re-creating WebGL scene on mode switch)
+  const isNormalModeRef = useRef(mode === 'NORMAL' || mode === 'FIXED');
+  useEffect(() => {
+    isNormalModeRef.current = (mode === 'NORMAL' || mode === 'FIXED');
+  }, [mode]);
+
   const [hoveredInfo, setHoveredInfo] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [activeCamPreset, setActiveCamPreset] = useState('all');
+  const [isAutoOrbit, setIsAutoOrbit] = useState(true);
+  const isAutoOrbitRef = useRef(true);
 
   // Camera lerp targets
-  const targetCamPosRef = useRef(new THREE.Vector3(22, 17, 24));
-  const currentCamPosRef = useRef(new THREE.Vector3(22, 17, 24));
-  const targetLookAtRef = useRef(new THREE.Vector3(0, 2.0, 0));
-  const currentLookAtRef = useRef(new THREE.Vector3(0, 2.0, 0));
-  const orbitAngleRef = useRef(0.85);
+  const targetCamPosRef = useRef(new THREE.Vector3(22, 16, 23));
+  const currentCamPosRef = useRef(new THREE.Vector3(22, 16, 23));
+  const targetLookAtRef = useRef(new THREE.Vector3(0, 1.8, 0));
+  const currentLookAtRef = useRef(new THREE.Vector3(0, 1.8, 0));
+  const orbitAngleRef = useRef(0.82);
+  const orbitRadiusRef = useRef(27);
 
   // Pointer drag tracking
   const isDraggingRef = useRef(false);
   const prevMousePosRef = useRef({ x: 0, y: 0 });
 
-  /* ── Switch Camera View ── */
-  const setCamView = (viewName) => {
-    setActiveCamView(viewName);
-    setIsAutoOrbit(false);
-    if (viewName === 'overview') {
-      targetCamPosRef.current.set(22, 17, 24);
-      targetLookAtRef.current.set(0, 2.0, 0);
-    } else if (viewName === 'merchant') {
-      targetCamPosRef.current.set(-8, 8, 12);
-      targetLookAtRef.current.set(-9, 2.0, 0);
-    } else if (viewName === 'highway') {
-      targetCamPosRef.current.set(0, 9, 14);
-      targetLookAtRef.current.set(0, 1.5, 0);
-    } else if (viewName === 'bank') {
-      targetCamPosRef.current.set(9, 9, 12);
-      targetLookAtRef.current.set(9, 2.5, 0);
+  // Camera Presets
+  const setCamView = useCallback((preset) => {
+    setActiveCamPreset(preset);
+    if (preset === 'all') {
+      targetCamPosRef.current.set(22, 16, 23);
+      targetLookAtRef.current.set(0, 1.8, 0);
+      orbitRadiusRef.current = 27;
+      isAutoOrbitRef.current = true;
+      setIsAutoOrbit(true);
+    } else if (preset === 'merchant') {
+      targetCamPosRef.current.set(-10, 8, 12);
+      targetLookAtRef.current.set(-9.2, 2.0, 0);
+      isAutoOrbitRef.current = false;
+      setIsAutoOrbit(false);
+    } else if (preset === 'track') {
+      targetCamPosRef.current.set(0, 11, 19);
+      targetLookAtRef.current.set(0, 1.4, 0);
+      isAutoOrbitRef.current = false;
+      setIsAutoOrbit(false);
+    } else if (preset === 'vault') {
+      targetCamPosRef.current.set(10, 9, 13);
+      targetLookAtRef.current.set(9.2, 2.8, 0);
+      isAutoOrbitRef.current = false;
+      setIsAutoOrbit(false);
     }
-  };
+  }, []);
 
-  /* ── 100-Day Simulation Playback Loop ── */
-  useEffect(() => {
-    let timer;
-    if (isPlayingSim) {
-      timer = setInterval(() => {
-        setSimDay((prev) => {
-          if (prev >= 100) {
-            setIsPlayingSim(false);
-            return 100;
-          }
-          return prev + 1;
-        });
-      }, 75);
-    }
-    return () => clearInterval(timer);
-  }, [isPlayingSim]);
+  const toggleAutoOrbit = () => {
+    const nextVal = !isAutoOrbit;
+    setIsAutoOrbit(nextVal);
+    isAutoOrbitRef.current = nextVal;
+  };
 
   /* ── Three.js Scene Setup ── */
   useEffect(() => {
@@ -101,18 +90,18 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     if (!container) return;
 
     const width = container.clientWidth || 700;
-    const height = container.clientHeight || 600;
+    const height = container.clientHeight || 560;
 
     /* ── 1. SCENE ── */
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     scene.background = new THREE.Color(0xF8FAFC);
-    scene.fog = new THREE.FogExp2(0xF8FAFC, 0.015);
+    scene.fog = new THREE.FogExp2(0xF8FAFC, 0.012);
 
     /* ── 2. CAMERA ── */
     const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 500);
-    camera.position.set(22, 17, 24);
-    camera.lookAt(0, 2.0, 0);
+    camera.position.set(22, 16, 23);
+    camera.lookAt(0, 1.8, 0);
     cameraRef.current = camera;
     currentCamPosRef.current.copy(camera.position);
 
@@ -123,25 +112,25 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
       powerPreference: 'high-performance',
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     rendererRef.current = renderer;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    /* ── 4. RADIANT DAYLIGHT STUDIO LIGHTING ── */
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+    /* ── 4. RADIANT DAYLIGHT STUDIO LIGHTING RIG ── */
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.45);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdbeafe, 1.2);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdbeafe, 1.35);
     hemiLight.position.set(0, 40, 0);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
-    sunLight.position.set(26, 36, 24);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.4);
+    sunLight.position.set(26, 38, 24);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.mapSize.set(1024, 1024);
     sunLight.shadow.bias = -0.0004;
     sunLight.shadow.camera.near = 0.5;
     sunLight.shadow.camera.far = 100;
@@ -151,12 +140,12 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     sunLight.shadow.camera.bottom = -22;
     scene.add(sunLight);
 
-    const skyFillLight = new THREE.DirectionalLight(0xE0F2FE, 1.0);
+    const skyFillLight = new THREE.DirectionalLight(0xE0F2FE, 1.1);
     skyFillLight.position.set(-24, 20, -18);
     scene.add(skyFillLight);
 
-    const centerWarmLight = new THREE.PointLight(0xF59E0B, 2.0, 32);
-    centerWarmLight.position.set(0, 6, 2);
+    const centerWarmLight = new THREE.PointLight(0xF59E0B, 1.8, 30);
+    centerWarmLight.position.set(0, 5, 2);
     scene.add(centerWarmLight);
 
     /* ── 5. CURATED ARCHITECTURAL MATERIALS ── */
@@ -167,13 +156,13 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     });
     const whiteFacadeMat = new THREE.MeshStandardMaterial({
       color: 0xFFFFFF,
-      roughness: 0.15,
-      metalness: 0.08,
+      roughness: 0.14,
+      metalness: 0.06,
     });
     const platinumBodyMat = new THREE.MeshStandardMaterial({
       color: 0xEEF2F6,
       roughness: 0.22,
-      metalness: 0.28,
+      metalness: 0.25,
     });
     const navyBrandMat = new THREE.MeshStandardMaterial({
       color: 0x0F172A,
@@ -188,9 +177,9 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xF59E0B,
       emissive: 0xD97706,
-      emissiveIntensity: 0.25,
+      emissiveIntensity: 0.28,
       roughness: 0.16,
-      metalness: 0.75,
+      metalness: 0.78,
     });
     const glassMat = new THREE.MeshStandardMaterial({
       color: 0xE0F2FE,
@@ -204,24 +193,20 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
       roughness: 0.35,
       metalness: 0.2,
     });
-    const emeraldPulseMat = new THREE.MeshStandardMaterial({
-      color: 0x10B981,
-      emissive: 0x059669,
-      emissiveIntensity: 1.2,
-      roughness: 0.2,
-    });
     const purpleShieldMat = new THREE.MeshStandardMaterial({
       color: 0x8B5CF6,
       emissive: 0x7C3AED,
-      emissiveIntensity: 0.4,
+      emissiveIntensity: 0.45,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.32,
       roughness: 0.1,
     });
     const cashGreenMat = new THREE.MeshStandardMaterial({
       color: 0x059669,
-      roughness: 0.35,
-      metalness: 0.1,
+      emissive: 0x047857,
+      emissiveIntensity: 0.35,
+      roughness: 0.25,
+      metalness: 0.15,
     });
 
     /* ── 6. CAMPUS ROOT GROUP ── */
@@ -231,24 +216,35 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     scene.add(campusGroup);
 
     // Main Ground Plinth (Structured Architectural Slab)
-    const groundPlinth = new THREE.Mesh(new THREE.BoxGeometry(29, 0.7, 18), plinthMat);
+    const groundPlinth = new THREE.Mesh(new THREE.BoxGeometry(29.6, 0.7, 18.6), plinthMat);
     groundPlinth.position.y = -0.35;
     groundPlinth.receiveShadow = true;
     campusGroup.add(groundPlinth);
 
     // Beveled Inlaid 18K Gold Perimeter Trim
-    const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(29.2, 0.12, 18.2), goldMat);
+    const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(29.8, 0.12, 18.8), goldMat);
     goldTrim.position.y = -0.7;
     campusGroup.add(goldTrim);
 
-    // Decorative Linear Ground Pavers (No circular floating wires!)
-    const paverLine1 = new THREE.Mesh(new THREE.BoxGeometry(28, 0.02, 0.15), royalBlueMat);
+    // Decorative Linear Ground Pavers & Glowing Cyan Neon Flow Tracks
+    const paverLine1 = new THREE.Mesh(new THREE.BoxGeometry(28.4, 0.02, 0.15), royalBlueMat);
     paverLine1.position.set(0, 0.01, -4.5);
     campusGroup.add(paverLine1);
 
-    const paverLine2 = new THREE.Mesh(new THREE.BoxGeometry(28, 0.02, 0.15), royalBlueMat);
+    const paverLine2 = new THREE.Mesh(new THREE.BoxGeometry(28.4, 0.02, 0.15), royalBlueMat);
     paverLine2.position.set(0, 0.01, 4.5);
     campusGroup.add(paverLine2);
+
+    // Central Radiant Energy Circuit Line on Ground
+    const circuitGeo = new THREE.BoxGeometry(20, 0.02, 0.08);
+    const circuitMat = new THREE.MeshStandardMaterial({
+      color: 0x38BDF8,
+      emissive: 0x0284C7,
+      emissiveIntensity: 1.4,
+    });
+    const circuit = new THREE.Mesh(circuitGeo, circuitMat);
+    circuit.position.set(0, 0.02, 0);
+    campusGroup.add(circuit);
 
     /* ── 7. LEFT SECTOR: MERCHANT STOREFRONT & SMART POS KIOSK ── */
     const merchantGroup = new THREE.Group();
@@ -256,7 +252,7 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     campusGroup.add(merchantGroup);
 
     // Merchant Terrace Base
-    const mBase = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.35, 6.6), whiteFacadeMat);
+    const mBase = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.35, 6.8), whiteFacadeMat);
     mBase.position.y = 0.18;
     mBase.receiveShadow = true;
     merchantGroup.add(mBase);
@@ -296,6 +292,19 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     posScreen.rotation.x = -0.35;
     merchantGroup.add(posScreen);
 
+    // Floating Glowing 3D Gold Currency Token over the POS Counter
+    const coinGroup = new THREE.Group();
+    coinGroup.position.set(-0.6, 2.45, 2.5);
+    merchantGroup.add(coinGroup);
+    floatingCoinRef.current = coinGroup;
+
+    const coinMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.35, 0.08, 24),
+      goldMat
+    );
+    coinMesh.rotation.x = Math.PI / 2;
+    coinGroup.add(coinMesh);
+
     // Inventory Crates (Symbolizing wholesale stock funded by the advance)
     const inventoryBoxes = [];
     const crateGeo = new THREE.BoxGeometry(0.75, 0.75, 0.75);
@@ -318,7 +327,7 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     const highwayGroup = new THREE.Group();
     campusGroup.add(highwayGroup);
 
-    // Main Elevated Highway Deck (Grounded & Linear, No loose rings)
+    // Main Elevated Highway Deck (Grounded & Linear)
     const deckGeo = new THREE.BoxGeometry(11.8, 0.35, 3.4);
     const deck = new THREE.Mesh(deckGeo, highwayDeckMat);
     deck.position.set(0, 0.65, 0);
@@ -360,15 +369,15 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
       pGroup.add(lintel);
 
       // Milestone Status Jewel Beacon (Glows when day is reached)
-      const beaconGeo = new THREE.OctahedronGeometry(0.2);
+      const beaconGeo = new THREE.OctahedronGeometry(0.22);
       const beaconMat = new THREE.MeshStandardMaterial({
-        color: 0x94A3B8,
-        emissive: 0x475569,
-        emissiveIntensity: 0.3,
+        color: 0x10B981,
+        emissive: 0x059669,
+        emissiveIntensity: 1.2,
         roughness: 0.1,
       });
       const beacon = new THREE.Mesh(beaconGeo, beaconMat);
-      beacon.position.set(0, 2.6, 0);
+      beacon.position.set(0, 2.62, 0);
       pGroup.add(beacon);
 
       portals.push({
@@ -387,12 +396,20 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
 
     const packetMeshes = [];
     const packetGeo = new THREE.BoxGeometry(0.65, 0.18, 0.4);
-    for (let c = 0; c < 6; c++) {
+    for (let c = 0; c < 7; c++) {
+      const pGroup = new THREE.Group();
       const pMesh = new THREE.Mesh(packetGeo, cashGreenMat);
-      pMesh.position.set(-4.5 + c * 1.8, 1.0, 0);
       pMesh.castShadow = true;
-      currencyStreamGroup.add(pMesh);
-      packetMeshes.push(pMesh);
+      pGroup.add(pMesh);
+
+      // Gold perimeter rim on each cash packet
+      const rim = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.04, 0.43), goldMat);
+      rim.position.y = 0.08;
+      pGroup.add(rim);
+
+      pGroup.position.set(-4.5 + c * 1.5, 1.0, 0);
+      currencyStreamGroup.add(pGroup);
+      packetMeshes.push(pGroup);
     }
 
     // ── LUMP_SUM_END Deferral Shield (Translucent Protective Canopy for Days 1–99) ──
@@ -493,7 +510,27 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     vCenter.rotation.x = Math.PI / 2;
     vWheelGroup.add(vCenter);
 
-    /* ── 10. POINTER / RAYCASTER EVENTS ── */
+    /* ── 10. AMBIENT PARTICLE DUST SYSTEM ── */
+    const particleCount = 80;
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      particlePositions[i] = (Math.random() - 0.5) * 32;
+      particlePositions[i + 1] = Math.random() * 12 + 0.5;
+      particlePositions[i + 2] = (Math.random() - 0.5) * 20;
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x38BDF8,
+      size: 0.15,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+    particlesRef.current = particles;
+
+    /* ── 11. POINTER / RAYCASTER EVENTS ── */
     const raycaster = new THREE.Raycaster();
     const mouseVector = new THREE.Vector2();
 
@@ -512,6 +549,8 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
           6,
           26
         );
+        targetCamPosRef.current.x = Math.sin(orbitAngleRef.current) * orbitRadiusRef.current;
+        targetCamPosRef.current.z = Math.cos(orbitAngleRef.current) * orbitRadiusRef.current;
         prevMousePosRef.current = { x: e.clientX, y: e.clientY };
       }
 
@@ -523,7 +562,8 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
         const hitBeacon = hits[0].object;
         const matched = portals.find((p) => p.beacon === hitBeacon);
         if (matched) {
-          const info = isNormalMode
+          const isNormal = isNormalModeRef.current;
+          const info = isNormal
             ? `Milestone Day ${matched.dayNum}: Equal Installment Flow Active (₹125.00/day)`
             : matched.dayNum === 100
             ? `Maturity Day 100: Full Principal + Interest Recovery (₹12,500.00 Settle)`
@@ -538,7 +578,6 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
 
     const onPointerDown = (e) => {
       isDraggingRef.current = true;
-      setIsAutoOrbit(false);
       prevMousePosRef.current = { x: e.clientX, y: e.clientY };
     };
 
@@ -551,74 +590,97 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     dom.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointerup', onPointerUp);
 
-    /* ── 11. ANIMATION LOOP ── */
+    /* ── 12. ANIMATION LOOP (NATIVE PERFORMANCE DELTA) ── */
+    let lastTime = performance.now();
     let clock = 0;
+    let isVisible = true;
+
     const animate = () => {
+      if (!isVisible) {
+        animFrameRef.current = null;
+        return;
+      }
       animFrameRef.current = requestAnimationFrame(animate);
-      clock += 0.016;
+
+      const now = performance.now();
+      const delta = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      clock += delta;
+
+      const isNormal = isNormalModeRef.current;
 
       // Vault wheel rotates continuously
       if (vaultWheelRef.current) {
-        vaultWheelRef.current.rotation.z += 0.008;
+        vaultWheelRef.current.rotation.z += delta * 0.6;
       }
 
-      // ── NORMAL MODE: Currency packets glide along the highway ──
+      // Floating coin above merchant counter
+      if (floatingCoinRef.current) {
+        floatingCoinRef.current.rotation.y += delta * 1.8;
+        floatingCoinRef.current.position.y = 2.45 + Math.sin(clock * 3.0) * 0.08;
+      }
+
+      // Ambient particle gentle drift
+      if (particlesRef.current) {
+        particlesRef.current.rotation.y += delta * 0.03;
+      }
+
+      // ── NORMAL MODE: Currency packets glide along highway in parabolic wave ──
       if (currencyFlowGroupRef.current) {
-        currencyFlowGroupRef.current.visible = isNormalMode;
-        if (isNormalMode) {
+        currencyFlowGroupRef.current.visible = isNormal;
+        if (isNormal) {
           packetMeshes.forEach((p, idx) => {
-            const speed = 0.8;
-            const cycleProgress = ((clock * speed + idx * 0.35) % 1);
-            p.position.x = -4.5 + cycleProgress * 9.2;
-            p.position.y = 0.95 + Math.sin(cycleProgress * Math.PI) * 0.25;
-            p.visible = (cycleProgress * 100) <= simDay;
+            const speed = 0.55;
+            const cycleProgress = ((clock * speed + idx * 0.16) % 1);
+            p.position.x = -4.6 + cycleProgress * 9.2;
+            // Parabolic bouncy wave
+            p.position.y = 0.95 + Math.sin(cycleProgress * Math.PI) * 0.35;
+            p.rotation.z = Math.sin(cycleProgress * Math.PI * 2) * 0.08;
+            p.visible = true;
           });
         }
       }
 
       // ── BULLET MODE: Deferral Shield & Day 100 Maturity Vault ──
       if (deferralShieldRef.current) {
-        deferralShieldRef.current.visible = !isNormalMode;
+        deferralShieldRef.current.visible = !isNormal;
+        if (!isNormal) {
+          deferralShieldRef.current.position.y = 1.8 + Math.sin(clock * 2.5) * 0.04;
+        }
       }
       if (maturityVaultRef.current) {
-        maturityVaultRef.current.visible = !isNormalMode && simDay === 100;
-        if (!isNormalMode && simDay === 100) {
-          maturityVaultRef.current.position.y = 0.8 + Math.sin(clock * 3.0) * 0.05;
+        maturityVaultRef.current.visible = !isNormal;
+        if (!isNormal) {
+          maturityVaultRef.current.position.y = 0.8 + Math.sin(clock * 3.2) * 0.06;
+          maturityVaultRef.current.rotation.y += delta * 0.4;
         }
       }
       if (day100BeamRef.current) {
-        day100BeamRef.current.visible = !isNormalMode && simDay === 100;
-        if (!isNormalMode && simDay === 100) {
-          day100BeamRef.current.rotation.y += 0.02;
+        day100BeamRef.current.visible = !isNormal;
+        if (!isNormal) {
+          day100BeamRef.current.rotation.y += delta * 1.2;
         }
       }
 
-      // Update 5 Milestone Portals based on simDay progress
+      // Update 5 Milestone Portals based on mode
       portals.forEach((p) => {
-        const isReached = p.dayNum <= simDay;
-        if (isReached) {
-          if (isNormalMode) {
-            p.beaconMat.color.setHex(0x10B981);
-            p.beaconMat.emissive.setHex(0x059669);
-            p.beaconMat.emissiveIntensity = 1.2;
-          } else {
-            p.beaconMat.color.setHex(p.dayNum === 100 ? 0xF59E0B : 0x8B5CF6);
-            p.beaconMat.emissive.setHex(p.dayNum === 100 ? 0xD97706 : 0x7C3AED);
-            p.beaconMat.emissiveIntensity = 1.4;
-          }
+        if (isNormal) {
+          p.beaconMat.color.setHex(0x10B981);
+          p.beaconMat.emissive.setHex(0x059669);
+          p.beaconMat.emissiveIntensity = 1.2 + Math.sin(clock * 4.0 + p.dayNum) * 0.3;
         } else {
-          p.beaconMat.color.setHex(0x94A3B8);
-          p.beaconMat.emissive.setHex(0x475569);
-          p.beaconMat.emissiveIntensity = 0.2;
+          p.beaconMat.color.setHex(p.dayNum === 100 ? 0xF59E0B : 0x8B5CF6);
+          p.beaconMat.emissive.setHex(p.dayNum === 100 ? 0xD97706 : 0x7C3AED);
+          p.beaconMat.emissiveIntensity = 1.4 + Math.sin(clock * 4.0 + p.dayNum) * 0.4;
         }
+        p.beacon.rotation.y += delta * 1.5;
       });
 
-      // Camera auto-orbit
-      if (isAutoOrbit && !isDraggingRef.current) {
-        orbitAngleRef.current += 0.002;
-        const camR = 28;
-        targetCamPosRef.current.x = Math.sin(orbitAngleRef.current) * camR;
-        targetCamPosRef.current.z = Math.cos(orbitAngleRef.current) * camR;
+      // Camera gentle ambient auto-orbit when idle
+      if (!isDraggingRef.current && isAutoOrbitRef.current && activeCamPreset === 'all') {
+        orbitAngleRef.current += delta * 0.08;
+        targetCamPosRef.current.x = Math.sin(orbitAngleRef.current) * orbitRadiusRef.current;
+        targetCamPosRef.current.z = Math.cos(orbitAngleRef.current) * orbitRadiusRef.current;
       }
 
       currentCamPosRef.current.lerp(targetCamPosRef.current, 0.06);
@@ -628,6 +690,20 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
 
       renderer.render(scene, camera);
     };
+
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        isVisible = entry?.isIntersecting ?? false;
+        if (isVisible && !animFrameRef.current) {
+          lastTime = performance.now();
+          animate();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    intersectionObserver.observe(container);
+
     animate();
 
     /* ── RESIZE HANDLER ── */
@@ -645,6 +721,7 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
     /* ── CLEANUP ── */
     return () => {
       window.removeEventListener('resize', onResize);
+      intersectionObserver.disconnect();
       dom.removeEventListener('pointermove', onPointerMove);
       dom.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
@@ -662,152 +739,90 @@ export const ThreeCollectionDemo = ({ mode = 'NORMAL', onModeChange }) => {
         }
       });
     };
-  }, [isNormalMode, simDay]);
+  }, [activeCamPreset]);
 
-  const recoveredAmount = isNormalMode
-    ? Math.round((simDay / 100) * 12500)
-    : simDay === 100
-    ? 12500
-    : 0;
+  const isNormal = mode === 'NORMAL' || mode === 'FIXED';
 
   return (
     <div className="collection-stage-3d-wrapper">
+      {/* 3D Canvas Mount */}
       <div ref={mountRef} className="collection-stage-canvas" />
 
-      {/* Top Floating Glassmorphic Architectural HUD */}
+      {/* Top Floating Status Overlay */}
       <div className="collection-stage-header">
         <div className="csh-left">
-          <div className={`csh-badge ${isNormalMode ? 'blue' : 'purple'}`}>
+          <span className={`csh-badge ${isNormal ? 'blue' : 'purple'}`}>
             <span className="csh-pulse" />
-            <span>{isNormalMode ? 'EQUAL CYCLE AMORTIZATION' : 'BULLET MATURITY SETTLEMENT'}</span>
-          </div>
-          <h3 className="csh-title">
-            {isNormalMode ? 'Equal Daily Installment Velocity' : 'Full Principal & Interest Settle at Last Date'}
-          </h3>
+            {isNormal ? 'ACTIVE 100-DAY AMORTIZATION' : 'BULLET MATURITY DEFERRAL'}
+          </span>
+          <h4 className="csh-title">
+            {isNormal ? 'Equal Daily Installment Flow' : 'End-of-Tenure Lump Sum Settlement'}
+          </h4>
           <p className="csh-desc">
-            {isNormalMode
-              ? `Day ${simDay} of 100 · ₹125.00 daily installment collected · Route flow synced to institutional vault`
-              : simDay === 100
-              ? `Day 100 Reached: Full lump-sum balance settled (₹12,500.00) · Zero-Dues Certificate Issued`
-              : `Days 1–99: ₹0.00 daily dues (deferred) · Current Day ${simDay} · Settle full ₹12,500 on final day`}
+            {isNormal
+              ? 'Real-time ₹125/day micro-repayment cycle from shop counter to central vault.'
+              : 'Zero daily pressure (Days 1–99) · Full settlement collected at Day 100 maturity.'}
           </p>
         </div>
+
         <div className="csh-right">
           <div className="csh-metric-pill">
-            <span className="csh-metric-lbl">TOTAL SETTLED</span>
-            <span className={`csh-metric-val ${isNormalMode ? 'green' : 'purple'}`}>
-              ₹{recoveredAmount.toLocaleString()}
+            <span className="csh-metric-lbl">{isNormal ? 'DAILY DUES' : 'DAY 100 MATURITY'}</span>
+            <span className={`csh-metric-val ${isNormal ? 'green' : 'purple'}`}>
+              {isNormal ? '₹125.00 / day' : '₹12,500.00'}
             </span>
-            <span className="csh-metric-pct">
-              {Math.round((recoveredAmount / 12500) * 100)}% Complete
-            </span>
+            <span className="csh-metric-pct">{isNormal ? '100 Operating Days' : 'Full Settle at Last Date'}</span>
           </div>
         </div>
       </div>
 
-      {/* Unified Floating Master Console Dock (Bottom Center) */}
+      {/* Interactive Camera Dock */}
       <div className="collection-master-dock">
-        {/* Left: View Presets */}
         <div className="dock-views-group">
           <button
             type="button"
-            className={`coll-view-btn ${activeCamView === 'overview' ? 'active' : ''}`}
-            onClick={() => setCamView('overview')}
-            title="Perspective Campus Overview"
+            className={`coll-view-btn ${activeCamPreset === 'all' ? 'active' : ''}`}
+            onClick={() => setCamView('all')}
           >
-            <Building2 size={13} />
-            <span>Overview</span>
+            <Eye size={13} />
+            <span>Full Campus</span>
           </button>
-
           <button
             type="button"
-            className={`coll-view-btn ${activeCamView === 'merchant' ? 'active' : ''}`}
+            className={`coll-view-btn ${activeCamPreset === 'merchant' ? 'active' : ''}`}
             onClick={() => setCamView('merchant')}
-            title="Merchant Shop Kiosk (Borrower Origin)"
           >
             <Store size={13} />
-            <span>Shop</span>
+            <span>Merchant POS</span>
           </button>
-
           <button
             type="button"
-            className={`coll-view-btn ${activeCamView === 'highway' ? 'active' : ''}`}
-            onClick={() => setCamView('highway')}
-            title="100-Day Amortization Highway"
+            className={`coll-view-btn ${activeCamPreset === 'track' ? 'active' : ''}`}
+            onClick={() => setCamView('track')}
           >
-            <Layers size={13} />
-            <span>Highway</span>
+            <Milestone size={13} />
+            <span>100-Day Track</span>
           </button>
-
           <button
             type="button"
-            className={`coll-view-btn ${activeCamView === 'bank' ? 'active' : ''}`}
-            onClick={() => setCamView('bank')}
-            title="Institutional Bank & Treasury Vault"
+            className={`coll-view-btn ${activeCamPreset === 'vault' ? 'active' : ''}`}
+            onClick={() => setCamView('vault')}
           >
-            <Lock size={13} />
-            <span>Bank Safe</span>
-          </button>
-
-          <button
-            type="button"
-            className={`coll-orbit-btn ${isAutoOrbit ? 'active' : ''}`}
-            onClick={() => setIsAutoOrbit(!isAutoOrbit)}
-            title={isAutoOrbit ? 'Pause Orbit' : 'Auto 360° Orbit'}
-          >
-            {isAutoOrbit ? <Pause size={13} /> : <Play size={13} />}
+            <Building2 size={13} />
+            <span>Bank Vault</span>
           </button>
         </div>
 
         <div className="dock-divider" />
 
-        {/* Right: Simulation Controls & Recovery Ticker */}
-        <div className="dock-sim-group">
-          <button
-            type="button"
-            className={`sim-play-btn ${isPlayingSim ? 'playing' : ''}`}
-            onClick={() => setIsPlayingSim(!isPlayingSim)}
-            title={isPlayingSim ? 'Pause Simulation' : 'Run 100-Day Simulation'}
-          >
-            {isPlayingSim ? <Pause size={12} /> : <Play size={12} />}
-            <span>{isPlayingSim ? 'Pause' : 'Simulate'}</span>
-          </button>
-
-          <div className="sim-slider-container">
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={simDay}
-              onChange={(e) => {
-                setIsPlayingSim(false);
-                setSimDay(Number(e.target.value));
-              }}
-              className="sim-day-slider"
-              title="Scrub Day (1 to 100)"
-            />
-            <span className="sim-day-badge">Day {simDay}</span>
-          </div>
-
-          <button
-            type="button"
-            className="sim-reset-btn"
-            onClick={() => {
-              setIsPlayingSim(false);
-              setSimDay(1);
-            }}
-            title="Reset to Day 1"
-          >
-            <RotateCcw size={12} />
-          </button>
-
-          <span
-            className="sim-amount-badge"
-            style={{ color: isNormalMode ? '#059669' : '#7C3AED' }}
-          >
-            ₹{recoveredAmount.toLocaleString()}
-          </span>
-        </div>
+        <button
+          type="button"
+          className={`coll-orbit-btn ${isAutoOrbit ? 'active' : ''}`}
+          onClick={toggleAutoOrbit}
+          title={isAutoOrbit ? 'Pause Orbit' : 'Resume Auto Orbit'}
+        >
+          <RotateCw size={14} className={isAutoOrbit ? 'spinning-slow' : ''} />
+        </button>
       </div>
 
       {/* Interactive Raycasting Hover Tooltip */}

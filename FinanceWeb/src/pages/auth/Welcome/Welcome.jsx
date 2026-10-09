@@ -227,12 +227,12 @@ export const WelcomePage = () => {
   const [savedSchemeToast, setSavedSchemeToast] = useState(null);
   const [adminTouchStartX, setAdminTouchStartX] = useState(null);
 
-  // Auto-slide every 5.5 seconds forward when not paused
+  // Auto-slide every 3.5 seconds forward when not paused
   useEffect(() => {
     if (isAdminSlidePaused) return;
     const interval = setInterval(() => {
       nextAdminSlide();
-    }, 5500);
+    }, 3500);
     return () => clearInterval(interval);
   }, [isAdminSlidePaused, adminTrackIndex]);
 
@@ -327,43 +327,19 @@ export const WelcomePage = () => {
             Micro-installments collected every operating business day directly at the shop counter. Built for bazaar vendors and local retailers with automatic day-end ledger reconciliation.
           </p>
 
-          {/* Professional Animated Lifecycle Visualizer */}
-          <div className="scheme-lifecycle-panel blue-theme">
-            <div className="sl-header">
-              <span className="sl-title">DAILY COLLECTION LIFECYCLE</span>
-              <span className="sl-badge blue">Automated Ledger Sync</span>
-            </div>
-            <div className="sl-track-wrapper">
-              <div className="sl-track-bar">
-                <div className="sl-fill-bar blue" style={{ width: '65%' }} />
-                <div className="sl-laser-pulse blue" />
-              </div>
-              <div className="sl-nodes-row">
-                <div className="sl-node done">
-                  <span className="sl-dot" />
-                  <span className="sl-node-name">Day 01 Disbursed</span>
-                  <span className="sl-node-detail">Principal Credited</span>
-                </div>
-                <div className="sl-node active-sweep">
-                  <span className="sl-dot-pulse blue" />
-                  <span className="sl-node-name">Daily Route Collection</span>
-                  <span className="sl-node-detail">Bluetooth Slip Issued</span>
-                </div>
-                <div className="sl-node target">
-                  <span className="sl-dot" />
-                  <span className="sl-node-name">Day 100 Cleared</span>
-                  <span className="sl-node-detail">Digital Clearance NOC</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="ap-meta-group">
             <div className="ap-input-row">
               <span className="ap-lbl">Repayment Frequency:</span>
               <span className="ap-badge-tenure blue">
                 <Clock size={13} />
                 Equal Daily Installments (Operating Days)
+              </span>
+            </div>
+
+            <div className="ap-input-row">
+              <span className="ap-lbl">Standard Scheme Term:</span>
+              <span className="ap-badge-tenure blue">
+                100 Operating Days Cycle
               </span>
             </div>
 
@@ -479,43 +455,19 @@ export const WelcomePage = () => {
             Weekly pooled capital syndicates where verified community merchants save together and access lump-sum capital through transparent auctions.
           </p>
 
-          {/* Professional Animated Lifecycle Visualizer */}
-          <div className="scheme-lifecycle-panel green-theme">
-            <div className="sl-header">
-              <span className="sl-title">WEEKLY SYNDICATE LIFECYCLE</span>
-              <span className="sl-badge green">Auction & Dividend Swarm</span>
-            </div>
-            <div className="sl-track-wrapper">
-              <div className="sl-track-bar">
-                <div className="sl-fill-bar green" style={{ width: '50%' }} />
-                <div className="sl-laser-pulse green" />
-              </div>
-              <div className="sl-nodes-row">
-                <div className="sl-node done green">
-                  <span className="sl-dot green" />
-                  <span className="sl-node-name">Group Formed</span>
-                  <span className="sl-node-detail">Subscribers Onboarded</span>
-                </div>
-                <div className="sl-node active-sweep green">
-                  <span className="sl-dot-pulse green" />
-                  <span className="sl-node-name">Weekly Auction</span>
-                  <span className="sl-node-detail">Dividend Sharing</span>
-                </div>
-                <div className="sl-node target green">
-                  <span className="sl-dot green" />
-                  <span className="sl-node-name">Syndicate Matured</span>
-                  <span className="sl-node-detail">Full Escrow Distributed</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="ap-meta-group">
             <div className="ap-input-row">
               <span className="ap-lbl">Repayment Frequency:</span>
               <span className="ap-badge-tenure green">
                 <Clock size={13} />
                 Weekly Recurring Installments
+              </span>
+            </div>
+
+            <div className="ap-input-row">
+              <span className="ap-lbl">Syndicate Tenure:</span>
+              <span className="ap-badge-tenure green">
+                10 to 20 Weekly Cycles
               </span>
             </div>
 
@@ -628,43 +580,19 @@ export const WelcomePage = () => {
             Higher-ticket working capital facility for inventory procurement, equipment financing, and wholesale trade with scheduled direct bank debits.
           </p>
 
-          {/* Professional Animated Lifecycle Visualizer */}
-          <div className="scheme-lifecycle-panel cyan-theme">
-            <div className="sl-header">
-              <span className="sl-title">MONTHLY SME LOAN LIFECYCLE</span>
-              <span className="sl-badge cyan">Direct Bank Auto-Debit</span>
-            </div>
-            <div className="sl-track-wrapper">
-              <div className="sl-track-bar">
-                <div className="sl-fill-bar cyan" style={{ width: '42%' }} />
-                <div className="sl-laser-pulse cyan" />
-              </div>
-              <div className="sl-nodes-row">
-                <div className="sl-node done cyan">
-                  <span className="sl-dot cyan" />
-                  <span className="sl-node-name">Bank Mandate</span>
-                  <span className="sl-node-detail">NACH e-Mandate Active</span>
-                </div>
-                <div className="sl-node active-sweep cyan">
-                  <span className="sl-dot-pulse cyan" />
-                  <span className="sl-node-name">Auto-Debit</span>
-                  <span className="sl-node-detail">Scheduled Bank Sweep</span>
-                </div>
-                <div className="sl-node target cyan">
-                  <span className="sl-dot cyan" />
-                  <span className="sl-node-name">Loan Retired</span>
-                  <span className="sl-node-detail">Digital NOC Issued</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="ap-meta-group">
             <div className="ap-input-row">
               <span className="ap-lbl">Repayment Frequency:</span>
               <span className="ap-badge-tenure cyan">
                 <Clock size={13} />
                 Monthly Calendar Installments
+              </span>
+            </div>
+
+            <div className="ap-input-row">
+              <span className="ap-lbl">Facility Tenure:</span>
+              <span className="ap-badge-tenure cyan">
+                12 to 36 Monthly Cycles
               </span>
             </div>
 
@@ -1201,7 +1129,7 @@ export const WelcomePage = () => {
                 onTransitionEnd={handleAdminTransitionEnd}
                 style={{
                   transform: `translateX(-${adminTrackIndex * 100}%)`,
-                  transition: isAdminTransitioning ? 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)' : 'none',
+                  transition: isAdminTransitioning ? 'transform 0.42s ease-in-out' : 'none',
                 }}
               >
                 {/* 0: Clone of Monthly Scheme (enables seamless backward wrap) */}

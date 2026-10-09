@@ -154,9 +154,9 @@ export const ThreeVaultEnclave = ({
       powerPreference: 'high-performance',
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     rendererRef.current = renderer;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
@@ -781,13 +781,20 @@ export const ThreeVaultEnclave = ({
     resizeObserver.observe(container);
 
     // ================================================================
-    // 12. ANIMATION LOOP
+    // 12. ANIMATION LOOP (THROTTLED WITH INTERSECTION OBSERVER)
     // ================================================================
-    let clock = new THREE.Clock();
+    let lastTime = performance.now();
+    let isVisible = true;
 
     const animate = () => {
+      if (!isVisible) {
+        animFrameIdRef.current = null;
+        return;
+      }
       animFrameIdRef.current = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
+      const now = performance.now();
+      const delta = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
 
       camera.position.lerp(targetCamPosRef.current, 0.06);
       camera.lookAt(0, 3.5, 0);
@@ -818,11 +825,25 @@ export const ThreeVaultEnclave = ({
       renderer.render(scene, camera);
     };
 
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        isVisible = entry?.isIntersecting ?? false;
+        if (isVisible && !animFrameIdRef.current) {
+          clock.getDelta();
+          animate();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    intersectionObserver.observe(container);
+
     animate();
 
     return () => {
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       resizeObserver.disconnect();
+      intersectionObserver.disconnect();
       container.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
