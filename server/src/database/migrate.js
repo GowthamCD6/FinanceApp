@@ -146,6 +146,57 @@ async function runMigration() {
       return userId;
     }
 
+    // Ensure default organization (id = 1)
+    const [existingOrgs] = await conn.query(`SELECT id FROM organizations WHERE id = 1 LIMIT 1`);
+    if (existingOrgs.length === 0) {
+      await conn.query(`
+        INSERT INTO organizations (id, code, name, plan, status, currency, initial_capital, available_cash, total_lent, admin_name, admin_phone, admin_email, phone, address, city, state, postal_code)
+        VALUES (1, 'APEX-01', 'Apex Microfinance Ltd', 'ENTERPRISE', 'ACTIVE', 'INR', 10000000.00, 4500000.00, 5500000.00, 'Rajesh Kumar', '9876543210', 'rajesh@apexfinance.com', '044-28345678', '120 Anna Salai', 'Chennai', 'Tamil Nadu', '600002')
+        ON DUPLICATE KEY UPDATE name=VALUES(name)
+      `);
+      await conn.query(`
+        INSERT IGNORE INTO organization_settings (organization_id) VALUES (1)
+      `);
+    }
+
+    // Ensure default branch (id = 1)
+    const [existingBranches] = await conn.query(`SELECT id FROM branches WHERE id = 1 LIMIT 1`);
+    if (existingBranches.length === 0) {
+      await conn.query(`
+        INSERT INTO branches (id, organization_id, branch_code, branch_name, location, phone, manager_name, status)
+        VALUES (1, 1, 'BR-APEX-01', 'Chennai Central Branch', 'Anna Salai', '044-28345679', 'Rajesh Kumar', 'ACTIVE')
+        ON DUPLICATE KEY UPDATE branch_name=VALUES(branch_name)
+      `);
+    }
+
+    // Ensure loan products (id = 1, 2)
+    const [p1] = await conn.query(`SELECT id FROM loan_products WHERE id = 1 LIMIT 1`);
+    if (p1.length === 0) {
+      await conn.query(`
+        INSERT INTO loan_products (id, organization_id, product_code, product_name, customer_type, repayment_frequency, status, description)
+        VALUES (1, 1, 'PRD-WK-01', 'Standard Weekly Micro-Loan', 'COMMON_CUSTOMER', 'WEEKLY', 'ACTIVE', '10-Week micro finance credit')
+        ON DUPLICATE KEY UPDATE product_name=VALUES(product_name)
+      `);
+    }
+    const [p2] = await conn.query(`SELECT id FROM loan_products WHERE id = 2 LIMIT 1`);
+    if (p2.length === 0) {
+      await conn.query(`
+        INSERT INTO loan_products (id, organization_id, product_code, product_name, customer_type, repayment_frequency, status, description)
+        VALUES (2, 1, 'PRD-DLY-01', 'Merchant Daily Micro-Credit', 'SHOPKEEPER', 'DAILY', 'ACTIVE', '25-Day fast merchant credit')
+        ON DUPLICATE KEY UPDATE product_name=VALUES(product_name)
+      `);
+    }
+
+    // Ensure default fund account (id = 1)
+    const [fa1] = await conn.query(`SELECT id FROM fund_accounts WHERE id = 1 LIMIT 1`);
+    if (fa1.length === 0) {
+      await conn.query(`
+        INSERT INTO fund_accounts (id, organization_id, branch_id, account_code, account_name, account_type, current_balance, status)
+        VALUES (1, 1, 1, 'FA-APEX-CENTRAL', 'Apex Central Lending Vault', 'CASH', 4500000.00, 'ACTIVE')
+        ON DUPLICATE KEY UPDATE account_name=VALUES(account_name)
+      `);
+    }
+
     const superAdminId = await ensureUser('Super Admin', '9999999999', 'admin@fundlending.com', 'Admin@123', superRoleId, 'SUPER_ADMIN', null, null);
     const orgAdminId = await ensureUser('Rajesh Kumar', '9876543210', 'rajesh@apexfinance.com', 'Admin@123', adminRoleId, 'ADMIN', 1, 1);
     const fieldAgentId = await ensureUser('Venkatesh S', '9876543212', 'agent@apexfinance.com', 'Agent@123', agentRoleId, 'FIELD_AGENT', 1, 1);

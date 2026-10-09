@@ -90,8 +90,12 @@ async function login(req, res) {
       });
     }
 
-    // Update last login timestamp and clear force_logout_at flag
-    await query(`UPDATE users SET last_login_at = NOW(), force_logout_at = NULL WHERE id = ?`, [user.id]);
+    // Update last login timestamp
+    try {
+      await query(`UPDATE users SET last_login_at = NOW() WHERE id = ?`, [user.id]);
+    } catch (updErr) {
+      console.warn('last_login_at update warning:', updErr.message);
+    }
 
     // Fetch user roles
     const roles = await query(
@@ -142,18 +146,22 @@ async function login(req, res) {
     }
 
     // Asynchronously log audit event
-    governanceService.logAudit({
-      organization_id: user.organization_id,
-      user_id: user.id,
-      user_name: user.name,
-      user_email: user.email,
-      action: 'USER_LOGIN',
-      entity_type: 'AUTHENTICATION',
-      entity_id: `AUTH-${user.id}`,
-      ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1',
-      reason: `${user.role_type || roleNames[0] || 'User'} authenticated successfully`,
-      status: 'SUCCESS'
-    });
+    try {
+      governanceService.logAudit({
+        organization_id: user.organization_id,
+        user_id: user.id,
+        user_name: user.name,
+        user_email: user.email,
+        action: 'USER_LOGIN',
+        entity_type: 'AUTHENTICATION',
+        entity_id: `AUTH-${user.id}`,
+        ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1',
+        reason: `${user.role_type || roleNames[0] || 'User'} authenticated successfully`,
+        status: 'SUCCESS'
+      });
+    } catch (auditErr) {
+      console.warn('logAudit warning:', auditErr.message);
+    }
 
     return res.json({
       success: true,
@@ -199,22 +207,24 @@ async function googleLogin(req, res) {
 
     // 2. If not found in users table, check if an organization exists with this admin email
     if (users.length === 0) {
-      const orgs = await query(
-        `SELECT * FROM organizations 
-         WHERE LOWER(admin_email) = LOWER(?) OR LOWER(email) = LOWER(?)
-         LIMIT 1`,
-        [cleanEmail, cleanEmail]
-      );
-
-      if (orgs.length > 0) {
-        const org = orgs[0];
-        const orgUsers = await query(
-          `SELECT * FROM users WHERE organization_id = ? AND role_type IN ('ORG_ADMIN', 'ADMIN') LIMIT 1`,
-          [org.id]
+      try {
+        const orgs = await query(
+          `SELECT * FROM organizations WHERE LOWER(admin_email) = LOWER(?) LIMIT 1`,
+          [cleanEmail]
         );
-        if (orgUsers.length > 0) {
-          users = orgUsers;
+
+        if (orgs.length > 0) {
+          const org = orgs[0];
+          const orgUsers = await query(
+            `SELECT * FROM users WHERE organization_id = ? AND role_type IN ('ORG_ADMIN', 'ADMIN') LIMIT 1`,
+            [org.id]
+          );
+          if (orgUsers.length > 0) {
+            users = orgUsers;
+          }
         }
+      } catch (checkOrgErr) {
+        console.warn('Check organization error:', checkOrgErr.message);
       }
     }
 
@@ -224,10 +234,11 @@ async function googleLogin(req, res) {
 
       if (isSuperAdminEmail) {
         // Create SuperAdmin User
+        const generatedPhone = '99' + Math.floor(10000000 + Math.random() * 90000000);
         const superInsert = await query(
           `INSERT INTO users (name, email, phone, password_hash, role_type, status, google_id, avatar_url)
            VALUES (?, ?, ?, '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SUPER_ADMIN', 'ACTIVE', ?, ?)`,
-          [name || 'Platform Overseer', cleanEmail, '9999999999', google_id || cleanEmail, avatar_url || null]
+          [name || 'Platform Overseer', cleanEmail, generatedPhone, google_id || cleanEmail, avatar_url || null]
         );
         if (superInsert?.insertId) {
           const superRole = await query(`SELECT id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1`);
@@ -237,37 +248,47 @@ async function googleLogin(req, res) {
           users = await query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [superInsert.insertId]);
         }
       } else {
-        // Create Organization and Tenant Admin User
+        // Create Organization, Branch and Tenant Admin User
         const orgName = `${(name || cleanEmail.split('@')[0])}'s Finance Org`;
         const orgCode = `ORG-${Date.now().toString().slice(-6)}`;
+        const generatedPhone = '98' + Math.floor(10000000 + Math.random() * 90000000);
         
         let orgId = null;
+        let branchId = null;
         try {
           const newOrg = await query(
-            `INSERT INTO organizations (name, code, status, admin_name, admin_email, total_fund, available_cash)
-             VALUES (?, ?, 'ACTIVE', ?, ?, 500000.00, 500000.00)`,
-            [orgName, orgCode, name || 'Organization Admin', cleanEmail]
+            `INSERT INTO organizations (name, code, status, admin_name, admin_phone, admin_email, initial_capital, available_cash)
+             VALUES (?, ?, 'ACTIVE', ?, ?, ?, 500000.00, 500000.00)`,
+            [orgName, orgCode, name || 'Organization Admin', generatedPhone, cleanEmail]
           );
           orgId = newOrg?.insertId;
 
           if (orgId) {
             await query(
-              `INSERT INTO organization_settings (organization_id) VALUES (?)`,
+              `INSERT IGNORE INTO organization_settings (organization_id) VALUES (?)`,
               [orgId]
             );
+
+            // Create default branch for new organization
+            const newBranch = await query(
+              `INSERT INTO branches (organization_id, branch_code, branch_name, location, phone, manager_name, status)
+               VALUES (?, ?, ?, 'Headquarters', ?, ?, 'ACTIVE')`,
+              [orgId, `BR-${orgCode}-01`, `${orgName} Main Branch`, generatedPhone, name || 'Branch Manager']
+            );
+            branchId = newBranch?.insertId || null;
           }
         } catch (orgErr) {
           console.warn('Auto-org creation warning:', orgErr.message);
         }
 
         const userInsert = await query(
-          `INSERT INTO users (organization_id, name, email, phone, password_hash, role_type, status, google_id, avatar_url)
-           VALUES (?, ?, ?, ?, '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ORG_ADMIN', 'ACTIVE', ?, ?)`,
-          [orgId, name || 'Tenant Admin', cleanEmail, `98${Date.now().toString().slice(-8)}`, google_id || cleanEmail, avatar_url || null]
+          `INSERT INTO users (organization_id, branch_id, name, email, phone, password_hash, role_type, status, google_id, avatar_url)
+           VALUES (?, ?, ?, ?, ?, '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ORG_ADMIN', 'ACTIVE', ?, ?)`,
+          [orgId, branchId, name || 'Tenant Admin', cleanEmail, generatedPhone, google_id || cleanEmail, avatar_url || null]
         );
 
         if (userInsert?.insertId) {
-          const orgAdminRole = await query(`SELECT id FROM roles WHERE name = 'ORG_ADMIN' LIMIT 1`);
+          const orgAdminRole = await query(`SELECT id FROM roles WHERE name IN ('ORG_ADMIN', 'ADMIN') LIMIT 1`);
           if (orgAdminRole.length > 0) {
             await query(`INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`, [userInsert.insertId, orgAdminRole[0].id]);
           }
