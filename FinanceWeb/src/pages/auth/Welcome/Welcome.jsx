@@ -42,6 +42,9 @@ import {
   FileCheck,
   RefreshCw,
   PieChart,
+  X,
+  Building,
+  Mail,
 } from 'lucide-react';
 import './Welcome.css';
 
