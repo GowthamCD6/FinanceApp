@@ -1825,35 +1825,6 @@ export const WelcomePage = () => {
       </section>
 
       {/* ================================================================
-          9. HIGH-CONVERSION BOTTOM CTA
-          ================================================================ */}
-      <section className="bottom-cta-banner">
-        <div className="standard-container">
-          <div className="cta-container">
-            <div className="cta-pill">DEPLOY YOUR ORGANIZATION WORKSPACE</div>
-            <h2 className="cta-heading">Ready to scale your finance organization?</h2>
-            <p className="cta-subtitle">
-              Launch your isolated tenant portal with multi-branch management, offline mobile collectors, and zero credential leakage.
-            </p>
-            <div className="cta-btn-group">
-              <button
-                type="button"
-                className="btn-cta-primary-large"
-                onClick={() => navigate('/login')}
-              >
-                <span>Get Started Now</span>
-                <ArrowRight size={18} />
-              </button>
-              <Link to="/login" className="btn-cta-ghost-large">
-                <span>Sign In to Tenant Portal</span>
-              </Link>
-            </div>
-            <span className="cta-footnote">Setup in under 60 seconds · Dedicated tenant encryption enclave</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ================================================================
           10. CORPORATE FOOTER
           ================================================================ */}
       <footer className="landing-footer" id="footer">
