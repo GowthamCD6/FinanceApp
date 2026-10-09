@@ -23,74 +23,77 @@ export const RouteStaffDashboard = () => {
   const { user, logout } = useAuth();
 
   const [stats, setStats] = useState({
-    todayTarget: 18500,
-    collectedToday: 12400,
-    activeMerchants: 28,
-    cashInHand: 12400,
-    visitedCount: 19,
-    pendingCount: 9,
+    todayTarget: 0,
+    collectedToday: 0,
+    activeMerchants: 0,
+    cashInHand: 0,
+    visitedCount: 0,
+    pendingCount: 0,
   });
 
   const [loading, setLoading] = useState(false);
+  const [routeMerchants, setRouteMerchants] = useState([]);
 
-  // Mock Route Merchants for field execution
-  const routeMerchants = [
-    {
-      id: 1,
-      shop_name: 'Murugan Grocery & Provisions',
-      owner_name: 'Murugan R',
-      location: 'No. 12, Market Main Rd, Stall 4',
-      due_amount: 500,
-      status: 'PAID',
-      time: '09:15 AM',
-      type: 'DAILY',
-      phone: '9876543214',
-    },
-    {
-      id: 2,
-      shop_name: 'Selvi Flower & Pooja Stall',
-      owner_name: 'Selvi M',
-      location: 'Bus Stand Complex, Shop 2',
-      due_amount: 300,
-      status: 'PAID',
-      time: '09:40 AM',
-      type: 'DAILY',
-      phone: '9840192831',
-    },
-    {
-      id: 3,
-      shop_name: 'Annapurna Tea & Snacks',
-      owner_name: 'Ramu K',
-      location: 'Opposite Railway Station',
-      due_amount: 600,
-      status: 'PENDING',
-      time: 'Scheduled 11:30 AM',
-      type: 'DAILY',
-      phone: '9443210987',
-    },
-    {
-      id: 4,
-      shop_name: 'Sri Krishna Veg & Fruits',
-      owner_name: 'Krishnan G',
-      location: 'Weekly Market Row B',
-      due_amount: 1500,
-      status: 'PENDING',
-      time: 'Scheduled 12:15 PM',
-      type: 'WEEKLY',
-      phone: '9789012345',
-    },
-    {
-      id: 5,
-      shop_name: 'Modern Tailoring & Fabrics',
-      owner_name: 'Kavitha P',
-      location: 'Bazaar Street #44',
-      due_amount: 1000,
-      status: 'PENDING',
-      time: 'Scheduled 01:00 PM',
-      type: 'WEEKLY',
-      phone: '9876500112',
-    },
-  ];
+  const loadStaffData = async () => {
+    setLoading(true);
+    try {
+      const [shops, weeklies] = await Promise.all([
+        api.getShopkeepers().catch(() => []),
+        api.getWeeklyCustomers().catch(() => []),
+      ]);
+
+      const shopList = Array.isArray(shops) ? shops : [];
+      const weeklyList = Array.isArray(weeklies) ? weeklies : [];
+
+      const combined = [
+        ...shopList.map((s) => ({
+          id: s.id,
+          shop_name: s.shop_name || `${s.name || 'Merchant'}'s Store`,
+          owner_name: s.name || s.full_name || 'Store Merchant',
+          location: s.market_location || s.address || 'Market Route',
+          due_amount: s.daily_collection_target || (s.loans?.[0]?.installment_amount) || 500,
+          status: s.today_collection_status === 'COMPLETED' ? 'PAID' : 'PENDING',
+          time: 'Daily Route',
+          type: 'DAILY',
+          phone: s.phone || 'N/A',
+        })),
+        ...weeklyList.map((w) => ({
+          id: w.id,
+          shop_name: `${w.name || 'Customer'}'s Account`,
+          owner_name: w.name || w.full_name || 'Borrower',
+          location: w.address || 'Town Market',
+          due_amount: w.current_week_due || 2200,
+          status: w.current_week_status === 'PAID' ? 'PAID' : 'PENDING',
+          time: 'Weekly Route',
+          type: 'WEEKLY',
+          phone: w.phone || 'N/A',
+        })),
+      ];
+
+      setRouteMerchants(combined);
+
+      const totalDue = combined.reduce((acc, m) => acc + (Number(m.due_amount) || 0), 0);
+      const paid = combined.filter((m) => m.status === 'PAID');
+      const paidAmt = paid.reduce((acc, m) => acc + (Number(m.due_amount) || 0), 0);
+
+      setStats({
+        todayTarget: totalDue,
+        collectedToday: paidAmt,
+        activeMerchants: combined.length,
+        cashInHand: paidAmt,
+        visitedCount: paid.length,
+        pendingCount: combined.length - paid.length,
+      });
+    } catch (err) {
+      console.error('Error loading staff route data from live API:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStaffData();
+  }, []);
 
   return (
     <div className="staff-portal-container">

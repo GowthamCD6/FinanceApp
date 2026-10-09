@@ -13,9 +13,13 @@ async function getSummary(req, res) {
 
 async function addCapital(req, res) {
   try {
-    const { fundAccountId, amount, description } = req.body;
-    if (!fundAccountId || !amount) {
-      return res.status(400).json({ success: false, message: 'fundAccountId and amount are required.' });
+    let { fundAccountId, amount, description } = req.body;
+    if (!fundAccountId) {
+      const fa = await query(`SELECT id FROM fund_accounts WHERE status = 'ACTIVE' LIMIT 1`);
+      fundAccountId = fa.length > 0 ? fa[0].id : 1;
+    }
+    if (!amount) {
+      return res.status(400).json({ success: false, message: 'amount is required.' });
     }
 
     const result = await fundService.injectCapital({

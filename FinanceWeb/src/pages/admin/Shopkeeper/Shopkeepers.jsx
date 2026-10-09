@@ -251,14 +251,14 @@ export const Shopkeepers = () => {
         ...(activeOrg ? { organizationId: activeOrg.id } : {}),
       };
       const data = await api.getShopkeepers(params);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setShopkeepers(data);
       } else {
-        setShopkeepers(sampleShopkeepers);
+        setShopkeepers([]);
       }
     } catch (err) {
-      console.error('Error fetching shopkeepers, using fallback:', err);
-      setShopkeepers(sampleShopkeepers);
+      console.error('Error fetching shopkeepers from live API:', err);
+      setShopkeepers([]);
     } finally {
       setLoading(false);
     }

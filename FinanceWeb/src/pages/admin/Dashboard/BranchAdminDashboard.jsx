@@ -56,22 +56,22 @@ export const BranchAdminDashboard = () => {
 
     try {
       const [m, staff, wDues, dColls] = await Promise.all([
-        api.getAdminDashboardMetrics().catch(() => null),
-        api.getStaffUsers({ role: 'FIELD_AGENT' }).catch(() => []),
-        api.getWeeklyDues().catch(() => []),
-        api.getDailyCollections().catch(() => []),
+        api.getAdminDashboardMetrics({ organizationId: pathOrgId, branchId: currentBranch?.id }).catch(() => null),
+        api.getStaffUsers({ role: 'FIELD_AGENT', organizationId: pathOrgId, branchId: currentBranch?.id }).catch(() => []),
+        api.getWeeklyDues({ organizationId: pathOrgId, branchId: currentBranch?.id }).catch(() => []),
+        api.getDailyCollections({ organizationId: pathOrgId, branchId: currentBranch?.id }).catch(() => []),
       ]);
 
       setMetrics(
         m || {
-          todayDailyCollected: 4200,
-          todayDailyTarget: 5850,
-          todayWeeklyTarget: 18000,
-          weeklyCollected: 14500,
-          activeBorrowersCount: 24,
-          totalActiveLoans: 38,
-          activePrincipalOutstanding: 142000,
-          netDisbursedThisMonth: 85000,
+          todayDailyCollected: 0,
+          todayDailyTarget: 0,
+          todayWeeklyTarget: 0,
+          weeklyCollected: 0,
+          activeBorrowersCount: 0,
+          totalActiveLoans: 0,
+          activePrincipalOutstanding: 0,
+          netDisbursedThisMonth: 0,
         }
       );
       setFieldStaff(Array.isArray(staff) ? staff : staff?.users || []);

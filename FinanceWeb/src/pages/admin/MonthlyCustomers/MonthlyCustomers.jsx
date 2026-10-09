@@ -212,14 +212,14 @@ export const MonthlyCustomers = () => {
     setLoading(true);
     try {
       const data = await api.getMonthlyCustomers(activeOrg ? { organizationId: activeOrg.id } : {});
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setCustomers(data);
       } else {
-        setCustomers(sampleMonthlyCustomers);
+        setCustomers([]);
       }
     } catch (err) {
-      console.error('Error loading monthly customers, loading fallback data:', err);
-      setCustomers(sampleMonthlyCustomers);
+      console.error('Error loading monthly customers from live API:', err);
+      setCustomers([]);
     } finally {
       setLoading(false);
     }

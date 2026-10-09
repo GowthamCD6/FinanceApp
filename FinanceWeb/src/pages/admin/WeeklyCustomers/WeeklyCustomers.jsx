@@ -220,14 +220,14 @@ export const WeeklyCustomers = () => {
     setLoading(true);
     try {
       const data = await api.getWeeklyCustomers(activeOrg ? { organizationId: activeOrg.id } : {});
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setCustomers(data);
       } else {
-        setCustomers(sampleWeeklyCustomers);
+        setCustomers([]);
       }
     } catch (err) {
-      console.error('Error loading weekly customers, loading fallback data:', err);
-      setCustomers(sampleWeeklyCustomers);
+      console.error('Error loading weekly customers from live API:', err);
+      setCustomers([]);
     } finally {
       setLoading(false);
     }

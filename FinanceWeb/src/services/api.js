@@ -482,37 +482,51 @@ export const api = {
     },
   },
 
-  // Top-Level Convenience Aliases for Field Operations & Reports
-  getAdminDashboardMetrics: async () => {
-    try {
-      const res = await request('/reports/dashboard');
-      return res || null;
-    } catch {
-      return {
-        todayDailyCollected: 4200,
-        todayDailyTarget: 5850,
-        todayWeeklyTarget: 18000,
-        weeklyCollected: 14500,
-        totalActiveUsers: 24,
-        totalActiveLoans: 38,
-        overdueBorrowersCount: 2,
-        activePrincipalOutstanding: 142000,
-        netDisbursedThisMonth: 85000,
-        profitSummary: {
-          totalCapitalInvested: 235000,
-          totalAmountCollected: 142600,
-          totalPrincipalRecovered: 124800,
-          realizedNetProfit: 17800,
-          outstandingPrincipalInMarket: 110200,
-          totalOutstandingBalance: 118650,
-          projectedTotalReturn: 261250,
-          projectedTotalNetProfit: 26250,
-          realizedRoiPercent: 7.6,
-          projectedRoiPercent: 11.2,
-          recoveryProgressPercent: 55,
-        },
-      };
-    }
+  // 11. CENTRAL FUND & CAPITAL LEDGER
+  funds: {
+    getSummary: async (params = {}) => {
+      const queryStr = new URLSearchParams(params).toString();
+      return await request(`/funds/summary${queryStr ? `?${queryStr}` : ''}`);
+    },
+    getAccounts: async () => {
+      return await request('/funds/accounts');
+    },
+    getCirculationTrail: async (limit = 50) => {
+      return await request(`/funds/circulation?limit=${limit}`);
+    },
+    injectCapital: async (amount, description = '', fundAccountId = null) => {
+      return await request('/funds/capital', {
+        method: 'POST',
+        body: JSON.stringify({ amount, description, fundAccountId }),
+      });
+    },
+    withdrawProfit: async (amount, description = '', paymentMethod = 'BANK_TRANSFER', fundAccountId = null) => {
+      return await request('/funds/withdraw-profit', {
+        method: 'POST',
+        body: JSON.stringify({ amount, description, paymentMethod, fundAccountId }),
+      });
+    },
+    transferProfitToNetCapital: async (amount, description = '', fundAccountId = null) => {
+      return await request('/funds/transfer-profit', {
+        method: 'POST',
+        body: JSON.stringify({ amount, description, fundAccountId }),
+      });
+    },
+    recordExpense: async (amount, category = 'Office', description = '', accountName = 'Cash') => {
+      return await request('/funds/expenses', {
+        method: 'POST',
+        body: JSON.stringify({ amount, category, description, accountName }),
+      });
+    },
+  },
+
+  // Top-Level Convenience Aliases for Field Operations & Reports (Strictly Live API)
+  getAdminDashboardMetrics: async (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.organizationId && params.organizationId !== 'ALL') query.append('organizationId', params.organizationId);
+    if (params.branchId && params.branchId !== 'ALL') query.append('branchId', params.branchId);
+    const qs = query.toString();
+    return await request(`/reports/dashboard${qs ? '?' + qs : ''}`);
   },
 
   getWeeklyDues: async (params = {}) => {

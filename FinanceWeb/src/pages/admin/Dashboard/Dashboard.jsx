@@ -368,15 +368,15 @@ export const AdminDashboard = () => {
   const [weeklyDues, setWeeklyDues] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Live Central Vault Fund State
+  // Live Central Vault Fund State (Strictly Live DB Ledger)
   const [fundSummary, setFundSummary] = useState({
-    availableCash: 345000,
-    totalCapital: 1200000,
-    outstandingPrincipal: 330000,
-    lendingIncome: 85000,
-    operatingExpenses: 25000,
-    netProfit: 60000,
-    availableProfitPool: 60000,
+    availableCash: 0,
+    totalCapital: 0,
+    outstandingPrincipal: 0,
+    lendingIncome: 0,
+    operatingExpenses: 0,
+    netProfit: 0,
+    availableProfitPool: 0,
     totalProfitWithdrawn: 0,
     totalProfitReinvested: 0,
   });
@@ -443,7 +443,10 @@ export const AdminDashboard = () => {
           branchId: activeBranchId || undefined,
         }).catch(() => null),
         api.getWeeklyDues().catch(() => []),
-        api.funds.getSummary().catch(() => null),
+        api.funds.getSummary({
+          organizationId: activeOrg?.id || undefined,
+          branchId: activeBranchId || undefined,
+        }).catch(() => null),
       ]);
 
       setMetrics(dashData || null);
