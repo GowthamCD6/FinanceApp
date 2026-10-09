@@ -249,6 +249,9 @@ export const WelcomePage = () => {
   const [calcScheme, setCalcScheme] = useState('DAILY');
   const [calcTenure, setCalcTenure] = useState(100);
   const [calcInterestRate, setCalcInterestRate] = useState(25);
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
 
   useEffect(() => {
@@ -718,21 +721,95 @@ export const WelcomePage = () => {
               <button
                 type="button"
                 className="et-tool-btn"
-                title="Portal Menu"
-                onClick={() => scrollToSection({ preventDefault: () => { } }, 'multi-tenancy')}
+                title="Portal Navigation Menu"
+                onClick={() => setTopMenuOpen(!topMenuOpen)}
               >
-                <Menu size={20} />
+                {topMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
               <button
                 type="button"
                 className="et-tool-btn"
-                title="Search Platform"
-                onClick={() => scrollToSection({ preventDefault: () => { } }, 'solutions')}
+                title="Search Portal"
+                onClick={() => setSearchModalOpen(true)}
               >
                 <Search size={18} />
               </button>
             </div>
           </nav>
+
+          {/* Interactive Top Menu Dropdown Overlay */}
+          {topMenuOpen && (
+            <div className="et-menu-overlay" onClick={() => setTopMenuOpen(false)}>
+              <div className="et-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div className="et-menu-header">
+                  <span>FINANCE PORTAL NAVIGATION</span>
+                  <button type="button" onClick={() => setTopMenuOpen(false)}><X size={16} /></button>
+                </div>
+                <div className="et-menu-grid">
+                  <div className="et-menu-col">
+                    <h6>Platform Pages</h6>
+                    <Link to="/about" onClick={() => setTopMenuOpen(false)}>About Us & Vision</Link>
+                    <Link to="/security" onClick={() => setTopMenuOpen(false)}>Security & Encryption</Link>
+                    <Link to="/contact" onClick={() => setTopMenuOpen(false)}>Enterprise Contact</Link>
+                  </div>
+                  <div className="et-menu-col">
+                    <h6>Legal & Governance</h6>
+                    <Link to="/terms" onClick={() => setTopMenuOpen(false)}>Terms & Conditions</Link>
+                    <Link to="/privacy-policy" onClick={() => setTopMenuOpen(false)}>Privacy Policy</Link>
+                    <Link to="/security" onClick={() => setTopMenuOpen(false)}>FIPS 140-2 Standards</Link>
+                  </div>
+                  <div className="et-menu-col">
+                    <h6>Access Portals</h6>
+                    <Link to="/login" onClick={() => setTopMenuOpen(false)} className="menu-highlight">Tenant Sign In</Link>
+                    <Link to="/login" onClick={() => setTopMenuOpen(false)}>SuperAdmin Hub</Link>
+                    <Link to="/login" onClick={() => setTopMenuOpen(false)}>Field Staff App</Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Interactive Search Modal */}
+          {searchModalOpen && (
+            <div className="et-search-modal-backdrop" onClick={() => setSearchModalOpen(false)}>
+              <div className="et-search-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="et-search-input-box">
+                  <Search size={20} className="search-icon" />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search schemes, branch tools, legal docs, calculator..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <button type="button" onClick={() => setSearchModalOpen(false)}><X size={18} /></button>
+                </div>
+                <div className="et-search-results">
+                  <div className="search-group-title">Quick Navigation</div>
+                  <Link to="/terms" className="search-result-item" onClick={() => setSearchModalOpen(false)}>
+                    <FileText size={16} />
+                    <span>Terms & Conditions Agreement</span>
+                  </Link>
+                  <Link to="/privacy-policy" className="search-result-item" onClick={() => setSearchModalOpen(false)}>
+                    <Shield size={16} />
+                    <span>Privacy Policy & Tenant Data Protection</span>
+                  </Link>
+                  <Link to="/security" className="search-result-item" onClick={() => setSearchModalOpen(false)}>
+                    <Lock size={16} />
+                    <span>Cryptographic Tenant Isolation Standard</span>
+                  </Link>
+                  <Link to="/about" className="search-result-item" onClick={() => setSearchModalOpen(false)}>
+                    <Building size={16} />
+                    <span>About Us & Platform Architecture</span>
+                  </Link>
+                  <Link to="/contact" className="search-result-item" onClick={() => setSearchModalOpen(false)}>
+                    <Mail size={16} />
+                    <span>Contact Enterprise Support</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Content Block overlaid directly on the right white region */}
           <div className="exact-content-overlay">
@@ -1867,12 +1944,13 @@ export const WelcomePage = () => {
             </div>
 
             <div className="footer-nav-column">
-              <h6>Access</h6>
+              <h6>Company & Legal</h6>
               <ul>
-                <li><Link to="/login">SuperAdmin Central Hub</Link></li>
-                <li><Link to="/login">Tenant Admin Workspace</Link></li>
-                <li><Link to="/login">Branch Manager Terminal</Link></li>
-                <li><Link to="/login">Field Staff Mobile App</Link></li>
+                <li><Link to="/about">About Us & Vision</Link></li>
+                <li><Link to="/terms">Terms & Conditions</Link></li>
+                <li><Link to="/privacy-policy">Privacy Policy</Link></li>
+                <li><Link to="/security">Tenant Encryption Standard</Link></li>
+                <li><Link to="/contact">Enterprise Contact</Link></li>
               </ul>
             </div>
           </div>
@@ -1880,9 +1958,9 @@ export const WelcomePage = () => {
           <div className="footer-bottom-bar">
             <span>© {new Date().getFullYear()} Finance Portal SaaS Inc. All tenant records are cryptographically isolated.</span>
             <div className="footer-legal-links">
-              <Link to="/login">Privacy Policy</Link>
-              <Link to="/login">Terms of Service</Link>
-              <Link to="/login">Tenant Data Encryption Standard</Link>
+              <Link to="/privacy-policy">Privacy Policy</Link>
+              <Link to="/terms">Terms of Service</Link>
+              <Link to="/security">Tenant Data Encryption Standard</Link>
             </div>
           </div>
         </div>

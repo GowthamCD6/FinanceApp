@@ -9,6 +9,13 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { WelcomePage } from './pages/auth/Welcome/Welcome';
 import { LoginPage } from './pages/auth/Login/LoginPage';
 
+// Public Web Portal Pages
+import { TermsOfService } from './pages/public/TermsOfService/TermsOfService';
+import { PrivacyPolicyPublic } from './pages/public/PrivacyPolicy/PrivacyPolicyPublic';
+import { SecurityStandard } from './pages/public/SecurityStandard/SecurityStandard';
+import { ContactPage } from './pages/public/Contact/ContactPage';
+import { AboutPage } from './pages/public/About/AboutPage';
+
 // SuperAdmin Tier Pages
 import { SuperAdminDashboard } from './pages/Superadmin/Dashboard/Dashboard';
 import { CreateOrganization } from './pages/Superadmin/Organization/Organization';
@@ -52,6 +59,17 @@ export default function App() {
             <Route path="/" element={<WelcomePage />} />
             <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/login" element={<LoginPage />} />
+
+            {/* Public Web Portal Dedicated Pages */}
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPublic />} />
+            <Route path="/privacy" element={<PrivacyPolicyPublic />} />
+            <Route path="/security" element={<SecurityStandard />} />
+            <Route path="/security-standard" element={<SecurityStandard />} />
+            <Route path="/encryption-standard" element={<SecurityStandard />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/about" element={<AboutPage />} />
 
             {/* 2. Guarded Private App Routes (Session & Token Validated) */}
             <Route element={<ProtectedRoute />}>
