@@ -2905,7 +2905,7 @@
    7. METRICS BANNER (DAYLIGHT SHOWCASE MATCHING HOME SCREEN THEME)
    ========================================================================== */
 .metrics-banner-section {
-  padding: 0 0 6rem;
+  padding: 0 0 clamp(1.5rem, 2.5vw, 2.75rem);
 }
 
 .metrics-banner-inner {
@@ -2949,7 +2949,11 @@
    8. FAQ SECTION
    ========================================================================== */
 .faq-section {
-  padding: 6rem 0;
+  padding: clamp(1rem, 2vw, 2rem) 0 clamp(3rem, 4vw, 4.5rem);
+}
+
+.faq-section .section-header {
+  margin: 0 auto 2.25rem;
 }
 
 .faq-accordion-list {
