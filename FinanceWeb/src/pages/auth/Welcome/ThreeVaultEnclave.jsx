@@ -830,7 +830,7 @@ export const ThreeVaultEnclave = ({
         const [entry] = entries;
         isVisible = entry?.isIntersecting ?? false;
         if (isVisible && !animFrameIdRef.current) {
-          clock.getDelta();
+          lastTime = performance.now();
           animate();
         }
       },
