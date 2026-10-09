@@ -248,6 +248,7 @@ export const WelcomePage = () => {
   const [calcAmount, setCalcAmount] = useState(50000);
   const [calcScheme, setCalcScheme] = useState('DAILY');
   const [calcTenure, setCalcTenure] = useState(100);
+  const [calcInterestRate, setCalcInterestRate] = useState(25);
 
 
   useEffect(() => {
@@ -258,16 +259,22 @@ export const WelcomePage = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const interestRate = calcScheme === 'DAILY' ? 25 : calcScheme === 'WEEKLY' ? 22 : 18;
-  const totalInterest = Math.round(calcAmount * (interestRate / 100));
+  const totalInterest = Math.round(calcAmount * (calcInterestRate / 100));
   const totalRepayable = calcAmount + totalInterest;
-  const cycleInstallment = Math.round(totalRepayable / calcTenure);
+  const cycleInstallment = Math.round(totalRepayable / Math.max(1, calcTenure));
 
   const handleSchemeChange = (scheme) => {
     setCalcScheme(scheme);
-    if (scheme === 'DAILY') setCalcTenure(100);
-    else if (scheme === 'WEEKLY') setCalcTenure(10);
-    else setCalcTenure(12);
+    if (scheme === 'DAILY') {
+      setCalcTenure(100);
+      setCalcInterestRate(25);
+    } else if (scheme === 'WEEKLY') {
+      setCalcTenure(10);
+      setCalcInterestRate(20);
+    } else {
+      setCalcTenure(12);
+      setCalcInterestRate(18);
+    }
   };
 
   const scrollToSection = (e, id) => {
@@ -1638,6 +1645,40 @@ export const WelcomePage = () => {
 
               <div className="calc-group">
                 <div className="calc-label-row">
+                  <span className="calc-label">Interest / Fee Rate (Dynamic)</span>
+                  <span className="calc-value-display">{calcInterestRate}%</span>
+                </div>
+
+                <div className="calc-quick-chips">
+                  {[10, 15, 18, 20, 25, 30].map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      className={`calc-chip ${calcInterestRate === rate ? 'active' : ''}`}
+                      onClick={() => setCalcInterestRate(rate)}
+                    >
+                      {rate}% Fee
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="range"
+                  min="2"
+                  max="50"
+                  step="1"
+                  value={calcInterestRate}
+                  onChange={(e) => setCalcInterestRate(Number(e.target.value))}
+                  className="clean-slider"
+                />
+                <div className="slider-limits">
+                  <span>Min: 2%</span>
+                  <span>Max: 50%</span>
+                </div>
+              </div>
+
+              <div className="calc-group">
+                <div className="calc-label-row">
                   <span className="calc-label">Tenure Duration</span>
                   <span className="calc-value-display">
                     {calcTenure} {calcScheme === 'DAILY' ? 'Days' : calcScheme === 'WEEKLY' ? 'Weeks' : 'Months'}
@@ -1664,7 +1705,7 @@ export const WelcomePage = () => {
               <div className="summary-card">
                 <div className="summary-header">
                   <span className="summary-badge">SIMULATED SCHEDULE</span>
-                  <span className="rate-badge">{interestRate}% Fixed Fee</span>
+                  <span className="rate-badge">{calcInterestRate}% Configured Fee</span>
                 </div>
 
                 <div className="summary-stat-row">
@@ -1689,7 +1730,7 @@ export const WelcomePage = () => {
                 </div>
 
                 {(() => {
-                  const pPct = Math.round((calcAmount / totalRepayable) * 100) || 80;
+                  const pPct = totalRepayable > 0 ? Math.round((calcAmount / totalRepayable) * 100) : 80;
                   const yPct = 100 - pPct;
                   return (
                     <>
