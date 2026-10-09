@@ -1825,10 +1825,16 @@ export const WelcomePage = () => {
       </section>
 
       {/* ================================================================
-          10. CORPORATE FOOTER
+          10. CORPORATE FOOTER WITH CLOUD BACKGROUND
           ================================================================ */}
       <footer className="landing-footer" id="footer">
-        <div className="standard-container">
+        {/* Ambient Cloud Wave Graphic Layer in the Background */}
+        <div className="footer-cloud-bg" aria-hidden="true">
+          <img src={singleBottomHeroImg} alt="" className="footer-cloud-img" />
+          <div className="footer-cloud-overlay" />
+        </div>
+
+        <div className="standard-container footer-content-container">
           <div className="footer-top-grid">
             <div className="footer-brand-column">
               <div className="footer-brand-title">
@@ -1879,11 +1885,6 @@ export const WelcomePage = () => {
               <Link to="/login">Tenant Data Encryption Standard</Link>
             </div>
           </div>
-        </div>
-
-        {/* Decorative Graphic from Assets at the very bottom */}
-        <div className="footer-wave-graphic">
-          <img src={singleBottomHeroImg} alt="Finance Platform Wave" />
         </div>
       </footer>
     </div>
